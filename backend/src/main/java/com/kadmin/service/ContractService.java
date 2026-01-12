@@ -1,0 +1,47 @@
+package com.kadmin.service;
+
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.kadmin.entity.HrContract;
+import com.kadmin.mapper.HrContractMapper;
+import org.springframework.stereotype.Service;
+
+/**
+ * 合同服务
+ */
+@Service
+public class ContractService extends ServiceImpl<HrContractMapper, HrContract> {
+
+    /**
+     * 分页查询合同
+     */
+    public Page<HrContract> getContractPage(int pageNum, int pageSize, String contractNo,
+            String employeeName, String employeeNo, String contractType, Integer status) {
+        Page<HrContract> page = new Page<>(pageNum, pageSize);
+        return baseMapper.selectPageWithEmployee(page, contractNo, employeeName, employeeNo, contractType, status);
+    }
+
+    /**
+     * 新增合同
+     */
+    public boolean addContract(HrContract contract) {
+        if (contract.getStatus() == null) {
+            contract.setStatus(1); // 默认生效中
+        }
+        return save(contract);
+    }
+
+    /**
+     * 更新合同
+     */
+    public boolean updateContract(HrContract contract) {
+        return updateById(contract);
+    }
+
+    /**
+     * 删除合同（逻辑删除）
+     */
+    public boolean deleteContract(Long id) {
+        return removeById(id);
+    }
+}

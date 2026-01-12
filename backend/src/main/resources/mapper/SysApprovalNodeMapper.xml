@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kadmin.mapper.SysApprovalNodeMapper">
+    <select id="selectByFlowIdWithApprover" resultType="com.kadmin.entity.SysApprovalNode">
+        SELECT n.*, r.role_name
+        FROM sys_approval_node n
+        LEFT JOIN sys_role r ON n.role_id = r.id
+        WHERE n.flow_id = #{flowId} AND n.deleted = 0
+        ORDER BY n.sort_order ASC
+    </select>
+</mapper>

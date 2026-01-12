@@ -1,0 +1,20 @@
+package com.kadmin.mapper;
+
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.kadmin.entity.HrEmployee;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+/**
+ * 员工Mapper接口
+ */
+@Mapper
+public interface EmployeeMapper extends BaseMapper<HrEmployee> {
+
+    /**
+     * 分页查询员工列表（带公司和部门名称）
+     */
+    Page<HrEmployee> selectPageWithDetails(Page<HrEmployee> page, @Param("ew") Wrapper<HrEmployee> wrapper);
+}
