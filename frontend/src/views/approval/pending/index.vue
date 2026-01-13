@@ -117,8 +117,8 @@ const appTypeMap: Record<string, string> = {
 </script>
 
 <template>
-  <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
-    <ElCard>
+  <div class="list-page">
+    <ElCard class="search-card">
       <ElForm inline :model="searchParams">
         <ElFormItem label="申请人"><ElInput v-model="searchParams.employeeName" placeholder="请输入申请人" clearable /></ElFormItem>
         <ElFormItem label="申请类型">
@@ -137,7 +137,7 @@ const appTypeMap: Record<string, string> = {
       </ElForm>
     </ElCard>
 
-    <ElCard>
+    <ElCard class="table-card">
       <template #header>
         <div class="flex items-center justify-between">
           <span>待审批列表</span>
@@ -145,7 +145,8 @@ const appTypeMap: Record<string, string> = {
         </div>
       </template>
 
-      <ElTable v-loading="loading" :data="data" border stripe>
+      <div class="table-wrapper">
+      <ElTable v-loading="loading" :data="data" border stripe height="100%">
         <ElTableColumn type="index" label="序号" width="60" align="center" />
         <ElTableColumn prop="appType" label="申请类型" width="120">
           <template #default="{ row }"><ElTag>{{ appTypeMap[row.appType] || row.appType }}</ElTag></template>
@@ -170,6 +171,7 @@ const appTypeMap: Record<string, string> = {
           </template>
         </ElTableColumn>
       </ElTable>
+      </div>
 
       <div class="mt-16px flex justify-end">
         <ElPagination v-model:current-page="currentPage" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" @current-change="handlePageChange" @size-change="handleSizeChange" />

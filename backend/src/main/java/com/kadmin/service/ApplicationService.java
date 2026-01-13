@@ -36,7 +36,9 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
 
     /**
      * 计算加班小时数
-     * 根据员工排班和班次时段信息计算班次时段之外的加班时间
+     * 根据员工排班和班次时段信息计算加班工时
+     * - 有排班：计算选择时间与班次时段的交集
+     * - 无排班（休息日）：整段时间都算加班
      */
     public BigDecimal calculateOvertimeHours(Long employeeId, LocalDateTime startTime, LocalDateTime endTime) {
         if (employeeId == null || startTime == null || endTime == null) {
@@ -62,16 +64,16 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
             if (currentDate.equals(startDate)) {
                 dayStart = startTime.toLocalTime();
             } else {
-                dayStart = LocalTime.MIN;
+                dayStart = LocalTime.of(0, 0);
             }
             if (currentDate.equals(endDate)) {
                 dayEnd = endTime.toLocalTime();
             } else {
-                dayEnd = LocalTime.MAX;
+                dayEnd = LocalTime.of(23, 59);
             }
             
             if (schedule != null && schedule.getShiftId() != null) {
-                // 有排班：计算班次时段之外的时间
+                // 有排班：计算选择时间与班次时段的交集
                 List<AttShiftPeriod> periods = shiftPeriodMapper.selectList(
                     new LambdaQueryWrapper<AttShiftPeriod>()
                         .eq(AttShiftPeriod::getShiftId, schedule.getShiftId())
@@ -79,27 +81,21 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
                 );
                 
                 if (periods != null && !periods.isEmpty()) {
-                    // 计算加班时间 = 总时间 - 与班次时段重叠的时间
-                    long totalMinutes = ChronoUnit.MINUTES.between(dayStart, dayEnd);
-                    long workMinutes = 0;
-                    
                     for (AttShiftPeriod period : periods) {
                         LocalTime periodStart = LocalTime.parse(period.getStartTime());
                         LocalTime periodEnd = LocalTime.parse(period.getEndTime());
                         
-                        // 计算加班时间与班次时段的交集（这部分不算加班）
+                        // 计算加班时间与班次时段的交集
                         LocalTime overlapStart = dayStart.isAfter(periodStart) ? dayStart : periodStart;
                         LocalTime overlapEnd = dayEnd.isBefore(periodEnd) ? dayEnd : periodEnd;
                         
                         if (overlapStart.isBefore(overlapEnd)) {
-                            workMinutes += ChronoUnit.MINUTES.between(overlapStart, overlapEnd);
+                            long minutes = ChronoUnit.MINUTES.between(overlapStart, overlapEnd);
+                            if (minutes > 0) {
+                                BigDecimal hours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+                                totalHours = totalHours.add(hours);
+                            }
                         }
-                    }
-                    
-                    long overtimeMinutes = totalMinutes - workMinutes;
-                    if (overtimeMinutes > 0) {
-                        BigDecimal hours = BigDecimal.valueOf(overtimeMinutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
-                        totalHours = totalHours.add(hours);
                     }
                 } else {
                     // 有排班但没有时段配置，整段时间都算加班

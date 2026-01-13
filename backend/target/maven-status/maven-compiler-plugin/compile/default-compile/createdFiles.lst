@@ -2,6 +2,7 @@ com\kadmin\controller\DepartmentController.class
 com\kadmin\mapper\CompanyMapper.class
 com\kadmin\mapper\OrgUnitMapper.class
 com\kadmin\controller\AttendanceController.class
+com\kadmin\entity\MobileMenu.class
 com\kadmin\common\exception\GlobalExceptionHandler.class
 com\kadmin\service\SysUserService.class
 com\kadmin\controller\CompanyController.class
@@ -56,6 +57,7 @@ com\kadmin\entity\OrgUnit.class
 com\kadmin\mapper\WorkExperienceMapper.class
 com\kadmin\entity\AttDailyRecord.class
 com\kadmin\service\ContractService.class
+com\kadmin\controller\AuthController$MobileLoginRequest.class
 com\kadmin\entity\dto\WorkExperienceDTO.class
 com\kadmin\common\exception\BusinessException.class
 com\kadmin\mapper\SysApprovalNodeMapper.class
@@ -67,6 +69,7 @@ com\kadmin\entity\HrWorkExperience.class
 com\kadmin\entity\HrEmployeeExtra.class
 com\kadmin\service\ResignationService.class
 com\kadmin\entity\dto\CertificateDTO.class
+com\kadmin\mapper\MobileMenuMapper.class
 com\kadmin\entity\SysApprovalFlow.class
 com\kadmin\service\impl\CompanyServiceImpl.class
 com\kadmin\mapper\SysRoleMapper.class
@@ -74,6 +77,7 @@ com\kadmin\controller\SysUserController$UserRequest.class
 com\kadmin\aspect\PermissionAspect.class
 com\kadmin\mapper\AttCalendarRuleMapper.class
 com\kadmin\mapper\SysApprovalFlowMapper.class
+com\kadmin\controller\MobileMenuController.class
 com\kadmin\mapper\HrWorkExperienceMapper.class
 com\kadmin\mapper\SysDictTypeMapper.class
 com\kadmin\security\JwtUtils.class
@@ -135,6 +139,7 @@ com\kadmin\mapper\HrRegularizationMapper.class
 com\kadmin\service\RegularizationService.class
 com\kadmin\controller\RewardPunishController.class
 com\kadmin\entity\SysDictType.class
+com\kadmin\service\MobileMenuService.class
 com\kadmin\dto\OrgStatisticsDTO$AgeDistributionItem.class
 com\kadmin\controller\ResignationController.class
 com\kadmin\security\TokenService.class

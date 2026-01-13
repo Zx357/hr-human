@@ -133,7 +133,7 @@ function needDateRange(type: number) {
       <ElForm label-width="80px" :model="dialogForm">
         <ElFormItem label="公司" required>
           <ElSelect v-model="dialogForm.companyId" placeholder="请选择公司" style="width: 100%">
-            <ElOption v-for="c in companies" :key="c.id" :label="c.companyName" :value="c.id" />
+            <ElOption v-for="c in companies" :key="c.id" :label="c.unitName" :value="c.id" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem label="规则类型" required>

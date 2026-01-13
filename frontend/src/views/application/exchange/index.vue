@@ -100,7 +100,6 @@ function handleAdd() {
     title: '',
     startTime: '',
     endTime: '',
-    duration: 1,
     reason: ''
   };
   employeeDisplayName.value = '';
@@ -154,7 +153,13 @@ async function handleSubmit() {
   }
   submitLoading.value = true;
   try {
-    await createApplication(formData.value);
+    // 日期补上时间部分
+    const submitData = {
+      ...formData.value,
+      startTime: formData.value.startTime + ' 00:00:00',
+      endTime: formData.value.endTime + ' 00:00:00'
+    };
+    await createApplication(submitData);
     ElMessage.success('申请提交成功');
     dialogVisible.value = false;
     loadData();
@@ -236,9 +241,8 @@ const statusMap: Record<number, { label: string; type: string }> = {
         <ElTableColumn prop="employeeNo" label="工号" width="100" />
         <ElTableColumn prop="employeeName" label="申请人" width="100" />
         <ElTableColumn prop="deptName" label="部门" width="120" />
-        <ElTableColumn prop="startTime" label="开始时间" width="160" />
-        <ElTableColumn prop="endTime" label="结束时间" width="160" />
-        <ElTableColumn prop="duration" label="天数" width="80" align="center" />
+        <ElTableColumn prop="startTime" label="原工作日" width="120" />
+        <ElTableColumn prop="endTime" label="换休日" width="120" />
         <ElTableColumn prop="reason" label="换休原因" min-width="150" show-overflow-tooltip />
         <ElTableColumn prop="status" label="状态" width="90" align="center">
           <template #default="{ row }">
@@ -276,14 +280,11 @@ const statusMap: Record<number, { label: string; type: string }> = {
             <ElButton type="primary" @click="openEmployeeDialog">选择员工</ElButton>
           </div>
         </ElFormItem>
-        <ElFormItem label="开始时间" required>
-          <ElDatePicker v-model="formData.startTime" type="datetime" placeholder="选择时间" style="width: 100%" value-format="YYYY-MM-DD HH:mm:ss" />
+        <ElFormItem label="原工作日" required>
+          <ElDatePicker v-model="formData.startTime" type="date" placeholder="选择原工作日" style="width: 100%" value-format="YYYY-MM-DD" />
         </ElFormItem>
-        <ElFormItem label="结束时间" required>
-          <ElDatePicker v-model="formData.endTime" type="datetime" placeholder="选择时间" style="width: 100%" value-format="YYYY-MM-DD HH:mm:ss" />
-        </ElFormItem>
-        <ElFormItem label="换休天数" required>
-          <ElInputNumber v-model="formData.duration" :min="0.5" :step="0.5" style="width: 100%" />
+        <ElFormItem label="换休日" required>
+          <ElDatePicker v-model="formData.endTime" type="date" placeholder="选择换休日" style="width: 100%" value-format="YYYY-MM-DD" />
         </ElFormItem>
         <ElFormItem label="换休原因" required>
           <ElInput v-model="formData.reason" type="textarea" :rows="3" placeholder="请输入换休原因" />

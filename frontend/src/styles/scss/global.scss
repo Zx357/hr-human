@@ -32,4 +32,9 @@
     min-height: 0;
     overflow: auto;
   }
+  
+  // 分页固定在底部
+  .mt-16px {
+    flex-shrink: 0;
+  }
 }

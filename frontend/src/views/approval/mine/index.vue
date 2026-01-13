@@ -41,8 +41,8 @@ const statusMap: Record<number, { label: string; type: string }> = {
 </script>
 
 <template>
-  <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
-    <ElCard>
+  <div class="list-page">
+    <ElCard class="search-card">
       <ElForm inline :model="searchParams">
         <ElFormItem label="申请类型">
           <ElSelect v-model="searchParams.appType" placeholder="请选择类型" clearable>
@@ -66,10 +66,11 @@ const statusMap: Record<number, { label: string; type: string }> = {
       </ElForm>
     </ElCard>
 
-    <ElCard>
+    <ElCard class="table-card">
       <template #header><span>我的申请</span></template>
 
-      <ElTable v-loading="loading" :data="data" border stripe>
+      <div class="table-wrapper">
+      <ElTable v-loading="loading" :data="data" border stripe height="100%">
         <ElTableColumn type="index" label="序号" width="60" align="center" />
         <ElTableColumn prop="appType" label="申请类型" width="120">
           <template #default="{ row }"><ElTag>{{ appTypeMap[row.appType] || row.appType }}</ElTag></template>
@@ -83,6 +84,7 @@ const statusMap: Record<number, { label: string; type: string }> = {
         <ElTableColumn prop="approveRemark" label="审批意见" width="150" show-overflow-tooltip />
         <ElTableColumn prop="createdTime" label="申请时间" width="170" />
       </ElTable>
+      </div>
 
       <div class="mt-16px flex justify-end">
         <ElPagination v-model:current-page="currentPage" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" @current-change="handlePageChange" @size-change="handleSizeChange" />

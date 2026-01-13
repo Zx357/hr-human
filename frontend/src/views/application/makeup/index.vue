@@ -294,7 +294,7 @@ const makeupTypeMap: Record<string, string> = { 'checkin': '上班补卡', 'chec
           </ElSelect>
         </ElFormItem>
         <ElFormItem label="补卡时间" required>
-          <ElDatePicker v-model="formData.startTime" type="datetime" placeholder="选择时间" style="width: 100%" value-format="YYYY-MM-DD HH:mm:ss" />
+          <ElDatePicker v-model="formData.startTime" type="datetime" placeholder="选择时间" style="width: 100%" value-format="YYYY-MM-DD HH:mm:00" format="YYYY-MM-DD HH:mm" />
         </ElFormItem>
         <ElFormItem label="补卡原因" required>
           <ElInput v-model="formData.reason" type="textarea" :rows="3" placeholder="请输入补卡原因" />
