@@ -1,2 +1,35 @@
 @forward 'element-plus';
 @forward 'scrollbar';
+
+// 列表页面通用滚动样式
+.list-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 120px);
+  overflow: hidden;
+  gap: 16px;
+  
+  .search-card {
+    flex-shrink: 0;
+  }
+  
+  .table-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    
+    :deep(.el-card__body) {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+  }
+  
+  .table-wrapper {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+}

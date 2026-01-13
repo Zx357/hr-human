@@ -38,9 +38,11 @@ public class SecurityConfig {
      */
     private static final String[] WHITE_LIST = {
             "/auth/login",
+            "/auth/mobile/login",
             "/auth/register",
             "/auth/captcha",
             "/auth/refresh",
+            "/system/mobile-menu/mobile/list",
             "/doc.html",
             "/swagger-ui/**",
             "/swagger-resources/**",

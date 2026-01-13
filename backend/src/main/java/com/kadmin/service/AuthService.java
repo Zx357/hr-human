@@ -3,7 +3,9 @@ package com.kadmin.service;
 import com.kadmin.common.Result;
 import com.kadmin.common.ResultCode;
 import com.kadmin.common.exception.BusinessException;
+import com.kadmin.entity.HrEmployee;
 import com.kadmin.entity.SysUser;
+import com.kadmin.mapper.EmployeeMapper;
 import com.kadmin.mapper.SysUserMapper;
 import com.kadmin.security.LoginUser;
 import com.kadmin.security.TokenService;
@@ -23,6 +25,7 @@ import java.util.*;
 public class AuthService {
 
     private final SysUserMapper userMapper;
+    private final EmployeeMapper employeeMapper;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
 
@@ -67,6 +70,59 @@ public class AuthService {
         String refreshToken = tokenService.createRefreshToken(loginUser);
 
         // 返回结果 - 适配soybean-admin格式
+        Map<String, String> result = new HashMap<>();
+        result.put("token", token);
+        result.put("refreshToken", refreshToken);
+
+        return Result.success(result);
+    }
+
+    /**
+     * 移动端登录 - 通过工号登录（不需要系统用户）
+     * 返回格式: { token: string, refreshToken: string }
+     */
+    public Result<Map<String, String>> mobileLogin(String employeeNo, String password) {
+        // 直接通过工号查询员工
+        HrEmployee employee = employeeMapper.selectByEmployeeNo(employeeNo);
+        if (employee == null) {
+            throw new BusinessException("工号不存在");
+        }
+
+        // 检查员工状态（1-在职）
+        if (employee.getStatus() != 1) {
+            throw new BusinessException("该员工已离职，无法登录");
+        }
+
+        // 默认密码为123456，移动端简化验证
+        String defaultPassword = "123456";
+        // 如果密码为空，使用默认密码
+        String checkPassword = (password == null || password.isEmpty()) ? defaultPassword : password;
+        
+        // 简单密码验证（只接受默认密码123456）
+        if (!defaultPassword.equals(checkPassword)) {
+            throw new BusinessException("密码错误，默认密码为123456");
+        }
+
+        // 创建登录用户（员工身份）
+        Set<String> roles = new HashSet<>();
+        roles.add("ROLE_EMPLOYEE");
+        Set<String> permissions = new HashSet<>();
+
+        LoginUser loginUser = new LoginUser(
+                employee.getId(),
+                employee.getEmployeeNo(),
+                "",
+                employee.getName(),
+                employee.getAvatar(),
+                employee.getId(),
+                roles,
+                permissions);
+
+        // 生成Token
+        String token = tokenService.createToken(loginUser);
+        String refreshToken = tokenService.createRefreshToken(loginUser);
+
+        // 返回结果
         Map<String, String> result = new HashMap<>();
         result.put("token", token);
         result.put("refreshToken", refreshToken);

@@ -152,8 +152,8 @@ function formatDateTime(dt: string) {
 </script>
 
 <template>
-  <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
-    <ElCard>
+  <div class="list-page">
+    <ElCard class="search-card">
       <ElForm inline :model="searchParams">
         <ElFormItem label="公司">
           <ElSelect v-model="searchParams.companyId" placeholder="请选择公司" clearable style="width: 150px">
@@ -192,7 +192,7 @@ function formatDateTime(dt: string) {
       </ElForm>
     </ElCard>
 
-    <ElCard class="flex-1">
+    <ElCard class="table-card">
       <template #header>
         <div class="flex items-center justify-between">
           <span>打卡记录</span>
@@ -203,7 +203,8 @@ function formatDateTime(dt: string) {
         </div>
       </template>
 
-      <ElTable v-loading="loading" :data="data" border stripe size="small">
+      <div class="table-wrapper">
+        <ElTable v-loading="loading" :data="data" border stripe size="small" height="100%">
         <ElTableColumn type="index" label="#" width="50" align="center" />
         <ElTableColumn prop="companyName" label="公司" width="120" show-overflow-tooltip />
         <ElTableColumn prop="employeeNo" label="工号" width="100" />
@@ -232,6 +233,7 @@ function formatDateTime(dt: string) {
           </template>
         </ElTableColumn>
       </ElTable>
+      </div>
 
       <div class="mt-12px flex justify-end">
         <ElPagination

@@ -253,9 +253,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-16px">
+  <div class="list-page">
     <!-- 搜索区域 -->
-    <ElCard class="mb-16px">
+    <ElCard class="search-card">
       <ElForm :model="queryParams" inline>
         <ElFormItem label="用户名">
           <ElInput v-model="queryParams.username" placeholder="请输入用户名" clearable />
@@ -283,7 +283,7 @@ onMounted(() => {
     </ElCard>
 
     <!-- 表格区域 -->
-    <ElCard>
+    <ElCard class="table-card">
       <template #header>
         <div class="flex justify-between items-center">
           <span>用户列表</span>
@@ -294,7 +294,8 @@ onMounted(() => {
         </div>
       </template>
 
-      <ElTable v-loading="loading" :data="tableData" border stripe>
+      <div class="table-wrapper">
+        <ElTable v-loading="loading" :data="tableData" border stripe height="100%">
         <ElTableColumn prop="id" label="ID" width="80" />
         <ElTableColumn prop="username" label="用户名" width="120" />
         <ElTableColumn prop="nickname" label="昵称" width="120" />
@@ -332,6 +333,7 @@ onMounted(() => {
           </template>
         </ElTableColumn>
       </ElTable>
+      </div>
 
       <div class="mt-16px flex justify-end">
         <ElPagination

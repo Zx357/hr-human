@@ -36,6 +36,16 @@ public class AuthController {
     }
 
     /**
+     * 移动端登录（工号登录）
+     * 返回格式: { token: string, refreshToken: string }
+     */
+    @Operation(summary = "移动端工号登录")
+    @PostMapping("/mobile/login")
+    public Result<Map<String, String>> mobileLogin(@RequestBody MobileLoginRequest request) {
+        return authService.mobileLogin(request.getEmployeeNo(), request.getPassword());
+    }
+
+    /**
      * 登出
      */
     @Operation(summary = "用户登出")
@@ -104,5 +114,16 @@ public class AuthController {
 
         @NotBlank(message = "新密码不能为空")
         private String newPassword;
+    }
+
+    /**
+     * 移动端登录请求
+     */
+    @Data
+    public static class MobileLoginRequest {
+        @NotBlank(message = "工号不能为空")
+        private String employeeNo;
+
+        private String password;
     }
 }

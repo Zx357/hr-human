@@ -20,6 +20,14 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
         SysUser selectByUsername(@Param("username") String username);
 
         /**
+         * 根据工号查询用户（通过员工表关联）
+         */
+        @Select("SELECT u.* FROM sys_user u " +
+                        "INNER JOIN hr_employee e ON u.employee_id = e.id " +
+                        "WHERE e.employee_no = #{employeeNo} AND u.deleted = 0 AND e.deleted = 0")
+        SysUser selectByEmployeeNo(@Param("employeeNo") String employeeNo);
+
+        /**
          * 查询用户角色编码列表
          */
         @Select("SELECT r.role_code FROM sys_role r " +

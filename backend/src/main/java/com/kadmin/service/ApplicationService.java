@@ -1,16 +1,19 @@
 package com.kadmin.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.kadmin.entity.HrApplication;
-import com.kadmin.entity.HrEmployee;
-import com.kadmin.mapper.EmployeeMapper;
-import com.kadmin.mapper.HrApplicationMapper;
-import com.kadmin.mapper.SysUserMapper;
+import com.kadmin.entity.*;
+import com.kadmin.mapper.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -21,6 +24,180 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
     
     @Autowired
     private SysUserMapper sysUserMapper;
+    
+    @Autowired
+    private AttScheduleMapper scheduleMapper;
+    
+    @Autowired
+    private AttShiftMapper shiftMapper;
+    
+    @Autowired
+    private AttShiftPeriodMapper shiftPeriodMapper;
+
+    /**
+     * 计算加班小时数
+     * 根据员工排班和班次时段信息计算班次时段之外的加班时间
+     */
+    public BigDecimal calculateOvertimeHours(Long employeeId, LocalDateTime startTime, LocalDateTime endTime) {
+        if (employeeId == null || startTime == null || endTime == null) {
+            return BigDecimal.ZERO;
+        }
+        
+        BigDecimal totalHours = BigDecimal.ZERO;
+        LocalDate startDate = startTime.toLocalDate();
+        LocalDate endDate = endTime.toLocalDate();
+        
+        // 遍历每一天
+        LocalDate currentDate = startDate;
+        while (!currentDate.isAfter(endDate)) {
+            // 获取当天的排班
+            AttSchedule schedule = scheduleMapper.selectOne(
+                new LambdaQueryWrapper<AttSchedule>()
+                    .eq(AttSchedule::getEmployeeId, employeeId)
+                    .eq(AttSchedule::getScheduleDate, currentDate)
+            );
+            
+            // 计算当天的加班时间范围
+            LocalTime dayStart, dayEnd;
+            if (currentDate.equals(startDate)) {
+                dayStart = startTime.toLocalTime();
+            } else {
+                dayStart = LocalTime.MIN;
+            }
+            if (currentDate.equals(endDate)) {
+                dayEnd = endTime.toLocalTime();
+            } else {
+                dayEnd = LocalTime.MAX;
+            }
+            
+            if (schedule != null && schedule.getShiftId() != null) {
+                // 有排班：计算班次时段之外的时间
+                List<AttShiftPeriod> periods = shiftPeriodMapper.selectList(
+                    new LambdaQueryWrapper<AttShiftPeriod>()
+                        .eq(AttShiftPeriod::getShiftId, schedule.getShiftId())
+                        .orderByAsc(AttShiftPeriod::getSortOrder)
+                );
+                
+                if (periods != null && !periods.isEmpty()) {
+                    // 计算加班时间 = 总时间 - 与班次时段重叠的时间
+                    long totalMinutes = ChronoUnit.MINUTES.between(dayStart, dayEnd);
+                    long workMinutes = 0;
+                    
+                    for (AttShiftPeriod period : periods) {
+                        LocalTime periodStart = LocalTime.parse(period.getStartTime());
+                        LocalTime periodEnd = LocalTime.parse(period.getEndTime());
+                        
+                        // 计算加班时间与班次时段的交集（这部分不算加班）
+                        LocalTime overlapStart = dayStart.isAfter(periodStart) ? dayStart : periodStart;
+                        LocalTime overlapEnd = dayEnd.isBefore(periodEnd) ? dayEnd : periodEnd;
+                        
+                        if (overlapStart.isBefore(overlapEnd)) {
+                            workMinutes += ChronoUnit.MINUTES.between(overlapStart, overlapEnd);
+                        }
+                    }
+                    
+                    long overtimeMinutes = totalMinutes - workMinutes;
+                    if (overtimeMinutes > 0) {
+                        BigDecimal hours = BigDecimal.valueOf(overtimeMinutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+                        totalHours = totalHours.add(hours);
+                    }
+                } else {
+                    // 有排班但没有时段配置，整段时间都算加班
+                    long minutes = ChronoUnit.MINUTES.between(dayStart, dayEnd);
+                    if (minutes > 0) {
+                        BigDecimal hours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+                        totalHours = totalHours.add(hours);
+                    }
+                }
+            } else {
+                // 没有排班（休息日），整段时间都算加班
+                long minutes = ChronoUnit.MINUTES.between(dayStart, dayEnd);
+                if (minutes > 0) {
+                    BigDecimal hours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+                    totalHours = totalHours.add(hours);
+                }
+            }
+            
+            currentDate = currentDate.plusDays(1);
+        }
+        
+        return totalHours;
+    }
+
+    /**
+     * 计算请假小时数
+     * 根据员工排班和班次时段信息计算实际请假工时
+     */
+    public BigDecimal calculateLeaveHours(Long employeeId, LocalDateTime startTime, LocalDateTime endTime) {
+        if (employeeId == null || startTime == null || endTime == null) {
+            return BigDecimal.ZERO;
+        }
+        
+        BigDecimal totalHours = BigDecimal.ZERO;
+        LocalDate startDate = startTime.toLocalDate();
+        LocalDate endDate = endTime.toLocalDate();
+        
+        // 遍历每一天
+        LocalDate currentDate = startDate;
+        while (!currentDate.isAfter(endDate)) {
+            // 获取当天的排班
+            AttSchedule schedule = scheduleMapper.selectOne(
+                new LambdaQueryWrapper<AttSchedule>()
+                    .eq(AttSchedule::getEmployeeId, employeeId)
+                    .eq(AttSchedule::getScheduleDate, currentDate)
+            );
+            
+            if (schedule != null && schedule.getShiftId() != null) {
+                // 获取班次时段列表
+                List<AttShiftPeriod> periods = shiftPeriodMapper.selectList(
+                    new LambdaQueryWrapper<AttShiftPeriod>()
+                        .eq(AttShiftPeriod::getShiftId, schedule.getShiftId())
+                        .orderByAsc(AttShiftPeriod::getSortOrder)
+                );
+                
+                if (periods != null && !periods.isEmpty()) {
+                    // 计算当天的请假时间范围
+                    LocalTime dayStart, dayEnd;
+                    
+                    if (currentDate.equals(startDate)) {
+                        dayStart = startTime.toLocalTime();
+                    } else {
+                        // 非第一天：从第一个时段开始
+                        dayStart = LocalTime.parse(periods.get(0).getStartTime());
+                    }
+                    
+                    if (currentDate.equals(endDate)) {
+                        dayEnd = endTime.toLocalTime();
+                    } else {
+                        // 非最后一天：到最后一个时段结束
+                        dayEnd = LocalTime.parse(periods.get(periods.size() - 1).getEndTime());
+                    }
+                    
+                    // 遍历每个时段，计算与请假时间的交集
+                    for (AttShiftPeriod period : periods) {
+                        LocalTime periodStart = LocalTime.parse(period.getStartTime());
+                        LocalTime periodEnd = LocalTime.parse(period.getEndTime());
+                        
+                        // 计算请假时间与时段的交集
+                        LocalTime overlapStart = dayStart.isAfter(periodStart) ? dayStart : periodStart;
+                        LocalTime overlapEnd = dayEnd.isBefore(periodEnd) ? dayEnd : periodEnd;
+                        
+                        if (overlapStart.isBefore(overlapEnd)) {
+                            long minutes = ChronoUnit.MINUTES.between(overlapStart, overlapEnd);
+                            if (minutes > 0) {
+                                BigDecimal hours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+                                totalHours = totalHours.add(hours);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            currentDate = currentDate.plusDays(1);
+        }
+        
+        return totalHours;
+    }
 
     public Page<HrApplication> getPage(int pageNum, int pageSize, String employeeName, String employeeNo, String appType, Integer status, Long employeeId) {
         return baseMapper.selectPageWithEmployee(new Page<>(pageNum, pageSize), employeeName, employeeNo, appType, status, employeeId);

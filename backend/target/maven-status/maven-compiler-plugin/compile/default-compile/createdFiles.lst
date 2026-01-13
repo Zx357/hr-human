@@ -124,6 +124,7 @@ com\kadmin\controller\SysUserController$ResetPasswordRequest.class
 com\kadmin\config\RedisConfig.class
 com\kadmin\controller\AuthController$ChangePasswordRequest.class
 com\kadmin\utils\SecurityUtils.class
+com\kadmin\controller\MobileAttendanceController.class
 com\kadmin\entity\vo\WorkExperienceVO.class
 com\kadmin\entity\HrFamilyMember.class
 com\kadmin\controller\ScheduleController.class

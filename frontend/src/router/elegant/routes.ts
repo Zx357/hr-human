@@ -434,6 +434,16 @@ export const generatedRoutes: GeneratedRoute[] = [
         }
       },
       {
+        name: 'system_mobile-menu',
+        path: '/system/mobile-menu',
+        component: 'view.system_mobile-menu',
+        meta: {
+          title: 'system_mobile-menu',
+          i18nKey: 'route.system_mobile-menu',
+          order: 8
+        }
+      },
+      {
         name: 'system_role',
         path: '/system/role',
         component: 'view.system_role',

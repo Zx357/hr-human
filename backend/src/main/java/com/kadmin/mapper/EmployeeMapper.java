@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kadmin.entity.HrEmployee;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 /**
  * 员工Mapper接口
@@ -17,4 +18,10 @@ public interface EmployeeMapper extends BaseMapper<HrEmployee> {
      * 分页查询员工列表（带公司和部门名称）
      */
     Page<HrEmployee> selectPageWithDetails(Page<HrEmployee> page, @Param("ew") Wrapper<HrEmployee> wrapper);
+
+    /**
+     * 根据工号查询员工
+     */
+    @Select("SELECT * FROM hr_employee WHERE employee_no = #{employeeNo} AND deleted = 0")
+    HrEmployee selectByEmployeeNo(@Param("employeeNo") String employeeNo);
 }

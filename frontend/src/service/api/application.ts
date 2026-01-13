@@ -77,3 +77,11 @@ export function approveApplication(id: number, status: number, remark?: string) 
 export function cancelApplication(id: number) {
   return request<boolean>({ url: `/hr/application/cancel/${id}`, method: 'post' });
 }
+
+export function calculateLeaveHours(employeeId: number, startTime: string, endTime: string) {
+  return request<number>({ url: '/hr/application/calculate-leave-hours', method: 'get', params: { employeeId, startTime, endTime } });
+}
+
+export function calculateOvertimeHours(employeeId: number, startTime: string, endTime: string) {
+  return request<number>({ url: '/hr/application/calculate-overtime-hours', method: 'get', params: { employeeId, startTime, endTime } });
+}

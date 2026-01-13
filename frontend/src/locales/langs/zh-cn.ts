@@ -267,7 +267,8 @@ const local: App.I18n.Schema = {
     system_user: '用户管理',
     system_role: '角色管理',
     system_menu: '菜单管理',
-    system_dict: '字典管理'
+    system_dict: '字典管理',
+    'system_mobile-menu': '移动端菜单'
   },
   page: {
     login: {

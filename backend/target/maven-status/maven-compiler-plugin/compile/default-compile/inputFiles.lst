@@ -1,4 +1,6 @@
 E:\a\kadmin\backend\src\main\java\com\kadmin\common\BaseEntity.java
+E:\a\kadmin\backend\src\main\java\com\kadmin\entity\MobileMenu.java
+E:\a\kadmin\backend\src\main\java\com\kadmin\controller\MobileAttendanceController.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\entity\AttShift.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\controller\RegularizationController.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\HrResignationMapper.java
@@ -42,6 +44,7 @@ E:\a\kadmin\backend\src\main\java\com\kadmin\controller\DepartmentController.jav
 E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\DepartmentMapper.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\service\ScheduleService.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\config\SecurityConfig.java
+E:\a\kadmin\backend\src\main\java\com\kadmin\service\MobileMenuService.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\service\SysUserService.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\controller\ApplicationController.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\HrFamilyMemberMapper.java
@@ -58,6 +61,7 @@ E:\a\kadmin\backend\src\main\java\com\kadmin\controller\AuthController.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\controller\CalendarController.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\HrRewardPunishMapper.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\entity\SysRole.java
+E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\MobileMenuMapper.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\entity\AttDailyRecord.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\service\ContractService.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\entity\SysUser.java
@@ -72,6 +76,7 @@ E:\a\kadmin\backend\src\main\java\com\kadmin\entity\SysDictType.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\AttScheduleMapper.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\service\CompanyService.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\entity\HrResignation.java
+E:\a\kadmin\backend\src\main\java\com\kadmin\controller\MobileMenuController.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\entity\HrCertificate.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\entity\HrContract.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\AttShiftPeriodMapper.java

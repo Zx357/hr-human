@@ -14,7 +14,9 @@ import com.kadmin.entity.dto.FamilyMemberDTO;
 import com.kadmin.entity.dto.WorkExperienceDTO;
 import com.kadmin.entity.dto.CertificateDTO;
 import com.kadmin.entity.dto.EmployeeExtraDTO;
+import com.kadmin.security.LoginUser;
 import com.kadmin.service.EmployeeService;
+import com.kadmin.utils.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -32,6 +34,19 @@ import java.util.List;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+
+    /**
+     * 获取当前登录员工信息（移动端使用）
+     */
+    @GetMapping("/current")
+    public Result<HrEmployee> getCurrentEmployee() {
+        LoginUser loginUser = SecurityUtils.getCurrentUser();
+        if (loginUser == null || loginUser.getEmployeeId() == null) {
+            return Result.error("未登录或无员工信息");
+        }
+        HrEmployee employee = employeeService.getEmployeeDetail(loginUser.getEmployeeId());
+        return Result.success(employee);
+    }
 
     /**
      * 分页查询员工列表

@@ -202,8 +202,8 @@ const statusMap: Record<number, { label: string; type: string }> = { 1: { label:
 </script>
 
 <template>
-  <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
-    <ElCard>
+  <div class="list-page">
+    <ElCard class="search-card">
       <ElForm inline :model="searchParams">
         <ElFormItem label="员工姓名"><ElInput v-model="searchParams.name" placeholder="请输入员工姓名" clearable style="width: 150px" /></ElFormItem>
         <ElFormItem label="人员编号"><ElInput v-model="searchParams.employeeNo" placeholder="请输入人员编号" clearable style="width: 150px" /></ElFormItem>
@@ -212,9 +212,10 @@ const statusMap: Record<number, { label: string; type: string }> = { 1: { label:
         <ElFormItem><ElButton type="primary" @click="handleSearch"><template #icon><icon-ep-search /></template>搜索</ElButton><ElButton @click="handleReset"><template #icon><icon-ep-refresh /></template>重置</ElButton></ElFormItem>
       </ElForm>
     </ElCard>
-    <ElCard class="flex-1">
+    <ElCard class="table-card">
       <template #header><div class="flex items-center justify-between"><span>员工列表</span><ElButton v-permission="'hr:employee:add'" type="primary" @click="handleAdd"><template #icon><icon-ep-plus /></template>新增员工</ElButton></div></template>
-      <ElTable v-loading="loading" :data="data" border stripe>
+      <div class="table-wrapper">
+        <ElTable v-loading="loading" :data="data" border stripe height="100%">
         <ElTableColumn type="index" label="序号" width="60" align="center" fixed="left" />
         <ElTableColumn prop="employeeNo" label="人员编号" width="100" fixed="left" />
         <ElTableColumn prop="name" label="姓名" width="80" fixed="left" />
@@ -244,6 +245,7 @@ const statusMap: Record<number, { label: string; type: string }> = { 1: { label:
         <ElTableColumn prop="status" label="状态" width="70" align="center"><template #default="{ row }"><ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag></template></ElTableColumn>
         <ElTableColumn label="操作" width="120" align="center" fixed="right"><template #default="{ row }"><ElButton v-permission="'hr:employee:edit'" type="primary" link size="small" @click="handleEdit(row)">编辑</ElButton><ElPopconfirm v-if="hasPermission('hr:employee:delete')" title="确定删除该员工吗？" @confirm="handleDelete(row.id)"><template #reference><ElButton type="danger" link size="small">删除</ElButton></template></ElPopconfirm></template></ElTableColumn>
       </ElTable>
+      </div>
       <div class="mt-16px flex justify-end"><ElPagination v-model:current-page="currentPage" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" @current-change="handlePageChange" @size-change="handleSizeChange" /></div>
     </ElCard>
     <ElDrawer v-model="drawerVisible" :title="operateType === 'add' ? '新增员工' : '编辑员工'" size="900px" class="employee-drawer">

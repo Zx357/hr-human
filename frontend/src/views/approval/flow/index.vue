@@ -21,15 +21,21 @@ const isAutoPass = computed(() => formData.value.autoPass === 1);
 async function loadData() {
   loading.value = true;
   try {
-    const res = await fetchApprovalFlowList();
-    data.value = res.data || [];
+    const { data: resData, error } = await fetchApprovalFlowList();
+    if (!error && resData) {
+      data.value = resData;
+    } else {
+      data.value = [];
+    }
   } finally { loading.value = false; }
 }
 
 async function loadRoles() {
   try {
-    const res = await fetchRoleList();
-    roleOptions.value = res.data || [];
+    const { data: resData, error } = await fetchRoleList();
+    if (!error && resData) {
+      roleOptions.value = resData;
+    }
   } catch (e) { console.error(e); }
 }
 
@@ -129,8 +135,8 @@ const statusMap: Record<number, { label: string; type: string }> = { 0: { label:
 </script>
 
 <template>
-  <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
-    <ElCard>
+  <div class="approval-flow-page">
+    <ElCard shadow="never" class="table-card">
       <template #header>
         <div class="flex items-center justify-between">
           <span>审批流程配置</span>
@@ -138,7 +144,8 @@ const statusMap: Record<number, { label: string; type: string }> = { 0: { label:
         </div>
       </template>
 
-      <ElTable v-loading="loading" :data="data" border stripe>
+      <div class="table-wrapper">
+        <ElTable v-loading="loading" :data="data" border stripe height="100%">
         <ElTableColumn type="index" label="序号" width="60" align="center" />
         <ElTableColumn prop="flowCode" label="流程编码" width="120" />
         <ElTableColumn prop="flowName" label="流程名称" width="150" />
@@ -183,6 +190,7 @@ const statusMap: Record<number, { label: string; type: string }> = { 0: { label:
           </template>
         </ElTableColumn>
       </ElTable>
+      </div>
     </ElCard>
 
     <ElDialog v-model="dialogVisible" :title="operateType === 'add' ? '新增审批流程' : '编辑审批流程'" width="700px">
@@ -261,3 +269,32 @@ const statusMap: Record<number, { label: string; type: string }> = { 0: { label:
     </ElDialog>
   </div>
 </template>
+
+<style scoped>
+.approval-flow-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 120px);
+  overflow: hidden;
+}
+
+.table-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.table-card :deep(.el-card__body) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.table-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+</style>

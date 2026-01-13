@@ -6,7 +6,11 @@ import com.kadmin.entity.HrApplication;
 import com.kadmin.service.ApplicationService;
 import com.kadmin.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/hr/application")
@@ -35,6 +39,30 @@ public class ApplicationController {
             @RequestParam(required = false) String appType) {
         Long userId = SecurityUtils.getCurrentUserId();
         return Result.success(service.getPendingPage(pageNum, pageSize, employeeName, employeeNo, appType, userId));
+    }
+    
+    /**
+     * 计算请假小时数
+     */
+    @GetMapping("/calculate-leave-hours")
+    public Result<BigDecimal> calculateLeaveHours(
+            @RequestParam Long employeeId,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
+        BigDecimal hours = service.calculateLeaveHours(employeeId, startTime, endTime);
+        return Result.success(hours);
+    }
+    
+    /**
+     * 计算加班小时数
+     */
+    @GetMapping("/calculate-overtime-hours")
+    public Result<BigDecimal> calculateOvertimeHours(
+            @RequestParam Long employeeId,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
+        BigDecimal hours = service.calculateOvertimeHours(employeeId, startTime, endTime);
+        return Result.success(hours);
     }
 
     @GetMapping("/{id}")

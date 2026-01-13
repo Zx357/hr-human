@@ -119,23 +119,7 @@ public class TokenService {
             Long userId = jwtUtils.getUserIdFromToken(token);
             String username = jwtUtils.getUsernameFromToken(token);
 
-            // 首先从Redis中查找用户信息
-            String pattern = TOKEN_PREFIX + "*";
-            var keys = redisTemplate.keys(pattern);
-            if (keys != null) {
-                for (String key : keys) {
-                    Object obj = redisTemplate.opsForValue().get(key);
-                    if (obj instanceof LoginUser) {
-                        LoginUser loginUser = (LoginUser) obj;
-                        if (loginUser.getUserId().equals(userId) && loginUser.getUsername().equals(username)) {
-                            return loginUser;
-                        }
-                    }
-                }
-            }
-
-            // 如果Redis中没有，从数据库重新加载用户信息
-            log.info("Redis中未找到用户信息，从数据库重新加载: userId={}, username={}", userId, username);
+            // 先尝试从系统用户表查询
             SysUser user = userService.getById(userId);
             if (user != null && user.getUsername().equals(username) && user.getStatus() == 1
                     && user.getDeleted() == 0) {
@@ -144,22 +128,44 @@ public class TokenService {
                 Set<String> permissions = userService.getUserPermissions(userId);
 
                 // 创建LoginUser
-                LoginUser loginUser = new LoginUser();
-                loginUser.setUserId(user.getId());
-                loginUser.setUsername(user.getUsername());
-                loginUser.setNickname(user.getNickname());
-                loginUser.setRoles(roles);
-                loginUser.setPermissions(permissions);
+                LoginUser loginUser = new LoginUser(
+                    user.getId(),
+                    user.getUsername(),
+                    "",
+                    user.getNickname(),
+                    user.getAvatar(),
+                    user.getEmployeeId(),
+                    roles,
+                    permissions
+                );
                 loginUser.setToken(IdUtil.fastUUID());
                 loginUser.setLoginTime(System.currentTimeMillis());
                 loginUser.setExpireTime(loginUser.getLoginTime() + expiration);
 
-                // 缓存到Redis
-                String tokenKey = getTokenKey(loginUser.getToken());
-                redisTemplate.opsForValue().set(tokenKey, loginUser, expiration, TimeUnit.MILLISECONDS);
-
                 return loginUser;
             }
+            
+            // 如果系统用户表没有，说明是移动端员工登录
+            // 直接从 token 中的信息构建 LoginUser（员工登录时 userId 就是 employeeId）
+            Set<String> roles = new java.util.HashSet<>();
+            roles.add("ROLE_EMPLOYEE");
+            Set<String> permissions = new java.util.HashSet<>();
+            
+            LoginUser loginUser = new LoginUser(
+                userId,
+                username,
+                "",
+                username,
+                null,
+                userId,  // 员工登录时 userId 就是 employeeId
+                roles,
+                permissions
+            );
+            loginUser.setToken(IdUtil.fastUUID());
+            loginUser.setLoginTime(System.currentTimeMillis());
+            loginUser.setExpireTime(loginUser.getLoginTime() + expiration);
+            
+            return loginUser;
         } catch (Exception e) {
             log.error("获取登录用户失败: {}", e.getMessage(), e);
         }

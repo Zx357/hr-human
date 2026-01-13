@@ -187,9 +187,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
 </script>
 
 <template>
-  <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
+  <div class="list-page">
     <!-- 搜索区域 -->
-    <ElCard>
+    <ElCard class="search-card">
       <ElForm inline :model="searchParams">
         <ElFormItem label="员工姓名">
           <ElInput v-model="searchParams.employeeName" placeholder="请输入员工姓名" clearable />
@@ -219,7 +219,7 @@ const statusMap: Record<number, { label: string; type: string }> = {
     </ElCard>
 
     <!-- 表格区域 -->
-    <ElCard class="flex-1">
+    <ElCard class="table-card">
       <template #header>
         <div class="flex items-center justify-between">
           <span>转正申请列表</span>
@@ -230,7 +230,8 @@ const statusMap: Record<number, { label: string; type: string }> = {
         </div>
       </template>
 
-      <ElTable v-loading="loading" :data="data" border stripe>
+      <div class="table-wrapper">
+        <ElTable v-loading="loading" :data="data" border stripe height="100%">
         <ElTableColumn type="index" label="序号" width="60" align="center" />
         <ElTableColumn prop="employeeNo" label="工号" min-width="100" />
         <ElTableColumn prop="employeeName" label="员工姓名" min-width="100" />
@@ -256,6 +257,7 @@ const statusMap: Record<number, { label: string; type: string }> = {
           </template>
         </ElTableColumn>
       </ElTable>
+      </div>
 
       <div class="mt-16px flex justify-end">
         <ElPagination

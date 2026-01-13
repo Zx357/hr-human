@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { fetchDictDataByCode } from '@/service/api/system';
 import { fetchEmployeePage } from '@/service/api/hr';
 import { fetchOrgTree } from '@/service/api/organization';
-import { fetchApplicationPage, createApplication, cancelApplication, type Application } from '@/service/api/application';
+import { fetchApplicationPage, createApplication, cancelApplication, calculateLeaveHours, type Application } from '@/service/api/application';
 
 defineOptions({ name: 'LeaveApplication' });
 
@@ -26,6 +26,30 @@ const formData = ref<Application & { employeeName?: string; employeeNo?: string;
 
 // 日期范围
 const dateRange = ref<[string, string] | null>(null);
+
+// 请假小时数（自动计算）
+const leaveHours = ref<number>(0);
+const calculatingHours = ref(false);
+
+// 监听员工和时间变化，自动计算请假小时
+watch([() => formData.value.employeeId, dateRange], async () => {
+  if (formData.value.employeeId && dateRange.value && dateRange.value.length === 2) {
+    calculatingHours.value = true;
+    try {
+      const startTime = dateRange.value[0] + ':00';
+      const endTime = dateRange.value[1] + ':00';
+      const res = await calculateLeaveHours(formData.value.employeeId, startTime, endTime);
+      leaveHours.value = res.data || 0;
+    } catch (error) {
+      console.error('计算请假小时失败:', error);
+      leaveHours.value = 0;
+    } finally {
+      calculatingHours.value = false;
+    }
+  } else {
+    leaveHours.value = 0;
+  }
+}, { deep: true });
 
 // 员工选择弹窗相关
 const employeeDialogVisible = ref(false);
@@ -105,7 +129,7 @@ function handleAdd() {
     title: '',
     startTime: '',
     endTime: '',
-    duration: 1,
+    duration: 0,
     reason: '',
     employeeName: '',
     employeeNo: '',
@@ -113,6 +137,7 @@ function handleAdd() {
     deptName: ''
   };
   dateRange.value = null;
+  leaveHours.value = 0;
   employeeDisplayName.value = '';
   dialogVisible.value = true;
 }
@@ -167,9 +192,14 @@ async function handleSubmit() {
     ElMessage.warning('请填写必填项');
     return;
   }
+  if (leaveHours.value <= 0) {
+    ElMessage.warning('请假时间无效，请检查员工排班');
+    return;
+  }
   // 补上秒
   formData.value.startTime = dateRange.value[0] + ':00';
   formData.value.endTime = dateRange.value[1] + ':00';
+  formData.value.duration = leaveHours.value;
   submitLoading.value = true;
   try {
     await createApplication(formData.value);
@@ -207,8 +237,8 @@ const statusMap: Record<number, { label: string; type: string }> = {
 </script>
 
 <template>
-  <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
-    <ElCard>
+  <div class="list-page">
+    <ElCard class="search-card">
       <ElForm inline :model="searchParams">
         <ElFormItem label="员工姓名">
           <ElInput v-model="searchParams.employeeName" placeholder="请输入员工姓名" clearable />
@@ -237,7 +267,7 @@ const statusMap: Record<number, { label: string; type: string }> = {
       </ElForm>
     </ElCard>
 
-    <ElCard class="flex-1">
+    <ElCard class="table-card">
       <template #header>
         <div class="flex items-center justify-between">
           <span>请假申请列表</span>
@@ -248,7 +278,8 @@ const statusMap: Record<number, { label: string; type: string }> = {
         </div>
       </template>
 
-      <ElTable v-loading="loading" :data="data" border stripe>
+      <div class="table-wrapper">
+        <ElTable v-loading="loading" :data="data" border stripe height="100%">
         <ElTableColumn type="index" label="序号" width="60" align="center" />
         <ElTableColumn prop="employeeNo" label="工号" width="100" />
         <ElTableColumn prop="employeeName" label="申请人" width="100" />
@@ -259,7 +290,7 @@ const statusMap: Record<number, { label: string; type: string }> = {
         </ElTableColumn>
         <ElTableColumn prop="startTime" label="开始时间" width="160" />
         <ElTableColumn prop="endTime" label="结束时间" width="160" />
-        <ElTableColumn prop="duration" label="天数" width="80" align="center" />
+        <ElTableColumn prop="duration" label="小时" width="80" align="center" />
         <ElTableColumn prop="reason" label="请假原因" min-width="150" show-overflow-tooltip />
         <ElTableColumn prop="status" label="状态" width="90" align="center">
           <template #default="{ row }">
@@ -273,6 +304,7 @@ const statusMap: Record<number, { label: string; type: string }> = {
           </template>
         </ElTableColumn>
       </ElTable>
+      </div>
 
       <div class="mt-16px flex justify-end">
         <ElPagination
@@ -313,8 +345,16 @@ const statusMap: Record<number, { label: string; type: string }> = {
             format="YYYY-MM-DD HH:mm"
           />
         </ElFormItem>
-        <ElFormItem label="请假天数" required>
-          <ElInputNumber v-model="formData.duration" :min="0.5" :step="0.5" style="width: 100%" />
+        <ElFormItem label="请假小时">
+          <ElInput v-model="leaveHours" disabled style="width: 100%">
+            <template #suffix>
+              <span v-if="calculatingHours" class="text-gray-400">计算中...</span>
+              <span v-else>小时</span>
+            </template>
+          </ElInput>
+          <div v-if="leaveHours === 0 && formData.employeeId && dateRange" class="text-orange-500 text-12px mt-4px">
+            提示：请假小时为0，可能是员工在该时间段没有排班
+          </div>
         </ElFormItem>
         <ElFormItem label="请假原因" required>
           <ElInput v-model="formData.reason" type="textarea" :rows="3" placeholder="请输入请假原因" />
