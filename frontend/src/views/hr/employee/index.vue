@@ -89,6 +89,20 @@ async function loadOrgTree() {
   try { const res = await fetchOrgTree(); if (res.data) { orgTreeOptions.value = res.data; } } catch (error) { console.error('加载组织架构失败:', error); }
 }
 
+function getOrgName(id: number): string {
+  const find = (nodes: any[]): string => {
+    for (const node of nodes) {
+      if (node.id === id) return node.unitName;
+      if (node.children?.length) {
+        const found = find(node.children);
+        if (found) return found;
+      }
+    }
+    return '';
+  };
+  return find(orgTreeOptions.value);
+}
+
 async function loadDepartmentList(companyId?: number) {
   try { const res = await fetchDepartmentTree(companyId); if (res.data) { return res.data; } return []; } catch (error) { console.error('加载部门列表失败:', error); return []; }
 }
@@ -207,7 +221,7 @@ const statusMap: Record<number, { label: string; type: string }> = { 1: { label:
       <ElForm inline :model="searchParams">
         <ElFormItem label="员工姓名"><ElInput v-model="searchParams.name" placeholder="请输入员工姓名" clearable style="width: 150px" /></ElFormItem>
         <ElFormItem label="人员编号"><ElInput v-model="searchParams.employeeNo" placeholder="请输入人员编号" clearable style="width: 150px" /></ElFormItem>
-        <ElFormItem label="组织"><ElTreeSelect v-model="searchParams.orgIds" :data="orgTreeOptions" :props="{ children: 'children', label: 'unitName', value: 'id' }" node-key="id" placeholder="请选择组织" clearable multiple :check-strictly="!cascadeSelect" show-checkbox collapse-tags :max-collapse-tags="2" style="width: 200px" :render-after-expand="false" filterable><template #header><div class="px-12px py-8px border-b border-gray-200"><ElCheckbox v-model="cascadeSelect" size="small">联动选择</ElCheckbox></div></template></ElTreeSelect></ElFormItem>
+        <ElFormItem label="组织"><ElTreeSelect v-model="searchParams.orgIds" :data="orgTreeOptions" :props="{ children: 'children', label: 'unitName', value: 'id' }" node-key="id" placeholder="请选择组织" clearable multiple :check-strictly="!cascadeSelect" show-checkbox collapse-tags :max-collapse-tags="2" style="width: 280px" :render-after-expand="false" filterable><template #default="{ node, data }"><div class="tree-node-content"><span>{{ data.unitName }}</span><ElCheckbox v-if="node.level === 1" v-model="cascadeSelect" @click.stop>联动</ElCheckbox></div></template><template #label="{ value }"><span>{{ getOrgName(value) }}</span></template></ElTreeSelect></ElFormItem>
         <ElFormItem label="状态"><ElSelect v-model="searchParams.status" placeholder="请选择状态" clearable style="width: 120px"><ElOption label="在职" :value="1" /><ElOption label="离职" :value="2" /></ElSelect></ElFormItem>
         <ElFormItem><ElButton type="primary" @click="handleSearch"><template #icon><icon-ep-search /></template>搜索</ElButton><ElButton @click="handleReset"><template #icon><icon-ep-refresh /></template>重置</ElButton></ElFormItem>
       </ElForm>
@@ -410,5 +424,17 @@ const statusMap: Record<number, { label: string; type: string }> = { 1: { label:
 
 .drawer-content::-webkit-scrollbar-track {
   background-color: #f5f7fa;
+}
+
+:deep(.el-tree-node__content) {
+  width: 100%;
+}
+
+.tree-node-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  padding-right: 8px;
 }
 </style>

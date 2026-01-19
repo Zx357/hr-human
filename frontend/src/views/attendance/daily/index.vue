@@ -116,6 +116,17 @@ function getWeekDay(dateStr: string) {
   return '周' + weekDays[date.getDay()];
 }
 
+// 计算请假总时长
+function getTotalLeaveHours(row: AttDailyRecord): number {
+  return (row.annualLeaveDuration || 0) + 
+         (row.personalLeaveDuration || 0) + 
+         (row.sickLeaveDuration || 0) + 
+         (row.marriageLeaveDuration || 0) + 
+         (row.maternityLeaveDuration || 0) + 
+         (row.paternityLeaveDuration || 0) + 
+         (row.bereavementLeaveDuration || 0);
+}
+
 // 计算按钮显示文案
 function getCalculateButtonText() {
   if (selectedRows.value.length > 0) {
@@ -338,41 +349,44 @@ async function handleLock(lock: boolean) {
         <ElTableColumn prop="workHours" label="工时" width="60" align="center">
           <template #default="{ row }">{{ row.workHours || 0 }}h</template>
         </ElTableColumn>
-        <ElTableColumn prop="overtimeDuration" label="加班" width="60" align="center">
+        <ElTableColumn prop="overtimeDuration" label="加班" width="70" align="center">
           <template #default="{ row }">
-            <span v-if="row.overtimeDuration > 0" class="text-blue-500">{{ row.overtimeDuration }}h</span>
+            <ElTooltip v-if="row.overtimeDuration > 0" placement="top">
+              <template #content>
+                <div>加班 {{ row.overtimeDuration }}h</div>
+              </template>
+              <span class="text-blue-500 cursor-pointer">{{ row.overtimeDuration }}h</span>
+            </ElTooltip>
             <span v-else>-</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="businessDuration" label="出差" width="60" align="center">
+        <ElTableColumn label="请假" width="70" align="center">
           <template #default="{ row }">
-            <span v-if="row.businessDuration > 0" class="text-purple-500">{{ row.businessDuration }}天</span>
+            <ElTooltip v-if="getTotalLeaveHours(row) > 0" placement="top">
+              <template #content>
+                <div class="text-xs">
+                  <div v-if="row.annualLeaveDuration > 0">年假: {{ row.annualLeaveDuration }}h</div>
+                  <div v-if="row.personalLeaveDuration > 0">事假: {{ row.personalLeaveDuration }}h</div>
+                  <div v-if="row.sickLeaveDuration > 0">病假: {{ row.sickLeaveDuration }}h</div>
+                  <div v-if="row.marriageLeaveDuration > 0">婚假: {{ row.marriageLeaveDuration }}h</div>
+                  <div v-if="row.maternityLeaveDuration > 0">产假: {{ row.maternityLeaveDuration }}h</div>
+                  <div v-if="row.paternityLeaveDuration > 0">陪产假: {{ row.paternityLeaveDuration }}h</div>
+                  <div v-if="row.bereavementLeaveDuration > 0">丧假: {{ row.bereavementLeaveDuration }}h</div>
+                </div>
+              </template>
+              <span class="text-orange-500 cursor-pointer">{{ getTotalLeaveHours(row) }}h</span>
+            </ElTooltip>
             <span v-else>-</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="annualLeaveDuration" label="年假" width="60" align="center">
+        <ElTableColumn prop="businessDuration" label="出差" width="70" align="center">
           <template #default="{ row }">
-            <span v-if="row.annualLeaveDuration > 0" class="text-green-500">{{ row.annualLeaveDuration }}天</span>
-            <span v-else>-</span>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="personalLeaveDuration" label="事假" width="60" align="center">
-          <template #default="{ row }">
-            <span v-if="row.personalLeaveDuration > 0" class="text-orange-500">{{ row.personalLeaveDuration }}天</span>
-            <span v-else>-</span>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="sickLeaveDuration" label="病假" width="60" align="center">
-          <template #default="{ row }">
-            <span v-if="row.sickLeaveDuration > 0" class="text-red-400">{{ row.sickLeaveDuration }}天</span>
-            <span v-else>-</span>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="otherLeaveDuration" label="其他假" width="70" align="center">
-          <template #default="{ row }">
-            <span v-if="(row.marriageLeaveDuration || 0) + (row.maternityLeaveDuration || 0) + (row.paternityLeaveDuration || 0) + (row.bereavementLeaveDuration || 0) > 0" class="text-gray-500">
-              {{ (row.marriageLeaveDuration || 0) + (row.maternityLeaveDuration || 0) + (row.paternityLeaveDuration || 0) + (row.bereavementLeaveDuration || 0) }}天
-            </span>
+            <ElTooltip v-if="row.businessDuration > 0" placement="top">
+              <template #content>
+                <div>出差 {{ row.businessDuration }}h</div>
+              </template>
+              <span class="text-purple-500 cursor-pointer">{{ row.businessDuration }}h</span>
+            </ElTooltip>
             <span v-else>-</span>
           </template>
         </ElTableColumn>

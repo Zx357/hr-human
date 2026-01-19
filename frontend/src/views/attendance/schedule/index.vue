@@ -3,8 +3,9 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { fetchWeekSchedule, saveSchedule, batchSchedule, type ScheduleRow } from '@/service/api/schedule';
 import { fetchShiftList, type Shift } from '@/service/api/shift';
-import { fetchCompanyList, fetchDepartmentTree } from '@/service/api/organization';
-import { fetchEmployeeList } from '@/service/api/hr';
+import { fetchOrgTree } from '@/service/api/organization';
+import { fetchEmployeePage } from '@/service/api/hr';
+import { fetchDictDataByCode } from '@/service/api/system';
 
 defineOptions({ name: 'ScheduleManage' });
 
@@ -12,9 +13,11 @@ const loading = ref(false);
 const currentMonth = ref(new Date());
 const scheduleData = ref<ScheduleRow[]>([]);
 const shifts = ref<Shift[]>([]);
-const companies = ref<any[]>([]);
-const departments = ref<any[]>([]);
-const employees = ref<any[]>([]);
+const orgTree = ref<any[]>([]);
+
+// 字典数据
+const genderOptions = ref<Api.System.DictData[]>([]);
+const positionOptions = ref<Api.System.DictData[]>([]);
 
 // 当前选中的画笔班次 (null=循环切换, -1=清除, 其他=指定班次ID)
 const currentBrush = ref<number | null>(null);
@@ -28,17 +31,30 @@ function isBrushActive(shiftId: number | null) {
 }
 
 const searchParams = ref({
-  companyId: undefined as number | undefined,
-  deptId: undefined as number | undefined,
+  orgIds: [] as number[],
+  employeeNo: '',
   employeeName: ''
 });
 
+const linkage = ref(false); // 默认不联动
+
 const batchDialogVisible = ref(false);
 const batchForm = ref({
-  employeeIds: [] as number[],
   shiftId: undefined as number | undefined,
   dateRange: [] as string[]
 });
+
+// 批量排班-员工选择相关
+const selectedEmployees = ref<Array<{ id: number; name: string; employeeNo: string; companyName?: string; deptName?: string }>>([]);
+const employeeDialogVisible = ref(false);
+const employeeDialogLoading = ref(false);
+const employeeDialogData = ref<Api.Hr.Employee[]>([]);
+const employeeDialogTotal = ref(0);
+const employeeDialogPage = ref(1);
+const employeeDialogPageSize = ref(10);
+const employeeDialogSearch = ref({ name: '', employeeNo: '', orgIds: [] as number[] });
+const cascadeSelect = ref(false);
+const tempSelectedEmployees = ref<Array<{ id: number; name: string; employeeNo: string; companyName?: string; deptName?: string }>>([]);
 
 // 计算当前月的所有日期
 const monthDates = computed(() => {
@@ -77,19 +93,59 @@ async function loadShifts() {
   shifts.value = res.data || [];
 }
 
-async function loadCompanies() {
-  const res = await fetchCompanyList();
-  companies.value = res.data || [];
+async function loadOrgTree() {
+  const res = await fetchOrgTree();
+  orgTree.value = res.data || [];
 }
 
-async function loadDepartments() {
-  const res = await fetchDepartmentTree(searchParams.value.companyId);
-  departments.value = res.data || [];
+async function loadDictData() {
+  const [genderRes, positionRes] = await Promise.all([
+    fetchDictDataByCode('gender'),
+    fetchDictDataByCode('position')
+  ]);
+  genderOptions.value = genderRes.data || [];
+  positionOptions.value = positionRes.data || [];
 }
 
-async function loadEmployees() {
-  const res = await fetchEmployeeList({ deptId: searchParams.value.deptId });
-  employees.value = res.data || [];
+function getDictLabel(options: Api.System.DictData[], value?: string) {
+  if (!value) return '';
+  return options.find(o => o.dictValue === value)?.dictLabel || value;
+}
+
+function getOrgName(id: number): string {
+  const find = (nodes: any[]): string => {
+    for (const node of nodes) {
+      if (node.id === id) return node.unitName;
+      if (node.children?.length) {
+        const found = find(node.children);
+        if (found) return found;
+      }
+    }
+    return '';
+  };
+  return find(orgTree.value);
+}
+
+async function loadEmployeeDialogData() {
+  employeeDialogLoading.value = true;
+  try {
+    const res = await fetchEmployeePage({
+      pageNum: employeeDialogPage.value,
+      pageSize: employeeDialogPageSize.value,
+      name: employeeDialogSearch.value.name || undefined,
+      employeeNo: employeeDialogSearch.value.employeeNo || undefined,
+      orgIds: employeeDialogSearch.value.orgIds.length > 0 ? employeeDialogSearch.value.orgIds.join(',') : undefined,
+      status: 1
+    });
+    if (res.data) {
+      employeeDialogData.value = res.data.records || [];
+      employeeDialogTotal.value = res.data.total || 0;
+    }
+  } catch (error) {
+    console.error('加载员工列表失败:', error);
+  } finally {
+    employeeDialogLoading.value = false;
+  }
 }
 
 async function loadData() {
@@ -97,7 +153,8 @@ async function loadData() {
   loading.value = true;
   try {
     const res = await fetchWeekSchedule({
-      deptId: searchParams.value.deptId,
+      orgIds: searchParams.value.orgIds,
+      employeeNo: searchParams.value.employeeNo,
       employeeName: searchParams.value.employeeName,
       startDate: startDate.value,
       endDate: endDate.value
@@ -110,17 +167,12 @@ async function loadData() {
 
 onMounted(() => {
   loadShifts();
-  loadCompanies();
-  loadDepartments();
-  loadEmployees();
+  loadOrgTree();
+  loadDictData();
   loadData();
 });
 
 watch(currentMonth, () => loadData());
-watch(() => searchParams.value.companyId, () => {
-  searchParams.value.deptId = undefined;
-  loadDepartments();
-});
 
 function getShiftColor(shiftId?: number) {
   if (!shiftId) return '#f5f5f5';
@@ -178,17 +230,40 @@ function handleNextMonth() {
 }
 
 function handleBatchSchedule() {
-  batchForm.value = { employeeIds: [], shiftId: undefined, dateRange: [] };
+  batchForm.value = { shiftId: undefined, dateRange: [] };
+  selectedEmployees.value = [];
   batchDialogVisible.value = true;
 }
 
+function openEmployeeDialog() {
+  employeeDialogVisible.value = true;
+  employeeDialogPage.value = 1;
+  employeeDialogSearch.value = { name: '', employeeNo: '', orgIds: [] };
+  tempSelectedEmployees.value = [...selectedEmployees.value];
+  loadEmployeeDialogData();
+}
+
+function handleEmployeeDialogSearch() { employeeDialogPage.value = 1; loadEmployeeDialogData(); }
+function handleEmployeeDialogReset() { employeeDialogSearch.value = { name: '', employeeNo: '', orgIds: [] }; employeeDialogPage.value = 1; loadEmployeeDialogData(); }
+function handleEmployeeDialogPageChange(page: number) { employeeDialogPage.value = page; loadEmployeeDialogData(); }
+function handleEmployeeDialogSizeChange(size: number) { employeeDialogPageSize.value = size; employeeDialogPage.value = 1; loadEmployeeDialogData(); }
+
+function handleSelectionChange(rows: Api.Hr.Employee[]) {
+  tempSelectedEmployees.value = rows.map(row => ({
+    id: row.id!, name: row.name!, employeeNo: row.employeeNo!, companyName: row.companyName || '', deptName: row.deptName || ''
+  }));
+}
+
+function confirmSelectEmployees() { selectedEmployees.value = [...tempSelectedEmployees.value]; employeeDialogVisible.value = false; }
+function removeSelectedEmployee(index: number) { selectedEmployees.value.splice(index, 1); }
+
 async function handleBatchSubmit() {
-  if (!batchForm.value.employeeIds.length) return ElMessage.warning('请选择员工');
+  if (!selectedEmployees.value.length) return ElMessage.warning('请选择员工');
   if (!batchForm.value.shiftId) return ElMessage.warning('请选择班次');
   if (!batchForm.value.dateRange?.length) return ElMessage.warning('请选择日期范围');
   try {
     await batchSchedule({
-      employeeIds: batchForm.value.employeeIds,
+      employeeIds: selectedEmployees.value.map(e => e.id),
       shiftId: batchForm.value.shiftId,
       startDate: batchForm.value.dateRange[0],
       endDate: batchForm.value.dateRange[1]
@@ -203,8 +278,7 @@ async function handleBatchSubmit() {
 
 function handleSearch() { loadData(); }
 function handleReset() {
-  searchParams.value = { companyId: undefined, deptId: undefined, employeeName: '' };
-  loadDepartments();
+  searchParams.value = { orgIds: [], employeeNo: '', employeeName: '' };
   loadData();
 }
 </script>
@@ -213,24 +287,41 @@ function handleReset() {
   <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
     <ElCard>
       <ElForm inline :model="searchParams">
-        <ElFormItem label="公司">
-          <ElSelect v-model="searchParams.companyId" placeholder="请选择公司" clearable style="width: 180px">
-            <ElOption v-for="c in companies" :key="c.id" :label="c.companyName" :value="c.id" />
-          </ElSelect>
-        </ElFormItem>
-        <ElFormItem label="部门">
+        <ElFormItem label="组织">
           <ElTreeSelect
-            v-model="searchParams.deptId"
-            :data="departments"
-            :props="{ label: 'deptName', value: 'id', children: 'children' }"
-            placeholder="请选择部门"
+            v-model="searchParams.orgIds"
+            :data="orgTree"
+            :props="{ label: 'unitName', value: 'id', children: 'children' }"
+            placeholder="请选择组织"
             clearable
-            check-strictly
-            style="width: 180px"
-          />
+            multiple
+            show-checkbox
+            :check-strictly="!linkage"
+            collapse-tags
+            collapse-tags-tooltip
+            :render-after-expand="false"
+            style="width: 280px"
+          >
+            <template #default="{ node, data }">
+              <div class="tree-node-content">
+                <span>{{ data.unitName }}</span>
+                <ElCheckbox
+                  v-if="node.level === 1"
+                  v-model="linkage"
+                  @click.stop
+                >联动</ElCheckbox>
+              </div>
+            </template>
+            <template #label="{ value }">
+              <span>{{ getOrgName(value) }}</span>
+            </template>
+          </ElTreeSelect>
         </ElFormItem>
-        <ElFormItem label="员工">
-          <ElInput v-model="searchParams.employeeName" placeholder="员工姓名" clearable style="width: 120px" />
+        <ElFormItem label="工号">
+          <ElInput v-model="searchParams.employeeNo" placeholder="工号" clearable style="width: 120px" />
+        </ElFormItem>
+        <ElFormItem label="姓名">
+          <ElInput v-model="searchParams.employeeName" placeholder="姓名" clearable style="width: 120px" />
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" @click="handleSearch"><icon-ep-search />搜索</ElButton>
@@ -322,12 +413,18 @@ function handleReset() {
       </div>
     </ElCard>
 
-    <ElDialog v-model="batchDialogVisible" title="批量排班" width="500px">
+    <ElDialog v-model="batchDialogVisible" title="批量排班" width="600px">
       <ElForm label-width="100px" :model="batchForm">
         <ElFormItem label="选择员工" required>
-          <ElSelect v-model="batchForm.employeeIds" placeholder="请选择员工" multiple filterable style="width: 100%">
-            <ElOption v-for="emp in employees" :key="emp.id" :label="`${emp.name} (${emp.employeeNo})`" :value="emp.id" />
-          </ElSelect>
+          <div class="flex gap-8px w-full">
+            <div class="flex-1 min-h-32px border border-gray-300 rounded-4px px-8px py-4px flex flex-wrap gap-4px items-center cursor-pointer hover:border-blue-500" @click="openEmployeeDialog">
+              <template v-if="selectedEmployees.length > 0">
+                <ElTag v-for="(emp, index) in selectedEmployees" :key="emp.id" closable size="small" @close.stop="removeSelectedEmployee(index)">{{ emp.name }} ({{ emp.employeeNo }})</ElTag>
+              </template>
+              <span v-else class="text-gray-400">请选择员工</span>
+            </div>
+            <ElButton type="primary" @click="openEmployeeDialog">选择员工</ElButton>
+          </div>
         </ElFormItem>
         <ElFormItem label="选择班次" required>
           <ElSelect v-model="batchForm.shiftId" placeholder="请选择班次" style="width: 100%">
@@ -341,6 +438,41 @@ function handleReset() {
       <template #footer>
         <ElButton @click="batchDialogVisible = false">取消</ElButton>
         <ElButton type="primary" @click="handleBatchSubmit">确定</ElButton>
+      </template>
+    </ElDialog>
+
+    <ElDialog v-model="employeeDialogVisible" title="选择员工" width="900px" destroy-on-close append-to-body>
+      <div class="mb-16px">
+        <ElForm inline :model="employeeDialogSearch">
+          <ElFormItem label="姓名"><ElInput v-model="employeeDialogSearch.name" placeholder="请输入姓名" clearable style="width: 120px" /></ElFormItem>
+          <ElFormItem label="工号"><ElInput v-model="employeeDialogSearch.employeeNo" placeholder="请输入工号" clearable style="width: 120px" /></ElFormItem>
+          <ElFormItem label="组织">
+            <ElTreeSelect v-model="employeeDialogSearch.orgIds" :data="orgTree" :props="{ children: 'children', label: 'unitName', value: 'id' }" node-key="id" placeholder="请选择组织" clearable multiple :check-strictly="!cascadeSelect" show-checkbox collapse-tags :max-collapse-tags="1" style="width: 180px" :render-after-expand="false" filterable>
+              <template #header><div class="px-12px py-8px border-b border-gray-200"><ElCheckbox v-model="cascadeSelect" size="small">联动选择</ElCheckbox></div></template>
+            </ElTreeSelect>
+          </ElFormItem>
+          <ElFormItem>
+            <ElButton type="primary" @click="handleEmployeeDialogSearch">搜索</ElButton>
+            <ElButton @click="handleEmployeeDialogReset">重置</ElButton>
+          </ElFormItem>
+        </ElForm>
+      </div>
+      <ElTable v-loading="employeeDialogLoading" :data="employeeDialogData" border stripe max-height="400px" @selection-change="handleSelectionChange">
+        <ElTableColumn type="selection" width="50" />
+        <ElTableColumn prop="employeeNo" label="工号" width="100" />
+        <ElTableColumn prop="name" label="姓名" width="80" />
+        <ElTableColumn prop="gender" label="性别" width="60" align="center"><template #default="{ row }">{{ getDictLabel(genderOptions, row.gender) }}</template></ElTableColumn>
+        <ElTableColumn prop="companyName" label="公司" min-width="120" show-overflow-tooltip />
+        <ElTableColumn prop="deptName" label="部门" min-width="100" />
+        <ElTableColumn prop="position" label="职位" min-width="100"><template #default="{ row }">{{ getDictLabel(positionOptions, row.position) }}</template></ElTableColumn>
+      </ElTable>
+      <div class="mt-16px flex justify-between items-center">
+        <span class="text-gray-500">已选择 {{ tempSelectedEmployees.length }} 人</span>
+        <ElPagination v-model:current-page="employeeDialogPage" v-model:page-size="employeeDialogPageSize" :total="employeeDialogTotal" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @current-change="handleEmployeeDialogPageChange" @size-change="handleEmployeeDialogSizeChange" />
+      </div>
+      <template #footer>
+        <ElButton @click="employeeDialogVisible = false">取消</ElButton>
+        <ElButton type="primary" @click="confirmSelectEmployees">确定</ElButton>
       </template>
     </ElDialog>
   </div>
@@ -509,5 +641,17 @@ function handleReset() {
 
 .brush-item.brush-clear {
   --brush-color: #909399;
+}
+
+:deep(.el-tree-node__content) {
+  width: 100%;
+}
+
+.tree-node-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  padding-right: 8px;
 }
 </style>

@@ -23,10 +23,11 @@ public class ScheduleController {
     @GetMapping("/week")
     public Result<List<Map<String, Object>>> getWeekSchedule(
             @RequestParam(required = false) List<Long> orgIds,
+            @RequestParam(required = false) String employeeNo,
             @RequestParam(required = false) String employeeName,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
-        return Result.success(service.getWeekSchedule(orgIds, employeeName, startDate, endDate));
+        return Result.success(service.getWeekSchedule(orgIds, employeeNo, employeeName, startDate, endDate));
     }
 
     /**

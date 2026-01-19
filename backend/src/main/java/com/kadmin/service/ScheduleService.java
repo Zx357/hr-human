@@ -6,6 +6,7 @@ import com.kadmin.entity.AttSchedule;
 import com.kadmin.entity.HrEmployee;
 import com.kadmin.mapper.AttScheduleMapper;
 import com.kadmin.mapper.EmployeeMapper;
+import com.kadmin.mapper.OrgUnitMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,7 @@ import java.util.*;
 public class ScheduleService extends ServiceImpl<AttScheduleMapper, AttSchedule> {
     
     private final EmployeeMapper employeeMapper;
+    private final OrgUnitMapper orgUnitMapper;
 
     /**
      * 获取排班列表
@@ -28,11 +30,23 @@ public class ScheduleService extends ServiceImpl<AttScheduleMapper, AttSchedule>
     /**
      * 获取员工周排班数据（按员工分组）
      */
-    public List<Map<String, Object>> getWeekSchedule(List<Long> orgIds, String employeeName, LocalDate startDate, LocalDate endDate) {
+    public List<Map<String, Object>> getWeekSchedule(List<Long> orgIds, String employeeNo, String employeeName, LocalDate startDate, LocalDate endDate) {
+        // 获取组织及子组织ID
+        List<Long> allOrgIds = new ArrayList<>();
+        if (orgIds != null && !orgIds.isEmpty()) {
+            for (Long orgId : orgIds) {
+                List<Long> childIds = orgUnitMapper.selectOrgAndChildIds(orgId);
+                if (childIds != null) {
+                    allOrgIds.addAll(childIds);
+                }
+            }
+        }
+        
         // 获取员工列表
         LambdaQueryWrapper<HrEmployee> empWrapper = new LambdaQueryWrapper<>();
         empWrapper.eq(HrEmployee::getDeleted, 0).eq(HrEmployee::getStatus, 1);
-        if (orgIds != null && !orgIds.isEmpty()) empWrapper.in(HrEmployee::getDeptId, orgIds);
+        if (!allOrgIds.isEmpty()) empWrapper.in(HrEmployee::getDeptId, allOrgIds);
+        if (employeeNo != null && !employeeNo.isEmpty()) empWrapper.like(HrEmployee::getEmployeeNo, employeeNo);
         if (employeeName != null && !employeeName.isEmpty()) empWrapper.like(HrEmployee::getName, employeeName);
         empWrapper.orderByAsc(HrEmployee::getId);
         List<HrEmployee> employees = employeeMapper.selectList(empWrapper);
