@@ -21,5 +21,6 @@ public interface HrContractMapper extends BaseMapper<HrContract> {
             @Param("employeeName") String employeeName,
             @Param("employeeNo") String employeeNo,
             @Param("contractType") String contractType,
-            @Param("status") Integer status);
+            @Param("status") Integer status,
+            @Param("employeeId") Long employeeId);
 }

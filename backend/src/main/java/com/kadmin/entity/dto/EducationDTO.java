@@ -1,7 +1,6 @@
 package com.kadmin.entity.dto;
 
 import lombok.Data;
-import java.time.LocalDate;
 
 /**
  * 教育经历数据传输对象
@@ -44,10 +43,10 @@ public class EducationDTO {
     /**
      * 开学时间
      */
-    private LocalDate startDate;
+    private String startDate;
 
     /**
      * 毕业时间
      */
-    private LocalDate endDate;
+    private String endDate;
 }

@@ -50,7 +50,13 @@ public class SecurityConfig {
             "/webjars/**",
             "/favicon.ico",
             "/error",
-            "/uploads/**"
+            "/uploads/**",
+            "/employee_photo/**",
+            "/id_card_front/**",
+            "/id_card_back/**",
+            "/contract_photo/**",
+            "/diploma_photo/**",
+            "/cert_photo/**"
     };
 
     @Bean

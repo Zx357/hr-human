@@ -129,7 +129,7 @@ export default {
       this.$modal.showToast('功能开发中~')
     },
     goToMyRecords() {
-      this.$modal.showToast('功能开发中~')
+      uni.navigateTo({ url: '/pages/attendance/index' })
     },
     goToList(type) {
       this.$modal.showToast('功能开发中~')

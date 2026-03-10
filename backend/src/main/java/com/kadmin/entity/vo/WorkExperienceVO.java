@@ -1,7 +1,6 @@
 package com.kadmin.entity.vo;
 
 import lombok.Data;
-import java.time.LocalDate;
 
 /**
  * 工作经历视图对象
@@ -49,10 +48,10 @@ public class WorkExperienceVO {
     /**
      * 开始日期
      */
-    private LocalDate startDate;
+    private String startDate;
 
     /**
      * 结束日期
      */
-    private LocalDate endDate;
+    private String endDate;
 }

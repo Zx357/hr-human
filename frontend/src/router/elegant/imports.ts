@@ -45,6 +45,7 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   report_attendance: () => import("@/views/report/attendance/index.vue"),
   report_employee: () => import("@/views/report/employee/index.vue"),
   system_dict: () => import("@/views/system/dict/index.vue"),
+  "system_file-config": () => import("@/views/system/file-config/index.vue"),
   system_menu: () => import("@/views/system/menu/index.vue"),
   "system_mobile-menu": () => import("@/views/system/mobile-menu/index.vue"),
   system_role: () => import("@/views/system/role/index.vue"),

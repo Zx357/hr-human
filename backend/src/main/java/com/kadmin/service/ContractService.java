@@ -16,9 +16,9 @@ public class ContractService extends ServiceImpl<HrContractMapper, HrContract> {
      * 分页查询合同
      */
     public Page<HrContract> getContractPage(int pageNum, int pageSize, String contractNo,
-            String employeeName, String employeeNo, String contractType, Integer status) {
+            String employeeName, String employeeNo, String contractType, Integer status, Long employeeId) {
         Page<HrContract> page = new Page<>(pageNum, pageSize);
-        return baseMapper.selectPageWithEmployee(page, contractNo, employeeName, employeeNo, contractType, status);
+        return baseMapper.selectPageWithEmployee(page, contractNo, employeeName, employeeNo, contractType, status, employeeId);
     }
 
     /**

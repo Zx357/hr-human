@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -59,12 +58,12 @@ public class HrWorkExperience {
     /**
      * 开始日期
      */
-    private LocalDate startDate;
+    private String startDate;
 
     /**
      * 结束日期
      */
-    private LocalDate endDate;
+    private String endDate;
 
     /**
      * 创建时间

@@ -76,6 +76,11 @@
       "navigationBarTitleText": "考勤打卡"
     }
   }, {
+    "path": "pages/attendance/index",
+    "style": {
+      "navigationBarTitleText": "我的考勤情况"
+    }
+  }, {
     "path": "pages/apply/leave/index",
     "style": {
       "navigationBarTitleText": "请假申请"

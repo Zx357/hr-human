@@ -1,33 +1,73 @@
 <template>
   <view class="clock-container">
-    <!-- 日期时间显示 -->
-    <view class="datetime-section">
-      <text class="date">{{ currentDate }}</text>
-      <text class="time">{{ currentTime }}</text>
-      <text class="week">{{ currentWeek }}</text>
+    <!-- 地图区域 -->
+    <view class="map-section">
+      <map
+        id="attendanceMap"
+        :latitude="latitude"
+        :longitude="longitude"
+        :markers="markers"
+        :scale="10"
+        class="attendance-map"
+        show-location
+      />
     </view>
 
     <!-- 打卡按钮 -->
-    <view class="clock-section">
-      <view class="clock-btn" :class="{ 'clocked': hasClockedIn && !hasClockedOut }" @click="handleClock">
-        <text class="clock-text">{{ clockBtnText }}</text>
-        <text class="clock-tip">{{ clockTip }}</text>
+    <view class="clock-buttons">
+      <view
+        class="clock-btn"
+        :class="{ disabled: hasClockedIn, active: !hasClockedIn }"
+        @click="handleClockIn"
+      >
+        <text class="btn-label">签到</text>
+      </view>
+      <view
+        class="clock-btn"
+        :class="{ disabled: hasClockedOut, active: !hasClockedOut && hasClockedIn }"
+        @click="handleClockOut"
+      >
+        <text class="btn-label">签退</text>
+      </view>
+    </view>
+
+    <!-- 距离提示 -->
+    <view class="distance-info" v-if="distance !== null">
+      <text>距打卡地点: {{ formatDistance(distance) }}</text>
+    </view>
+
+    <!-- 功能按钮 -->
+    <view class="action-buttons">
+      <view class="action-btn btn-card" @click="goToCardApply">
+        <uni-icons type="compose" size="20" color="#c44d1a"></uni-icons>
+        <text class="action-text">补卡申请</text>
+      </view>
+      <view class="action-btn btn-attendance" @click="goToMyAttendance">
+        <uni-icons type="calendar" size="20" color="#c44d1a"></uni-icons>
+        <text class="action-text">我的考勤</text>
       </view>
     </view>
 
     <!-- 今日打卡记录 -->
     <view class="record-section">
       <view class="section-title">今日打卡记录</view>
-      <view class="record-list" v-if="todayRecords.length > 0">
-        <view class="record-item" v-for="(item, index) in todayRecords" :key="index">
-          <view class="record-icon" :class="item.clockType === 1 ? 'in' : 'out'">
-            <uni-icons :type="item.clockType === 1 ? 'arrow-down' : 'arrow-up'" size="16" color="#fff"></uni-icons>
+      <view class="record-card" v-if="todayRecords.length > 0">
+        <view class="record-row">
+          <view class="record-col">
+            <text class="record-label">签到</text>
+            <text class="record-time">{{ clockInTime || '--:--' }}</text>
+            <view class="status-tag" :class="clockInStatus" v-if="clockInStatusText">
+              <text>{{ clockInStatusText }}</text>
+            </view>
           </view>
-          <view class="record-info">
-            <text class="record-type">{{ item.clockType === 1 ? '上班打卡' : '下班打卡' }}</text>
-            <text class="record-time">{{ formatTime(item.clockTime) }}</text>
+          <view class="record-divider"></view>
+          <view class="record-col">
+            <text class="record-label">签退</text>
+            <text class="record-time">{{ clockOutTime || '--:--' }}</text>
+            <view class="status-tag" :class="clockOutStatus" v-if="clockOutStatusText">
+              <text>{{ clockOutStatusText }}</text>
+            </view>
           </view>
-          <view class="record-status status-1">正常</view>
         </view>
       </view>
       <view class="empty-tip" v-else>
@@ -43,65 +83,103 @@ import { getClockInfo, clock } from '@/api/attendance'
 export default {
   data() {
     return {
-      currentDate: '',
-      currentTime: '',
-      currentWeek: '',
+      latitude: 30.5,
+      longitude: 114.4,
+      markers: [],
       hasClockedIn: false,
       hasClockedOut: false,
       todayRecords: [],
-      timer: null,
-      loading: false
+      loading: false,
+      distance: null,
+      companyLat: null,
+      companyLng: null,
+      clockInRecord: null,
+      clockOutRecord: null,
+      todayDaily: null,
+      scheduledIn: null,
+      scheduledOut: null
     }
   },
   computed: {
-    clockBtnText() {
-      if (!this.hasClockedIn) {
-        return '上班打卡'
-      } else if (!this.hasClockedOut) {
-        return '下班打卡'
-      } else {
-        return '下班打卡'
-      }
+    clockInTime() {
+      if (!this.clockInRecord) return ''
+      return this.formatTime(this.clockInRecord.clockTime)
     },
-    clockTip() {
-      if (!this.hasClockedIn) {
-        return '点击上班打卡'
-      } else if (!this.hasClockedOut) {
-        return '点击下班打卡'
-      } else {
-        return '今日已完成打卡'
-      }
+    clockOutTime() {
+      if (!this.clockOutRecord) return ''
+      return this.formatTime(this.clockOutRecord.clockTime)
+    },
+    clockInStatusText() {
+      if (!this.clockInRecord) return ''
+      if (this.todayDaily && this.todayDaily.lateMinutes > 0) return '迟到'
+      return '正常'
+    },
+    clockInStatus() {
+      if (this.clockInStatusText === '迟到') return 'status-late'
+      if (this.clockInStatusText === '正常') return 'status-normal'
+      return ''
+    },
+    clockOutStatusText() {
+      if (!this.clockOutRecord) return ''
+      if (this.todayDaily && this.todayDaily.earlyMinutes > 0) return '早退'
+      return '正常'
+    },
+    clockOutStatus() {
+      if (this.clockOutStatusText === '早退') return 'status-early'
+      if (this.clockOutStatusText === '正常') return 'status-normal'
+      return ''
     }
   },
   onLoad() {
-    this.updateDateTime()
-    this.timer = setInterval(() => {
-      this.updateDateTime()
-    }, 1000)
+    this.getLocation()
     this.loadClockInfo()
   },
   onShow() {
     this.loadClockInfo()
   },
-  onUnload() {
-    if (this.timer) {
-      clearInterval(this.timer)
-    }
-  },
   methods: {
-    updateDateTime() {
-      const now = new Date()
-      const year = now.getFullYear()
-      const month = String(now.getMonth() + 1).padStart(2, '0')
-      const day = String(now.getDate()).padStart(2, '0')
-      const hours = String(now.getHours()).padStart(2, '0')
-      const minutes = String(now.getMinutes()).padStart(2, '0')
-      const seconds = String(now.getSeconds()).padStart(2, '0')
-      const weeks = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
-      
-      this.currentDate = `${year}年${month}月${day}日`
-      this.currentTime = `${hours}:${minutes}:${seconds}`
-      this.currentWeek = weeks[now.getDay()]
+    getLocation() {
+      uni.getLocation({
+        type: 'gcj02',
+        success: (res) => {
+          this.latitude = res.latitude
+          this.longitude = res.longitude
+          this.markers = [{
+            id: 1,
+            latitude: res.latitude,
+            longitude: res.longitude,
+            width: 30,
+            height: 30
+          }]
+          if (this.companyLat && this.companyLng) {
+            this.calcDistance()
+          }
+        },
+        fail: () => {
+          console.log('获取位置失败')
+        }
+      })
+    },
+    calcDistance() {
+      if (!this.companyLat || !this.companyLng) return
+      const radLat1 = (this.latitude * Math.PI) / 180
+      const radLat2 = (this.companyLat * Math.PI) / 180
+      const a = radLat1 - radLat2
+      const b = ((this.longitude - this.companyLng) * Math.PI) / 180
+      let s = 2 * Math.asin(
+        Math.sqrt(
+          Math.pow(Math.sin(a / 2), 2) +
+          Math.cos(radLat1) * Math.cos(radLat2) * Math.pow(Math.sin(b / 2), 2)
+        )
+      )
+      s = s * 6378137
+      this.distance = Math.round(s * 100) / 100
+    },
+    formatDistance(d) {
+      if (d >= 1000) {
+        return (d / 1000).toFixed(2) + '千米'
+      }
+      return d.toFixed(2) + '米'
     },
     async loadClockInfo() {
       try {
@@ -110,26 +188,55 @@ export default {
           this.todayRecords = res.data.todayRecords || []
           this.hasClockedIn = res.data.hasClockedIn || false
           this.hasClockedOut = res.data.hasClockedOut || false
+          this.scheduledIn = res.data.scheduledIn || null
+          this.scheduledOut = res.data.scheduledOut || null
+          this.todayDaily = res.data.todayDaily || null
+
+          if (res.data.companyLat && res.data.companyLng) {
+            this.companyLat = res.data.companyLat
+            this.companyLng = res.data.companyLng
+            this.markers.push({
+              id: 2,
+              latitude: res.data.companyLat,
+              longitude: res.data.companyLng,
+              width: 30,
+              height: 30,
+              callout: { content: '打卡地点', display: 'ALWAYS', fontSize: 12 }
+            })
+            this.calcDistance()
+          }
+
+          this.clockInRecord = this.todayRecords.find(r => r.clockType === 1) || null
+          this.clockOutRecord = this.todayRecords.find(r => r.clockType === 2) || null
         }
       } catch (e) {
         console.log('加载打卡信息失败', e)
       }
     },
-    async handleClock() {
-      if (this.loading) return
-      
+    async handleClockIn() {
+      if (this.hasClockedIn || this.loading) return
+      await this.doClock(1)
+    },
+    async handleClockOut() {
+      if (this.hasClockedOut || this.loading) return
+      if (!this.hasClockedIn) {
+        this.$modal.msgError('请先签到')
+        return
+      }
+      await this.doClock(2)
+    },
+    async doClock(clockType) {
       this.loading = true
       this.$modal.loading('打卡中...')
-      
       try {
-        const clockType = this.hasClockedIn ? 2 : 1
-        const res = await clock({ clockType })
-        
+        const data = { clockType }
+        if (this.latitude && this.longitude) {
+          data.location = `${this.latitude},${this.longitude}`
+        }
+        const res = await clock(data)
         this.$modal.closeLoading()
-        
         if (res.code === 200) {
-          this.$modal.showToast(clockType === 1 ? '上班打卡成功' : '下班打卡成功')
-          // 重新加载打卡信息
+          this.$modal.showToast(clockType === 1 ? '签到成功' : '签退成功')
           await this.loadClockInfo()
         } else {
           this.$modal.msgError(res.msg || '打卡失败')
@@ -143,9 +250,15 @@ export default {
     },
     formatTime(timeStr) {
       if (!timeStr) return ''
-      // 格式: 2026-01-12 20:30:00 -> 20:30:00
       const parts = timeStr.split(' ')
-      return parts.length > 1 ? parts[1] : timeStr
+      const timePart = parts.length > 1 ? parts[1] : timeStr
+      return timePart.substring(0, 5)
+    },
+    goToCardApply() {
+      uni.navigateTo({ url: '/pages/apply/card/index' })
+    },
+    goToMyAttendance() {
+      uni.navigateTo({ url: '/pages/attendance/index' })
     }
   }
 }
@@ -154,144 +267,164 @@ export default {
 <style lang="scss" scoped>
 .clock-container {
   min-height: 100vh;
-  background: linear-gradient(180deg, #2d8cf0 0%, #5cadff 50%, #f5f6f7 50%);
-  padding-bottom: 40rpx;
+  background-color: #f5f6f7;
 }
 
-.datetime-section {
-  padding: 60rpx 0 40rpx;
-  text-align: center;
-  color: #fff;
-  
-  .date {
-    display: block;
-    font-size: 32rpx;
-    margin-bottom: 16rpx;
-  }
-  
-  .time {
-    display: block;
-    font-size: 80rpx;
-    font-weight: bold;
-    letter-spacing: 4rpx;
-  }
-  
-  .week {
-    display: block;
-    font-size: 28rpx;
-    margin-top: 16rpx;
-    opacity: 0.9;
-  }
+.map-section {
+  width: 100%;
+  height: 560rpx;
 }
 
-.clock-section {
+.attendance-map {
+  width: 100%;
+  height: 100%;
+}
+
+.clock-buttons {
   display: flex;
   justify-content: center;
-  padding: 40rpx 0;
+  gap: 80rpx;
+  padding: 50rpx 0 30rpx;
 }
 
 .clock-btn {
-  width: 300rpx;
-  height: 300rpx;
+  width: 200rpx;
+  height: 200rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%);
-  box-shadow: 0 10rpx 40rpx rgba(0, 0, 0, 0.2);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  
-  &.clocked {
-    background: linear-gradient(135deg, #ff9500 0%, #ff6b00 100%);
-    
-    .clock-text, .clock-tip {
-      color: #fff;
-    }
+  box-shadow: 0 8rpx 30rpx rgba(0, 0, 0, 0.12);
+
+  &.active {
+    background: linear-gradient(135deg, #f5deb3 0%, #e8c892 100%);
   }
-  
-  .clock-text {
+
+  &.disabled {
+    background: linear-gradient(135deg, #e8e8e8 0%, #d0d0d0 100%);
+  }
+
+  .btn-label {
     font-size: 36rpx;
     font-weight: bold;
-    color: #2d8cf0;
+    color: #666;
   }
-  
-  .clock-tip {
-    font-size: 24rpx;
-    color: #999;
-    margin-top: 12rpx;
+
+  &.active .btn-label {
+    color: #8B6914;
   }
+}
+
+.distance-info {
+  text-align: center;
+  padding: 16rpx 0 20rpx;
+  font-size: 26rpx;
+  color: #666;
+  border-bottom: 1rpx solid #eee;
+  margin: 0 30rpx;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 30rpx;
+  padding: 30rpx;
+}
+
+.action-btn {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  border: 2rpx solid transparent;
+
+  .action-text {
+    font-size: 30rpx;
+    font-weight: 500;
+  }
+}
+
+.btn-card {
+  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+  .action-text { color: #c44d1a; }
+}
+
+.btn-attendance {
+  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+  .action-text { color: #c44d1a; }
 }
 
 .record-section {
   background-color: #fff;
-  margin: 0 20rpx;
+  margin: 0 20rpx 40rpx;
   border-radius: 16rpx;
-  padding: 24rpx;
+  padding: 30rpx;
 }
 
 .section-title {
   font-size: 32rpx;
   font-weight: bold;
   color: #333;
-  margin-bottom: 24rpx;
+  margin-bottom: 30rpx;
 }
 
-.record-list {
-  .record-item {
-    display: flex;
-    align-items: center;
-    padding: 20rpx 0;
-    border-bottom: 1rpx solid #f0f0f0;
-    
-    &:last-child {
-      border-bottom: none;
-    }
+.record-card {
+  padding: 10rpx 0;
+}
+
+.record-row {
+  display: flex;
+  align-items: flex-start;
+}
+
+.record-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.record-divider {
+  width: 1rpx;
+  height: 120rpx;
+  background-color: #eee;
+  margin: 0 10rpx;
+  align-self: center;
+}
+
+.record-label {
+  font-size: 28rpx;
+  color: #999;
+  margin-bottom: 12rpx;
+}
+
+.record-time {
+  font-size: 52rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 12rpx;
+}
+
+.status-tag {
+  padding: 4rpx 20rpx;
+  border-radius: 20rpx;
+  font-size: 24rpx;
+
+  &.status-normal {
+    background-color: #e8f5e9;
+    color: #4caf50;
   }
-  
-  .record-icon {
-    width: 60rpx;
-    height: 60rpx;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    &.in {
-      background-color: #19be6b;
-    }
-    
-    &.out {
-      background-color: #ff9900;
-    }
+
+  &.status-late {
+    background-color: #fff3e0;
+    color: #f44336;
   }
-  
-  .record-info {
-    flex: 1;
-    margin-left: 20rpx;
-    
-    .record-type {
-      display: block;
-      font-size: 28rpx;
-      color: #333;
-    }
-    
-    .record-time {
-      display: block;
-      font-size: 24rpx;
-      color: #999;
-      margin-top: 4rpx;
-    }
-  }
-  
-  .record-status {
-    font-size: 26rpx;
-    padding: 6rpx 16rpx;
-    border-radius: 20rpx;
-    
-    &.status-1 {
-      background-color: #e8f5e9;
-      color: #19be6b;
-    }
+
+  &.status-early {
+    background-color: #fff3e0;
+    color: #f44336;
   }
 }
 

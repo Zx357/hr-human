@@ -54,7 +54,14 @@
     <!-- 公司名称和ID通过dept_id向上查找公司(unit_type=2) -->
     <select id="selectPageWithDetails" resultMap="EmployeeResultMap">
         SELECT 
-            e.*,
+            e.id, e.employee_no, e.name, e.avatar, e.id_card_front, e.id_card_back,
+            e.gender, e.highest_education, e.dept_id, e.nation, e.id_card, e.birth_date,
+            e.phone, e.email, e.employee_type, e.entry_date, e.regular_date,
+            e.duty, e.position, e.post, e.job_function, e.job_level, e.job_responsibility,
+            e.job_authority, e.job_title, e.occupation, e.marital_status, e.political_status,
+            e.native_place, e.police_station, e.registered_address, e.home_address,
+            e.current_address, e.emergency_contact, e.emergency_relation, e.emergency_phone,
+            e.leave_date, e.status, e.deleted, e.created_time, e.updated_time,
             d.unit_name as dept_name,
             CASE 
                 WHEN d.unit_type = 2 THEN d.unit_name

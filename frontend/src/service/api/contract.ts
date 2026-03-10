@@ -15,6 +15,8 @@ export interface Contract {
   salary?: number;
   status?: number;
   remark?: string;
+  contractImages?: string; // 合同图片（多张，逗号分隔）
+  contractCount?: number; // 合同次数
 }
 
 /** 分页查询合同列表 */
@@ -26,6 +28,7 @@ export function fetchContractPage(params: {
   employeeNo?: string;
   contractType?: string;
   status?: number;
+  employeeId?: number;
 }) {
   return request<Api.Common.PageResult<Contract>>({
     url: '/hr/contract/page',

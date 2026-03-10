@@ -28,8 +28,9 @@ public class ContractController {
             @RequestParam(required = false) String employeeName,
             @RequestParam(required = false) String employeeNo,
             @RequestParam(required = false) String contractType,
-            @RequestParam(required = false) Integer status) {
-        Page<HrContract> page = contractService.getContractPage(pageNum, pageSize, contractNo, employeeName, employeeNo, contractType, status);
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) Long employeeId) {
+        Page<HrContract> page = contractService.getContractPage(pageNum, pageSize, contractNo, employeeName, employeeNo, contractType, status, employeeId);
         return Result.success(page);
     }
 

@@ -200,6 +200,7 @@ const routeMap: RouteMap = {
   "report_employee": "/report/employee",
   "system": "/system",
   "system_dict": "/system/dict",
+  "system_file-config": "/system/file-config",
   "system_menu": "/system/menu",
   "system_mobile-menu": "/system/mobile-menu",
   "system_role": "/system/role",

@@ -5,6 +5,9 @@ import { fetchEmployeePage } from '@/service/api/hr';
 import { fetchOrgTree } from '@/service/api/organization';
 import { fetchDictDataByCode } from '@/service/api/system';
 import { fetchContractPage, createContract, updateContract, deleteContract, type Contract } from '@/service/api/contract';
+import { uploadContractPhoto, getFileUrl } from '@/service/api/file';
+import type { UploadProps } from 'element-plus';
+import { Plus } from '@element-plus/icons-vue';
 
 defineOptions({ name: 'ContractManage' });
 
@@ -42,9 +45,14 @@ const editingData = ref<Contract & { dateRange?: [string, string]; companyName?:
   dateRange: undefined,
   companyName: '',
   employeeName: '',
-  employeeNo: ''
+  employeeNo: '',
+  contractImages: '',
+  contractCount: undefined
 });
 const submitLoading = ref(false);
+
+// 合同图片列表
+const contractImageList = ref<string[]>([]);
 
 // 判断是否为无固定期限合同 (dict_value: '2' = 无固定期限)
 const isNoFixedTerm = computed(() => editingData.value.contractType === '2');
@@ -147,10 +155,13 @@ function handleAdd() {
     remark: '',
     companyName: '',
     employeeName: '',
-    employeeNo: ''
+    employeeNo: '',
+    contractImages: '',
+    contractCount: undefined
   };
   selectedEmployee.value = null;
   employeeDisplayName.value = '';
+  contractImageList.value = [];
   drawerVisible.value = true;
 }
 
@@ -164,6 +175,8 @@ function handleEdit(row: Contract) {
     employeeNo: (row as any).employeeNo || ''
   };
   employeeDisplayName.value = editingData.value.employeeName ? `${editingData.value.employeeName} (${editingData.value.employeeNo})` : '';
+  // 解析合同图片
+  contractImageList.value = row.contractImages ? row.contractImages.split(',').filter(img => img) : [];
   drawerVisible.value = true;
 }
 
@@ -187,6 +200,8 @@ function handleView(row: Contract) {
     employeeName: (row as any).employeeName || '',
     employeeNo: (row as any).employeeNo || ''
   };
+  // 解析合同图片
+  contractImageList.value = row.contractImages ? row.contractImages.split(',').filter(img => img) : [];
   drawerVisible.value = true;
 }
 
@@ -253,14 +268,38 @@ function handleEmployeeDialogSizeChange(size: number) {
 
 // 选择员工
 const employeeDisplayName = ref('');
-function handleSelectEmployee(row: Api.Hr.Employee) {
+async function handleSelectEmployee(row: Api.Hr.Employee) {
   selectedEmployee.value = row;
   editingData.value.employeeId = row.id!;
   editingData.value.employeeName = row.name;
   editingData.value.employeeNo = row.employeeNo;
   editingData.value.companyName = row.companyName || '';
   employeeDisplayName.value = `${row.name} (${row.employeeNo})`;
+
+  // 自动计算合同次数（查询该员工的合同数量+1）
+  if (operateType.value === 'add') {
+    await calculateContractCount(row.id!);
+  }
+
   employeeDialogVisible.value = false;
+}
+
+// 自动计算合同次数
+async function calculateContractCount(employeeId: number) {
+  try {
+    const res = await fetchContractPage({
+      pageNum: 1,
+      pageSize: 1000,
+      employeeId: employeeId
+    });
+    if (res.data) {
+      // 合同次数 = 该员工现有合同数 + 1
+      editingData.value.contractCount = (res.data.total || 0) + 1;
+    }
+  } catch (error) {
+    console.error('计算合同次数失败:', error);
+    editingData.value.contractCount = 1;
+  }
 }
 
 async function handleSubmit() {
@@ -285,7 +324,8 @@ async function handleSubmit() {
     const submitData: Contract = {
       ...editingData.value,
       startDate: isNoFixedTerm.value ? editingData.value.startDate : editingData.value.dateRange![0],
-      endDate: isNoFixedTerm.value ? '' : editingData.value.dateRange![1]
+      endDate: isNoFixedTerm.value ? '' : editingData.value.dateRange![1],
+      contractImages: contractImageList.value.join(',')
     };
     if (operateType.value === 'add') {
       await createContract(submitData);
@@ -302,6 +342,45 @@ async function handleSubmit() {
   } finally {
     submitLoading.value = false;
   }
+}
+
+// 图片上传相关
+const beforeImageUpload: UploadProps['beforeUpload'] = (rawFile) => {
+  const isImage = rawFile.type.startsWith('image/');
+  const isLt5M = rawFile.size / 1024 / 1024 < 5;
+  if (!isImage) {
+    ElMessage.error('只能上传图片文件!');
+    return false;
+  }
+  if (!isLt5M) {
+    ElMessage.error('图片大小不能超过 5MB!');
+    return false;
+  }
+  return true;
+};
+
+async function handleContractImageUpload(file: File): Promise<boolean> {
+  try {
+    if (!editingData.value.employeeNo) {
+      ElMessage.warning('请先选择员工');
+      return false;
+    }
+    const res = await uploadContractPhoto(file, editingData.value.employeeNo);
+    if (res.data) {
+      contractImageList.value.push(res.data);
+      ElMessage.success('上传成功');
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('上传失败:', error);
+    ElMessage.error('上传失败');
+    return false;
+  }
+}
+
+function handleRemoveContractImage(index: number) {
+  contractImageList.value.splice(index, 1);
 }
 
 function getDictLabel(options: Api.System.DictData[], value?: string | number): string {
@@ -435,6 +514,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
             <ElButton type="primary" @click="openEmployeeDialog">选择员工</ElButton>
           </div>
         </ElFormItem>
+        <ElFormItem v-if="editingData.contractCount" label="合同次数">
+          <ElInput :value="`第${editingData.contractCount}次`" disabled style="width: 100%" />
+        </ElFormItem>
         <ElFormItem label="合同类型" required>
           <ElSelect v-model="editingData.contractType" placeholder="请选择合同类型" style="width: 100%">
             <ElOption
@@ -469,6 +551,32 @@ const statusMap: Record<number, { label: string; type: string }> = {
         </ElFormItem>
         <ElFormItem label="签订日期">
           <ElDatePicker v-model="editingData.signDate" type="date" placeholder="选择日期" style="width: 100%" value-format="YYYY-MM-DD" />
+        </ElFormItem>
+        <ElFormItem label="合同图片">
+          <div class="w-full">
+            <div class="flex flex-wrap gap-8px mb-8px">
+              <div v-for="(img, index) in contractImageList" :key="index" class="relative">
+                <ElImage :src="getFileUrl(img)" fit="cover" class="w-100px h-100px rounded border" />
+                <ElIcon class="absolute top-2px right-2px cursor-pointer bg-red-500 text-white rounded-full p-2px" @click="handleRemoveContractImage(index)">
+                  <icon-ep-close />
+                </ElIcon>
+              </div>
+              <ElUpload
+                v-if="contractImageList.length < 9"
+                class="contract-image-uploader"
+                :show-file-list="false"
+                :before-upload="beforeImageUpload"
+                :http-request="({ file }) => handleContractImageUpload(file as File)"
+              >
+                <div class="w-100px h-100px rounded bg-gray-100 flex items-center justify-center border border-dashed border-gray-300 cursor-pointer hover:border-primary">
+                  <ElIcon :size="24" class="text-gray-400">
+                    <Plus />
+                  </ElIcon>
+                </div>
+              </ElUpload>
+            </div>
+            <div class="text-xs text-gray-400">支持上传最多9张图片，每张不超过5MB</div>
+          </div>
         </ElFormItem>
         <ElFormItem label="备注">
           <ElInput v-model="editingData.remark" type="textarea" :rows="3" placeholder="请输入备注" />

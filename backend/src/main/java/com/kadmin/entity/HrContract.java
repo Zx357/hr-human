@@ -67,6 +67,16 @@ public class HrContract extends BaseEntity {
      */
     private String remark;
 
+    /**
+     * 合同图片（多张，逗号分隔）
+     */
+    private String contractImages;
+
+    /**
+     * 合同次数（第几次合同）
+     */
+    private Integer contractCount;
+
     // ========== 非数据库字段 ==========
 
     /**

@@ -12,7 +12,7 @@ import {
 } from '@/service/api/hr';
 import { fetchCompanyList, fetchDepartmentTree, fetchOrgTree } from '@/service/api/organization';
 import { fetchDictDataByCode } from '@/service/api/system';
-import { getFileUrl, uploadImage } from '@/service/api/file';
+import { getFileUrl, uploadEmployeeAvatar, uploadEmployeeIdCard, uploadDiplomaPhoto, uploadCertPhoto } from '@/service/api/file';
 import { hasPermission } from '@/directives/permission';
 
 defineOptions({ name: 'EmployeeManage' });
@@ -184,13 +184,60 @@ function addCertificate() { certificateList.value.push({ certName: '', certPhoto
 function removeCertificate(index: number) { if (certificateList.value.length > 1) { certificateList.value.splice(index, 1); } }
 
 async function handleImageUpload(file: File, type: 'avatar' | 'idCardFront' | 'idCardBack'): Promise<boolean> {
-  try { const res = await uploadImage(file); if (res.data) { editingData.value[type] = res.data; ElMessage.success('上传成功'); return true; } return false; } catch (error) { console.error('上传失败:', error); ElMessage.error('上传失败'); return false; }
+  try {
+    // 检查是否有工号
+    if (!editingData.value.employeeNo) {
+      ElMessage.warning('请先填写员工工号');
+      return false;
+    }
+
+    // 头像使用专门的员工头像上传接口
+    if (type === 'avatar') {
+      const res = await uploadEmployeeAvatar(file, editingData.value.employeeNo);
+      if (res.data) {
+        editingData.value[type] = res.data;
+        ElMessage.success('头像上传成功');
+        return true;
+      }
+    } else if (type === 'idCardFront') {
+      // 身份证正面使用专门的接口
+      const res = await uploadEmployeeIdCard(file, editingData.value.employeeNo, 'front');
+      if (res.data) {
+        editingData.value[type] = res.data;
+        ElMessage.success('身份证正面上传成功');
+        return true;
+      }
+    } else if (type === 'idCardBack') {
+      // 身份证反面使用专门的接口
+      const res = await uploadEmployeeIdCard(file, editingData.value.employeeNo, 'back');
+      if (res.data) {
+        editingData.value[type] = res.data;
+        ElMessage.success('身份证反面上传成功');
+        return true;
+      }
+    }
+    return false;
+  } catch (error) {
+    console.error('上传失败:', error);
+    ElMessage.error('上传失败');
+    return false;
+  }
 }
 async function handleDiplomaUpload(file: File, index: number): Promise<boolean> {
-  try { const res = await uploadImage(file); if (res.data) { educationList.value[index].diplomaPhoto = res.data; ElMessage.success('上传成功'); return true; } return false; } catch (error) { console.error('上传失败:', error); ElMessage.error('上传失败'); return false; }
+  try {
+    if (!editingData.value.employeeNo) { ElMessage.warning('请先填写员工工号'); return false; }
+    const res = await uploadDiplomaPhoto(file, editingData.value.employeeNo);
+    if (res.data) { educationList.value[index].diplomaPhoto = res.data; ElMessage.success('上传成功'); return true; }
+    return false;
+  } catch (error) { console.error('上传失败:', error); ElMessage.error('上传失败'); return false; }
 }
 async function handleCertPhotoUpload(file: File, index: number): Promise<boolean> {
-  try { const res = await uploadImage(file); if (res.data) { certificateList.value[index].certPhoto = res.data; ElMessage.success('上传成功'); return true; } return false; } catch (error) { console.error('上传失败:', error); ElMessage.error('上传失败'); return false; }
+  try {
+    if (!editingData.value.employeeNo) { ElMessage.warning('请先填写员工工号'); return false; }
+    const res = await uploadCertPhoto(file, editingData.value.employeeNo);
+    if (res.data) { certificateList.value[index].certPhoto = res.data; ElMessage.success('上传成功'); return true; }
+    return false;
+  } catch (error) { console.error('上传失败:', error); ElMessage.error('上传失败'); return false; }
 }
 const beforeUpload: UploadProps['beforeUpload'] = (rawFile) => {
   const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -221,7 +268,7 @@ const statusMap: Record<number, { label: string; type: string }> = { 1: { label:
       <ElForm inline :model="searchParams">
         <ElFormItem label="员工姓名"><ElInput v-model="searchParams.name" placeholder="请输入员工姓名" clearable style="width: 150px" /></ElFormItem>
         <ElFormItem label="人员编号"><ElInput v-model="searchParams.employeeNo" placeholder="请输入人员编号" clearable style="width: 150px" /></ElFormItem>
-        <ElFormItem label="组织"><ElTreeSelect v-model="searchParams.orgIds" :data="orgTreeOptions" :props="{ children: 'children', label: 'unitName', value: 'id' }" node-key="id" placeholder="请选择组织" clearable multiple :check-strictly="!cascadeSelect" show-checkbox collapse-tags :max-collapse-tags="2" style="width: 280px" :render-after-expand="false" filterable><template #default="{ node, data }"><div class="tree-node-content"><span>{{ data.unitName }}</span><ElCheckbox v-if="node.level === 1" v-model="cascadeSelect" @click.stop>联动</ElCheckbox></div></template><template #label="{ value }"><span>{{ getOrgName(value) }}</span></template></ElTreeSelect></ElFormItem>
+        <ElFormItem label="组织"><ElTreeSelect v-model="searchParams.orgIds" :data="orgTreeOptions" :props="{ children: 'children', label: 'unitName', value: 'id' }" node-key="id" placeholder="请选择组织" clearable multiple :check-strictly="!cascadeSelect" show-checkbox collapse-tags :max-collapse-tags="2" style="width: 150px" :render-after-expand="false" filterable><template #default="{ node, data }"><div class="tree-node-content"><span>{{ data.unitName }}</span><ElCheckbox v-if="node.level === 1" v-model="cascadeSelect" @click.stop>联动</ElCheckbox></div></template><template #label="{ value }"><span>{{ getOrgName(value) }}</span></template></ElTreeSelect></ElFormItem>
         <ElFormItem label="状态"><ElSelect v-model="searchParams.status" placeholder="请选择状态" clearable style="width: 120px"><ElOption label="在职" :value="1" /><ElOption label="离职" :value="2" /></ElSelect></ElFormItem>
         <ElFormItem><ElButton type="primary" @click="handleSearch"><template #icon><icon-ep-search /></template>搜索</ElButton><ElButton @click="handleReset"><template #icon><icon-ep-refresh /></template>重置</ElButton></ElFormItem>
       </ElForm>

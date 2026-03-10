@@ -1,6 +1,7 @@
 package com.kadmin.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kadmin.entity.*;
@@ -248,6 +249,50 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
                     employee.setPosition(application.getToPosition());
                 }
                 employeeMapper.updateById(employee);
+            } else if ("exchange".equals(appType)) {
+                // 换休：交换两天的排班
+                LocalDate originalDay = application.getStartTime().toLocalDate();
+                LocalDate swapDay = application.getEndTime().toLocalDate();
+                Long empId = application.getEmployeeId();
+
+                AttSchedule originalSchedule = scheduleMapper.selectOne(
+                    new LambdaQueryWrapper<AttSchedule>()
+                        .eq(AttSchedule::getEmployeeId, empId)
+                        .eq(AttSchedule::getScheduleDate, originalDay));
+                AttSchedule swapSchedule = scheduleMapper.selectOne(
+                    new LambdaQueryWrapper<AttSchedule>()
+                        .eq(AttSchedule::getEmployeeId, empId)
+                        .eq(AttSchedule::getScheduleDate, swapDay));
+
+                Long originalShiftId = originalSchedule != null ? originalSchedule.getShiftId() : null;
+                Long swapShiftId = swapSchedule != null ? swapSchedule.getShiftId() : null;
+
+                if (originalSchedule != null && swapSchedule != null) {
+                    scheduleMapper.update(null, new LambdaUpdateWrapper<AttSchedule>()
+                        .eq(AttSchedule::getId, originalSchedule.getId())
+                        .set(AttSchedule::getShiftId, swapShiftId));
+                    scheduleMapper.update(null, new LambdaUpdateWrapper<AttSchedule>()
+                        .eq(AttSchedule::getId, swapSchedule.getId())
+                        .set(AttSchedule::getShiftId, originalShiftId));
+                } else if (originalSchedule != null) {
+                    scheduleMapper.update(null, new LambdaUpdateWrapper<AttSchedule>()
+                        .eq(AttSchedule::getId, originalSchedule.getId())
+                        .set(AttSchedule::getShiftId, null));
+                    AttSchedule newSchedule = new AttSchedule();
+                    newSchedule.setEmployeeId(empId);
+                    newSchedule.setScheduleDate(swapDay);
+                    newSchedule.setShiftId(originalShiftId);
+                    scheduleMapper.insert(newSchedule);
+                } else if (swapSchedule != null) {
+                    scheduleMapper.update(null, new LambdaUpdateWrapper<AttSchedule>()
+                        .eq(AttSchedule::getId, swapSchedule.getId())
+                        .set(AttSchedule::getShiftId, null));
+                    AttSchedule newSchedule = new AttSchedule();
+                    newSchedule.setEmployeeId(empId);
+                    newSchedule.setScheduleDate(originalDay);
+                    newSchedule.setShiftId(swapShiftId);
+                    scheduleMapper.insert(newSchedule);
+                }
             } else if ("resignation".equals(appType)) {
                 // 离职：更新员工状态为离职
                 HrEmployee employee = new HrEmployee();

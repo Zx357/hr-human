@@ -4,7 +4,7 @@
 
     <select id="selectPageWithEmployee" resultType="com.kadmin.entity.HrContract">
         SELECT c.id, c.contract_no, c.employee_id, c.contract_type, c.start_date, c.end_date,
-               c.sign_date, c.probation_months, c.salary, c.remark,
+               c.sign_date, c.probation_months, c.salary, c.remark, c.contract_images, c.contract_count,
                c.created_time, c.updated_time, c.created_by, c.updated_by, c.deleted,
                e.name as employee_name, e.employee_no,
                CASE 
@@ -48,6 +48,9 @@
                 WHEN c.end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 2
                 ELSE 1
             END) = #{status}
+        </if>
+        <if test="employeeId != null">
+            AND c.employee_id = #{employeeId}
         </if>
         ORDER BY c.created_time DESC
     </select>

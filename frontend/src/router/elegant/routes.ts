@@ -423,6 +423,16 @@ export const generatedRoutes: GeneratedRoute[] = [
         }
       },
       {
+        name: 'system_file-config',
+        path: '/system/file-config',
+        component: 'view.system_file-config',
+        meta: {
+          title: 'system_file-config',
+          i18nKey: 'route.system_file-config',
+          order: 8
+        }
+      },
+      {
         name: 'system_menu',
         path: '/system/menu',
         component: 'view.system_menu',

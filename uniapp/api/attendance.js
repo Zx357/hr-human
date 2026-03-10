@@ -31,3 +31,14 @@ export function getMyClockRecords(params) {
     params
   })
 }
+
+/**
+ * 获取我的月度考勤数据（日历视图 + 统计）
+ */
+export function getMyMonthAttendance(params) {
+  return request({
+    url: '/mobile/attendance/month',
+    method: 'get',
+    params
+  })
+}
