@@ -2,6 +2,7 @@ package com.kadmin.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.kadmin.common.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -26,6 +27,12 @@ public class HrEmployee extends BaseEntity {
      * 姓名
      */
     private String name;
+
+    /**
+     * 登录密码
+     */
+    @JsonIgnore
+    private String password;
 
     /**
      * 人员头像照片

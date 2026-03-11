@@ -122,7 +122,6 @@ public class SysMenuService extends ServiceImpl<SysMenuMapper, SysMenu> {
      * 新增菜单
      */
     public boolean addMenu(SysMenu menu) {
-        menu.setDeleted(0);
         return save(menu);
     }
 
@@ -134,13 +133,10 @@ public class SysMenuService extends ServiceImpl<SysMenuMapper, SysMenu> {
     }
 
     /**
-     * 删除菜单（逻辑删除）
+     * 删除菜单（真删除）
      */
     public boolean deleteMenu(Long id) {
-        SysMenu menu = new SysMenu();
-        menu.setId(id);
-        menu.setDeleted(1);
-        return updateById(menu);
+        return removeById(id);
     }
 
     /**
@@ -148,7 +144,6 @@ public class SysMenuService extends ServiceImpl<SysMenuMapper, SysMenu> {
      */
     public boolean hasChildren(Long id) {
         return count(new LambdaQueryWrapper<SysMenu>()
-                .eq(SysMenu::getParentId, id)
-                .eq(SysMenu::getDeleted, 0)) > 0;
+                .eq(SysMenu::getParentId, id)) > 0;
     }
 }

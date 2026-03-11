@@ -42,3 +42,13 @@ export function getMyMonthAttendance(params) {
     params
   })
 }
+
+/**
+ * 获取首页统计数据（本月出勤、待处理、已通过）
+ */
+export function getHomeStats() {
+  return request({
+    url: '/mobile/home/stats',
+    method: 'get'
+  })
+}

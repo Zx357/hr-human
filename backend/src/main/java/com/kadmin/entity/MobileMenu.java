@@ -79,9 +79,4 @@ public class MobileMenu {
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedTime;
 
-    /**
-     * 删除标记
-     */
-    @TableLogic
-    private Integer deleted;
 }

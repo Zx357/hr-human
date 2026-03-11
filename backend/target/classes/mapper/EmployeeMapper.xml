@@ -7,6 +7,7 @@
         <id column="id" property="id"/>
         <result column="employee_no" property="employeeNo"/>
         <result column="name" property="name"/>
+        <result column="password" property="password"/>
         <result column="avatar" property="avatar"/>
         <result column="id_card_front" property="idCardFront"/>
         <result column="id_card_back" property="idCardBack"/>
@@ -42,7 +43,6 @@
         <result column="emergency_phone" property="emergencyPhone"/>
         <result column="leave_date" property="leaveDate"/>
         <result column="status" property="status"/>
-        <result column="deleted" property="deleted"/>
         <result column="created_time" property="createdTime"/>
         <result column="updated_time" property="updatedTime"/>
         <result column="dept_name" property="deptName"/>
@@ -61,7 +61,7 @@
             e.job_authority, e.job_title, e.occupation, e.marital_status, e.political_status,
             e.native_place, e.police_station, e.registered_address, e.home_address,
             e.current_address, e.emergency_contact, e.emergency_relation, e.emergency_phone,
-            e.leave_date, e.status, e.deleted, e.created_time, e.updated_time,
+            e.leave_date, e.status, e.created_time, e.updated_time,
             d.unit_name as dept_name,
             CASE 
                 WHEN d.unit_type = 2 THEN d.unit_name
@@ -78,10 +78,10 @@
                 ELSE NULL
             END as company_id
         FROM hr_employee e
-        LEFT JOIN org_unit d ON e.dept_id = d.id AND d.deleted = 0
-        LEFT JOIN org_unit p1 ON d.parent_id = p1.id AND p1.deleted = 0
-        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id AND p2.deleted = 0
-        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id AND p3.deleted = 0
+        LEFT JOIN org_unit d ON e.dept_id = d.id
+        LEFT JOIN org_unit p1 ON d.parent_id = p1.id
+        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id
+        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id
         ${ew.customSqlSegment}
     </select>
     

@@ -19,6 +19,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -42,6 +44,7 @@ public class SecurityConfig {
             "/auth/register",
             "/auth/captcha",
             "/auth/refresh",
+            "/auth/logout",
             "/system/mobile-menu/mobile/list",
             "/doc.html",
             "/swagger-ui/**",
@@ -72,6 +75,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(WHITE_LIST).permitAll()
                         .anyRequest().authenticated())
+                // 认证失败处理：返回JSON而非默认403页面
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.getWriter().write("{\"code\":\"8888\",\"msg\":\"请先登录\",\"data\":null}");
+                        }))
                 // 添加JWT过滤器
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

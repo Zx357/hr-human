@@ -16,21 +16,23 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class ScheduleService extends ServiceImpl<AttScheduleMapper, AttSchedule> {
-    
+
     private final EmployeeMapper employeeMapper;
     private final OrgUnitMapper orgUnitMapper;
 
     /**
      * 获取排班列表
      */
-    public List<AttSchedule> getScheduleList(List<Long> orgIds, String employeeName, LocalDate startDate, LocalDate endDate) {
+    public List<AttSchedule> getScheduleList(List<Long> orgIds, String employeeName, LocalDate startDate,
+            LocalDate endDate) {
         return baseMapper.selectScheduleList(orgIds, employeeName, startDate, endDate);
     }
 
     /**
      * 获取员工周排班数据（按员工分组）
      */
-    public List<Map<String, Object>> getWeekSchedule(List<Long> orgIds, String employeeNo, String employeeName, LocalDate startDate, LocalDate endDate) {
+    public List<Map<String, Object>> getWeekSchedule(List<Long> orgIds, String employeeNo, String employeeName,
+            LocalDate startDate, LocalDate endDate) {
         // 获取组织及子组织ID
         List<Long> allOrgIds = new ArrayList<>();
         if (orgIds != null && !orgIds.isEmpty()) {
@@ -41,25 +43,28 @@ public class ScheduleService extends ServiceImpl<AttScheduleMapper, AttSchedule>
                 }
             }
         }
-        
+
         // 获取员工列表
         LambdaQueryWrapper<HrEmployee> empWrapper = new LambdaQueryWrapper<>();
-        empWrapper.eq(HrEmployee::getDeleted, 0).eq(HrEmployee::getStatus, 1);
-        if (!allOrgIds.isEmpty()) empWrapper.in(HrEmployee::getDeptId, allOrgIds);
-        if (employeeNo != null && !employeeNo.isEmpty()) empWrapper.like(HrEmployee::getEmployeeNo, employeeNo);
-        if (employeeName != null && !employeeName.isEmpty()) empWrapper.like(HrEmployee::getName, employeeName);
+        empWrapper.eq(HrEmployee::getStatus, 1);
+        if (!allOrgIds.isEmpty())
+            empWrapper.in(HrEmployee::getDeptId, allOrgIds);
+        if (employeeNo != null && !employeeNo.isEmpty())
+            empWrapper.like(HrEmployee::getEmployeeNo, employeeNo);
+        if (employeeName != null && !employeeName.isEmpty())
+            empWrapper.like(HrEmployee::getName, employeeName);
         empWrapper.orderByAsc(HrEmployee::getId);
         List<HrEmployee> employees = employeeMapper.selectList(empWrapper);
-        
+
         // 获取排班数据
         List<AttSchedule> schedules = baseMapper.selectScheduleList(orgIds, employeeName, startDate, endDate);
-        
+
         // 按员工ID分组排班
         Map<Long, Map<LocalDate, AttSchedule>> scheduleMap = new HashMap<>();
         for (AttSchedule s : schedules) {
             scheduleMap.computeIfAbsent(s.getEmployeeId(), k -> new HashMap<>()).put(s.getScheduleDate(), s);
         }
-        
+
         // 组装结果
         List<Map<String, Object>> result = new ArrayList<>();
         for (HrEmployee emp : employees) {
@@ -68,7 +73,7 @@ public class ScheduleService extends ServiceImpl<AttScheduleMapper, AttSchedule>
             row.put("employeeName", emp.getName());
             row.put("employeeNo", emp.getEmployeeNo());
             row.put("deptId", emp.getDeptId());
-            
+
             Map<String, Object> schedule = new HashMap<>();
             Map<LocalDate, AttSchedule> empSchedule = scheduleMap.getOrDefault(emp.getId(), new HashMap<>());
             LocalDate date = startDate;
@@ -98,10 +103,11 @@ public class ScheduleService extends ServiceImpl<AttScheduleMapper, AttSchedule>
         remove(new LambdaQueryWrapper<AttSchedule>()
                 .eq(AttSchedule::getEmployeeId, employeeId)
                 .eq(AttSchedule::getScheduleDate, scheduleDate));
-        
+
         // 如果shiftId为空或0，表示清除排班
-        if (shiftId == null || shiftId == 0) return true;
-        
+        if (shiftId == null || shiftId == 0)
+            return true;
+
         AttSchedule schedule = new AttSchedule();
         schedule.setEmployeeId(employeeId);
         schedule.setShiftId(shiftId);

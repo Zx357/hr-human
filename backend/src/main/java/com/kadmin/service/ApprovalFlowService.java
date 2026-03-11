@@ -17,7 +17,8 @@ public class ApprovalFlowService extends ServiceImpl<SysApprovalFlowMapper, SysA
     private final SysApprovalNodeMapper nodeMapper;
 
     public List<SysApprovalFlow> listAll() {
-        List<SysApprovalFlow> flows = list(new LambdaQueryWrapper<SysApprovalFlow>().eq(SysApprovalFlow::getDeleted, 0).orderByAsc(SysApprovalFlow::getId));
+        List<SysApprovalFlow> flows = list(
+                new LambdaQueryWrapper<SysApprovalFlow>().orderByAsc(SysApprovalFlow::getId));
         flows.forEach(flow -> flow.setNodes(nodeMapper.selectByFlowIdWithApprover(flow.getId())));
         return flows;
     }

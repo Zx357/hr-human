@@ -1,29 +1,56 @@
 <template>
-  <view class="normal-login-container">
-    <view class="logo-content align-center justify-center flex">
-      <image style="width: 100rpx;height: 100rpx;" :src="globalConfig.appInfo.logo" mode="widthFix">
-      </image>
-      <text class="title">HR人事管理系统</text>
-    </view>
-    <view class="login-form-content">
-      <view class="input-item flex align-center">
-        <view class="iconfont icon-user icon"></view>
-        <input v-model="loginForm.employeeNo" class="input" type="text" placeholder="请输入工号" maxlength="30" />
-      </view>
-      <view class="input-item flex align-center">
-        <view class="iconfont icon-password icon"></view>
-        <input v-model="loginForm.password" type="password" class="input" placeholder="请输入密码（默认123456）" maxlength="20" />
-      </view>
-      <view class="action-btn">
-        <button @click="handleLogin" class="login-btn cu-btn block bg-blue lg round">登录</button>
-      </view>
-      <view class="xieyi text-center">
-        <text class="text-grey1">登录即代表同意</text>
-        <text @click="handleUserAgrement" class="text-blue">《用户协议》</text>
-        <text @click="handlePrivacy" class="text-blue">《隐私协议》</text>
+  <app-page padding="0">
+    <view class="login-hero">
+      <view class="brand">
+        <view class="brand-text">
+          <text class="title">HR 人事管理</text>
+          <text class="subtitle">移动端</text>
+        </view>
       </view>
     </view>
-  </view>
+
+    <view class="content">
+      <app-card class="card">
+        <view class="form-group">
+          <text class="form-label">工号</text>
+          <view class="input-wrapper">
+            <input
+              class="form-input"
+              v-model="loginForm.employeeNo"
+              placeholder="请输入工号"
+              placeholder-class="input-placeholder"
+            />
+            <view v-if="loginForm.employeeNo" class="input-clear" @click="loginForm.employeeNo = ''">
+              <text class="clear-icon">×</text>
+            </view>
+          </view>
+        </view>
+        <view class="form-group">
+          <text class="form-label">密码</text>
+          <view class="input-wrapper">
+            <input
+              class="form-input"
+              v-model="loginForm.password"
+              :password="!showPassword"
+              placeholder="请输入密码"
+              placeholder-class="input-placeholder"
+            />
+            <view class="input-suffix" @click="showPassword = !showPassword">
+              <u-icon :name="showPassword ? 'eye-off' : 'eye-fill'" size="20" color="#909399"></u-icon>
+            </view>
+          </view>
+        </view>
+
+        <u-button type="primary" shape="circle" :loading="loading" @click="handleLogin">登录</u-button>
+
+        <view class="agreements">
+          <text class="muted">登录即代表同意</text>
+          <text class="link" @click="handleUserAgrement">《用户协议》</text>
+          <text class="link" @click="handlePrivacy">《隐私协议》</text>
+        </view>
+      </app-card>
+    </view>
+  </app-page>
 </template>
 
 <script>
@@ -36,7 +63,9 @@
         loginForm: {
           employeeNo: "",
           password: ""
-        }
+        },
+        loading: false,
+        showPassword: false
       }
     },
     onLoad() {
@@ -62,6 +91,7 @@
         if (this.loginForm.employeeNo === "") {
           this.$modal.msgError("请输入工号")
         } else {
+          this.loading = true
           this.$modal.loading("登录中，请耐心等待...")
           this.pwdLogin()
         }
@@ -76,6 +106,7 @@
           console.log('登录失败', err)
           this.$modal.closeLoading()
           this.$modal.msgError(err || '登录失败')
+          this.loading = false
         })
       },
       // 登录成功后，处理函数
@@ -85,10 +116,12 @@
           console.log('获取用户信息成功，跳转主页', res)
           this.$modal.closeLoading()
           this.$tab.reLaunch('/pages/index')
+          this.loading = false
         }).catch(err => {
           console.log('获取用户信息失败，但仍跳转主页', err)
           this.$modal.closeLoading()
           this.$tab.reLaunch('/pages/index')
+          this.loading = false
         })
       }
     }
@@ -96,64 +129,113 @@
 </script>
 
 <style lang="scss" scoped>
-  page {
-    background-color: #ffffff;
+  @import "@/static/scss/tokens.scss";
+
+  .login-hero {
+    padding: 120rpx 32rpx 56rpx;
+    background: linear-gradient(135deg, $app-primary 0%, $app-primary-2 100%);
   }
 
-  .normal-login-container {
-    width: 100%;
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 20rpx;
+  }
 
-    .logo-content {
-      width: 100%;
-      font-size: 21px;
-      text-align: center;
-      padding-top: 15%;
+  .brand-text {
+    display: flex;
+    flex-direction: column;
+  }
 
-      image {
-        border-radius: 4px;
-      }
+  .title {
+    font-size: 40rpx;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 1rpx;
+  }
 
-      .title {
-        margin-left: 10px;
-      }
-    }
+  .subtitle {
+    margin-top: 8rpx;
+    font-size: 24rpx;
+    color: rgba(255, 255, 255, 0.85);
+  }
 
-    .login-form-content {
-      text-align: center;
-      margin: 20px auto;
-      margin-top: 15%;
-      width: 80%;
+  .content {
+    padding: 0 24rpx;
+    margin-top: -28rpx;
+  }
 
-      .input-item {
-        margin: 20px auto;
-        background-color: #f5f6f7;
-        height: 45px;
-        border-radius: 20px;
+  .card {
+    padding: 28rpx;
+  }
 
-        .icon {
-          font-size: 38rpx;
-          margin-left: 10px;
-          color: #999;
-        }
+  .form-group {
+    margin-bottom: 28rpx;
+  }
 
-        .input {
-          width: 100%;
-          font-size: 14px;
-          line-height: 20px;
-          text-align: left;
-          padding-left: 15px;
-        }
-      }
+  .form-label {
+    display: block;
+    font-size: 28rpx;
+    font-weight: 500;
+    color: #303133;
+    margin-bottom: 12rpx;
+  }
 
-      .login-btn {
-        margin-top: 40px;
-        height: 45px;
-      }
-      
-      .xieyi {
-        color: #333;
-        margin-top: 20px;
-      }
-    }
+  .input-wrapper {
+    display: flex;
+    align-items: center;
+    border: 1rpx solid #dcdfe6;
+    border-radius: 12rpx;
+    padding: 0 20rpx;
+    height: 80rpx;
+    background-color: #f7f8fa;
+    transition: border-color 0.2s;
+  }
+
+  .form-input {
+    flex: 1;
+    height: 80rpx;
+    font-size: 28rpx;
+    color: #303133;
+    background: transparent;
+  }
+
+  .input-placeholder {
+    color: #c0c4cc;
+    font-size: 28rpx;
+  }
+
+  .input-clear {
+    width: 40rpx;
+    height: 40rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 8rpx;
+  }
+
+  .clear-icon {
+    font-size: 32rpx;
+    color: #c0c4cc;
+    line-height: 1;
+  }
+
+  .input-suffix {
+    margin-left: 8rpx;
+    padding: 8rpx;
+  }
+
+  .agreements {
+    margin-top: 18rpx;
+    text-align: center;
+    font-size: 24rpx;
+  }
+
+  .muted {
+    color: $app-text-2;
+  }
+
+  .link {
+    color: $app-primary;
   }
 </style>

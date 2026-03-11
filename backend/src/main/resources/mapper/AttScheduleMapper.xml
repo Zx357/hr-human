@@ -7,9 +7,9 @@
                sh.shift_name, sh.shift_code
         FROM att_schedule s
         LEFT JOIN hr_employee e ON s.employee_id = e.id
-        LEFT JOIN org_unit d ON e.dept_id = d.id AND d.deleted = 0
+        LEFT JOIN org_unit d ON e.dept_id = d.id
         LEFT JOIN att_shift sh ON s.shift_id = sh.id
-        WHERE e.deleted = 0
+        WHERE 1 = 1
         <if test="orgIds != null and orgIds.size() > 0">
             AND e.dept_id IN
             <foreach collection="orgIds" item="orgId" open="(" separator="," close=")">

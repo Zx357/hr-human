@@ -38,6 +38,19 @@ const request = config => {
         }
         
         // 检查 HTTP 状态码
+        if (res.statusCode === 401) {
+          // 未认证，Token无效或过期
+          showConfirm('登录状态已过期，您可以继续留在该页面，或者重新登录?').then(res => {
+            if (res.confirm) {
+              store.dispatch('LogOut').then(res => {
+                uni.reLaunch({ url: '/pages/login' })
+              })
+            }
+          })
+          reject('无效的会话，或者会话已过期，请重新登录。')
+          return
+        }
+        
         if (res.statusCode !== 200) {
           console.log('HTTP错误', res.statusCode, res)
           toast('请求失败: ' + res.statusCode)

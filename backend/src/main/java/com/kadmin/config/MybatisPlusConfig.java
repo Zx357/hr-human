@@ -37,7 +37,6 @@ public class MybatisPlusConfig {
             public void insertFill(MetaObject metaObject) {
                 this.strictInsertFill(metaObject, "createdTime", LocalDateTime.class, LocalDateTime.now());
                 this.strictInsertFill(metaObject, "updatedTime", LocalDateTime.class, LocalDateTime.now());
-                this.strictInsertFill(metaObject, "deleted", Integer.class, 0);
 
                 // 获取当前登录用户ID
                 Long userId = SecurityUtils.getCurrentUserId();

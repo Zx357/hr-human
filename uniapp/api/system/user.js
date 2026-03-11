@@ -1,15 +1,15 @@
 import upload from '@/utils/upload'
 import request from '@/utils/request'
 
-// 用户密码重置
+// 用户密码重置（移动端员工修改密码）
 export function updateUserPwd(oldPassword, newPassword) {
   const data = {
     oldPassword,
     newPassword
   }
   return request({
-    url: '/system/user/profile/updatePwd',
-    method: 'put',
+    url: '/auth/mobile/change-password',
+    method: 'post',
     data: data
   })
 }

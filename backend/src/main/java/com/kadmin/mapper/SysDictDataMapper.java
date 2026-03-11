@@ -19,7 +19,7 @@ public interface SysDictDataMapper extends BaseMapper<SysDictData> {
      */
     @Select("SELECT d.* FROM sys_dict_data d " +
             "INNER JOIN sys_dict_type t ON d.dict_type_id = t.id " +
-            "WHERE t.dict_code = #{dictCode} AND d.deleted = 0 AND d.status = 1 " +
+            "WHERE t.dict_code = #{dictCode} AND d.status = 1 " +
             "ORDER BY d.sort_order")
     List<SysDictData> selectByDictCode(@Param("dictCode") String dictCode);
 }

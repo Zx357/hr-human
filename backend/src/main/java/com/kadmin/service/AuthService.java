@@ -93,14 +93,15 @@ public class AuthService {
             throw new BusinessException("该员工已离职，无法登录");
         }
 
-        // 默认密码为123456，移动端简化验证
+        // 默认密码为123456
         String defaultPassword = "123456";
-        // 如果密码为空，使用默认密码
+        String employeePassword = (employee.getPassword() == null || employee.getPassword().isEmpty())
+                ? defaultPassword
+                : employee.getPassword();
         String checkPassword = (password == null || password.isEmpty()) ? defaultPassword : password;
-        
-        // 简单密码验证（只接受默认密码123456）
-        if (!defaultPassword.equals(checkPassword)) {
-            throw new BusinessException("密码错误，默认密码为123456");
+
+        if (!employeePassword.equals(checkPassword)) {
+            throw new BusinessException("密码错误");
         }
 
         // 创建登录用户（员工身份）
@@ -199,6 +200,32 @@ public class AuthService {
 
         // 删除用户Token，强制重新登录
         tokenService.deleteUserToken(userId);
+
+        return Result.success();
+    }
+
+    /**
+     * 移动端修改密码（员工）
+     */
+    public Result<Void> mobileChangePassword(Long employeeId, String oldPassword, String newPassword) {
+        HrEmployee employee = employeeMapper.selectById(employeeId);
+        if (employee == null) {
+            throw new BusinessException("员工不存在");
+        }
+
+        // 默认密码为123456
+        String defaultPassword = "123456";
+        String currentPassword = (employee.getPassword() == null || employee.getPassword().isEmpty())
+                ? defaultPassword
+                : employee.getPassword();
+
+        if (!currentPassword.equals(oldPassword)) {
+            throw new BusinessException("原密码错误");
+        }
+
+        // 更新密码
+        employee.setPassword(newPassword);
+        employeeMapper.updateById(employee);
 
         return Result.success();
     }

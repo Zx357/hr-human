@@ -63,3 +63,25 @@ export function approveApplication(id, status, remark) {
     params: { status, remark }
   })
 }
+
+/**
+ * 计算请假小时数
+ */
+export function calculateLeaveHours(employeeId, startTime, endTime) {
+  return request({
+    url: '/hr/application/calculate-leave-hours',
+    method: 'get',
+    params: { employeeId, startTime, endTime }
+  })
+}
+
+/**
+ * 计算加班小时数
+ */
+export function calculateOvertimeHours(employeeId, startTime, endTime) {
+  return request({
+    url: '/hr/application/calculate-overtime-hours',
+    method: 'get',
+    params: { employeeId, startTime, endTime }
+  })
+}

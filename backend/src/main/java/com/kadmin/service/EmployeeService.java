@@ -33,6 +33,9 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
     @Autowired
     private HrEmployeeExtraMapper employeeExtraMapper;
 
+    @Autowired
+    private OrgUnitMapper orgUnitMapper;
+
     /**
      * 分页查询员工
      */
@@ -41,8 +44,6 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
         Page<HrEmployee> page = new Page<>(pageNum, pageSize);
         // 使用QueryWrapper并为字段添加表别名e，避免JOIN时列名歧义
         QueryWrapper<HrEmployee> wrapper = new QueryWrapper<>();
-
-        wrapper.eq("e.deleted", 0);
 
         if (name != null && !name.isEmpty()) {
             wrapper.like("e.name", name);
@@ -80,7 +81,6 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
      */
     public List<HrEmployee> getEmployeeList(Long deptId, Integer status) {
         LambdaQueryWrapper<HrEmployee> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(HrEmployee::getDeleted, 0);
         if (deptId != null) {
             wrapper.eq(HrEmployee::getDeptId, deptId);
         }
@@ -124,6 +124,33 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
             employee.setExtraFieldList(employeeExtraMapper.selectList(
                     new LambdaQueryWrapper<HrEmployeeExtra>()
                             .eq(HrEmployeeExtra::getEmployeeId, id)));
+
+            // 回显部门和公司名称（组织架构统一使用 org_unit：1-集团，2-公司，3-部门）
+            if (employee.getDeptId() != null) {
+                OrgUnit deptUnit = orgUnitMapper.selectById(employee.getDeptId());
+                if (deptUnit != null) {
+                    employee.setDeptName(deptUnit.getUnitName());
+
+                    // 向上查找到公司节点
+                    OrgUnit cursor = deptUnit;
+                    int guard = 0;
+                    while (cursor != null && cursor.getParentId() != null && cursor.getParentId() != 0L
+                            && guard++ < 20) {
+                        if (cursor.getUnitType() != null && cursor.getUnitType() == OrgUnit.TYPE_COMPANY) {
+                            employee.setCompanyName(cursor.getUnitName());
+                            break;
+                        }
+                        cursor = orgUnitMapper.selectById(cursor.getParentId());
+                    }
+
+                    // 如果部门本身就是公司节点
+                    if (employee.getCompanyName() == null
+                            && deptUnit.getUnitType() != null
+                            && deptUnit.getUnitType() == OrgUnit.TYPE_COMPANY) {
+                        employee.setCompanyName(deptUnit.getUnitName());
+                    }
+                }
+            }
         }
         return employee;
     }
@@ -133,7 +160,6 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
      */
     @Transactional
     public boolean addEmployee(HrEmployee employee) {
-        employee.setDeleted(0);
         if (employee.getStatus() == null) {
             employee.setStatus(1); // 默认在职
         }
@@ -257,14 +283,11 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
     }
 
     /**
-     * 删除员工（逻辑删除）
+     * 删除员工（真删除）
      */
     @Transactional
     public boolean deleteEmployee(Long id) {
-        HrEmployee employee = new HrEmployee();
-        employee.setId(id);
-        employee.setDeleted(1);
-        return updateById(employee);
+        return removeById(id);
     }
 
     /**
@@ -272,8 +295,7 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
      */
     public boolean checkEmployeeNoExists(String employeeNo, Long excludeId) {
         LambdaQueryWrapper<HrEmployee> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(HrEmployee::getEmployeeNo, employeeNo)
-                .eq(HrEmployee::getDeleted, 0);
+        wrapper.eq(HrEmployee::getEmployeeNo, employeeNo);
         if (excludeId != null) {
             wrapper.ne(HrEmployee::getId, excludeId);
         }

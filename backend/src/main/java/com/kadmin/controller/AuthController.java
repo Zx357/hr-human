@@ -87,6 +87,17 @@ public class AuthController {
     }
 
     /**
+     * 移动端修改密码（员工）
+     */
+    @Operation(summary = "移动端修改密码")
+    @PostMapping("/mobile/change-password")
+    public Result<Void> mobileChangePassword(@RequestBody @Validated ChangePasswordRequest request) {
+        LoginUser loginUser = SecurityUtils.getCurrentUser();
+        return authService.mobileChangePassword(loginUser.getEmployeeId(), request.getOldPassword(),
+                request.getNewPassword());
+    }
+
+    /**
      * 登录请求
      */
     @Data

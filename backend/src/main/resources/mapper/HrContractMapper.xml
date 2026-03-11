@@ -5,7 +5,7 @@
     <select id="selectPageWithEmployee" resultType="com.kadmin.entity.HrContract">
         SELECT c.id, c.contract_no, c.employee_id, c.contract_type, c.start_date, c.end_date,
                c.sign_date, c.probation_months, c.salary, c.remark, c.contract_images, c.contract_count,
-               c.created_time, c.updated_time, c.created_by, c.updated_by, c.deleted,
+               c.created_time, c.updated_time, c.created_by, c.updated_by,
                e.name as employee_name, e.employee_no,
                CASE 
                    WHEN d.unit_type = 2 THEN d.unit_name
@@ -23,11 +23,11 @@
                END as status
         FROM hr_contract c
         LEFT JOIN hr_employee e ON c.employee_id = e.id
-        LEFT JOIN org_unit d ON e.dept_id = d.id AND d.deleted = 0
-        LEFT JOIN org_unit p1 ON d.parent_id = p1.id AND p1.deleted = 0
-        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id AND p2.deleted = 0
-        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id AND p3.deleted = 0
-        WHERE c.deleted = 0
+        LEFT JOIN org_unit d ON e.dept_id = d.id
+        LEFT JOIN org_unit p1 ON d.parent_id = p1.id
+        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id
+        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id
+        WHERE 1 = 1
         <if test="contractNo != null and contractNo != ''">
             AND c.contract_no LIKE CONCAT('%', #{contractNo}, '%')
         </if>

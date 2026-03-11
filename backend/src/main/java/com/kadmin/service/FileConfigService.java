@@ -46,7 +46,7 @@ public class FileConfigService extends ServiceImpl<SysFileConfigMapper, SysFileC
     public void refreshCache() {
         try {
             List<SysFileConfig> configs = list(
-                    new LambdaQueryWrapper<SysFileConfig>().eq(SysFileConfig::getDeleted, 0));
+                    new LambdaQueryWrapper<SysFileConfig>());
             configCache.clear();
             for (SysFileConfig config : configs) {
                 configCache.put(config.getConfigKey(), config.getConfigValue());
@@ -83,7 +83,7 @@ public class FileConfigService extends ServiceImpl<SysFileConfigMapper, SysFileC
      * 获取所有配置
      */
     public List<SysFileConfig> getAllConfigs() {
-        return list(new LambdaQueryWrapper<SysFileConfig>().eq(SysFileConfig::getDeleted, 0));
+        return list(new LambdaQueryWrapper<SysFileConfig>());
     }
 
     /**

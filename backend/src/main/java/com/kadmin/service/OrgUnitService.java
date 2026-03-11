@@ -47,7 +47,7 @@ public class OrgUnitService extends ServiceImpl<OrgUnitMapper, OrgUnit> {
             Integer count = baseMapper.countEmployeesByDeptIds(orgIds);
             unit.setEmployeeCount(count != null ? count : 0);
             total += unit.getEmployeeCount();
-            
+
             if (unit.getChildren() != null && !unit.getChildren().isEmpty()) {
                 calculateEmployeeCount(unit.getChildren());
             }
@@ -60,7 +60,7 @@ public class OrgUnitService extends ServiceImpl<OrgUnitMapper, OrgUnit> {
      */
     public OrgStatisticsDTO getStatistics(Long orgId) {
         OrgStatisticsDTO dto = new OrgStatisticsDTO();
-        
+
         // 获取要统计的部门ID列表
         List<Long> deptIds;
         if (orgId == null || orgId == 0) {
@@ -70,51 +70,51 @@ public class OrgUnitService extends ServiceImpl<OrgUnitMapper, OrgUnit> {
             // 统计指定组织及其子组织
             deptIds = baseMapper.selectOrgAndChildIds(orgId);
         }
-        
+
         // 员工总数
         Integer totalCount = baseMapper.countEmployeesByDeptIds(deptIds);
         dto.setTotalCount(totalCount != null ? totalCount : 0);
-        
+
         // 学历分布
         List<Map<String, Object>> educationData = baseMapper.countByEducation(deptIds);
         dto.setEducationDistribution(convertToDistributionItems(educationData));
-        
+
         // 性别分布
         List<Map<String, Object>> genderData = baseMapper.countByGender(deptIds);
         dto.setGenderDistribution(convertToDistributionItems(genderData));
-        
+
         // 年龄分布
         List<Map<String, Object>> ageData = baseMapper.countByAgeRange(deptIds);
         dto.setAgeDistribution(convertToAgeDistributionItems(ageData));
-        
+
         // 在职状态分布
         List<Map<String, Object>> statusData = baseMapper.countByStatus(deptIds);
         dto.setStatusDistribution(convertToDistributionItems(statusData));
-        
+
         // 员工类型分布
         List<Map<String, Object>> typeData = baseMapper.countByEmployeeType(deptIds);
         dto.setEmployeeTypeDistribution(convertToDistributionItems(typeData));
-        
+
         return dto;
     }
 
     private List<OrgStatisticsDTO.DistributionItem> convertToDistributionItems(List<Map<String, Object>> data) {
-        if (data == null) return new ArrayList<>();
+        if (data == null)
+            return new ArrayList<>();
         return data.stream()
                 .map(m -> new OrgStatisticsDTO.DistributionItem(
                         String.valueOf(m.get("name")),
-                        ((Number) m.get("value")).intValue()
-                ))
+                        ((Number) m.get("value")).intValue()))
                 .collect(Collectors.toList());
     }
 
     private List<OrgStatisticsDTO.AgeDistributionItem> convertToAgeDistributionItems(List<Map<String, Object>> data) {
-        if (data == null) return new ArrayList<>();
+        if (data == null)
+            return new ArrayList<>();
         return data.stream()
                 .map(m -> new OrgStatisticsDTO.AgeDistributionItem(
                         String.valueOf(m.get("age_range")),
-                        ((Number) m.get("count")).intValue()
-                ))
+                        ((Number) m.get("count")).intValue()))
                 .collect(Collectors.toList());
     }
 
@@ -147,7 +147,7 @@ public class OrgUnitService extends ServiceImpl<OrgUnitMapper, OrgUnit> {
     private List<OrgUnit> buildTree(List<OrgUnit> allUnits, Long parentId) {
         Map<Long, List<OrgUnit>> groupByParent = allUnits.stream()
                 .collect(Collectors.groupingBy(u -> u.getParentId() == null ? 0L : u.getParentId()));
-        
+
         return buildTreeRecursive(groupByParent, parentId);
     }
 
@@ -156,17 +156,18 @@ public class OrgUnitService extends ServiceImpl<OrgUnitMapper, OrgUnit> {
         if (children == null) {
             return new ArrayList<>();
         }
-        
+
         for (OrgUnit unit : children) {
             unit.setUnitTypeName(getTypeName(unit.getUnitType()));
             unit.setChildren(buildTreeRecursive(groupByParent, unit.getId()));
         }
-        
+
         return children;
     }
 
     private String getTypeName(Integer type) {
-        if (type == null) return "";
+        if (type == null)
+            return "";
         return switch (type) {
             case 1 -> "集团";
             case 2 -> "公司";
@@ -198,8 +199,7 @@ public class OrgUnitService extends ServiceImpl<OrgUnitMapper, OrgUnit> {
     public boolean deleteUnit(Long id) {
         // 检查是否有子节点
         long childCount = count(new LambdaQueryWrapper<OrgUnit>()
-                .eq(OrgUnit::getParentId, id)
-                .eq(OrgUnit::getDeleted, 0));
+                .eq(OrgUnit::getParentId, id));
         if (childCount > 0) {
             throw new RuntimeException("该节点下存在子节点，无法删除");
         }
@@ -211,8 +211,7 @@ public class OrgUnitService extends ServiceImpl<OrgUnitMapper, OrgUnit> {
      */
     public boolean checkCodeExists(String unitCode, Long excludeId) {
         LambdaQueryWrapper<OrgUnit> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(OrgUnit::getUnitCode, unitCode)
-                .eq(OrgUnit::getDeleted, 0);
+        wrapper.eq(OrgUnit::getUnitCode, unitCode);
         if (excludeId != null) {
             wrapper.ne(OrgUnit::getId, excludeId);
         }

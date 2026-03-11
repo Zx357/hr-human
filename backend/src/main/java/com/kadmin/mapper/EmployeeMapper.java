@@ -22,6 +22,6 @@ public interface EmployeeMapper extends BaseMapper<HrEmployee> {
     /**
      * 根据工号查询员工
      */
-    @Select("SELECT * FROM hr_employee WHERE employee_no = #{employeeNo} AND deleted = 0")
+    @Select("SELECT * FROM hr_employee WHERE employee_no = #{employeeNo}")
     HrEmployee selectByEmployeeNo(@Param("employeeNo") String employeeNo);
 }

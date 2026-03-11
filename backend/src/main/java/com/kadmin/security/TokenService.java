@@ -121,50 +121,47 @@ public class TokenService {
 
             // 先尝试从系统用户表查询
             SysUser user = userService.getById(userId);
-            if (user != null && user.getUsername().equals(username) && user.getStatus() == 1
-                    && user.getDeleted() == 0) {
+            if (user != null && user.getUsername().equals(username) && user.getStatus() == 1) {
                 // 获取用户角色和权限
                 Set<String> roles = userService.getUserRoleCodes(userId);
                 Set<String> permissions = userService.getUserPermissions(userId);
 
                 // 创建LoginUser
                 LoginUser loginUser = new LoginUser(
-                    user.getId(),
-                    user.getUsername(),
-                    "",
-                    user.getNickname(),
-                    user.getAvatar(),
-                    user.getEmployeeId(),
-                    roles,
-                    permissions
-                );
+                        user.getId(),
+                        user.getUsername(),
+                        "",
+                        user.getNickname(),
+                        user.getAvatar(),
+                        user.getEmployeeId(),
+                        roles,
+                        permissions);
                 loginUser.setToken(IdUtil.fastUUID());
                 loginUser.setLoginTime(System.currentTimeMillis());
                 loginUser.setExpireTime(loginUser.getLoginTime() + expiration);
 
                 return loginUser;
             }
-            
+
             // 如果系统用户表没有，说明是移动端员工登录
             // 直接从 token 中的信息构建 LoginUser（员工登录时 userId 就是 employeeId）
             Set<String> roles = new java.util.HashSet<>();
             roles.add("ROLE_EMPLOYEE");
             Set<String> permissions = new java.util.HashSet<>();
-            
+
             LoginUser loginUser = new LoginUser(
-                userId,
-                username,
-                "",
-                username,
-                null,
-                userId,  // 员工登录时 userId 就是 employeeId
-                roles,
-                permissions
-            );
+                    userId,
+                    username,
+                    "",
+                    username,
+                    null,
+                    userId, // 员工登录时 userId 就是 employeeId
+                    roles,
+                    permissions);
             loginUser.setToken(IdUtil.fastUUID());
             loginUser.setLoginTime(System.currentTimeMillis());
             loginUser.setExpireTime(loginUser.getLoginTime() + expiration);
-            
+
             return loginUser;
         } catch (Exception e) {
             log.error("获取登录用户失败: {}", e.getMessage(), e);

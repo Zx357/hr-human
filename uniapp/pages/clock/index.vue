@@ -1,5 +1,5 @@
 <template>
-  <view class="clock-container">
+  <view class="page-wrap">
     <!-- 地图区域 -->
     <view class="map-section">
       <map
@@ -7,71 +7,118 @@
         :latitude="latitude"
         :longitude="longitude"
         :markers="markers"
-        :scale="10"
+        :scale="16"
         class="attendance-map"
         show-location
       />
-    </view>
-
-    <!-- 打卡按钮 -->
-    <view class="clock-buttons">
-      <view
-        class="clock-btn"
-        :class="{ disabled: hasClockedIn, active: !hasClockedIn }"
-        @click="handleClockIn"
-      >
-        <text class="btn-label">签到</text>
-      </view>
-      <view
-        class="clock-btn"
-        :class="{ disabled: hasClockedOut, active: !hasClockedOut && hasClockedIn }"
-        @click="handleClockOut"
-      >
-        <text class="btn-label">签退</text>
+      <!-- 浮动定位信息 -->
+      <view class="location-float" v-if="distance !== null">
+        <view class="loc-icon">
+          <u-icon name="map-fill" size="18" color="#6366f1"></u-icon>
+        </view>
+        <text class="loc-text">距打卡地点 {{ formatDistance(distance) }}</text>
       </view>
     </view>
 
-    <!-- 距离提示 -->
-    <view class="distance-info" v-if="distance !== null">
-      <text>距打卡地点: {{ formatDistance(distance) }}</text>
-    </view>
-
-    <!-- 功能按钮 -->
-    <view class="action-buttons">
-      <view class="action-btn btn-card" @click="goToCardApply">
-        <uni-icons type="compose" size="20" color="#c44d1a"></uni-icons>
-        <text class="action-text">补卡申请</text>
-      </view>
-      <view class="action-btn btn-attendance" @click="goToMyAttendance">
-        <uni-icons type="calendar" size="20" color="#c44d1a"></uni-icons>
-        <text class="action-text">我的考勤</text>
-      </view>
-    </view>
-
-    <!-- 今日打卡记录 -->
-    <view class="record-section">
-      <view class="section-title">今日打卡记录</view>
-      <view class="record-card" v-if="todayRecords.length > 0">
-        <view class="record-row">
-          <view class="record-col">
-            <text class="record-label">签到</text>
-            <text class="record-time">{{ clockInTime || '--:--' }}</text>
-            <view class="status-tag" :class="clockInStatus" v-if="clockInStatusText">
-              <text>{{ clockInStatusText }}</text>
+    <!-- 底部内容区 -->
+    <view class="content-area">
+      <!-- 时间与打卡核心区 -->
+      <view class="clock-core">
+        <view class="time-display">
+          <text class="current-time">{{ currentTime }}</text>
+          <text class="current-date">{{ currentDate }}</text>
+        </view>
+        
+        <view class="clock-buttons">
+          <view
+            class="clock-btn"
+            :class="{ done: hasClockedIn, ready: !hasClockedIn }"
+            @click="handleClockIn"
+          >
+            <view class="btn-inner">
+              <u-icon :name="hasClockedIn ? 'checkmark-circle-fill' : 'clock-fill'" size="36" :color="hasClockedIn ? '#10b981' : '#fff'"></u-icon>
+              <text class="btn-label">{{ hasClockedIn ? '已签到' : '签到' }}</text>
             </view>
           </view>
-          <view class="record-divider"></view>
-          <view class="record-col">
-            <text class="record-label">签退</text>
-            <text class="record-time">{{ clockOutTime || '--:--' }}</text>
-            <view class="status-tag" :class="clockOutStatus" v-if="clockOutStatusText">
-              <text>{{ clockOutStatusText }}</text>
+
+          <view class="clock-divider">
+            <view class="divider-line"></view>
+            <view class="divider-dot"></view>
+            <view class="divider-line"></view>
+          </view>
+
+          <view
+            class="clock-btn"
+            :class="{ done: hasClockedOut, ready: !hasClockedOut && hasClockedIn, locked: !hasClockedIn }"
+            @click="handleClockOut"
+          >
+            <view class="btn-inner">
+              <u-icon :name="hasClockedOut ? 'checkmark-circle-fill' : 'clock-fill'" size="36" :color="hasClockedOut ? '#10b981' : (!hasClockedIn ? '#d1d5db' : '#fff')"></u-icon>
+              <text class="btn-label">{{ hasClockedOut ? '已签退' : '签退' }}</text>
             </view>
           </view>
         </view>
       </view>
-      <view class="empty-tip" v-else>
-        <text>今日暂无打卡记录</text>
+
+      <!-- 快捷操作 -->
+      <view class="quick-actions">
+        <view class="action-item" @click="goToCardApply">
+          <view class="action-icon" style="background: rgba(99, 102, 241, 0.1);">
+            <u-icon name="edit-pen-fill" size="24" color="#6366f1"></u-icon>
+          </view>
+          <text class="action-name">补卡申请</text>
+        </view>
+        <view class="action-item" @click="goToMyAttendance">
+          <view class="action-icon" style="background: rgba(14, 165, 233, 0.1);">
+            <u-icon name="calendar-fill" size="24" color="#0ea5e9"></u-icon>
+          </view>
+          <text class="action-name">我的考勤</text>
+        </view>
+      </view>
+
+      <!-- 今日打卡记录 -->
+      <view class="record-section">
+        <view class="section-header">
+          <text class="section-title">今日打卡</text>
+        </view>
+        <view class="record-cards" v-if="todayRecords.length > 0">
+          <view class="record-item">
+            <view class="record-left">
+              <view class="record-icon in">
+                <u-icon name="arrow-downward" size="18" color="#6366f1"></u-icon>
+              </view>
+              <view class="record-info">
+                <text class="record-type">上班签到</text>
+                <text class="record-meta">{{ scheduledIn ? ('规定 ' + scheduledIn) : '' }}</text>
+              </view>
+            </view>
+            <view class="record-right">
+              <text class="record-time">{{ clockInTime || '--:--' }}</text>
+              <view class="status-pill" :class="clockInStatus" v-if="clockInStatusText">
+                <text>{{ clockInStatusText }}</text>
+              </view>
+            </view>
+          </view>
+          
+          <view class="record-item">
+            <view class="record-left">
+              <view class="record-icon out">
+                <u-icon name="arrow-upward" size="18" color="#0ea5e9"></u-icon>
+              </view>
+              <view class="record-info">
+                <text class="record-type">下班签退</text>
+                <text class="record-meta">{{ scheduledOut ? ('规定 ' + scheduledOut) : '' }}</text>
+              </view>
+            </view>
+            <view class="record-right">
+              <text class="record-time">{{ clockOutTime || '--:--' }}</text>
+              <view class="status-pill" :class="clockOutStatus" v-if="clockOutStatusText">
+                <text>{{ clockOutStatusText }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+        <u-empty v-else mode="data" text="今日暂无打卡记录" iconSize="60" customStyle="padding: 40rpx 0;"></u-empty>
       </view>
     </view>
   </view>
@@ -97,7 +144,10 @@ export default {
       clockOutRecord: null,
       todayDaily: null,
       scheduledIn: null,
-      scheduledOut: null
+      scheduledOut: null,
+      currentTime: '',
+      currentDate: '',
+      timer: null
     }
   },
   computed: {
@@ -133,11 +183,27 @@ export default {
   onLoad() {
     this.getLocation()
     this.loadClockInfo()
+    this.updateTime()
+    this.timer = setInterval(() => { this.updateTime() }, 1000)
   },
   onShow() {
     this.loadClockInfo()
   },
+  onUnload() {
+    if (this.timer) clearInterval(this.timer)
+  },
   methods: {
+    updateTime() {
+      const now = new Date()
+      const h = String(now.getHours()).padStart(2, '0')
+      const m = String(now.getMinutes()).padStart(2, '0')
+      const s = String(now.getSeconds()).padStart(2, '0')
+      this.currentTime = `${h}:${m}:${s}`
+      const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+      const month = now.getMonth() + 1
+      const day = now.getDate()
+      this.currentDate = `${month}月${day}日 ${weekDays[now.getDay()]}`
+    },
     getLocation() {
       uni.getLocation({
         type: 'gcj02',
@@ -179,7 +245,7 @@ export default {
       if (d >= 1000) {
         return (d / 1000).toFixed(2) + '千米'
       }
-      return d.toFixed(2) + '米'
+      return d.toFixed(0) + '米'
     },
     async loadClockInfo() {
       try {
@@ -265,14 +331,15 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.clock-container {
+.page-wrap {
   min-height: 100vh;
-  background-color: #f5f6f7;
+  background: #f3f4f6;
 }
 
 .map-section {
   width: 100%;
-  height: 560rpx;
+  height: 400rpx;
+  position: relative;
 }
 
 .attendance-map {
@@ -280,11 +347,102 @@ export default {
   height: 100%;
 }
 
+.location-float {
+  position: absolute;
+  bottom: 24rpx;
+  left: 30rpx;
+  right: 30rpx;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20rpx;
+  padding: 16rpx 24rpx;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.08);
+  
+  .loc-icon {
+    width: 44rpx;
+    height: 44rpx;
+    border-radius: 12rpx;
+    background: rgba(99, 102, 241, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16rpx;
+  }
+  
+  .loc-text {
+    font-size: 26rpx;
+    color: #4b5563;
+    font-weight: 500;
+  }
+}
+
+.content-area {
+  margin-top: -24rpx;
+  position: relative;
+  z-index: 1;
+  background: #f3f4f6;
+  border-top-left-radius: 32rpx;
+  border-top-right-radius: 32rpx;
+  padding: 0 30rpx 40rpx;
+}
+
+.clock-core {
+  background: #ffffff;
+  border-radius: 32rpx;
+  padding: 40rpx 30rpx;
+  margin-top: 24rpx;
+  box-shadow: 0 8rpx 30rpx rgba(0,0,0,0.03);
+}
+
+.time-display {
+  text-align: center;
+  margin-bottom: 40rpx;
+  
+  .current-time {
+    display: block;
+    font-size: 64rpx;
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: 4rpx;
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .current-date {
+    display: block;
+    font-size: 26rpx;
+    color: #9ca3af;
+    margin-top: 8rpx;
+    font-weight: 500;
+  }
+}
+
 .clock-buttons {
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 80rpx;
-  padding: 50rpx 0 30rpx;
+  gap: 0;
+}
+
+.clock-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0  30rpx;
+  
+  .divider-line {
+    width: 2rpx;
+    height: 36rpx;
+    background: #e5e7eb;
+  }
+  .divider-dot {
+    width: 12rpx;
+    height: 12rpx;
+    border-radius: 50%;
+    background: #d1d5db;
+    margin: 8rpx 0;
+  }
 }
 
 .clock-btn {
@@ -294,144 +452,175 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8rpx 30rpx rgba(0, 0, 0, 0.12);
-
-  &.active {
-    background: linear-gradient(135deg, #f5deb3 0%, #e8c892 100%);
+  
+  &.ready {
+    background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+    box-shadow: 0 12rpx 36rpx rgba(99, 102, 241, 0.35);
+    
+    .btn-label { color: #fff; }
+  }
+  
+  &.done {
+    background: #f0fdf4;
+    border: 3rpx solid #bbf7d0;
+    
+    .btn-label { color: #10b981; }
+  }
+  
+  &.locked {
+    background: #f9fafb;
+    border: 3rpx solid #e5e7eb;
+    
+    .btn-label { color: #d1d5db; }
   }
 
-  &.disabled {
-    background: linear-gradient(135deg, #e8e8e8 0%, #d0d0d0 100%);
+  .btn-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12rpx;
   }
-
+  
   .btn-label {
-    font-size: 36rpx;
-    font-weight: bold;
-    color: #666;
-  }
-
-  &.active .btn-label {
-    color: #8B6914;
+    font-size: 28rpx;
+    font-weight: 700;
   }
 }
 
-.distance-info {
-  text-align: center;
-  padding: 16rpx 0 20rpx;
-  font-size: 26rpx;
-  color: #666;
-  border-bottom: 1rpx solid #eee;
-  margin: 0 30rpx;
-}
-
-.action-buttons {
+.quick-actions {
   display: flex;
-  gap: 30rpx;
-  padding: 30rpx;
-}
-
-.action-btn {
-  flex: 1;
-  height: 88rpx;
-  border-radius: 44rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12rpx;
-  border: 2rpx solid transparent;
-
-  .action-text {
-    font-size: 30rpx;
-    font-weight: 500;
+  justify-content: space-between;
+  margin-top: 30rpx;
+  background: #ffffff;
+  border-radius: 32rpx;
+  padding: 36rpx 20rpx;
+  box-shadow: 0 8rpx 30rpx rgba(0,0,0,0.03);
+  
+  .action-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    
+    .action-icon {
+      width: 80rpx;
+      height: 80rpx;
+      border-radius: 24rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12rpx;
+      
+      &:active { transform: scale(0.95); }
+    }
+    
+    .action-name {
+      font-size: 24rpx;
+      color: #4b5563;
+      font-weight: 600;
+    }
   }
-}
-
-.btn-card {
-  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-  .action-text { color: #c44d1a; }
-}
-
-.btn-attendance {
-  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-  .action-text { color: #c44d1a; }
 }
 
 .record-section {
-  background-color: #fff;
-  margin: 0 20rpx 40rpx;
-  border-radius: 16rpx;
-  padding: 30rpx;
+  margin-top: 30rpx;
+  background: #ffffff;
+  border-radius: 32rpx;
+  padding: 36rpx 30rpx;
+  box-shadow: 0 8rpx 30rpx rgba(0,0,0,0.03);
 }
 
-.section-title {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #333;
+.section-header {
   margin-bottom: 30rpx;
+  
+  .section-title {
+    font-size: 34rpx;
+    font-weight: 800;
+    color: #111827;
+  }
 }
 
-.record-card {
-  padding: 10rpx 0;
+.record-cards {
+  .record-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24rpx 20rpx;
+    background: #f9fafb;
+    border-radius: 24rpx;
+    margin-bottom: 20rpx;
+    
+    &:last-child { margin-bottom: 0; }
+    
+    .record-left {
+      display: flex;
+      align-items: center;
+      
+      .record-icon {
+        width: 64rpx;
+        height: 64rpx;
+        border-radius: 20rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        
+        &.in { background: rgba(99, 102, 241, 0.1); }
+        &.out { background: rgba(14, 165, 233, 0.1); }
+      }
+      
+      .record-info {
+        margin-left: 20rpx;
+        
+        .record-type {
+          display: block;
+          font-size: 28rpx;
+          color: #1f2937;
+          font-weight: 600;
+        }
+        
+        .record-meta {
+          display: block;
+          font-size: 22rpx;
+          color: #9ca3af;
+          margin-top: 4rpx;
+        }
+      }
+    }
+    
+    .record-right {
+      display: flex;
+      align-items: center;
+      gap: 16rpx;
+      
+      .record-time {
+        font-size: 36rpx;
+        font-weight: 800;
+        color: #1f2937;
+        font-variant-numeric: tabular-nums;
+      }
+    }
+  }
 }
 
-.record-row {
-  display: flex;
-  align-items: flex-start;
-}
-
-.record-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.record-divider {
-  width: 1rpx;
-  height: 120rpx;
-  background-color: #eee;
-  margin: 0 10rpx;
-  align-self: center;
-}
-
-.record-label {
-  font-size: 28rpx;
-  color: #999;
-  margin-bottom: 12rpx;
-}
-
-.record-time {
-  font-size: 52rpx;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 12rpx;
-}
-
-.status-tag {
-  padding: 4rpx 20rpx;
-  border-radius: 20rpx;
-  font-size: 24rpx;
-
+.status-pill {
+  padding: 6rpx 16rpx;
+  border-radius: 16rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  
   &.status-normal {
-    background-color: #e8f5e9;
-    color: #4caf50;
+    background: #dcfce7;
+    color: #16a34a;
   }
-
+  
   &.status-late {
-    background-color: #fff3e0;
-    color: #f44336;
+    background: #fef2f2;
+    color: #ef4444;
   }
-
+  
   &.status-early {
-    background-color: #fff3e0;
-    color: #f44336;
+    background: #fffbeb;
+    color: #f59e0b;
   }
-}
-
-.empty-tip {
-  text-align: center;
-  padding: 40rpx;
-  color: #999;
-  font-size: 28rpx;
 }
 </style>

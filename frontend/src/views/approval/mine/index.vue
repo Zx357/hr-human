@@ -46,17 +46,24 @@ const statusMap: Record<number, { label: string; type: string }> = {
       <ElForm inline :model="searchParams">
         <ElFormItem label="申请类型">
           <ElSelect v-model="searchParams.appType" placeholder="请选择类型" clearable>
-            <ElOption label="请假申请" value="leave" /><ElOption label="加班申请" value="overtime" />
-            <ElOption label="出差申请" value="business" /><ElOption label="补卡申请" value="makeup" />
-            <ElOption label="换休申请" value="exchange" /><ElOption label="转正申请" value="regularization" />
-            <ElOption label="调动申请" value="transfer" /><ElOption label="奖励申请" value="reward" />
-            <ElOption label="惩罚申请" value="punish" /><ElOption label="离职申请" value="resignation" />
+            <ElOption label="请假申请" value="leave" />
+            <ElOption label="加班申请" value="overtime" />
+            <ElOption label="出差申请" value="business" />
+            <ElOption label="补卡申请" value="makeup" />
+            <ElOption label="换休申请" value="exchange" />
+            <ElOption label="转正申请" value="regularization" />
+            <ElOption label="调动申请" value="transfer" />
+            <ElOption label="奖励申请" value="reward" />
+            <ElOption label="惩罚申请" value="punish" />
+            <ElOption label="离职申请" value="resignation" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem label="状态">
           <ElSelect v-model="searchParams.status" placeholder="请选择状态" clearable>
-            <ElOption label="待审批" :value="0" /><ElOption label="已通过" :value="1" />
-            <ElOption label="已拒绝" :value="2" /><ElOption label="已撤销" :value="3" />
+            <ElOption label="待审批" :value="0" />
+            <ElOption label="已通过" :value="1" />
+            <ElOption label="已拒绝" :value="2" />
+            <ElOption label="已撤销" :value="3" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem>
@@ -70,25 +77,58 @@ const statusMap: Record<number, { label: string; type: string }> = {
       <template #header><span>我的申请</span></template>
 
       <div class="table-wrapper">
-      <ElTable v-loading="loading" :data="data" border stripe height="100%">
-        <ElTableColumn type="index" label="序号" width="60" align="center" />
-        <ElTableColumn prop="appType" label="申请类型" width="120">
-          <template #default="{ row }"><ElTag>{{ appTypeMap[row.appType] || row.appType }}</ElTag></template>
-        </ElTableColumn>
-        <ElTableColumn prop="startTime" label="开始时间" width="160" />
-        <ElTableColumn prop="endTime" label="结束时间" width="160" />
-        <ElTableColumn prop="reason" label="申请原因" min-width="200" show-overflow-tooltip />
-        <ElTableColumn prop="status" label="状态" width="100" align="center">
-          <template #default="{ row }"><ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag></template>
-        </ElTableColumn>
-        <ElTableColumn prop="approveRemark" label="审批意见" width="150" show-overflow-tooltip />
-        <ElTableColumn prop="createdTime" label="申请时间" width="170" />
-      </ElTable>
+        <ElTable v-loading="loading" :data="data" border stripe height="100%">
+          <ElTableColumn type="index" label="序号" width="60" align="center" />
+          <ElTableColumn prop="appType" label="申请类型" width="120">
+            <template #default="{ row }">
+              <ElTag>{{ appTypeMap[row.appType] || row.appType }}</ElTag>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn prop="startTime" label="开始时间" width="160" />
+          <ElTableColumn prop="endTime" label="结束时间" width="160" />
+          <ElTableColumn prop="reason" label="申请原因" min-width="200" show-overflow-tooltip />
+          <ElTableColumn prop="status" label="状态" width="100" align="center">
+            <template #default="{ row }">
+              <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn prop="approveRemark" label="审批意见" width="150" show-overflow-tooltip />
+          <ElTableColumn prop="createdTime" label="申请时间" width="170" />
+        </ElTable>
       </div>
 
       <div class="mt-16px flex justify-end">
-        <ElPagination v-model:current-page="currentPage" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" @current-change="handlePageChange" @size-change="handleSizeChange" />
+        <ElPagination v-model:current-page="currentPage" v-model:page-size="pageSize" :total="total"
+          :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper"
+          @current-change="handlePageChange" @size-change="handleSizeChange" />
       </div>
     </ElCard>
   </div>
 </template>
+
+<style scoped>
+.list-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.table-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.table-card :deep(.el-card__body) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.table-wrapper {
+  flex: 1;
+  overflow: hidden;
+}
+</style>

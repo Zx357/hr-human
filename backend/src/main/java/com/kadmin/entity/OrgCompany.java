@@ -81,9 +81,4 @@ public class OrgCompany extends BaseEntity {
      */
     private Integer status;
 
-    /**
-     * 是否删除
-     */
-    @TableLogic
-    private Integer deleted;
 }

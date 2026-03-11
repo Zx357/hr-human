@@ -18,7 +18,6 @@ public class ShiftService extends ServiceImpl<AttShiftMapper, AttShift> {
 
     public List<AttShift> listAll() {
         List<AttShift> shifts = list(new LambdaQueryWrapper<AttShift>()
-                .eq(AttShift::getDeleted, 0)
                 .orderByAsc(AttShift::getId));
         shifts.forEach(shift -> shift.setPeriods(
                 periodMapper.selectList(new LambdaQueryWrapper<AttShiftPeriod>()
@@ -39,8 +38,8 @@ public class ShiftService extends ServiceImpl<AttShiftMapper, AttShift> {
 
     @Transactional
     public boolean saveShift(AttShift shift) {
-        shift.setDeleted(0);
-        if (shift.getStatus() == null) shift.setStatus(1);
+        if (shift.getStatus() == null)
+            shift.setStatus(1);
         boolean result = save(shift);
         if (result && shift.getPeriods() != null) {
             for (int i = 0; i < shift.getPeriods().size(); i++) {

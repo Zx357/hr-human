@@ -150,7 +150,7 @@ export default {
 }
 
 .btn-primary {
-  background-color: #2d8cf0;
+  background-color: #646cff;
   color: #fff;
 }
 </style>

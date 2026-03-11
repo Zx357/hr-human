@@ -51,10 +51,6 @@ public class OrgUnit extends BaseEntity {
     /** 排序 */
     private Integer sortOrder;
 
-    /** 是否删除 */
-    @TableLogic
-    private Integer deleted;
-
     /** 子节点（非数据库字段） */
     @TableField(exist = false)
     private List<OrgUnit> children;
@@ -72,7 +68,7 @@ public class OrgUnit extends BaseEntity {
     private Integer employeeCount;
 
     // 类型常量
-    public static final int TYPE_GROUP = 1;    // 集团
-    public static final int TYPE_COMPANY = 2;  // 公司
-    public static final int TYPE_DEPT = 3;     // 部门
+    public static final int TYPE_GROUP = 1; // 集团
+    public static final int TYPE_COMPANY = 2; // 公司
+    public static final int TYPE_DEPT = 3; // 部门
 }

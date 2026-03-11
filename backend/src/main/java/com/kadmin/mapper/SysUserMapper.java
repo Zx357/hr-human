@@ -16,7 +16,7 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
         /**
          * 根据用户名查询用户
          */
-        @Select("SELECT * FROM sys_user WHERE username = #{username} AND deleted = 0")
+        @Select("SELECT * FROM sys_user WHERE username = #{username}")
         SysUser selectByUsername(@Param("username") String username);
 
         /**
@@ -24,7 +24,7 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
          */
         @Select("SELECT u.* FROM sys_user u " +
                         "INNER JOIN hr_employee e ON u.employee_id = e.id " +
-                        "WHERE e.employee_no = #{employeeNo} AND u.deleted = 0 AND e.deleted = 0")
+                        "WHERE e.employee_no = #{employeeNo}")
         SysUser selectByEmployeeNo(@Param("employeeNo") String employeeNo);
 
         /**
@@ -32,7 +32,7 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
          */
         @Select("SELECT r.role_code FROM sys_role r " +
                         "INNER JOIN sys_user_role ur ON r.id = ur.role_id " +
-                        "WHERE ur.user_id = #{userId} AND r.deleted = 0 AND r.status = 1")
+                        "WHERE ur.user_id = #{userId} AND r.status = 1")
         Set<String> selectRoleCodesByUserId(@Param("userId") Long userId);
 
         /**
@@ -41,7 +41,7 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
         @Select("SELECT DISTINCT m.permission FROM sys_menu m " +
                         "INNER JOIN sys_role_menu rm ON m.id = rm.menu_id " +
                         "INNER JOIN sys_user_role ur ON rm.role_id = ur.role_id " +
-                        "WHERE ur.user_id = #{userId} AND m.deleted = 0 AND m.status = 1 " +
+                        "WHERE ur.user_id = #{userId} AND m.status = 1 " +
                         "AND m.permission IS NOT NULL AND m.permission != ''")
         Set<String> selectPermissionsByUserId(@Param("userId") Long userId);
 

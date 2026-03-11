@@ -34,7 +34,6 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
      */
     public List<SysUser> listUsers(String username, String realName, Integer status) {
         LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysUser::getDeleted, 0);
         if (StringUtils.hasText(username)) {
             wrapper.like(SysUser::getUsername, username);
         }
@@ -53,7 +52,6 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
      */
     public IPage<SysUser> pageUsers(Page<SysUser> page, String username, String nickname, Integer status) {
         LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysUser::getDeleted, 0);
         if (StringUtils.hasText(username)) {
             wrapper.like(SysUser::getUsername, username);
         }
@@ -115,7 +113,6 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
 
         // 加密密码
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setDeleted(0);
         boolean success = save(user);
 
         if (success && roleIds != null && !roleIds.isEmpty()) {

@@ -2,11 +2,14 @@
  * uni-app内置的常用样式变量
  */
 
-/* 行为相关颜色 */
-$uni-color-primary: #007aff;
-$uni-color-success: #4cd964;
-$uni-color-warning: #f0ad4e;
-$uni-color-error: #dd524d;
+@import 'uview-plus/theme.scss';
+
+/* 行为相关颜色（与 PC 端 theme/settings 保持一致） */
+$uni-color-primary: #646cff;
+$uni-primary: $uni-color-primary;
+$uni-color-success: #52c41a;
+$uni-color-warning: #faad14;
+$uni-color-error: #f5222d;
 
 /* 文字基本颜色 */
 $uni-text-color:#333;//基本色

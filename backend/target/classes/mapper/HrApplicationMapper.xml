@@ -33,22 +33,22 @@
             h.name as handover_to_name
         FROM hr_application a
         LEFT JOIN hr_employee e ON a.employee_id = e.id
-        LEFT JOIN org_unit d ON e.dept_id = d.id AND d.deleted = 0
-        LEFT JOIN org_unit p1 ON d.parent_id = p1.id AND p1.deleted = 0
-        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id AND p2.deleted = 0
-        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id AND p3.deleted = 0
-        LEFT JOIN org_unit fc ON a.from_company_id = fc.id AND fc.deleted = 0
-        LEFT JOIN org_unit tc ON a.to_company_id = tc.id AND tc.deleted = 0
-        LEFT JOIN org_unit fd ON a.from_dept_id = fd.id AND fd.deleted = 0
-        LEFT JOIN org_unit fp1 ON fd.parent_id = fp1.id AND fp1.deleted = 0
-        LEFT JOIN org_unit fp2 ON fp1.parent_id = fp2.id AND fp2.deleted = 0
-        LEFT JOIN org_unit fp3 ON fp2.parent_id = fp3.id AND fp3.deleted = 0
-        LEFT JOIN org_unit td ON a.to_dept_id = td.id AND td.deleted = 0
-        LEFT JOIN org_unit tp1 ON td.parent_id = tp1.id AND tp1.deleted = 0
-        LEFT JOIN org_unit tp2 ON tp1.parent_id = tp2.id AND tp2.deleted = 0
-        LEFT JOIN org_unit tp3 ON tp2.parent_id = tp3.id AND tp3.deleted = 0
+        LEFT JOIN org_unit d ON e.dept_id = d.id
+        LEFT JOIN org_unit p1 ON d.parent_id = p1.id
+        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id
+        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id
+        LEFT JOIN org_unit fc ON a.from_company_id = fc.id
+        LEFT JOIN org_unit tc ON a.to_company_id = tc.id
+        LEFT JOIN org_unit fd ON a.from_dept_id = fd.id
+        LEFT JOIN org_unit fp1 ON fd.parent_id = fp1.id
+        LEFT JOIN org_unit fp2 ON fp1.parent_id = fp2.id
+        LEFT JOIN org_unit fp3 ON fp2.parent_id = fp3.id
+        LEFT JOIN org_unit td ON a.to_dept_id = td.id
+        LEFT JOIN org_unit tp1 ON td.parent_id = tp1.id
+        LEFT JOIN org_unit tp2 ON tp1.parent_id = tp2.id
+        LEFT JOIN org_unit tp3 ON tp2.parent_id = tp3.id
         LEFT JOIN hr_employee h ON a.handover_to = h.id
-        WHERE a.deleted = 0
+        WHERE 1 = 1
         <if test="employeeName != null and employeeName != ''">
             AND e.name LIKE CONCAT('%', #{employeeName}, '%')
         </if>
@@ -99,22 +99,22 @@
             h.name as handover_to_name
         FROM hr_application a
         LEFT JOIN hr_employee e ON a.employee_id = e.id
-        LEFT JOIN org_unit d ON e.dept_id = d.id AND d.deleted = 0
-        LEFT JOIN org_unit p1 ON d.parent_id = p1.id AND p1.deleted = 0
-        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id AND p2.deleted = 0
-        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id AND p3.deleted = 0
-        LEFT JOIN org_unit fc ON a.from_company_id = fc.id AND fc.deleted = 0
-        LEFT JOIN org_unit tc ON a.to_company_id = tc.id AND tc.deleted = 0
-        LEFT JOIN org_unit fd ON a.from_dept_id = fd.id AND fd.deleted = 0
-        LEFT JOIN org_unit fp1 ON fd.parent_id = fp1.id AND fp1.deleted = 0
-        LEFT JOIN org_unit fp2 ON fp1.parent_id = fp2.id AND fp2.deleted = 0
-        LEFT JOIN org_unit fp3 ON fp2.parent_id = fp3.id AND fp3.deleted = 0
-        LEFT JOIN org_unit td ON a.to_dept_id = td.id AND td.deleted = 0
-        LEFT JOIN org_unit tp1 ON td.parent_id = tp1.id AND tp1.deleted = 0
-        LEFT JOIN org_unit tp2 ON tp1.parent_id = tp2.id AND tp2.deleted = 0
-        LEFT JOIN org_unit tp3 ON tp2.parent_id = tp3.id AND tp3.deleted = 0
+        LEFT JOIN org_unit d ON e.dept_id = d.id
+        LEFT JOIN org_unit p1 ON d.parent_id = p1.id
+        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id
+        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id
+        LEFT JOIN org_unit fc ON a.from_company_id = fc.id
+        LEFT JOIN org_unit tc ON a.to_company_id = tc.id
+        LEFT JOIN org_unit fd ON a.from_dept_id = fd.id
+        LEFT JOIN org_unit fp1 ON fd.parent_id = fp1.id
+        LEFT JOIN org_unit fp2 ON fp1.parent_id = fp2.id
+        LEFT JOIN org_unit fp3 ON fp2.parent_id = fp3.id
+        LEFT JOIN org_unit td ON a.to_dept_id = td.id
+        LEFT JOIN org_unit tp1 ON td.parent_id = tp1.id
+        LEFT JOIN org_unit tp2 ON tp1.parent_id = tp2.id
+        LEFT JOIN org_unit tp3 ON tp2.parent_id = tp3.id
         LEFT JOIN hr_employee h ON a.handover_to = h.id
-        WHERE a.deleted = 0 AND a.status = 0
+        WHERE a.status = 0
         <if test="employeeName != null and employeeName != ''">
             AND e.name LIKE CONCAT('%', #{employeeName}, '%')
         </if>
@@ -128,8 +128,8 @@
         <if test="roleIds != null and roleIds.size() > 0">
             AND EXISTS (
                 SELECT 1 FROM sys_approval_flow f
-                JOIN sys_approval_node n ON f.id = n.flow_id AND n.deleted = 0
-                WHERE f.deleted = 0 AND f.status = 1
+                JOIN sys_approval_node n ON f.id = n.flow_id
+                WHERE f.status = 1
                 AND f.flow_type = a.app_type
                 AND n.role_id IN
                 <foreach collection="roleIds" item="roleId" open="(" separator="," close=")">

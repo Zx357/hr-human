@@ -2,6 +2,35 @@
 	text-align: center;
 }
 
+.app-page {
+  min-height: 100vh;
+  background-color: $app-bg;
+  color: $app-text;
+}
+
+.app-card {
+  background-color: $app-card;
+  border-radius: $app-radius;
+  box-shadow: $app-shadow-sm;
+}
+
+.app-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: $app-font-lg;
+  font-weight: 600;
+  color: $app-text;
+}
+
+.app-muted {
+  color: $app-text-2;
+}
+
+.app-subtle {
+  color: $app-text-3;
+}
+
 .font-13 {
 	font-size: 13px;
 }
@@ -76,7 +105,7 @@
       align-items: center;
   
       .menu-icon {
-        color: #007AFF;
+        color: $app-primary;
         font-size: 16px;
         margin-right: 5px;
       }

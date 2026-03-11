@@ -25,7 +25,6 @@ public class SysRoleService extends ServiceImpl<SysRoleMapper, SysRole> {
      */
     public IPage<SysRole> pageRoles(Page<SysRole> page, String roleName, String roleCode, Integer status) {
         LambdaQueryWrapper<SysRole> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysRole::getDeleted, 0);
         if (StringUtils.hasText(roleName)) {
             wrapper.like(SysRole::getRoleName, roleName);
         }
@@ -44,7 +43,6 @@ public class SysRoleService extends ServiceImpl<SysRoleMapper, SysRole> {
      */
     public List<SysRole> getAllEnabledRoles() {
         LambdaQueryWrapper<SysRole> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysRole::getDeleted, 0);
         wrapper.eq(SysRole::getStatus, 1);
         wrapper.orderByAsc(SysRole::getSortOrder);
         return list(wrapper);
@@ -56,7 +54,6 @@ public class SysRoleService extends ServiceImpl<SysRoleMapper, SysRole> {
     public SysRole getByRoleCode(String roleCode) {
         LambdaQueryWrapper<SysRole> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysRole::getRoleCode, roleCode);
-        wrapper.eq(SysRole::getDeleted, 0);
         return getOne(wrapper);
     }
 
@@ -78,7 +75,6 @@ public class SysRoleService extends ServiceImpl<SysRoleMapper, SysRole> {
             throw new RuntimeException("角色编码已存在");
         }
 
-        role.setDeleted(0);
         boolean success = save(role);
 
         if (success && menuIds != null && !menuIds.isEmpty()) {
@@ -127,7 +123,6 @@ public class SysRoleService extends ServiceImpl<SysRoleMapper, SysRole> {
         // 删除角色菜单关联
         baseMapper.deleteRoleMenuByRoleId(id);
 
-        // 使用 MyBatis Plus 的 removeById，会自动处理逻辑删除
         return removeById(id);
     }
 

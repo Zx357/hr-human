@@ -20,6 +20,7 @@ com\kadmin\service\AuthService.class
 com\kadmin\controller\SysRoleController$RoleRequest.class
 com\kadmin\mapper\HrEducationMapper.class
 com\kadmin\mapper\HrResignationMapper.class
+com\kadmin\controller\FileConfigController.class
 com\kadmin\entity\vo\CertificateVO.class
 com\kadmin\entity\AttClockRecord.class
 com\kadmin\controller\TransferController.class
@@ -30,6 +31,7 @@ com\kadmin\entity\AttShift.class
 com\kadmin\controller\OrgUnitController.class
 com\kadmin\controller\ScheduleController$BatchScheduleRequest.class
 com\kadmin\controller\SysDictController.class
+com\kadmin\entity\SysFileConfig.class
 com\kadmin\service\AttendanceService.class
 com\kadmin\service\ScheduleService.class
 com\kadmin\security\JwtAuthenticationFilter.class
@@ -41,6 +43,7 @@ com\kadmin\service\EmployeeService.class
 com\kadmin\service\SysRoleService.class
 com\kadmin\KadminApplication.class
 com\kadmin\mapper\AttShiftPeriodMapper.class
+com\kadmin\controller\MobileHomeController.class
 com\kadmin\mapper\EmployeeMapper.class
 com\kadmin\service\SysMenuService.class
 com\kadmin\service\OrgUnitService.class
@@ -59,6 +62,7 @@ com\kadmin\entity\AttDailyRecord.class
 com\kadmin\service\ContractService.class
 com\kadmin\controller\AuthController$MobileLoginRequest.class
 com\kadmin\entity\dto\WorkExperienceDTO.class
+com\kadmin\mapper\SysFileConfigMapper.class
 com\kadmin\common\exception\BusinessException.class
 com\kadmin\mapper\SysApprovalNodeMapper.class
 com\kadmin\controller\SysRoleController$StatusRequest.class
@@ -98,6 +102,7 @@ com\kadmin\controller\AuthController.class
 com\kadmin\entity\SysUser.class
 com\kadmin\mapper\HrRewardPunishMapper.class
 com\kadmin\config\DataInitializer.class
+com\kadmin\service\FileConfigService.class
 com\kadmin\entity\HrCertificate.class
 com\kadmin\controller\ApplicationController.class
 com\kadmin\service\ShiftService.class

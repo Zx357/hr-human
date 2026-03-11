@@ -1,18 +1,49 @@
 <template>
-  <view class="pwd-retrieve-container">
-    <uni-forms ref="form" :value="user" labelWidth="80px">
-      <uni-forms-item name="oldPassword" label="旧密码">
-        <uni-easyinput type="password" v-model="user.oldPassword" placeholder="请输入旧密码" />
-      </uni-forms-item>
-      <uni-forms-item name="newPassword" label="新密码">
-        <uni-easyinput type="password" v-model="user.newPassword" placeholder="请输入新密码" />
-      </uni-forms-item>
-      <uni-forms-item name="confirmPassword" label="确认密码">
-        <uni-easyinput type="password" v-model="user.confirmPassword" placeholder="请确认新密码" />
-      </uni-forms-item>
-      <button type="primary" @click="submit">提交</button>
-    </uni-forms>
-  </view>
+  <app-page padding="24rpx">
+    <app-card padding="28rpx">
+      <view class="form-group">
+        <text class="form-label">旧密码</text>
+        <view class="input-wrapper">
+          <input
+            class="form-input"
+            v-model="form.oldPassword"
+            type="password"
+            :password="true"
+            placeholder="请输入旧密码（默认123456）"
+            placeholder-class="input-placeholder"
+          />
+        </view>
+      </view>
+      <view class="form-group">
+        <text class="form-label">新密码</text>
+        <view class="input-wrapper">
+          <input
+            class="form-input"
+            v-model="form.newPassword"
+            type="password"
+            :password="true"
+            placeholder="请输入新密码（6-20位）"
+            placeholder-class="input-placeholder"
+          />
+        </view>
+      </view>
+      <view class="form-group">
+        <text class="form-label">确认密码</text>
+        <view class="input-wrapper">
+          <input
+            class="form-input"
+            v-model="form.confirmPassword"
+            type="password"
+            :password="true"
+            placeholder="请再次输入新密码"
+            placeholder-class="input-placeholder"
+          />
+        </view>
+      </view>
+
+      <u-button type="primary" shape="circle" :loading="loading" @click="submit">提交</u-button>
+    </app-card>
+  </app-page>
 </template>
 
 <script>
@@ -21,65 +52,74 @@
   export default {
     data() {
       return {
-        user: {
-          oldPassword: undefined,
-          newPassword: undefined,
-          confirmPassword: undefined
+        form: {
+          oldPassword: '',
+          newPassword: '',
+          confirmPassword: ''
         },
-        rules: {
-          oldPassword: {
-            rules: [{
-              required: true,
-              errorMessage: '旧密码不能为空'
-            }]
-          },
-          newPassword: {
-            rules: [{
-                required: true,
-                errorMessage: '新密码不能为空',
-              },
-              {
-                minLength: 6,
-                maxLength: 20,
-                errorMessage: '长度在 6 到 20 个字符'
-              }
-            ]
-          },
-          confirmPassword: {
-            rules: [{
-                required: true,
-                errorMessage: '确认密码不能为空'
-              }, {
-                validateFunction: (rule, value, data) => data.newPassword === value,
-                errorMessage: '两次输入的密码不一致'
-              }
-            ]
-          }
-        }
+        loading: false
       }
-    },
-    onReady() {
-      this.$refs.form.setRules(this.rules)
     },
     methods: {
       submit() {
-        this.$refs.form.validate().then(res => {
-          updateUserPwd(this.user.oldPassword, this.user.newPassword).then(response => {
-            this.$modal.msgSuccess("修改成功")
+        const { oldPassword, newPassword, confirmPassword } = this.form
+        if (!oldPassword) return this.$modal.msgError('旧密码不能为空')
+        if (!newPassword) return this.$modal.msgError('新密码不能为空')
+        if (newPassword.length < 6 || newPassword.length > 20) return this.$modal.msgError('新密码长度需为 6-20 位')
+        if (!confirmPassword) return this.$modal.msgError('确认密码不能为空')
+        if (newPassword !== confirmPassword) return this.$modal.msgError('两次输入的密码不一致')
+
+        this.loading = true
+        updateUserPwd(oldPassword, newPassword)
+          .then(() => {
+            this.$modal.msgSuccess('修改成功')
+            this.form.oldPassword = ''
+            this.form.newPassword = ''
+            this.form.confirmPassword = ''
           })
-        })
+          .finally(() => {
+            this.loading = false
+          })
       }
     }
   }
 </script>
 
 <style lang="scss" scoped>
-  page {
-    background-color: #ffffff;
+  @import "@/static/scss/tokens.scss";
+
+  .form-group {
+    margin-bottom: 28rpx;
   }
 
-  .pwd-retrieve-container {
-    padding-top: 36rpx;
-    padding: 15px;
+  .form-label {
+    display: block;
+    font-size: 28rpx;
+    font-weight: 500;
+    color: #303133;
+    margin-bottom: 12rpx;
+  }
+
+  .input-wrapper {
+    display: flex;
+    align-items: center;
+    border: 1rpx solid #dcdfe6;
+    border-radius: 12rpx;
+    padding: 0 20rpx;
+    height: 80rpx;
+    background-color: #f7f8fa;
+  }
+
+  .form-input {
+    flex: 1;
+    height: 80rpx;
+    font-size: 28rpx;
+    color: #303133;
+    background: transparent;
+  }
+
+  .input-placeholder {
+    color: #c0c4cc;
+    font-size: 28rpx;
   }
 </style>

@@ -46,10 +46,4 @@ public class BaseEntity implements Serializable {
      */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private Long updatedBy;
-
-    /**
-     * 是否删除
-     */
-    @TableLogic
-    private Integer deleted;
 }

@@ -54,7 +54,7 @@ const user = {
   actions: {
     // 登录（工号登录）
     Login({ commit }, userInfo) {
-      const employeeNo = userInfo.employeeNo.trim()
+      const employeeNo = (userInfo.employeeNo || '').trim()
       const password = userInfo.password || ''
       return new Promise((resolve, reject) => {
         console.log('调用登录接口', employeeNo, password)
@@ -84,7 +84,12 @@ const user = {
             const employee = res.data
             commit('SET_ID', employee.id)
             commit('SET_NAME', employee.name)
-            commit('SET_AVATAR', employee.avatar || defAva)
+            // 头像：如果是相对路径则拼接后端地址
+            let avatarUrl = employee.avatar
+            if (avatarUrl && !avatarUrl.startsWith('http')) {
+              avatarUrl = baseUrl + avatarUrl
+            }
+            commit('SET_AVATAR', avatarUrl || defAva)
             commit('SET_ROLES', ['ROLE_EMPLOYEE'])
             commit('SET_PERMISSIONS', [])
             commit('SET_EMPLOYEE_INFO', employee)

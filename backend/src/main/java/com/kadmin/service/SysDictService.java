@@ -27,7 +27,6 @@ public class SysDictService extends ServiceImpl<SysDictTypeMapper, SysDictType> 
      */
     public List<SysDictType> getAllDictTypes() {
         LambdaQueryWrapper<SysDictType> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysDictType::getDeleted, 0);
         wrapper.orderByAsc(SysDictType::getId);
         return list(wrapper);
     }
@@ -38,7 +37,6 @@ public class SysDictService extends ServiceImpl<SysDictTypeMapper, SysDictType> 
     public SysDictType getByDictCode(String dictCode) {
         LambdaQueryWrapper<SysDictType> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysDictType::getDictCode, dictCode);
-        wrapper.eq(SysDictType::getDeleted, 0);
         return getOne(wrapper);
     }
 
@@ -52,7 +50,6 @@ public class SysDictService extends ServiceImpl<SysDictTypeMapper, SysDictType> 
         if (exist != null) {
             throw new RuntimeException("字典编码已存在");
         }
-        dictType.setDeleted(0);
         return save(dictType);
     }
 
@@ -85,7 +82,6 @@ public class SysDictService extends ServiceImpl<SysDictTypeMapper, SysDictType> 
     public List<SysDictData> getDictDataList(Long dictTypeId) {
         LambdaQueryWrapper<SysDictData> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysDictData::getDictTypeId, dictTypeId);
-        wrapper.eq(SysDictData::getDeleted, 0);
         wrapper.orderByAsc(SysDictData::getSortOrder);
         return dictDataMapper.selectList(wrapper);
     }
@@ -102,7 +98,6 @@ public class SysDictService extends ServiceImpl<SysDictTypeMapper, SysDictType> 
      */
     @Transactional
     public boolean addDictData(SysDictData dictData) {
-        dictData.setDeleted(0);
         return dictDataMapper.insert(dictData) > 0;
     }
 

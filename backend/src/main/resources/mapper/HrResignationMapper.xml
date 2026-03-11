@@ -13,12 +13,12 @@
                END as company_name
         FROM hr_resignation r
         LEFT JOIN hr_employee e ON r.employee_id = e.id
-        LEFT JOIN org_unit d ON e.dept_id = d.id AND d.deleted = 0
-        LEFT JOIN org_unit p1 ON d.parent_id = p1.id AND p1.deleted = 0
-        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id AND p2.deleted = 0
-        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id AND p3.deleted = 0
+        LEFT JOIN org_unit d ON e.dept_id = d.id
+        LEFT JOIN org_unit p1 ON d.parent_id = p1.id
+        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id
+        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id
         LEFT JOIN hr_employee h ON r.handover_to = h.id
-        WHERE r.deleted = 0
+        WHERE 1 = 1
         <if test="employeeName != null and employeeName != ''">
             AND e.name LIKE CONCAT('%', #{employeeName}, '%')
         </if>

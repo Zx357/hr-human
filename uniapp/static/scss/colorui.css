@@ -11,10 +11,10 @@
         main 初始化
  ==================== */
 body {
-	background-color: #f1f1f1;
+	background-color: #f7fafc;
 	font-size: 28upx;
 	color: #333333;
-	font-family: Helvetica Neue, Helvetica, sans-serif;
+	font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
 view,
@@ -271,8 +271,8 @@ radio.radio .uni-radio-input-checked::after {
 
 .switch-sex[checked] .wx-switch-input,
 .switch-sex.checked .uni-switch-input {
-	background: #0081ff !important;
-	border-color: #0081ff !important;
+	background: #646cff !important;
+	border-color: #646cff !important;
 }
 
 switch.red[checked] .wx-switch-input.wx-switch-input-checked,
@@ -354,8 +354,8 @@ radio.blue[checked] .wx-radio-input,
 switch.blue.checked .uni-switch-input,
 checkbox.blue.checked .uni-checkbox-input,
 radio.blue.checked .uni-radio-input {
-	background-color: #0081ff !important;
-	border-color: #0081ff !important;
+	background-color: #646cff !important;
+	border-color: #646cff !important;
 	color: #ffffff !important;
 }
 
@@ -3360,7 +3360,7 @@ scroll-view.cu-steps .cu-item {
 
 .line-blue::after,
 .lines-blue::after {
-	border-color: #0081ff;
+	border-color: #646cff;
 }
 
 .line-purple::after,
@@ -3434,7 +3434,7 @@ scroll-view.cu-steps .cu-item {
 }
 
 .bg-blue {
-	background-color: #0081ff;
+	background-color: #646cff;
 	color: #ffffff;
 }
 
@@ -3519,7 +3519,7 @@ scroll-view.cu-steps .cu-item {
 }
 
 .bg-blue.light {
-	color: #0081ff;
+	color: #646cff;
 	background-color: #cce6ff;
 }
 
@@ -3574,7 +3574,7 @@ scroll-view.cu-steps .cu-item {
 }
 
 .bg-gradual-blue {
-	background-image: linear-gradient(45deg, #0081ff, #1cbbb4);
+	background-image: linear-gradient(45deg, #646cff, #8086ff);
 	color: #ffffff;
 }
 
@@ -3603,7 +3603,7 @@ scroll-view.cu-steps .cu-item {
 }
 
 .shadow[class*="-blue"] {
-	box-shadow: 6upx 6upx 8upx rgba(0, 102, 204, 0.2);
+	box-shadow: 6upx 6upx 8upx rgba(100, 108, 255, 0.2);
 }
 
 .shadow[class*="-purple"] {
@@ -3663,7 +3663,7 @@ scroll-view.cu-steps .cu-item {
 }
 
 .text-shadow[class*="-blue"] {
-	text-shadow: 6upx 6upx 8upx rgba(0, 102, 204, 0.2);
+	text-shadow: 6upx 6upx 8upx rgba(100, 108, 255, 0.2);
 }
 
 .text-shadow[class*="-purple"] {
@@ -3860,7 +3860,7 @@ scroll-view.cu-steps .cu-item {
 .text-blue,
 .line-blue,
 .lines-blue {
-	color: #0081ff;
+	color: #646cff;
 }
 
 .text-purple,

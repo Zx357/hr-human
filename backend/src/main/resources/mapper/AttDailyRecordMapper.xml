@@ -22,10 +22,10 @@
             (SELECT COALESCE(SUM(a.duration), 0) FROM hr_application a WHERE a.employee_id = r.employee_id AND a.app_type = 'leave' AND a.title = '7' AND a.status = 1 AND DATE(a.start_time) &lt;= r.att_date AND DATE(a.end_time) &gt;= r.att_date) as bereavement_leave_duration
         FROM att_daily_record r
         LEFT JOIN hr_employee e ON r.employee_id = e.id
-        LEFT JOIN org_unit d ON e.dept_id = d.id AND d.deleted = 0
-        LEFT JOIN org_unit p1 ON d.parent_id = p1.id AND p1.deleted = 0
-        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id AND p2.deleted = 0
-        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id AND p3.deleted = 0
+        LEFT JOIN org_unit d ON e.dept_id = d.id
+        LEFT JOIN org_unit p1 ON d.parent_id = p1.id
+        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id
+        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id
         LEFT JOIN att_shift s ON r.shift_id = s.id
         <where>
             <if test="startDate != null and startDate != ''">
@@ -74,10 +74,10 @@
             (SELECT COALESCE(SUM(a.duration), 0) FROM hr_application a WHERE a.employee_id = r.employee_id AND a.app_type = 'leave' AND a.title = '7' AND a.status = 1 AND DATE(a.start_time) &lt;= r.att_date AND DATE(a.end_time) &gt;= r.att_date) as bereavement_leave_duration
         FROM att_daily_record r
         LEFT JOIN hr_employee e ON r.employee_id = e.id
-        LEFT JOIN org_unit d ON e.dept_id = d.id AND d.deleted = 0
-        LEFT JOIN org_unit p1 ON d.parent_id = p1.id AND p1.deleted = 0
-        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id AND p2.deleted = 0
-        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id AND p3.deleted = 0
+        LEFT JOIN org_unit d ON e.dept_id = d.id
+        LEFT JOIN org_unit p1 ON d.parent_id = p1.id
+        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id
+        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id
         LEFT JOIN att_shift s ON r.shift_id = s.id
         <where>
             <if test="startDate != null and startDate != ''">

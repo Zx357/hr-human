@@ -36,6 +36,7 @@ E:\a\kadmin\backend\src\main\java\com\kadmin\entity\dto\EducationDTO.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\controller\ShiftController.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\controller\SysUserController.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\KadminApplication.java
+E:\a\kadmin\backend\src\main\java\com\kadmin\entity\SysFileConfig.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\SysApprovalFlowMapper.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\common\PageRequest.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\service\ApprovalFlowService.java
@@ -43,6 +44,7 @@ E:\a\kadmin\backend\src\main\java\com\kadmin\entity\OrgCompany.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\controller\DepartmentController.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\DepartmentMapper.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\service\ScheduleService.java
+E:\a\kadmin\backend\src\main\java\com\kadmin\service\FileConfigService.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\config\SecurityConfig.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\service\MobileMenuService.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\service\SysUserService.java
@@ -110,6 +112,7 @@ E:\a\kadmin\backend\src\main\java\com\kadmin\entity\dto\EmployeeExtraDTO.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\OrgUnitMapper.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\HrEducationMapper.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\service\SysDictService.java
+E:\a\kadmin\backend\src\main\java\com\kadmin\controller\FileConfigController.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\common\ResultCode.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\config\DataInitializer.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\entity\SysMenu.java
@@ -124,9 +127,11 @@ E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\SysRoleMapper.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\HrContractMapper.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\common\Result.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\controller\ApprovalFlowController.java
+E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\SysFileConfigMapper.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\config\MybatisPlusConfig.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\entity\OrgDepartment.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\annotation\RequiresPermission.java
+E:\a\kadmin\backend\src\main\java\com\kadmin\controller\MobileHomeController.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\entity\AttSchedule.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\HrRegularizationMapper.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\entity\dto\EmployeeDTO.java

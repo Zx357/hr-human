@@ -1,38 +1,43 @@
 <template>
-  <view class="normal-login-container">
-    <view class="logo-content align-center justify-center flex">
-      <image style="width: 100rpx;height: 100rpx;" :src="globalConfig.appInfo.logo" mode="widthFix">
-      </image>
-      <text class="title">若依移动端注册</text>
-    </view>
-    <view class="login-form-content">
-      <view class="input-item flex align-center">
-        <view class="iconfont icon-user icon"></view>
-        <input v-model="registerForm.username" class="input" type="text" placeholder="请输入账号" maxlength="30" />
-      </view>
-      <view class="input-item flex align-center">
-        <view class="iconfont icon-password icon"></view>
-        <input v-model="registerForm.password" type="password" class="input" placeholder="请输入密码" maxlength="20" />
-      </view>
-      <view class="input-item flex align-center">
-        <view class="iconfont icon-password icon"></view>
-        <input v-model="registerForm.confirmPassword" type="password" class="input" placeholder="请输入重复密码" maxlength="20" />
-      </view>
-      <view class="input-item flex align-center" style="width: 60%;margin: 0px;" v-if="captchaEnabled">
-        <view class="iconfont icon-code icon"></view>
-        <input v-model="registerForm.code" type="number" class="input" placeholder="请输入验证码" maxlength="4" />
-        <view class="login-code"> 
-          <image :src="codeUrl" @click="getCode" class="login-code-img"></image>
+  <app-page padding="0">
+    <view class="login-hero">
+      <view class="brand">
+        <image class="logo" :src="globalConfig.appInfo.logo" mode="aspectFit" />
+        <view class="brand-text">
+          <text class="title">注册</text>
+          <text class="subtitle">创建账号后即可登录</text>
         </view>
       </view>
-      <view class="action-btn">
-        <button @click="handleRegister()" class="register-btn cu-btn block bg-blue lg round">注册</button>
-      </view>
     </view>
-    <view class="xieyi text-center">
-      <text @click="handleUserLogin" class="text-blue">使用已有账号登录</text>
+
+    <view class="content">
+      <app-card class="card">
+        <u-form ref="uForm" :model="registerForm" labelPosition="top">
+          <u-form-item label="账号" prop="username">
+            <u--input v-model="registerForm.username" placeholder="请输入账号" clearable />
+          </u-form-item>
+          <u-form-item label="密码" prop="password">
+            <u--input v-model="registerForm.password" placeholder="请输入密码" type="password" clearable password />
+          </u-form-item>
+          <u-form-item label="确认密码" prop="confirmPassword">
+            <u--input v-model="registerForm.confirmPassword" placeholder="请再次输入密码" type="password" clearable password />
+          </u-form-item>
+          <u-form-item v-if="captchaEnabled" label="验证码" prop="code">
+            <view class="captcha-row">
+              <u--input v-model="registerForm.code" placeholder="请输入验证码" clearable />
+              <image class="captcha-img" :src="codeUrl" @click="getCode" mode="aspectFit" />
+            </view>
+          </u-form-item>
+        </u-form>
+
+        <u-button type="primary" shape="circle" :loading="loading" @click="handleRegister()">注册</u-button>
+
+        <view class="footer">
+          <text class="link" @click="handleUserLogin">使用已有账号登录</text>
+        </view>
+      </app-card>
     </view>
-  </view>
+  </app-page>
 </template>
 
 <script>
@@ -44,6 +49,7 @@
         codeUrl: "",
         captchaEnabled: true,
         globalConfig: getApp().globalData.config,
+      loading: false,
         registerForm: {
           username: "",
           password: "",
@@ -84,6 +90,7 @@
         } else if (this.registerForm.code === "" && this.captchaEnabled) {
           this.$modal.msgError("请输入验证码")
         } else {
+          this.loading = true
           this.$modal.loading("注册中，请耐心等待...")
           this.register()
         }
@@ -91,6 +98,7 @@
       // 用户注册
       async register() {
         register(this.registerForm).then(res => {
+          this.loading = false
           this.$modal.closeLoading()
           uni.showModal({
           	title: "系统提示",
@@ -102,6 +110,7 @@
           	}
           })
         }).catch(() => {
+          this.loading = false
           if (this.captchaEnabled) {
             this.getCode()
           }
@@ -112,78 +121,76 @@
 </script>
 
 <style lang="scss" scoped>
-  page {
-    background-color: #ffffff;
+  @import "@/static/scss/tokens.scss";
+
+  .login-hero {
+    padding: 120rpx 32rpx 56rpx;
+    background: linear-gradient(135deg, $app-primary 0%, $app-primary-2 100%);
   }
 
-  .normal-login-container {
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 20rpx;
+  }
+
+  .logo {
+    width: 88rpx;
+    height: 88rpx;
+    border-radius: 18rpx;
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .brand-text {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .title {
+    font-size: 40rpx;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 1rpx;
+  }
+
+  .subtitle {
+    margin-top: 8rpx;
+    font-size: 24rpx;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .content {
+    padding: 0 24rpx;
+    margin-top: -28rpx;
+  }
+
+  .card {
+    padding: 28rpx;
+  }
+
+  .captcha-row {
     width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
+  }
 
-    .logo-content {
-      width: 100%;
-      font-size: 21px;
-      text-align: center;
-      padding-top: 15%;
+  .captcha-img {
+    width: 220rpx;
+    height: 72rpx;
+    border-radius: 12rpx;
+    border: 1rpx solid rgba(255, 255, 255, 0.0);
+    background-color: #fff;
+  }
 
-      image {
-        border-radius: 4px;
-      }
+  .footer {
+    margin-top: 18rpx;
+    text-align: center;
+    font-size: 24rpx;
+  }
 
-      .title {
-        margin-left: 10px;
-      }
-    }
-
-    .login-form-content {
-      text-align: center;
-      margin: 20px auto;
-      margin-top: 15%;
-      width: 80%;
-
-      .input-item {
-        margin: 20px auto;
-        background-color: #f5f6f7;
-        height: 45px;
-        border-radius: 20px;
-
-        .icon {
-          font-size: 38rpx;
-          margin-left: 10px;
-          color: #999;
-        }
-
-        .input {
-          width: 100%;
-          font-size: 14px;
-          line-height: 20px;
-          text-align: left;
-          padding-left: 15px;
-        }
-
-      }
-
-      .register-btn {
-        margin-top: 40px;
-        height: 45px;
-      }
-
-      .xieyi {
-        color: #333;
-        margin-top: 20px;
-      }
-      
-      .login-code {
-        height: 38px;
-        float: right;
-      
-        .login-code-img {
-          height: 38px;
-          position: absolute;
-          margin-left: 10px;
-          width: 200rpx;
-        }
-      }
-    }
+  .link {
+    color: $app-primary;
   }
 
 </style>

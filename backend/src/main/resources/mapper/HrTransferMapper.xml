@@ -7,11 +7,11 @@
                fd.unit_name as from_dept_name, td.unit_name as to_dept_name
         FROM hr_transfer t
         LEFT JOIN hr_employee e ON t.employee_id = e.id
-        LEFT JOIN org_unit fc ON t.from_company_id = fc.id AND fc.deleted = 0
-        LEFT JOIN org_unit tc ON t.to_company_id = tc.id AND tc.deleted = 0
-        LEFT JOIN org_unit fd ON t.from_dept_id = fd.id AND fd.deleted = 0
-        LEFT JOIN org_unit td ON t.to_dept_id = td.id AND td.deleted = 0
-        WHERE t.deleted = 0
+        LEFT JOIN org_unit fc ON t.from_company_id = fc.id
+        LEFT JOIN org_unit tc ON t.to_company_id = tc.id
+        LEFT JOIN org_unit fd ON t.from_dept_id = fd.id
+        LEFT JOIN org_unit td ON t.to_dept_id = td.id
+        WHERE 1 = 1
         <if test="employeeName != null and employeeName != ''">
             AND e.name LIKE CONCAT('%', #{employeeName}, '%')
         </if>
