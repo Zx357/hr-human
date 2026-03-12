@@ -11,7 +11,7 @@
  Target Server Version : 80044
  File Encoding         : 65001
 
- Date: 11/03/2026 16:15:10
+ Date: 12/03/2026 10:48:18
 */
 
 SET NAMES utf8mb4;
@@ -565,8 +565,9 @@ INSERT INTO `hr_application` VALUES (30, 1, 'exchange', '', '2026-03-09 00:00:00
 INSERT INTO `hr_application` VALUES (31, 1, 'exchange', '', '2026-03-09 00:00:00', '2026-03-14 00:00:00', NULL, '222', 1, 1, '2026-03-10 09:20:03', '', NULL, 1, '2026-03-10 09:19:59', 1, '2026-03-10 09:20:03', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 INSERT INTO `hr_application` VALUES (32, 1, 'exchange', '', '2026-03-09 00:00:00', '2026-03-14 00:00:00', NULL, '333', 1, 1, '2026-03-10 09:21:02', '', NULL, 1, '2026-03-10 09:20:53', 1, '2026-03-10 09:21:02', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 INSERT INTO `hr_application` VALUES (33, 1, 'exchange', '', '2026-03-09 00:00:00', '2026-03-14 00:00:00', NULL, '888', 1, 1, '2026-03-10 09:21:41', '', NULL, 1, '2026-03-10 09:21:37', 1, '2026-03-10 09:21:41', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-INSERT INTO `hr_application` VALUES (34, 1, 'leave', '事假', '2026-03-11 15:07:00', '2026-03-12 15:07:00', 0.00, '11', 0, NULL, NULL, NULL, NULL, 1, '2026-03-11 15:13:12', 1, '2026-03-11 15:13:12', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-INSERT INTO `hr_application` VALUES (35, 1, 'regularization', '转正申请', NULL, NULL, NULL, '', 0, NULL, NULL, NULL, NULL, 1, '2026-03-11 15:18:25', 1, '2026-03-11 15:18:25', '2026-03-11', '2026-03-25', '111', 'formal', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `hr_application` VALUES (34, 1, 'leave', '事假', '2026-03-11 15:07:00', '2026-03-12 15:07:00', 0.00, '11', 1, 1, '2026-03-11 16:41:10', NULL, NULL, 1, '2026-03-11 15:13:12', 1, '2026-03-11 16:41:10', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `hr_application` VALUES (35, 1, 'regularization', '转正申请', NULL, NULL, NULL, '', 1, 1, '2026-03-11 16:40:55', NULL, NULL, 1, '2026-03-11 15:18:25', 1, '2026-03-11 16:40:55', '2026-03-11', '2026-03-25', '111', 'formal', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `hr_application` VALUES (36, 5, 'regularization', NULL, NULL, NULL, NULL, '', 0, NULL, NULL, NULL, NULL, 8, '2026-03-11 16:54:55', 8, '2026-03-11 16:54:55', '2026-03-11', NULL, '', 'regular', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- ----------------------------
 -- Table structure for hr_certificate
@@ -733,7 +734,7 @@ CREATE TABLE `hr_employee`  (
 -- ----------------------------
 -- Records of hr_employee
 -- ----------------------------
-INSERT INTO `hr_employee` VALUES (1, '001', '赵梓旭', NULL, '/employee_photo/001.jpg', '/id_card_front/001.jpg', '/id_card_back/001.jpg', '1', 'bachelor', 12, 'han', '859865464', '2025-12-18', '156251645', '156251645', 'probation', '2025-12-25', '2026-01-06', 'dm', 'gm', NULL, NULL, 'p3', NULL, NULL, NULL, NULL, 'single', 'league_member', NULL, NULL, NULL, NULL, '212', NULL, NULL, NULL, NULL, 1, 1, '2025-12-25 18:23:28', 1, '2026-03-11 10:15:04');
+INSERT INTO `hr_employee` VALUES (1, '001', '赵梓旭', NULL, '/employee_photo/001.jpg', '/id_card_front/001.jpg', '/id_card_back/001.jpg', '1', 'bachelor', 12, 'han', '859865464', '2025-12-18', '156251645', '156251645', 'formal', '2025-12-25', '2026-03-11', 'dm', 'gm', NULL, NULL, 'p3', NULL, NULL, NULL, NULL, 'single', 'league_member', NULL, NULL, NULL, NULL, '212', NULL, NULL, NULL, NULL, 1, 1, '2025-12-25 18:23:28', 1, '2026-03-11 16:40:55');
 INSERT INTO `hr_employee` VALUES (2, '002', '小明', NULL, '', '', '', '1', 'college', 2, 'han', '454454545', '2025-12-29', '156251645', '156251645', 'regular', '2025-12-17', '2025-12-29', 'dgm', 'gm', NULL, NULL, 'p3', NULL, NULL, NULL, NULL, 'single', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-12-29', 2, 1, '2025-12-28 15:56:19', 1, '2025-12-29 15:16:04');
 INSERT INTO `hr_employee` VALUES (4, 'test1', 'test1', NULL, '', '', '', '', NULL, 12, NULL, NULL, NULL, '', '', 'intern', NULL, '2026-01-06', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-06', 2, 1, '2026-01-06 09:38:43', 1, '2026-01-06 16:51:40');
 INSERT INTO `hr_employee` VALUES (5, 'test2', 'test2', NULL, '', '', '', '', 'college', 13, NULL, NULL, '2005-03-10', '', '', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, 1, '2026-01-06 16:52:55', 8, '2026-03-11 13:23:00');
@@ -783,6 +784,27 @@ CREATE TABLE `hr_family_member`  (
 -- Records of hr_family_member
 -- ----------------------------
 INSERT INTO `hr_family_member` VALUES (28, 1, '12', 'mother', '2025-12-25', 'masses', '12', '', '12', NULL, NULL);
+
+-- ----------------------------
+-- Table structure for hr_mobile_approver
+-- ----------------------------
+DROP TABLE IF EXISTS `hr_mobile_approver`;
+CREATE TABLE `hr_mobile_approver`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `employee_id` bigint NOT NULL COMMENT '员工ID',
+  `app_types` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '可审批的申请类型，逗号分隔，空表示全部',
+  `created_time` datetime NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_by` bigint NULL DEFAULT NULL,
+  `updated_by` bigint NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_employee_id`(`employee_id` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '移动端审批权限' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of hr_mobile_approver
+-- ----------------------------
+INSERT INTO `hr_mobile_approver` VALUES (1, 1, 'leave', '2026-03-11 17:28:31', '2026-03-11 17:28:31', 1, 1);
 
 -- ----------------------------
 -- Table structure for hr_position_change
@@ -1528,6 +1550,7 @@ INSERT INTO `sys_menu` VALUES (81, 8, 2, 'system_user', '用户管理', 'User Ma
 INSERT INTO `sys_menu` VALUES (82, 8, 2, 'system_role', '角色管理', 'Role Management', '/system/role', 'view.system_role', NULL, 'mdi:account-key', 2, 1, 1, '2025-12-25 14:10:05', '2026-01-12 20:42:52', NULL, NULL);
 INSERT INTO `sys_menu` VALUES (83, 8, 2, 'system_menu', '菜单管理', 'Menu Management', '/system/menu', 'view.system_menu', NULL, 'mdi:menu', 3, 1, 1, '2025-12-25 14:10:05', '2026-01-12 20:42:52', NULL, NULL);
 INSERT INTO `sys_menu` VALUES (84, 8, 2, 'system_dict', '字典管理', 'Dictionary Management', '/system/dict', 'view.system_dict', NULL, 'mdi:book-alphabet', 4, 1, 1, '2025-12-25 14:10:05', '2026-01-12 20:42:52', NULL, NULL);
+INSERT INTO `sys_menu` VALUES (85, 8, 2, 'system_notice', '公告管理', 'Notice Management', '/system/notice', 'view.system_notice', NULL, 'mdi:bullhorn', 5, 1, 1, '2026-03-12 10:36:21', '2026-03-12 10:36:21', NULL, NULL);
 INSERT INTO `sys_menu` VALUES (1086, 31, 3, 'hr_employee_add', '新增', 'Add', NULL, NULL, 'hr:employee:add', NULL, 1, 1, 1, '2025-12-25 14:10:14', '2026-01-12 20:43:01', NULL, NULL);
 INSERT INTO `sys_menu` VALUES (1087, 31, 3, 'hr_employee_edit', '编辑', 'Edit', NULL, NULL, 'hr:employee:edit', NULL, 2, 1, 1, '2025-12-25 14:10:14', '2026-01-12 20:43:01', NULL, NULL);
 INSERT INTO `sys_menu` VALUES (1088, 31, 3, 'hr_employee_delete', '删除', 'Delete', NULL, NULL, 'hr:employee:delete', NULL, 3, 1, 1, '2025-12-25 14:10:14', '2026-01-12 20:43:01', NULL, NULL);
@@ -1609,6 +1632,10 @@ INSERT INTO `sys_menu` VALUES (1223, 1217, 3, 'system_mobile-menu_add', '新增'
 INSERT INTO `sys_menu` VALUES (1224, 1217, 3, 'system_mobile-menu_edit', '编辑', 'Edit', NULL, NULL, 'system:mobile-menu:edit', NULL, 3, 1, 1, '2026-01-12 20:38:22', '2026-01-12 20:38:22', NULL, NULL);
 INSERT INTO `sys_menu` VALUES (1225, 1217, 3, 'system_mobile-menu_delete', '删除', 'Delete', NULL, NULL, 'system:mobile-menu:delete', NULL, 4, 1, 1, '2026-01-12 20:38:22', '2026-01-12 20:38:22', NULL, NULL);
 INSERT INTO `sys_menu` VALUES (1226, 8, 2, 'system_file-config', '路径管理', 'File Config', '/system/file-config', 'view.system_file-config', 'system:fileConfig:list', 'mdi:folder-cog-outline', 60, 1, 1, '2026-03-09 10:00:37', '2026-03-09 10:00:37', NULL, NULL);
+INSERT INTO `sys_menu` VALUES (1227, 6, 2, 'approval_mobile-approver', '移动端审批权限', 'Mobile Approval Permission', '/approval/mobile-approver', 'view.approval_mobile-approver', NULL, 'mdi:cellphone-check', 4, 1, 1, '2026-03-11 17:24:20', '2026-03-11 17:27:06', NULL, NULL);
+INSERT INTO `sys_menu` VALUES (1230, 85, 3, 'system_notice_add', '新增', 'Add', NULL, NULL, 'system:notice:add', NULL, 1, 1, 1, '2026-03-12 10:36:21', '2026-03-12 10:36:21', NULL, NULL);
+INSERT INTO `sys_menu` VALUES (1231, 85, 3, 'system_notice_edit', '编辑', 'Edit', NULL, NULL, 'system:notice:edit', NULL, 2, 1, 1, '2026-03-12 10:36:21', '2026-03-12 10:36:21', NULL, NULL);
+INSERT INTO `sys_menu` VALUES (1232, 85, 3, 'system_notice_delete', '删除', 'Delete', NULL, NULL, 'system:notice:delete', NULL, 3, 1, 1, '2026-03-12 10:36:21', '2026-03-12 10:36:21', NULL, NULL);
 
 -- ----------------------------
 -- Table structure for sys_menu_i18n
@@ -1701,6 +1728,29 @@ INSERT INTO `sys_mobile_menu` VALUES (7, '离职申请', 'resign', 'closeempty',
 INSERT INTO `sys_mobile_menu` VALUES (8, '换休申请', 'exchange', 'refreshempty', '#fa8c16', '/pages/apply/exchange/index', 'apply', 4, 1, NULL, '2026-01-12 20:35:13', NULL, '2026-01-12 20:35:13');
 
 -- ----------------------------
+-- Table structure for sys_notice
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_notice`;
+CREATE TABLE `sys_notice`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '公告ID',
+  `notice_title` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '公告标题',
+  `notice_type` tinyint NOT NULL DEFAULT 1 COMMENT '公告类型：1-公告，2-通知',
+  `notice_content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '公告内容',
+  `status` tinyint NOT NULL DEFAULT 1 COMMENT '状态：0-关闭，1-正常',
+  `publish_time` datetime NULL DEFAULT NULL COMMENT '发布日期',
+  `created_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_by` bigint NULL DEFAULT NULL COMMENT '创建人',
+  `updated_by` bigint NULL DEFAULT NULL COMMENT '更新人',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '公告通知表' ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Records of sys_notice
+-- ----------------------------
+INSERT INTO `sys_notice` VALUES (1, '111', 2, '222', 1, '2026-03-01 00:00:00', '2026-03-12 10:40:13', '2026-03-12 10:46:42', 1, 1);
+
+-- ----------------------------
 -- Table structure for sys_role
 -- ----------------------------
 DROP TABLE IF EXISTS `sys_role`;
@@ -1723,7 +1773,7 @@ CREATE TABLE `sys_role`  (
 -- ----------------------------
 -- Records of sys_role
 -- ----------------------------
-INSERT INTO `sys_role` VALUES (1, 'ROLE_ADMIN', '管理员', '', 1, 1, '2025-12-22 21:19:11', '2026-01-19 21:04:32', NULL, 8, 1);
+INSERT INTO `sys_role` VALUES (1, 'ROLE_ADMIN', '管理员', '', 1, 1, '2025-12-22 21:19:11', '2026-03-11 17:27:47', NULL, 1, 1);
 INSERT INTO `sys_role` VALUES (10, 'nhsys', '超级管理员', '', 1, 0, '2026-01-19 18:45:50', '2026-03-11 15:17:29', 1, 1, 1);
 
 -- ----------------------------
@@ -1759,117 +1809,6 @@ CREATE TABLE `sys_role_menu`  (
 -- ----------------------------
 -- Records of sys_role_menu
 -- ----------------------------
-INSERT INTO `sys_role_menu` VALUES (3456, 1, 1, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3457, 1, 2, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3458, 1, 24, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3459, 1, 1214, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3460, 1, 1215, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3461, 1, 1216, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3462, 1, 3, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3463, 1, 31, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3464, 1, 1086, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3465, 1, 1087, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3466, 1, 1088, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3467, 1, 1089, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3468, 1, 32, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3469, 1, 1091, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3470, 1, 1092, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3471, 1, 1093, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3472, 1, 1195, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3473, 1, 1202, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3474, 1, 1203, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3475, 1, 1204, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3476, 1, 1196, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3477, 1, 1205, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3478, 1, 1206, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3479, 1, 1207, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3480, 1, 1197, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3481, 1, 1208, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3482, 1, 1209, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3483, 1, 1210, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3484, 1, 1198, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3485, 1, 1211, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3486, 1, 1212, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3487, 1, 1213, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3488, 1, 4, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3489, 1, 41, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3490, 1, 1144, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3491, 1, 1145, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3492, 1, 1146, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3493, 1, 42, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3494, 1, 1148, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3495, 1, 1149, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3496, 1, 1150, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3497, 1, 43, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3498, 1, 1152, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3499, 1, 1153, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3500, 1, 1154, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3501, 1, 44, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3502, 1, 1156, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3503, 1, 45, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3504, 1, 1158, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3505, 1, 1191, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3506, 1, 1193, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3507, 1, 1194, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3508, 1, 5, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3509, 1, 51, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3510, 1, 1160, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3511, 1, 1161, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3512, 1, 1162, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3513, 1, 52, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3514, 1, 1164, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3515, 1, 1165, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3516, 1, 1166, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3517, 1, 53, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3518, 1, 1168, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3519, 1, 1169, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3520, 1, 1170, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3521, 1, 54, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3522, 1, 1172, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3523, 1, 1173, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3524, 1, 1174, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3525, 1, 55, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3526, 1, 1176, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3527, 1, 1177, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3528, 1, 1178, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3529, 1, 6, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3530, 1, 61, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3531, 1, 1180, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3532, 1, 1181, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3533, 1, 62, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3534, 1, 63, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3535, 1, 1184, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3536, 1, 1185, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3537, 1, 1186, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3538, 1, 7, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3539, 1, 71, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3540, 1, 1188, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3541, 1, 72, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3542, 1, 1190, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3543, 1, 8, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3544, 1, 81, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3545, 1, 1127, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3546, 1, 1128, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3547, 1, 1129, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3548, 1, 1130, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3549, 1, 82, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3550, 1, 1132, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3551, 1, 1133, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3552, 1, 1134, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3553, 1, 83, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3554, 1, 1136, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3555, 1, 1137, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3556, 1, 1138, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3557, 1, 84, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3558, 1, 1140, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3559, 1, 1141, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3560, 1, 1142, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3561, 1, 1217, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3562, 1, 1222, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3563, 1, 1223, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3564, 1, 1224, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3565, 1, 1225, '2026-01-19 21:04:32');
-INSERT INTO `sys_role_menu` VALUES (3600, 1, 1226, '2026-03-09 10:01:07');
 INSERT INTO `sys_role_menu` VALUES (3651, 10, 1, '2026-03-11 15:17:28');
 INSERT INTO `sys_role_menu` VALUES (3652, 10, 2, '2026-03-11 15:17:28');
 INSERT INTO `sys_role_menu` VALUES (3653, 10, 24, '2026-03-11 15:17:28');
@@ -1929,6 +1868,123 @@ INSERT INTO `sys_role_menu` VALUES (3706, 10, 1140, '2026-03-11 15:17:28');
 INSERT INTO `sys_role_menu` VALUES (3707, 10, 1141, '2026-03-11 15:17:28');
 INSERT INTO `sys_role_menu` VALUES (3708, 10, 1142, '2026-03-11 15:17:28');
 INSERT INTO `sys_role_menu` VALUES (3709, 10, 8, '2026-03-11 15:17:28');
+INSERT INTO `sys_role_menu` VALUES (3934, 10, 1227, '2026-03-11 17:25:34');
+INSERT INTO `sys_role_menu` VALUES (3935, 1, 1, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3936, 1, 2, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3937, 1, 24, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3938, 1, 1214, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3939, 1, 1215, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3940, 1, 1216, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3941, 1, 3, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3942, 1, 31, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3943, 1, 1086, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3944, 1, 1087, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3945, 1, 1088, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3946, 1, 1089, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3947, 1, 32, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3948, 1, 1091, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3949, 1, 1092, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3950, 1, 1093, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3951, 1, 1195, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3952, 1, 1202, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3953, 1, 1203, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3954, 1, 1204, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3955, 1, 1196, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3956, 1, 1205, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3957, 1, 1206, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3958, 1, 1207, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3959, 1, 1197, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3960, 1, 1208, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3961, 1, 1209, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3962, 1, 1210, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3963, 1, 1198, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3964, 1, 1211, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3965, 1, 1212, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3966, 1, 1213, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3967, 1, 4, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3968, 1, 41, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3969, 1, 1144, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3970, 1, 1145, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3971, 1, 1146, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3972, 1, 42, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3973, 1, 1148, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3974, 1, 1149, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3975, 1, 1150, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3976, 1, 43, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3977, 1, 1152, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3978, 1, 1153, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3979, 1, 1154, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3980, 1, 44, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3981, 1, 1156, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3982, 1, 45, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3983, 1, 1158, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3984, 1, 1191, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3985, 1, 1193, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3986, 1, 1194, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3987, 1, 5, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3988, 1, 51, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3989, 1, 1160, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3990, 1, 1161, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3991, 1, 1162, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3992, 1, 52, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3993, 1, 1164, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3994, 1, 1165, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3995, 1, 1166, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3996, 1, 53, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3997, 1, 1168, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3998, 1, 1169, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (3999, 1, 1170, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4000, 1, 54, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4001, 1, 1172, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4002, 1, 1173, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4003, 1, 1174, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4004, 1, 55, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4005, 1, 1176, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4006, 1, 1177, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4007, 1, 1178, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4008, 1, 6, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4009, 1, 61, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4010, 1, 1180, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4011, 1, 1181, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4012, 1, 62, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4013, 1, 63, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4014, 1, 1184, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4015, 1, 1185, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4016, 1, 1186, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4017, 1, 1227, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4018, 1, 7, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4019, 1, 71, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4020, 1, 1188, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4021, 1, 72, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4022, 1, 1190, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4023, 1, 8, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4024, 1, 81, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4025, 1, 1127, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4026, 1, 1128, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4027, 1, 1129, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4028, 1, 1130, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4029, 1, 82, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4030, 1, 1132, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4031, 1, 1133, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4032, 1, 1134, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4033, 1, 83, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4034, 1, 1136, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4035, 1, 1137, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4036, 1, 1138, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4037, 1, 84, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4038, 1, 1140, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4039, 1, 1141, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4040, 1, 1142, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4041, 1, 1217, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4042, 1, 1222, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4043, 1, 1223, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4044, 1, 1224, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4045, 1, 1225, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4046, 1, 1226, '2026-03-11 17:27:47');
+INSERT INTO `sys_role_menu` VALUES (4047, 1, 85, '2026-03-12 10:39:12');
+INSERT INTO `sys_role_menu` VALUES (4048, 1, 1230, '2026-03-12 10:39:12');
+INSERT INTO `sys_role_menu` VALUES (4049, 1, 1231, '2026-03-12 10:39:12');
+INSERT INTO `sys_role_menu` VALUES (4050, 1, 1232, '2026-03-12 10:39:12');
 
 -- ----------------------------
 -- Table structure for sys_user

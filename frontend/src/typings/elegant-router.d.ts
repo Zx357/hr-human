@@ -33,6 +33,7 @@ declare module "@elegant-router/types" {
     "approval": "/approval";
     "approval_flow": "/approval/flow";
     "approval_mine": "/approval/mine";
+    "approval_mobile-approver": "/approval/mobile-approver";
     "approval_pending": "/approval/pending";
     "attendance": "/attendance";
     "attendance_clock": "/attendance/clock";
@@ -57,6 +58,7 @@ declare module "@elegant-router/types" {
     "system_file-config": "/system/file-config";
     "system_menu": "/system/menu";
     "system_mobile-menu": "/system/mobile-menu";
+    "system_notice": "/system/notice";
     "system_role": "/system/role";
     "system_user": "/system/user";
   };
@@ -135,6 +137,7 @@ declare module "@elegant-router/types" {
     | "application_transfer"
     | "approval_flow"
     | "approval_mine"
+    | "approval_mobile-approver"
     | "approval_pending"
     | "attendance_clock"
     | "attendance_daily"
@@ -152,6 +155,7 @@ declare module "@elegant-router/types" {
     | "system_file-config"
     | "system_menu"
     | "system_mobile-menu"
+    | "system_notice"
     | "system_role"
     | "system_user"
   >;

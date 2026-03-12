@@ -142,4 +142,58 @@
         </if>
         ORDER BY a.created_time DESC
     </select>
+
+    <select id="selectMobilePendingPage" resultType="com.kadmin.entity.HrApplication">
+        SELECT a.*,
+            e.name as employee_name, e.employee_no, e.entry_date,
+            d.unit_name as dept_name,
+            CASE
+                WHEN d.unit_type = 2 THEN d.unit_name
+                WHEN p1.unit_type = 2 THEN p1.unit_name
+                WHEN p2.unit_type = 2 THEN p2.unit_name
+                WHEN p3.unit_type = 2 THEN p3.unit_name
+                ELSE NULL
+            END as company_name,
+            fd.unit_name as from_dept_name,
+            td.unit_name as to_dept_name,
+            h.name as handover_to_name
+        FROM hr_application a
+        LEFT JOIN hr_employee e ON a.employee_id = e.id
+        LEFT JOIN org_unit d ON e.dept_id = d.id
+        LEFT JOIN org_unit p1 ON d.parent_id = p1.id
+        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id
+        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id
+        LEFT JOIN org_unit fd ON a.from_dept_id = fd.id
+        LEFT JOIN org_unit td ON a.to_dept_id = td.id
+        LEFT JOIN hr_employee h ON a.handover_to = h.id
+        WHERE a.status = 0
+        AND a.employee_id != #{approverEmployeeId}
+        AND EXISTS (
+            SELECT 1 FROM hr_mobile_approver ma
+            WHERE ma.employee_id = #{approverEmployeeId}
+            AND (ma.app_types IS NULL OR ma.app_types = '' OR FIND_IN_SET(a.app_type COLLATE utf8mb4_unicode_ci, ma.app_types) > 0)
+        )
+        <if test="employeeName != null and employeeName != ''">
+            AND e.name LIKE CONCAT('%', #{employeeName}, '%')
+        </if>
+        <if test="employeeNo != null and employeeNo != ''">
+            AND e.employee_no LIKE CONCAT('%', #{employeeNo}, '%')
+        </if>
+        <if test="appType != null and appType != ''">
+            AND a.app_type = #{appType}
+        </if>
+        ORDER BY a.created_time DESC
+    </select>
+
+    <select id="selectMobilePendingCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM hr_application a
+        WHERE a.status = 0
+        AND a.employee_id != #{approverEmployeeId}
+        AND EXISTS (
+            SELECT 1 FROM hr_mobile_approver ma
+            WHERE ma.employee_id = #{approverEmployeeId}
+            AND (ma.app_types IS NULL OR ma.app_types = '' OR FIND_IN_SET(a.app_type COLLATE utf8mb4_unicode_ci, ma.app_types) > 0)
+        )
+    </select>
 </mapper>

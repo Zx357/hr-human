@@ -179,6 +179,7 @@ const routeMap: RouteMap = {
   "approval": "/approval",
   "approval_flow": "/approval/flow",
   "approval_mine": "/approval/mine",
+  "approval_mobile-approver": "/approval/mobile-approver",
   "approval_pending": "/approval/pending",
   "attendance": "/attendance",
   "attendance_clock": "/attendance/clock",
@@ -203,6 +204,7 @@ const routeMap: RouteMap = {
   "system_file-config": "/system/file-config",
   "system_menu": "/system/menu",
   "system_mobile-menu": "/system/mobile-menu",
+  "system_notice": "/system/notice",
   "system_role": "/system/role",
   "system_user": "/system/user"
 };

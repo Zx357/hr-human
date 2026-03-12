@@ -22,6 +22,9 @@ const loading = ref(false);
 // 角色列表
 const roleList = ref<any[]>([]);
 
+// 员工列表
+const employeeList = ref<any[]>([]);
+
 // 对话框
 const dialogVisible = ref(false);
 const dialogTitle = ref('');
@@ -246,9 +249,22 @@ async function submitResetPwd() {
   }
 }
 
+// 获取员工列表
+async function fetchEmployees() {
+  const { data, error } = await request<any[]>({
+    url: '/employee/list',
+    method: 'get',
+    params: { status: 1 }
+  });
+  if (!error && data) {
+    employeeList.value = data;
+  }
+}
+
 onMounted(() => {
   fetchData();
   fetchRoles();
+  fetchEmployees();
 });
 </script>
 
@@ -296,55 +312,40 @@ onMounted(() => {
 
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="tableData" border stripe height="100%">
-        <ElTableColumn prop="id" label="ID" width="80" />
-        <ElTableColumn prop="username" label="用户名" width="120" />
-        <ElTableColumn prop="nickname" label="昵称" width="120" />
-        <ElTableColumn prop="email" label="邮箱" width="180" />
-        <ElTableColumn prop="phone" label="手机号" width="130" />
-        <ElTableColumn prop="gender" label="性别" width="80">
-          <template #default="{ row }">
-            <ElTag v-if="row.gender === 1" type="primary">男</ElTag>
-            <ElTag v-else-if="row.gender === 2" type="danger">女</ElTag>
-            <ElTag v-else type="info">未知</ElTag>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <ElSwitch
-              v-model="row.status"
-              :active-value="1"
-              :inactive-value="0"
-              @change="handleStatusChange(row)"
-            />
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="createdTime" label="创建时间" width="180" />
-        <ElTableColumn label="操作" width="200" fixed="right">
-          <template #default="{ row }">
-            <ElButton v-permission="'system:user:edit'" type="primary" link @click="handleEdit(row)">编辑</ElButton>
-            <ElButton v-permission="'system:user:reset'" type="warning" link @click="handleResetPwd(row)">重置密码</ElButton>
-            <ElButton
-              v-if="row.username !== 'admin'"
-              v-permission="'system:user:delete'"
-              type="danger"
-              link
-              @click="handleDelete(row)"
-            >删除</ElButton>
-          </template>
-        </ElTableColumn>
-      </ElTable>
+          <ElTableColumn prop="id" label="ID" width="80" />
+          <ElTableColumn prop="username" label="用户名" width="120" />
+          <ElTableColumn prop="nickname" label="昵称" width="120" />
+          <ElTableColumn prop="email" label="邮箱" width="180" />
+          <ElTableColumn prop="phone" label="手机号" width="130" />
+          <ElTableColumn prop="gender" label="性别" width="80">
+            <template #default="{ row }">
+              <ElTag v-if="row.gender === 1" type="primary">男</ElTag>
+              <ElTag v-else-if="row.gender === 2" type="danger">女</ElTag>
+              <ElTag v-else type="info">未知</ElTag>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn prop="status" label="状态" width="100">
+            <template #default="{ row }">
+              <ElSwitch v-model="row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(row)" />
+            </template>
+          </ElTableColumn>
+          <ElTableColumn prop="createdTime" label="创建时间" width="180" />
+          <ElTableColumn label="操作" width="200" fixed="right">
+            <template #default="{ row }">
+              <ElButton v-permission="'system:user:edit'" type="primary" link @click="handleEdit(row)">编辑</ElButton>
+              <ElButton v-permission="'system:user:reset'" type="warning" link @click="handleResetPwd(row)">重置密码
+              </ElButton>
+              <ElButton v-if="row.username !== 'admin'" v-permission="'system:user:delete'" type="danger" link
+                @click="handleDelete(row)">删除</ElButton>
+            </template>
+          </ElTableColumn>
+        </ElTable>
       </div>
 
       <div class="mt-16px flex justify-end">
-        <ElPagination
-          v-model:current-page="queryParams.current"
-          v-model:page-size="queryParams.size"
-          :total="total"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          @current-change="handlePageChange"
-          @size-change="handleSizeChange"
-        />
+        <ElPagination v-model:current-page="queryParams.current" v-model:page-size="queryParams.size" :total="total"
+          :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper"
+          @current-change="handlePageChange" @size-change="handleSizeChange" />
       </div>
     </ElCard>
 
@@ -381,12 +382,7 @@ onMounted(() => {
         </ElFormItem>
         <ElFormItem label="角色">
           <ElSelect v-model="formData.roleIds" multiple placeholder="请选择角色" style="width: 100%">
-            <ElOption
-              v-for="role in roleList"
-              :key="role.id"
-              :label="role.roleName"
-              :value="role.id"
-            />
+            <ElOption v-for="role in roleList" :key="role.id" :label="role.roleName" :value="role.id" />
           </ElSelect>
         </ElFormItem>
       </ElForm>

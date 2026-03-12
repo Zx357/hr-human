@@ -10,6 +10,7 @@ com\kadmin\controller\AuthController$RefreshTokenRequest.class
 com\kadmin\mapper\SysMenuMapper.class
 com\kadmin\entity\SysApprovalNode.class
 com\kadmin\controller\AuthController$LoginRequest.class
+com\kadmin\service\MobileApproverService.class
 com\kadmin\entity\HrEducation.class
 com\kadmin\service\impl\DepartmentServiceImpl.class
 com\kadmin\service\SysDictService.class

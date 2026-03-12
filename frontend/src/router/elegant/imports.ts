@@ -31,6 +31,7 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   application_transfer: () => import("@/views/application/transfer/index.vue"),
   approval_flow: () => import("@/views/approval/flow/index.vue"),
   approval_mine: () => import("@/views/approval/mine/index.vue"),
+  "approval_mobile-approver": () => import("@/views/approval/mobile-approver/index.vue"),
   approval_pending: () => import("@/views/approval/pending/index.vue"),
   attendance_clock: () => import("@/views/attendance/clock/index.vue"),
   attendance_daily: () => import("@/views/attendance/daily/index.vue"),
@@ -48,6 +49,7 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   "system_file-config": () => import("@/views/system/file-config/index.vue"),
   system_menu: () => import("@/views/system/menu/index.vue"),
   "system_mobile-menu": () => import("@/views/system/mobile-menu/index.vue"),
+  system_notice: () => import("@/views/system/notice/index.vue"),
   system_role: () => import("@/views/system/role/index.vue"),
   system_user: () => import("@/views/system/user/index.vue"),
 };

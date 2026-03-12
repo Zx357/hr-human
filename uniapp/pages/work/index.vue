@@ -5,183 +5,146 @@
     <view class="main-content">
       <view class="page-header">
         <text class="page-title">工作台</text>
-        <text class="page-subtitle">让工作更高效</text>
+        <text class="page-subtitle">效率工具 · 一站直达</text>
       </view>
 
-      <!-- 快捷入口区 -->
-      <view class="quick-nav-card">
-        <view class="nav-item" @click="goToClock">
-          <view class="nav-icon" style="background: rgba(37, 99, 235, 0.1);">
-            <u-icon name="map-fill" size="32" color="#2563EB"></u-icon>
-          </view>
-          <text class="nav-name">定位打卡</text>
-        </view>
-        <view class="nav-item" @click="goToMyApply">
-          <view class="nav-icon" style="background: rgba(245, 158, 11, 0.1);">
-            <u-icon name="order" size="32" color="#f59e0b"></u-icon>
-          </view>
-          <text class="nav-name">我的申请</text>
-        </view>
-        <view class="nav-item" @click="goToApprovalList">
-          <view class="nav-icon" style="background: rgba(16, 185, 129, 0.1);">
-            <u-icon name="list-dot" size="32" color="#10b981"></u-icon>
-          </view>
-          <text class="nav-name">待审批</text>
-        </view>
-        <view class="nav-item" @click="goToMyRecords">
-          <view class="nav-icon" style="background: rgba(236, 72, 153, 0.1);">
-            <u-icon name="calendar-fill" size="32" color="#ec4899"></u-icon>
-          </view>
-          <text class="nav-name">考勤记录</text>
-        </view>
-      </view>
-
-      <!-- 业务应用区 -->
-      <view class="section-card" v-if="applyMenus.length > 0">
+      <!-- 公告通知 -->
+      <view class="section-card">
         <view class="section-header">
-          <text class="title">业务应用</text>
-        </view>
-        <view class="menu-grid">
-          <view class="menu-item" v-for="(item, index) in applyMenus" :key="index" @click="handleMenuClick(item)">
-            <view class="icon-cube" :style="getIconStyle(item)">
-              <u-icon :name="getMenuIcon(item)" size="32" :color="getIconColor(item)"></u-icon>
-            </view>
-            <text class="item-text">{{ item.menuName }}</text>
+          <view class="title-with-dot">
+            <view class="dot-indicator dot-amber"></view>
+            <text class="title">公告通知</text>
           </view>
+        </view>
+
+        <view class="notice-list" v-if="noticeList.length > 0">
+          <view class="notice-item" v-for="(item, index) in noticeList" :key="index" @click="viewNotice(item)">
+            <view class="notice-left">
+              <view class="notice-type-badge" :class="'badge-' + item.noticeType">
+                {{ item.noticeType === '1' ? '公告' : '通知' }}
+              </view>
+              <view class="notice-info">
+                <text class="notice-title">{{ item.noticeTitle }}</text>
+                <text class="notice-time">{{ item.publishTime ? item.publishTime.substring(0, 10) : (item.createdTime ? item.createdTime.substring(0, 10) : '') }}</text>
+              </view>
+            </view>
+            <u-icon name="arrow-right" size="14" color="#d1d5db"></u-icon>
+          </view>
+        </view>
+
+        <view class="empty-mini" v-else>
+          <u-icon name="bell" size="40" color="#d1d5db"></u-icon>
+          <text class="empty-text">暂无公告通知</text>
         </view>
       </view>
 
-      <!-- 待我审批区 -->
+      <!-- 本周考勤概览 -->
       <view class="section-card" style="margin-bottom: 30rpx;">
         <view class="section-header">
-          <text class="title">待我审批</text>
-          <view class="more-btn" @click="goToApprovalList">
-            <text>更多</text>
+          <view class="title-with-dot">
+            <view class="dot-indicator dot-green"></view>
+            <text class="title">本周出勤</text>
+          </view>
+          <view class="more-btn" @click="goToMyAttendance">
+            <text>详情</text>
             <u-icon name="arrow-right" size="12" color="#9ca3af" customStyle="margin-left:4rpx"></u-icon>
           </view>
         </view>
 
-        <view class="approval-list" v-if="pendingList.length > 0">
-          <view class="approval-item" v-for="(item, index) in pendingList" :key="index"
-            @click="goToApprovalDetail(item)">
-            <view class="approval-left">
-              <view class="avatar-box">{{ getFirstChar(item.applicantName) }}</view>
-              <view class="info-content">
-                <view class="type-name">{{ item.typeName }}</view>
-                <view class="meta-info">
-                  <text class="applicant">{{ item.applicantName }}</text>
-                  <text class="dot">·</text>
-                  <text class="time">{{ item.createTime }}</text>
-                </view>
-              </view>
-            </view>
-            <view class="approval-right">
-              <view class="action-btn">审批</view>
-            </view>
+        <view class="week-grid">
+          <view class="week-day" v-for="(day, index) in weekDays" :key="index">
+            <text class="day-label">{{ day.label }}</text>
+            <view class="day-dot" :class="getDayStatus(day)"></view>
+            <text class="day-date">{{ day.date }}</text>
           </view>
         </view>
-
-        <u-empty v-else mode="list" text="当前没有待办事项" iconSize="80" customStyle="padding: 60rpx 0;"></u-empty>
+        <view class="week-legend">
+          <view class="legend-item"><view class="legend-dot dot-ok"></view><text>正常</text></view>
+          <view class="legend-item"><view class="legend-dot dot-late"></view><text>迟到</text></view>
+          <view class="legend-item"><view class="legend-dot dot-absent"></view><text>缺勤</text></view>
+          <view class="legend-item"><view class="legend-dot dot-rest"></view><text>休息</text></view>
+        </view>
       </view>
     </view>
   </view>
 </template>
 
 <script>
-import { getMobileMenus } from '@/api/menu'
+import { getClockInfo } from '@/api/attendance'
+import { getNoticeList } from '@/api/system/notice'
 
 export default {
   data() {
     return {
-      applyMenus: [],
-      pendingList: []
+      noticeList: [],
+      weekAttendance: {}
+    }
+  },
+  computed: {
+    weekDays() {
+      const days = ['一', '二', '三', '四', '五', '六', '日']
+      const now = new Date()
+      const dayOfWeek = now.getDay() || 7 // 1=周一...7=周日
+      const result = []
+      for (let i = 1; i <= 7; i++) {
+        const d = new Date(now)
+        d.setDate(now.getDate() - dayOfWeek + i)
+        result.push({
+          label: '周' + days[i - 1],
+          date: (d.getMonth() + 1) + '/' + d.getDate(),
+          dateStr: d.toISOString().substring(0, 10),
+          isToday: i === dayOfWeek,
+          isFuture: i > dayOfWeek,
+          isWeekend: i >= 6
+        })
+      }
+      return result
     }
   },
   onShow() {
-    this.loadMenus()
+    this.loadNotices()
+    this.loadWeekAttendance()
   },
   methods: {
-    getFirstChar(name) {
-      if (!name) return '?'
-      return name.charAt(0)
-    },
-    getMenuIcon(item) {
-      if (!item.menuName) return 'star-fill'
-      const name = item.menuName
-      if (name.includes('假')) return 'calendar-fill'
-      if (name.includes('转正')) return 'account-fill'
-      if (name.includes('加班')) return 'clock-fill'
-      if (name.includes('补卡')) return 'edit-pen-fill'
-      if (name.includes('出差')) return 'car-fill'
-      if (name.includes('离职')) return 'minus-circle-fill'
-      if (name.includes('调动')) return 'list-dot'
-      if (name.includes('换休')) return 'reload'
-      return 'star-fill'
-    },
-    getIconStyle(item) {
-      const colors = {
-        'calendar-fill': { bg: 'rgba(56, 189, 248, 0.15)' },
-        'account-fill': { bg: 'rgba(52, 211, 153, 0.15)' },
-        'clock-fill': { bg: 'rgba(251, 146, 60, 0.15)' },
-        'edit-pen-fill': { bg: 'rgba(99, 102, 241, 0.15)' },
-        'car-fill': { bg: 'rgba(244, 114, 182, 0.15)' },
-        'minus-circle-fill': { bg: 'rgba(248, 113, 113, 0.15)' },
-        'list-dot': { bg: 'rgba(167, 139, 250, 0.15)' },
-        'reload': { bg: 'rgba(52, 211, 153, 0.15)' },
-        'star-fill': { bg: 'rgba(251, 191, 36, 0.15)' }
-      }
-      let iconName = this.getMenuIcon(item)
-      return { backgroundColor: (colors[iconName] || colors['star-fill']).bg }
-    },
-    getIconColor(item) {
-      const colors = {
-        'calendar-fill': '#0ea5e9',
-        'account-fill': '#10b981',
-        'clock-fill': '#f97316',
-        'edit-pen-fill': '#6366f1',
-        'car-fill': '#ec4899',
-        'minus-circle-fill': '#ef4444',
-        'list-dot': '#8b5cf6',
-        'reload': '#10b981',
-        'star-fill': '#f59e0b'
-      }
-      let iconName = this.getMenuIcon(item)
-      return colors[iconName] || colors['star-fill']
-    },
-    async loadMenus() {
+    async loadNotices() {
       try {
-        const res = await getMobileMenus()
+        const res = await getNoticeList({ status: 1 })
         if (res.code === 200 && res.data) {
-          this.applyMenus = res.data.apply || []
+          this.noticeList = Array.isArray(res.data) ? res.data.slice(0, 5) : (res.data.records || [])
         }
       } catch (e) {
-        console.log('加载菜单失败', e)
+        this.noticeList = []
       }
     },
-    handleMenuClick(item) {
-      if (item.path) {
-        uni.navigateTo({ url: item.path })
+    async loadWeekAttendance() {
+      try {
+        const res = await getClockInfo()
+        if (res.code === 200 && res.data) {
+          this.weekAttendance = res.data.weekStatus || {}
+        }
+      } catch (e) {
+        this.weekAttendance = {}
       }
     },
-    goToClock() {
-      uni.navigateTo({ url: '/pages/clock/index' })
+    getDayStatus(day) {
+      if (day.isFuture) return 'status-future'
+      if (day.isWeekend) return 'status-rest'
+      const status = this.weekAttendance[day.dateStr]
+      if (status === 'normal') return 'status-ok'
+      if (status === 'late') return 'status-late'
+      if (status === 'absent') return 'status-absent'
+      if (day.isToday) return 'status-today'
+      return 'status-rest'
     },
-    goToMyApply() {
-      uni.navigateTo({ url: '/pages/apply/list/index' })
+    viewNotice(item) {
+      if (item.noticeContent) {
+        uni.navigateTo({
+          url: '/pages/common/textview/index?title=' + encodeURIComponent(item.noticeTitle) + '&content=' + encodeURIComponent(item.noticeContent)
+        })
+      }
     },
-    goToMyRecords() {
+    goToMyAttendance() {
       uni.navigateTo({ url: '/pages/attendance/index' })
-    },
-    goToList(type) {
-      const statusMap = { pending: 0, approved: 1, rejected: 2 }
-      const status = statusMap[type]
-      uni.navigateTo({ url: '/pages/apply/list/index' + (status !== undefined ? '?status=' + status : '') })
-    },
-    goToApprovalList() {
-      this.$modal.showToast('功能开发中~')
-    },
-    goToApprovalDetail(item) {
-      this.$modal.showToast('功能开发中~')
     }
   }
 }
@@ -190,7 +153,7 @@ export default {
 <style lang="scss" scoped>
 .page-wrap {
   min-height: 100vh;
-  background-color: #f3f4f6;
+  background-color: #f0f1f5;
   position: relative;
 }
 
@@ -200,18 +163,18 @@ export default {
   left: 0;
   right: 0;
   height: 340rpx;
-  background: #f3f4f6;
+  background: #f0f1f5;
   z-index: 0;
 }
 
 .main-content {
   position: relative;
   z-index: 1;
-  padding: 0 30rpx;
+  padding: 0 28rpx;
 }
 
 .page-header {
-  padding: 100rpx 0 40rpx;
+  padding: 100rpx 0 36rpx;
 
   .page-title {
     display: block;
@@ -222,65 +185,51 @@ export default {
 
   .page-subtitle {
     display: block;
-    font-size: 28rpx;
-    color: #6b7280;
-    margin-top: 12rpx;
+    font-size: 26rpx;
+    color: #9ca3af;
+    margin-top: 10rpx;
   }
 }
 
-.quick-nav-card {
-  background: #ffffff;
-  border-radius: 32rpx;
-  padding: 40rpx 20rpx;
-  display: flex;
-  justify-content: space-around;
-  margin-bottom: 30rpx;
-  box-shadow: 0 8rpx 30rpx rgba(0, 0, 0, 0.03);
-
-  .nav-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-
-    .nav-icon {
-      width: 100rpx;
-      height: 100rpx;
-      border-radius: 30rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 16rpx;
-      transition: all 0.2s;
-
-      &:active {
-        transform: scale(0.95);
-      }
-    }
-
-    .nav-name {
-      font-size: 26rpx;
-      color: #4b5563;
-      font-weight: 600;
-    }
-  }
-}
-
+// === 卡片通用 ===
 .section-card {
   background: #ffffff;
-  border-radius: 32rpx;
-  padding: 40rpx 30rpx;
-  margin-bottom: 30rpx;
-  box-shadow: 0 8rpx 30rpx rgba(0, 0, 0, 0.03);
+  border-radius: 28rpx;
+  padding: 32rpx 28rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 40rpx;
+  margin-bottom: 32rpx;
+
+  .title-with-dot {
+    display: flex;
+    align-items: center;
+
+    .dot-indicator {
+      width: 10rpx;
+      height: 10rpx;
+      border-radius: 50%;
+      margin-right: 14rpx;
+
+      &.dot-amber {
+        background: #f59e0b;
+        box-shadow: 0 0 0 4rpx rgba(245, 158, 11, 0.15);
+      }
+
+      &.dot-green {
+        background: #10b981;
+        box-shadow: 0 0 0 4rpx rgba(16, 185, 129, 0.15);
+      }
+    }
+  }
 
   .title {
-    font-size: 34rpx;
+    font-size: 32rpx;
     font-weight: 800;
     color: #111827;
   }
@@ -288,110 +237,193 @@ export default {
   .more-btn {
     display: flex;
     align-items: center;
-    font-size: 26rpx;
-    color: #6b7280;
+    font-size: 24rpx;
+    color: #9ca3af;
+    padding: 8rpx 16rpx;
+    border-radius: 20rpx;
+    background: #f9fafb;
   }
 }
 
-.menu-grid {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.menu-item {
-  width: 25%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 30rpx;
-
-  .icon-cube {
-    width: 96rpx;
-    height: 96rpx;
-    border-radius: 28rpx;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 16rpx;
-    transition: all 0.2s ease;
-
-    &:active {
-      transform: scale(0.95);
-    }
-  }
-
-  .item-text {
-    font-size: 26rpx;
-    color: #4b5563;
-    font-weight: 600;
-  }
-}
-
-.approval-list {
-  .approval-item {
+// === 公告通知 ===
+.notice-list {
+  .notice-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 30rpx 20rpx;
-    margin-bottom: 20rpx;
-    background: #f9fafb;
-    border-radius: 24rpx;
+    padding: 24rpx 20rpx;
+    margin-bottom: 12rpx;
+    background: #fafafa;
+    border-radius: 18rpx;
 
     &:last-child {
       margin-bottom: 0;
     }
 
-    .approval-left {
-      display: flex;
-      align-items: center;
-
-      .avatar-box {
-        width: 80rpx;
-        height: 80rpx;
-        border-radius: 24rpx;
-        background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
-        color: #fff;
-        font-size: 32rpx;
-        font-weight: bold;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .info-content {
-        margin-left: 24rpx;
-
-        .type-name {
-          font-size: 30rpx;
-          color: #1f2937;
-          font-weight: 700;
-        }
-
-        .meta-info {
-          font-size: 24rpx;
-          color: #6b7280;
-          margin-top: 6rpx;
-          display: flex;
-          align-items: center;
-
-          .dot {
-            margin: 0 10rpx;
-            color: #d1d5db;
-          }
-        }
-      }
+    &:active {
+      background: #f3f4f6;
     }
 
-    .approval-right {
-      .action-btn {
-        padding: 12rpx 32rpx;
-        border-radius: 40rpx;
-        background: #eff6ff;
-        color: #2563eb;
-        font-size: 26rpx;
-        font-weight: 600;
+    .notice-left {
+      display: flex;
+      align-items: center;
+      flex: 1;
+      min-width: 0;
+
+      .notice-type-badge {
+        font-size: 20rpx;
+        padding: 6rpx 16rpx;
+        border-radius: 10rpx;
+        font-weight: 700;
+        flex-shrink: 0;
+
+        &.badge-1 {
+          background: #eef2ff;
+          color: #6366f1;
+        }
+
+        &.badge-2 {
+          background: #fef3c7;
+          color: #d97706;
+        }
+      }
+
+      .notice-info {
+        margin-left: 20rpx;
+        min-width: 0;
+
+        .notice-title {
+          display: block;
+          font-size: 28rpx;
+          color: #1f2937;
+          font-weight: 600;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .notice-time {
+          display: block;
+          font-size: 22rpx;
+          color: #9ca3af;
+          margin-top: 6rpx;
+        }
       }
     }
   }
 }
+
+// === 本周考勤 ===
+.week-grid {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.week-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+
+  .day-label {
+    font-size: 22rpx;
+    color: #9ca3af;
+    font-weight: 600;
+    margin-bottom: 16rpx;
+  }
+
+  .day-dot {
+    width: 28rpx;
+    height: 28rpx;
+    border-radius: 50%;
+    margin-bottom: 12rpx;
+
+    &.status-ok {
+      background: #10b981;
+      box-shadow: 0 0 0 4rpx rgba(16, 185, 129, 0.2);
+    }
+
+    &.status-late {
+      background: #f59e0b;
+      box-shadow: 0 0 0 4rpx rgba(245, 158, 11, 0.2);
+    }
+
+    &.status-absent {
+      background: #ef4444;
+      box-shadow: 0 0 0 4rpx rgba(239, 68, 68, 0.2);
+    }
+
+    &.status-rest {
+      background: #e5e7eb;
+    }
+
+    &.status-today {
+      background: #6366f1;
+      box-shadow: 0 0 0 4rpx rgba(99, 102, 241, 0.2);
+    }
+
+    &.status-future {
+      background: #f3f4f6;
+      border: 2rpx dashed #d1d5db;
+    }
+  }
+
+  .day-date {
+    font-size: 20rpx;
+    color: #9ca3af;
+  }
+}
+
+.week-legend {
+  display: flex;
+  justify-content: center;
+  gap: 32rpx;
+  padding-top: 8rpx;
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    font-size: 20rpx;
+    color: #9ca3af;
+
+    .legend-dot {
+      width: 14rpx;
+      height: 14rpx;
+      border-radius: 50%;
+      margin-right: 8rpx;
+
+      &.dot-ok {
+        background: #10b981;
+      }
+
+      &.dot-late {
+        background: #f59e0b;
+      }
+
+      &.dot-absent {
+        background: #ef4444;
+      }
+
+      &.dot-rest {
+        background: #e5e7eb;
+      }
+    }
+  }
+}
+
+// === 空状态 ===
+.empty-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40rpx 0 20rpx;
+
+  .empty-text {
+    font-size: 24rpx;
+    color: #d1d5db;
+    margin-top: 16rpx;
+  }
+}
 </style>
+

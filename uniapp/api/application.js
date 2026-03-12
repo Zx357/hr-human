@@ -43,11 +43,11 @@ export function cancelApplication(id) {
 }
 
 /**
- * 获取待审批列表
+ * 获取待审批列表（移动端）
  */
 export function getPendingApprovals(params) {
   return request({
-    url: '/hr/application/pending',
+    url: '/hr/application/mobile-pending',
     method: 'get',
     params
   })

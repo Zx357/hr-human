@@ -41,11 +41,14 @@ E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\SysApprovalFlowMapper.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\common\PageRequest.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\service\ApprovalFlowService.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\entity\OrgCompany.java
+E:\a\kadmin\backend\src\main\java\com\kadmin\service\MobileApproverService.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\controller\DepartmentController.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\DepartmentMapper.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\service\ScheduleService.java
+E:\a\kadmin\backend\src\main\java\com\kadmin\controller\MobileApproverController.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\service\FileConfigService.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\config\SecurityConfig.java
+E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\HrMobileApproverMapper.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\service\MobileMenuService.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\service\SysUserService.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\controller\ApplicationController.java
@@ -53,6 +56,7 @@ E:\a\kadmin\backend\src\main\java\com\kadmin\mapper\HrFamilyMemberMapper.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\controller\EmployeeController.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\controller\SysMenuController.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\controller\TransferController.java
+E:\a\kadmin\backend\src\main\java\com\kadmin\entity\HrMobileApprover.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\service\ApplicationService.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\entity\vo\EducationVO.java
 E:\a\kadmin\backend\src\main\java\com\kadmin\controller\ContractController.java

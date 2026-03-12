@@ -260,6 +260,7 @@ const local: App.I18n.Schema = {
     approval_pending: '待审批',
     approval_mine: '我的申请',
     approval_flow: '审批流程配置',
+    'approval_mobile-approver': '移动端审批权限',
     report: '报表管理',
     report_employee: '员工报表',
     report_attendance: '考勤报表',

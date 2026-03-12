@@ -3,6 +3,7 @@ package com.kadmin.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kadmin.common.Result;
 import com.kadmin.entity.HrApplication;
+import com.kadmin.security.LoginUser;
 import com.kadmin.service.ApplicationService;
 import com.kadmin.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -27,9 +28,10 @@ public class ApplicationController {
             @RequestParam(required = false) String appType,
             @RequestParam(required = false) Integer status,
             @RequestParam(required = false) Long employeeId) {
-        return Result.success(service.getPage(pageNum, pageSize, employeeName, employeeNo, appType, status, employeeId));
+        return Result
+                .success(service.getPage(pageNum, pageSize, employeeName, employeeNo, appType, status, employeeId));
     }
-    
+
     @GetMapping("/pending")
     public Result<Page<HrApplication>> pending(
             @RequestParam(defaultValue = "1") Integer pageNum,
@@ -40,7 +42,23 @@ public class ApplicationController {
         Long userId = SecurityUtils.getCurrentUserId();
         return Result.success(service.getPendingPage(pageNum, pageSize, employeeName, employeeNo, appType, userId));
     }
-    
+
+    @GetMapping("/mobile-pending")
+    public Result<Page<HrApplication>> mobilePending(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String employeeName,
+            @RequestParam(required = false) String employeeNo,
+            @RequestParam(required = false) String appType) {
+        LoginUser loginUser = SecurityUtils.getCurrentUser();
+        Long employeeId = loginUser.getEmployeeId();
+        if (employeeId == null) {
+            employeeId = loginUser.getUserId();
+        }
+        return Result.success(
+                service.getMobilePendingPage(pageNum, pageSize, employeeName, employeeNo, appType, employeeId));
+    }
+
     /**
      * 计算请假小时数
      */
@@ -52,7 +70,7 @@ public class ApplicationController {
         BigDecimal hours = service.calculateLeaveHours(employeeId, startTime, endTime);
         return Result.success(hours);
     }
-    
+
     /**
      * 计算加班小时数
      */
@@ -72,7 +90,8 @@ public class ApplicationController {
 
     @PostMapping
     public Result<Void> add(@RequestBody HrApplication entity) {
-        if (entity.getStatus() == null) entity.setStatus(0);
+        if (entity.getStatus() == null)
+            entity.setStatus(0);
         service.save(entity);
         return Result.success();
     }
@@ -92,10 +111,15 @@ public class ApplicationController {
     @PostMapping("/approve/{id}")
     public Result<Void> approve(@PathVariable Long id, @RequestParam Integer status,
             @RequestParam(required = false) String remark) {
-        service.approve(id, status, remark, 1L);
+        LoginUser loginUser = SecurityUtils.getCurrentUser();
+        Long approveBy = loginUser.getEmployeeId();
+        if (approveBy == null) {
+            approveBy = loginUser.getUserId();
+        }
+        service.approve(id, status, remark, approveBy);
         return Result.success();
     }
-    
+
     @PostMapping("/cancel/{id}")
     public Result<Void> cancel(@PathVariable Long id) {
         service.cancel(id);

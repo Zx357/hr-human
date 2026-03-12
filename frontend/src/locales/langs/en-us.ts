@@ -260,6 +260,7 @@ const local: App.I18n.Schema = {
     approval_pending: 'Pending Approval',
     approval_mine: 'My Applications',
     approval_flow: 'Approval Flow Config',
+    'approval_mobile-approver': 'Mobile Approval Permission',
     report: 'Reports',
     report_employee: 'Employee Report',
     report_attendance: 'Attendance Report',

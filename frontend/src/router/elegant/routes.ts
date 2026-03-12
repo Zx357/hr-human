@@ -181,6 +181,16 @@ export const generatedRoutes: GeneratedRoute[] = [
         }
       },
       {
+        name: 'approval_mobile-approver',
+        path: '/approval/mobile-approver',
+        component: 'view.approval_mobile-approver',
+        meta: {
+          title: 'approval_mobile-approver',
+          i18nKey: 'route.approval_mobile-approver',
+          order: 6
+        }
+      },
+      {
         name: 'approval_pending',
         path: '/approval/pending',
         component: 'view.approval_pending',
@@ -450,6 +460,16 @@ export const generatedRoutes: GeneratedRoute[] = [
         meta: {
           title: 'system_mobile-menu',
           i18nKey: 'route.system_mobile-menu',
+          order: 8
+        }
+      },
+      {
+        name: 'system_notice',
+        path: '/system/notice',
+        component: 'view.system_notice',
+        meta: {
+          title: 'system_notice',
+          i18nKey: 'route.system_notice',
           order: 8
         }
       },

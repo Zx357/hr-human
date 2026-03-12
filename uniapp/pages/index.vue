@@ -76,13 +76,13 @@
             <text class="stat-label">待处理</text>
           </view>
         </view>
-        <view class="stat-card" @click="goToLeave">
+        <view class="stat-card" @click="goToApprovalList">
           <view class="stat-icon-wrap" style="background: rgba(16,185,129,0.1);">
             <u-icon name="checkmark-circle-fill" size="24" color="#10b981"></u-icon>
           </view>
           <view class="stat-info">
-            <text class="stat-value">{{ approvedCount }}</text>
-            <text class="stat-label">已通过</text>
+            <text class="stat-value">{{ approvalCount }}</text>
+            <text class="stat-label">待我审批</text>
           </view>
         </view>
       </view>
@@ -94,10 +94,6 @@
             <view class="dot-indicator"></view>
             <text class="section-title">快捷申请</text>
           </view>
-          <view class="more-link" @click="goToWork">
-            <text>更多</text>
-            <u-icon name="arrow-right" size="12" color="#9ca3af" customStyle="margin-left:4rpx"></u-icon>
-          </view>
         </view>
         <view class="quick-grid">
           <view class="quick-item" v-for="(item, index) in applyMenus" :key="index" @click="handleMenuClick(item)">
@@ -106,6 +102,45 @@
             </view>
             <text class="quick-text">{{ item.menuName }}</text>
           </view>
+        </view>
+      </view>
+
+      <!-- 待我审批区 -->
+      <view class="section-card">
+        <view class="section-header">
+          <view class="title-with-dot">
+            <view class="dot-indicator dot-green"></view>
+            <text class="section-title">待我审批</text>
+          </view>
+          <view class="more-link" @click="goToApprovalList">
+            <text>更多</text>
+            <u-icon name="arrow-right" size="12" color="#9ca3af" customStyle="margin-left:4rpx"></u-icon>
+          </view>
+        </view>
+
+        <view class="approval-list" v-if="pendingList.length > 0">
+          <view class="approval-item" v-for="(item, index) in pendingList" :key="index"
+            @click="goToApprovalDetail(item)">
+            <view class="approval-left">
+              <view class="avatar-box">{{ getFirstChar(item.applicantName) }}</view>
+              <view class="info-content">
+                <view class="type-name">{{ item.typeName }}</view>
+                <view class="meta-info">
+                  <text class="applicant">{{ item.applicantName }}</text>
+                  <text class="dot">·</text>
+                  <text class="time">{{ item.createTime }}</text>
+                </view>
+              </view>
+            </view>
+            <view class="approval-right">
+              <view class="action-btn">审批</view>
+            </view>
+          </view>
+        </view>
+
+        <view class="empty-state" v-else style="padding: 40rpx 0 20rpx;">
+          <u-icon name="checkmark-circle" size="48" color="#d1d5db"></u-icon>
+          <text class="empty-text" style="margin-top: 16rpx;">暂无待审批事项</text>
         </view>
       </view>
 
@@ -156,7 +191,7 @@
 import { mapGetters } from 'vuex'
 import { getMobileMenus } from '@/api/menu'
 import { getClockInfo, getHomeStats } from '@/api/attendance'
-import { getMyApplications } from '@/api/application'
+import { getMyApplications, getPendingApprovals } from '@/api/application'
 
 export default {
   data() {
@@ -165,10 +200,12 @@ export default {
       currentSeconds: '',
       applyMenus: [],
       recentApplies: [],
+      pendingList: [],
       timer: null,
       monthAttendance: '--',
       pendingApply: '--',
-      approvedCount: '--'
+      approvedCount: '--',
+      approvalCount: '--'
     }
   },
   computed: {
@@ -209,6 +246,7 @@ export default {
     this.loadClockInfo()
     this.loadHomeStats()
     this.loadRecentApplies()
+    this.loadPendingList()
     this.updateTime()
     this.timer = setInterval(() => {
       this.updateTime()
@@ -372,6 +410,7 @@ export default {
           this.monthAttendance = res.data.monthAttendDays ?? 0
           this.pendingApply = res.data.pendingCount ?? 0
           this.approvedCount = res.data.approvedCount ?? 0
+          this.approvalCount = res.data.approvalCount ?? 0
         }
       } catch (e) {
         console.log('加载首页统计失败', e)
@@ -408,8 +447,35 @@ export default {
     goToLeave() {
       uni.navigateTo({ url: '/pages/apply/list/index?status=1' })
     },
-    goToWork() {
-      uni.switchTab({ url: '/pages/work/index' })
+    goToApprovalList() {
+      uni.navigateTo({ url: '/pages/approval/list/index' })
+    },
+    getFirstChar(name) {
+      if (!name) return '?'
+      return name.charAt(0)
+    },
+    goToApprovalDetail(item) {
+      uni.navigateTo({ url: '/pages/approval/detail/index?id=' + item.id })
+    },
+    async loadPendingList() {
+      try {
+        const res = await getPendingApprovals({ pageNum: 1, pageSize: 5 })
+        if (res.code === 200 && res.data) {
+          const typeMap = {
+            leave: '请假', overtime: '加班', business: '出差',
+            makeup: '补卡', exchange: '换休', regularization: '转正',
+            transfer: '调动', reward: '奖励', punish: '惩罚', resignation: '离职'
+          }
+          this.pendingList = (res.data.records || []).map(item => ({
+            id: item.id,
+            applicantName: item.employeeName || '未知',
+            typeName: typeMap[item.appType] || item.appType || '申请',
+            createTime: item.createdTime ? item.createdTime.substring(0, 16) : ''
+          }))
+        }
+      } catch (e) {
+        console.log('加载待审批列表失败', e)
+      }
     },
     goToNotification() {
       this.$modal.showToast('暂无新消息')
@@ -940,6 +1006,96 @@ export default {
       background: #dc2626;
     }
   }
+}
+
+// === 待审批列表 ===
+.approval-list {
+  .approval-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24rpx 20rpx;
+    margin-bottom: 16rpx;
+    background: #fafafa;
+    border-radius: 20rpx;
+    transition: all 0.15s;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    &:active {
+      background: #f3f4f6;
+    }
+
+    .approval-left {
+      display: flex;
+      align-items: center;
+      flex: 1;
+      min-width: 0;
+
+      .avatar-box {
+        width: 72rpx;
+        height: 72rpx;
+        border-radius: 22rpx;
+        background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+        color: #fff;
+        font-size: 30rpx;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .info-content {
+        margin-left: 20rpx;
+        min-width: 0;
+
+        .type-name {
+          font-size: 28rpx;
+          color: #1f2937;
+          font-weight: 700;
+        }
+
+        .meta-info {
+          font-size: 22rpx;
+          color: #9ca3af;
+          margin-top: 6rpx;
+          display: flex;
+          align-items: center;
+
+          .dot {
+            margin: 0 8rpx;
+            color: #d1d5db;
+          }
+        }
+      }
+    }
+
+    .approval-right {
+      flex-shrink: 0;
+      margin-left: 16rpx;
+
+      .action-btn {
+        padding: 10rpx 28rpx;
+        border-radius: 32rpx;
+        background: #eef2ff;
+        color: #4f46e5;
+        font-size: 24rpx;
+        font-weight: 600;
+
+        &:active {
+          background: #e0e7ff;
+        }
+      }
+    }
+  }
+}
+
+.dot-green {
+  background: #10b981 !important;
+  box-shadow: 0 0 0 4rpx rgba(16, 185, 129, 0.15) !important;
 }
 
 // === 空状态 ===

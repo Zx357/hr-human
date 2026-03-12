@@ -22,16 +22,16 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
 
     @Autowired
     private EmployeeMapper employeeMapper;
-    
+
     @Autowired
     private SysUserMapper sysUserMapper;
-    
+
     @Autowired
     private AttScheduleMapper scheduleMapper;
-    
+
     @Autowired
     private AttShiftMapper shiftMapper;
-    
+
     @Autowired
     private AttShiftPeriodMapper shiftPeriodMapper;
 
@@ -45,21 +45,20 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
         if (employeeId == null || startTime == null || endTime == null) {
             return BigDecimal.ZERO;
         }
-        
+
         BigDecimal totalHours = BigDecimal.ZERO;
         LocalDate startDate = startTime.toLocalDate();
         LocalDate endDate = endTime.toLocalDate();
-        
+
         // 遍历每一天
         LocalDate currentDate = startDate;
         while (!currentDate.isAfter(endDate)) {
             // 获取当天的排班
             AttSchedule schedule = scheduleMapper.selectOne(
-                new LambdaQueryWrapper<AttSchedule>()
-                    .eq(AttSchedule::getEmployeeId, employeeId)
-                    .eq(AttSchedule::getScheduleDate, currentDate)
-            );
-            
+                    new LambdaQueryWrapper<AttSchedule>()
+                            .eq(AttSchedule::getEmployeeId, employeeId)
+                            .eq(AttSchedule::getScheduleDate, currentDate));
+
             // 计算当天的加班时间范围
             LocalTime dayStart, dayEnd;
             if (currentDate.equals(startDate)) {
@@ -72,28 +71,28 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
             } else {
                 dayEnd = LocalTime.of(23, 59);
             }
-            
+
             if (schedule != null && schedule.getShiftId() != null) {
                 // 有排班：计算选择时间与班次时段的交集
                 List<AttShiftPeriod> periods = shiftPeriodMapper.selectList(
-                    new LambdaQueryWrapper<AttShiftPeriod>()
-                        .eq(AttShiftPeriod::getShiftId, schedule.getShiftId())
-                        .orderByAsc(AttShiftPeriod::getSortOrder)
-                );
-                
+                        new LambdaQueryWrapper<AttShiftPeriod>()
+                                .eq(AttShiftPeriod::getShiftId, schedule.getShiftId())
+                                .orderByAsc(AttShiftPeriod::getSortOrder));
+
                 if (periods != null && !periods.isEmpty()) {
                     for (AttShiftPeriod period : periods) {
                         LocalTime periodStart = LocalTime.parse(period.getStartTime());
                         LocalTime periodEnd = LocalTime.parse(period.getEndTime());
-                        
+
                         // 计算加班时间与班次时段的交集
                         LocalTime overlapStart = dayStart.isAfter(periodStart) ? dayStart : periodStart;
                         LocalTime overlapEnd = dayEnd.isBefore(periodEnd) ? dayEnd : periodEnd;
-                        
+
                         if (overlapStart.isBefore(overlapEnd)) {
                             long minutes = ChronoUnit.MINUTES.between(overlapStart, overlapEnd);
                             if (minutes > 0) {
-                                BigDecimal hours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+                                BigDecimal hours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2,
+                                        RoundingMode.HALF_UP);
                                 totalHours = totalHours.add(hours);
                             }
                         }
@@ -102,7 +101,8 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
                     // 有排班但没有时段配置，整段时间都算加班
                     long minutes = ChronoUnit.MINUTES.between(dayStart, dayEnd);
                     if (minutes > 0) {
-                        BigDecimal hours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+                        BigDecimal hours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2,
+                                RoundingMode.HALF_UP);
                         totalHours = totalHours.add(hours);
                     }
                 }
@@ -110,14 +110,15 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
                 // 没有排班（休息日），整段时间都算加班
                 long minutes = ChronoUnit.MINUTES.between(dayStart, dayEnd);
                 if (minutes > 0) {
-                    BigDecimal hours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+                    BigDecimal hours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2,
+                            RoundingMode.HALF_UP);
                     totalHours = totalHours.add(hours);
                 }
             }
-            
+
             currentDate = currentDate.plusDays(1);
         }
-        
+
         return totalHours;
     }
 
@@ -129,78 +130,80 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
         if (employeeId == null || startTime == null || endTime == null) {
             return BigDecimal.ZERO;
         }
-        
+
         BigDecimal totalHours = BigDecimal.ZERO;
         LocalDate startDate = startTime.toLocalDate();
         LocalDate endDate = endTime.toLocalDate();
-        
+
         // 遍历每一天
         LocalDate currentDate = startDate;
         while (!currentDate.isAfter(endDate)) {
             // 获取当天的排班
             AttSchedule schedule = scheduleMapper.selectOne(
-                new LambdaQueryWrapper<AttSchedule>()
-                    .eq(AttSchedule::getEmployeeId, employeeId)
-                    .eq(AttSchedule::getScheduleDate, currentDate)
-            );
-            
+                    new LambdaQueryWrapper<AttSchedule>()
+                            .eq(AttSchedule::getEmployeeId, employeeId)
+                            .eq(AttSchedule::getScheduleDate, currentDate));
+
             if (schedule != null && schedule.getShiftId() != null) {
                 // 获取班次时段列表
                 List<AttShiftPeriod> periods = shiftPeriodMapper.selectList(
-                    new LambdaQueryWrapper<AttShiftPeriod>()
-                        .eq(AttShiftPeriod::getShiftId, schedule.getShiftId())
-                        .orderByAsc(AttShiftPeriod::getSortOrder)
-                );
-                
+                        new LambdaQueryWrapper<AttShiftPeriod>()
+                                .eq(AttShiftPeriod::getShiftId, schedule.getShiftId())
+                                .orderByAsc(AttShiftPeriod::getSortOrder));
+
                 if (periods != null && !periods.isEmpty()) {
                     // 计算当天的请假时间范围
                     LocalTime dayStart, dayEnd;
-                    
+
                     if (currentDate.equals(startDate)) {
                         dayStart = startTime.toLocalTime();
                     } else {
                         // 非第一天：从第一个时段开始
                         dayStart = LocalTime.parse(periods.get(0).getStartTime());
                     }
-                    
+
                     if (currentDate.equals(endDate)) {
                         dayEnd = endTime.toLocalTime();
                     } else {
                         // 非最后一天：到最后一个时段结束
                         dayEnd = LocalTime.parse(periods.get(periods.size() - 1).getEndTime());
                     }
-                    
+
                     // 遍历每个时段，计算与请假时间的交集
                     for (AttShiftPeriod period : periods) {
                         LocalTime periodStart = LocalTime.parse(period.getStartTime());
                         LocalTime periodEnd = LocalTime.parse(period.getEndTime());
-                        
+
                         // 计算请假时间与时段的交集
                         LocalTime overlapStart = dayStart.isAfter(periodStart) ? dayStart : periodStart;
                         LocalTime overlapEnd = dayEnd.isBefore(periodEnd) ? dayEnd : periodEnd;
-                        
+
                         if (overlapStart.isBefore(overlapEnd)) {
                             long minutes = ChronoUnit.MINUTES.between(overlapStart, overlapEnd);
                             if (minutes > 0) {
-                                BigDecimal hours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+                                BigDecimal hours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2,
+                                        RoundingMode.HALF_UP);
                                 totalHours = totalHours.add(hours);
                             }
                         }
                     }
                 }
             }
-            
+
             currentDate = currentDate.plusDays(1);
         }
-        
+
         return totalHours;
     }
 
-    public Page<HrApplication> getPage(int pageNum, int pageSize, String employeeName, String employeeNo, String appType, Integer status, Long employeeId) {
-        return baseMapper.selectPageWithEmployee(new Page<>(pageNum, pageSize), employeeName, employeeNo, appType, status, employeeId);
+    public Page<HrApplication> getPage(int pageNum, int pageSize, String employeeName, String employeeNo,
+            String appType, Integer status, Long employeeId) {
+        return baseMapper.selectPageWithEmployee(new Page<>(pageNum, pageSize), employeeName, employeeNo, appType,
+                status, employeeId);
     }
-    
-    public Page<HrApplication> getPendingPage(int pageNum, int pageSize, String employeeName, String employeeNo, String appType, Long userId) {
+
+    public Page<HrApplication> getPendingPage(int pageNum, int pageSize, String employeeName, String employeeNo,
+            String appType, Long userId) {
         // 获取当前用户的角色ID列表
         List<Long> roleIds = null;
         if (userId != null) {
@@ -209,13 +212,19 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
         return baseMapper.selectPendingPage(new Page<>(pageNum, pageSize), employeeName, employeeNo, appType, roleIds);
     }
 
+    public Page<HrApplication> getMobilePendingPage(int pageNum, int pageSize, String employeeName, String employeeNo,
+            String appType, Long approverEmployeeId) {
+        return baseMapper.selectMobilePendingPage(new Page<>(pageNum, pageSize), employeeName, employeeNo, appType,
+                approverEmployeeId);
+    }
+
     @Transactional
     public boolean approve(Long id, Integer status, String remark, Long approveBy) {
         HrApplication application = getById(id);
         if (application == null) {
             return false;
         }
-        
+
         // 更新申请状态
         HrApplication entity = new HrApplication();
         entity.setId(id);
@@ -224,11 +233,11 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
         entity.setApproveBy(approveBy);
         entity.setApproveTime(LocalDateTime.now());
         boolean result = updateById(entity);
-        
+
         // 审批通过时，执行相应的业务逻辑
         if (result && status == 1) {
             String appType = application.getAppType();
-            
+
             if ("regularization".equals(appType)) {
                 // 转正：更新员工转正日期和员工类别
                 HrEmployee employee = new HrEmployee();
@@ -256,28 +265,28 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
                 Long empId = application.getEmployeeId();
 
                 AttSchedule originalSchedule = scheduleMapper.selectOne(
-                    new LambdaQueryWrapper<AttSchedule>()
-                        .eq(AttSchedule::getEmployeeId, empId)
-                        .eq(AttSchedule::getScheduleDate, originalDay));
+                        new LambdaQueryWrapper<AttSchedule>()
+                                .eq(AttSchedule::getEmployeeId, empId)
+                                .eq(AttSchedule::getScheduleDate, originalDay));
                 AttSchedule swapSchedule = scheduleMapper.selectOne(
-                    new LambdaQueryWrapper<AttSchedule>()
-                        .eq(AttSchedule::getEmployeeId, empId)
-                        .eq(AttSchedule::getScheduleDate, swapDay));
+                        new LambdaQueryWrapper<AttSchedule>()
+                                .eq(AttSchedule::getEmployeeId, empId)
+                                .eq(AttSchedule::getScheduleDate, swapDay));
 
                 Long originalShiftId = originalSchedule != null ? originalSchedule.getShiftId() : null;
                 Long swapShiftId = swapSchedule != null ? swapSchedule.getShiftId() : null;
 
                 if (originalSchedule != null && swapSchedule != null) {
                     scheduleMapper.update(null, new LambdaUpdateWrapper<AttSchedule>()
-                        .eq(AttSchedule::getId, originalSchedule.getId())
-                        .set(AttSchedule::getShiftId, swapShiftId));
+                            .eq(AttSchedule::getId, originalSchedule.getId())
+                            .set(AttSchedule::getShiftId, swapShiftId));
                     scheduleMapper.update(null, new LambdaUpdateWrapper<AttSchedule>()
-                        .eq(AttSchedule::getId, swapSchedule.getId())
-                        .set(AttSchedule::getShiftId, originalShiftId));
+                            .eq(AttSchedule::getId, swapSchedule.getId())
+                            .set(AttSchedule::getShiftId, originalShiftId));
                 } else if (originalSchedule != null) {
                     scheduleMapper.update(null, new LambdaUpdateWrapper<AttSchedule>()
-                        .eq(AttSchedule::getId, originalSchedule.getId())
-                        .set(AttSchedule::getShiftId, null));
+                            .eq(AttSchedule::getId, originalSchedule.getId())
+                            .set(AttSchedule::getShiftId, null));
                     AttSchedule newSchedule = new AttSchedule();
                     newSchedule.setEmployeeId(empId);
                     newSchedule.setScheduleDate(swapDay);
@@ -285,8 +294,8 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
                     scheduleMapper.insert(newSchedule);
                 } else if (swapSchedule != null) {
                     scheduleMapper.update(null, new LambdaUpdateWrapper<AttSchedule>()
-                        .eq(AttSchedule::getId, swapSchedule.getId())
-                        .set(AttSchedule::getShiftId, null));
+                            .eq(AttSchedule::getId, swapSchedule.getId())
+                            .set(AttSchedule::getShiftId, null));
                     AttSchedule newSchedule = new AttSchedule();
                     newSchedule.setEmployeeId(empId);
                     newSchedule.setScheduleDate(originalDay);
@@ -303,10 +312,10 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
             }
             // 奖励和惩罚暂不需要更新员工信息
         }
-        
+
         return result;
     }
-    
+
     public boolean cancel(Long id) {
         HrApplication entity = new HrApplication();
         entity.setId(id);

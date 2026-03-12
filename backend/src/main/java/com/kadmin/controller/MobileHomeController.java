@@ -70,6 +70,10 @@ public class MobileHomeController {
                         .eq(HrApplication::getStatus, 1));
         stats.put("approvedCount", approvedCount != null ? approvedCount : 0);
 
+        // 待我审批（作为审批人需要处理的）
+        Long approvalCount = applicationMapper.selectMobilePendingCount(employeeId);
+        stats.put("approvalCount", approvalCount != null ? approvalCount : 0);
+
         return Result.success(stats);
     }
 }
