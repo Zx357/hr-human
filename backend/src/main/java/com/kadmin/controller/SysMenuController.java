@@ -4,7 +4,7 @@ import com.kadmin.common.Result;
 import com.kadmin.entity.SysMenu;
 import com.kadmin.service.SysMenuService;
 import com.kadmin.utils.SecurityUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -16,10 +16,10 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/system/menu")
+@RequiredArgsConstructor
 public class SysMenuController {
 
-    @Autowired
-    private SysMenuService menuService;
+    private final SysMenuService menuService;
 
     /**
      * 获取菜单树形列表（管理页面使用）

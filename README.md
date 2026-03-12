@@ -91,20 +91,29 @@ KAdmin 是一个基于 Spring Boot + Vue 3 的人力资源管理系统，包含 
 
 ```
 kadmin/
+├── .editorconfig             # 编辑器统一配置
+├── .gitignore                # Git 忽略规则
+├── README.md                 # 项目文档
 ├── backend/                  # Spring Boot 后端
 │   └── src/main/
 │       ├── java/com/kadmin/
-│       │   ├── common/       # 公共模块（Result、BaseEntity）
-│       │   ├── config/       # 配置（Security、MyBatis-Plus、CORS）
+│       │   ├── annotation/   # 自定义注解
+│       │   ├── aspect/       # AOP 切面
+│       │   ├── common/       # 公共模块（Result、BaseEntity、异常处理）
+│       │   ├── config/       # 配置（Security、MyBatis-Plus、Redis、CORS）
 │       │   ├── controller/   # 控制器
+│       │   ├── dto/          # 数据传输对象
 │       │   ├── entity/       # 实体类
-│       │   ├── mapper/       # Mapper 接口
-│       │   ├── security/     # JWT 认证
-│       │   ├── service/      # 业务逻辑
+│       │   ├── mapper/       # MyBatis Mapper 接口
+│       │   ├── security/     # JWT 认证与鉴权
+│       │   ├── service/      # 业务逻辑层
+│       │   │   └── impl/     # 接口实现类
 │       │   └── utils/        # 工具类
 │       └── resources/
-│           ├── mapper/       # MyBatis XML
-│           └── application.yml
+│           ├── mapper/       # MyBatis XML 映射
+│           ├── application.yml        # 通用配置
+│           ├── application-dev.yml    # 开发环境配置
+│           └── application-prod.yml   # 生产环境配置
 ├── frontend/                 # Vue 3 PC 管理后台
 │   └── src/
 │       ├── views/            # 页面
@@ -133,10 +142,10 @@ kadmin/
 ### 环境要求
 
 - JDK 17+
-- Node.js 18+
+- Node.js 20+
 - MySQL 8.0+
 - Redis 6.0+
-- pnpm（前端）
+- pnpm 8.7+（前端）
 - HBuilderX（移动端，可选）
 
 ### 1. 初始化数据库
@@ -151,9 +160,22 @@ CREATE DATABASE kadmin DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 ```bash
 cd backend
-mvn compile
-# 使用 IDE 运行 KadminApplication，或：
-mvn org.springframework.boot:spring-boot-maven-plugin:run
+
+# 开发环境（默认）
+mvn spring-boot:run
+
+# 指定环境
+mvn spring-boot:run -Dspring-boot.run.profiles=prod
+```
+
+可通过环境变量覆盖敏感配置：
+
+```bash
+export DB_USERNAME=root
+export DB_PASSWORD=your_password
+export REDIS_HOST=localhost
+export REDIS_PASSWORD=your_redis_password
+export JWT_SECRET=your_jwt_secret
 ```
 
 默认端口 `8080`，API 前缀 `/api`。
@@ -166,6 +188,8 @@ pnpm install
 pnpm dev
 ```
 
+默认端口 `9527`。
+
 ### 4. 启动移动端
 
 使用 HBuilderX 打开 `uniapp/` 目录，运行到浏览器或模拟器。
@@ -176,6 +200,25 @@ pnpm dev
 | ------- | ----- | ------ | -------------------- |
 | PC 后台 | nhsys | 123456 | 系统管理员           |
 | 移动端  | 001   | 123456 | 员工账号（工号登录） |
+
+> ⚠️ 请在部署到生产环境前修改默认密码。
+
+## 开发规范
+
+### 后端
+
+- **依赖注入**：统一使用 `@RequiredArgsConstructor` + `private final` 构造注入
+- **响应格式**：统一使用 `Result<T>` 封装，状态码参见 `ResultCode` 枚举
+- **异常处理**：业务异常抛出 `BusinessException`，由 `GlobalExceptionHandler` 统一捕获
+- **数据库**：表名前缀规范 — `sys_`（系统）、`org_`（组织）、`hr_`（人事）、`att_`（考勤）、`app_`（申请）
+- **环境配置**：敏感信息通过环境变量注入，不硬编码在配置文件中
+
+### 前端
+
+- **组件命名**：PascalCase（如 `UserTable.vue`）
+- **TypeScript**：严格模式，所有新代码必须有类型定义
+- **代码格式**：ESLint + EditorConfig 统一风格，2 空格缩进
+- **国际化**：所有用户可见文本通过 `$t()` 引用
 
 ## License
 

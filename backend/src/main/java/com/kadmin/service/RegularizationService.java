@@ -6,17 +6,17 @@ import com.kadmin.entity.HrEmployee;
 import com.kadmin.entity.HrRegularization;
 import com.kadmin.mapper.EmployeeMapper;
 import com.kadmin.mapper.HrRegularizationMapper;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
 @Service
+@RequiredArgsConstructor
 public class RegularizationService extends ServiceImpl<HrRegularizationMapper, HrRegularization> {
 
-    @Autowired
-    private EmployeeMapper employeeMapper;
+    private final EmployeeMapper employeeMapper;
 
     public Page<HrRegularization> getPage(int pageNum, int pageSize, String employeeName, Integer status) {
         return baseMapper.selectPageWithEmployee(new Page<>(pageNum, pageSize), employeeName, status);

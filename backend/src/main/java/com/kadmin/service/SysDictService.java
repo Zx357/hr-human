@@ -6,7 +6,7 @@ import com.kadmin.entity.SysDictData;
 import com.kadmin.entity.SysDictType;
 import com.kadmin.mapper.SysDictDataMapper;
 import com.kadmin.mapper.SysDictTypeMapper;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -17,10 +17,10 @@ import java.util.List;
  * 字典服务
  */
 @Service
+@RequiredArgsConstructor
 public class SysDictService extends ServiceImpl<SysDictTypeMapper, SysDictType> {
 
-    @Autowired
-    private SysDictDataMapper dictDataMapper;
+    private final SysDictDataMapper dictDataMapper;
 
     /**
      * 获取所有字典类型

@@ -6,18 +6,19 @@ import com.kadmin.entity.HrEmployee;
 import com.kadmin.entity.HrResignation;
 import com.kadmin.mapper.EmployeeMapper;
 import com.kadmin.mapper.HrResignationMapper;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 @Service
+@RequiredArgsConstructor
 public class ResignationService extends ServiceImpl<HrResignationMapper, HrResignation> {
 
-    @Autowired
-    private EmployeeMapper employeeMapper;
+    private final EmployeeMapper employeeMapper;
 
-    public Page<HrResignation> getPage(int pageNum, int pageSize, String employeeName, String resignType, Integer status) {
+    public Page<HrResignation> getPage(int pageNum, int pageSize, String employeeName, String resignType,
+            Integer status) {
         return baseMapper.selectPageWithEmployee(new Page<>(pageNum, pageSize), employeeName, resignType, status);
     }
 
@@ -27,7 +28,7 @@ public class ResignationService extends ServiceImpl<HrResignationMapper, HrResig
         if (resignation == null) {
             return false;
         }
-        
+
         // 更新离职记录状态
         HrResignation entity = new HrResignation();
         entity.setId(id);
@@ -36,7 +37,7 @@ public class ResignationService extends ServiceImpl<HrResignationMapper, HrResig
         entity.setApproveBy(approveBy);
         entity.setApproveTime(LocalDateTime.now());
         boolean result = updateById(entity);
-        
+
         // 审批通过时，更新员工状态为离职
         if (result && status == 1) {
             HrEmployee employee = new HrEmployee();
@@ -45,7 +46,7 @@ public class ResignationService extends ServiceImpl<HrResignationMapper, HrResig
             employee.setLeaveDate(resignation.getLastWorkDate()); // 设置离职日期
             employeeMapper.updateById(employee);
         }
-        
+
         return result;
     }
 }

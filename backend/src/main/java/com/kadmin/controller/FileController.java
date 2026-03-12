@@ -4,9 +4,8 @@ import com.kadmin.common.Result;
 import com.kadmin.service.FileConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,34 +23,35 @@ import java.util.UUID;
 /**
  * 文件上传控制器
  */
+@Slf4j
 @Tag(name = "文件管理")
 @RestController
 @RequestMapping("/file")
+@RequiredArgsConstructor
 public class FileController {
 
-    private static final Logger log = LoggerFactory.getLogger(FileController.class);
-
-    @Autowired
-    private FileConfigService fileConfigService;
+    private final FileConfigService fileConfigService;
 
     @Value("${file.upload.allowed-types:jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx}")
     private String allowedTypes;
 
-    private static final String[] IMAGE_TYPES = {"jpg", "jpeg", "png", "gif", "webp"};
+    private static final String[] IMAGE_TYPES = { "jpg", "jpeg", "png", "gif", "webp" };
 
     private String getUploadPath() {
         return fileConfigService.getAbsolutePath(FileConfigService.KEY_UPLOAD_BASE);
     }
 
     private String getExtension(String filename) {
-        if (filename == null) return "";
+        if (filename == null)
+            return "";
         int dotIndex = filename.lastIndexOf(".");
         return dotIndex > 0 ? filename.substring(dotIndex + 1).toLowerCase() : "";
     }
 
     private boolean isImageType(String extension) {
         for (String type : IMAGE_TYPES) {
-            if (type.equalsIgnoreCase(extension)) return true;
+            if (type.equalsIgnoreCase(extension))
+                return true;
         }
         return false;
     }
@@ -59,24 +59,31 @@ public class FileController {
     @Operation(summary = "上传文件")
     @PostMapping("/upload")
     public Result<String> upload(@RequestParam("file") MultipartFile file) {
-        if (file.isEmpty()) return Result.error("请选择要上传的文件");
+        if (file.isEmpty())
+            return Result.error("请选择要上传的文件");
 
         String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null) return Result.error("文件名不能为空");
+        if (originalFilename == null)
+            return Result.error("文件名不能为空");
 
         String extension = getExtension(originalFilename);
 
         String[] allowedTypeArray = allowedTypes.split(",");
         boolean isAllowed = false;
         for (String type : allowedTypeArray) {
-            if (type.trim().equalsIgnoreCase(extension)) { isAllowed = true; break; }
+            if (type.trim().equalsIgnoreCase(extension)) {
+                isAllowed = true;
+                break;
+            }
         }
-        if (!isAllowed) return Result.error("不支持的文件类型: " + extension);
+        if (!isAllowed)
+            return Result.error("不支持的文件类型: " + extension);
 
         try {
             String dateDir = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
             Path uploadDir = Paths.get(getUploadPath(), dateDir);
-            if (!Files.exists(uploadDir)) Files.createDirectories(uploadDir);
+            if (!Files.exists(uploadDir))
+                Files.createDirectories(uploadDir);
 
             String newFilename = UUID.randomUUID().toString().replace("-", "") + "." + extension;
             Path filePath = uploadDir.resolve(newFilename);
@@ -97,18 +104,22 @@ public class FileController {
     @Operation(summary = "上传图片")
     @PostMapping("/upload/image")
     public Result<String> uploadImage(@RequestParam("file") MultipartFile file) {
-        if (file.isEmpty()) return Result.error("请选择要上传的图片");
+        if (file.isEmpty())
+            return Result.error("请选择要上传的图片");
 
         String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null) return Result.error("文件名不能为空");
+        if (originalFilename == null)
+            return Result.error("文件名不能为空");
 
         String extension = getExtension(originalFilename);
-        if (!isImageType(extension)) return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
+        if (!isImageType(extension))
+            return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
 
         try {
             String dateDir = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
             Path uploadDir = Paths.get(getUploadPath(), "images", dateDir);
-            if (!Files.exists(uploadDir)) Files.createDirectories(uploadDir);
+            if (!Files.exists(uploadDir))
+                Files.createDirectories(uploadDir);
 
             String newFilename = UUID.randomUUID().toString().replace("-", "") + "." + extension;
             Path filePath = uploadDir.resolve(newFilename);
@@ -131,19 +142,24 @@ public class FileController {
     public Result<String> uploadEmployeeAvatar(
             @RequestParam("file") MultipartFile file,
             @RequestParam("employeeNo") String employeeNo) {
-        if (file.isEmpty()) return Result.error("请选择要上传的图片");
-        if (employeeNo == null || employeeNo.trim().isEmpty()) return Result.error("员工工号不能为空");
+        if (file.isEmpty())
+            return Result.error("请选择要上传的图片");
+        if (employeeNo == null || employeeNo.trim().isEmpty())
+            return Result.error("员工工号不能为空");
 
         String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null) return Result.error("文件名不能为空");
+        if (originalFilename == null)
+            return Result.error("文件名不能为空");
 
         String extension = getExtension(originalFilename);
-        if (!isImageType(extension)) return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
+        if (!isImageType(extension))
+            return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
 
         try {
             String avatarPath = fileConfigService.getAbsolutePath(FileConfigService.KEY_AVATAR);
             Path employeePhotoDir = Paths.get(avatarPath);
-            if (!Files.exists(employeePhotoDir)) Files.createDirectories(employeePhotoDir);
+            if (!Files.exists(employeePhotoDir))
+                Files.createDirectories(employeePhotoDir);
 
             String newFilename = employeeNo + "." + extension;
             Path filePath = employeePhotoDir.resolve(newFilename);
@@ -172,22 +188,27 @@ public class FileController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("employeeNo") String employeeNo,
             @RequestParam("type") String type) {
-        if (file.isEmpty()) return Result.error("请选择要上传的图片");
-        if (employeeNo == null || employeeNo.trim().isEmpty()) return Result.error("员工工号不能为空");
+        if (file.isEmpty())
+            return Result.error("请选择要上传的图片");
+        if (employeeNo == null || employeeNo.trim().isEmpty())
+            return Result.error("员工工号不能为空");
         if (type == null || (!type.equals("front") && !type.equals("back")))
             return Result.error("身份证类型参数错误，必须是 front 或 back");
 
         String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null) return Result.error("文件名不能为空");
+        if (originalFilename == null)
+            return Result.error("文件名不能为空");
 
         String extension = getExtension(originalFilename);
-        if (!isImageType(extension)) return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
+        if (!isImageType(extension))
+            return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
 
         try {
             String configKey = type.equals("front") ? FileConfigService.KEY_ID_FRONT : FileConfigService.KEY_ID_BACK;
             String idCardPath = fileConfigService.getAbsolutePath(configKey);
             Path idCardDir = Paths.get(idCardPath);
-            if (!Files.exists(idCardDir)) Files.createDirectories(idCardDir);
+            if (!Files.exists(idCardDir))
+                Files.createDirectories(idCardDir);
 
             String folderName = type.equals("front") ? "id_card_front" : "id_card_back";
             String newFilename = employeeNo + "." + extension;
@@ -216,19 +237,24 @@ public class FileController {
     public Result<String> uploadContractPhoto(
             @RequestParam("file") MultipartFile file,
             @RequestParam("employeeNo") String employeeNo) {
-        if (file.isEmpty()) return Result.error("请选择要上传的图片");
-        if (employeeNo == null || employeeNo.trim().isEmpty()) return Result.error("员工工号不能为空");
+        if (file.isEmpty())
+            return Result.error("请选择要上传的图片");
+        if (employeeNo == null || employeeNo.trim().isEmpty())
+            return Result.error("员工工号不能为空");
 
         String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null) return Result.error("文件名不能为空");
+        if (originalFilename == null)
+            return Result.error("文件名不能为空");
 
         String extension = getExtension(originalFilename);
-        if (!isImageType(extension)) return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
+        if (!isImageType(extension))
+            return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
 
         try {
             String contractPath = fileConfigService.getAbsolutePath(FileConfigService.KEY_CONTRACT_PHOTO);
             Path contractDir = Paths.get(contractPath);
-            if (!Files.exists(contractDir)) Files.createDirectories(contractDir);
+            if (!Files.exists(contractDir))
+                Files.createDirectories(contractDir);
 
             String newFilename = employeeNo + "_" + System.currentTimeMillis() + "." + extension;
             Path filePath = contractDir.resolve(newFilename);
@@ -251,19 +277,24 @@ public class FileController {
     public Result<String> uploadDiplomaPhoto(
             @RequestParam("file") MultipartFile file,
             @RequestParam("employeeNo") String employeeNo) {
-        if (file.isEmpty()) return Result.error("请选择要上传的图片");
-        if (employeeNo == null || employeeNo.trim().isEmpty()) return Result.error("员工工号不能为空");
+        if (file.isEmpty())
+            return Result.error("请选择要上传的图片");
+        if (employeeNo == null || employeeNo.trim().isEmpty())
+            return Result.error("员工工号不能为空");
 
         String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null) return Result.error("文件名不能为空");
+        if (originalFilename == null)
+            return Result.error("文件名不能为空");
 
         String extension = getExtension(originalFilename);
-        if (!isImageType(extension)) return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
+        if (!isImageType(extension))
+            return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
 
         try {
             String diplomaPath = fileConfigService.getAbsolutePath(FileConfigService.KEY_DIPLOMA_PHOTO);
             Path diplomaDir = Paths.get(diplomaPath);
-            if (!Files.exists(diplomaDir)) Files.createDirectories(diplomaDir);
+            if (!Files.exists(diplomaDir))
+                Files.createDirectories(diplomaDir);
 
             String newFilename = employeeNo + "_" + System.currentTimeMillis() + "." + extension;
             Path filePath = diplomaDir.resolve(newFilename);
@@ -286,19 +317,24 @@ public class FileController {
     public Result<String> uploadCertPhoto(
             @RequestParam("file") MultipartFile file,
             @RequestParam("employeeNo") String employeeNo) {
-        if (file.isEmpty()) return Result.error("请选择要上传的图片");
-        if (employeeNo == null || employeeNo.trim().isEmpty()) return Result.error("员工工号不能为空");
+        if (file.isEmpty())
+            return Result.error("请选择要上传的图片");
+        if (employeeNo == null || employeeNo.trim().isEmpty())
+            return Result.error("员工工号不能为空");
 
         String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null) return Result.error("文件名不能为空");
+        if (originalFilename == null)
+            return Result.error("文件名不能为空");
 
         String extension = getExtension(originalFilename);
-        if (!isImageType(extension)) return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
+        if (!isImageType(extension))
+            return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
 
         try {
             String certPath = fileConfigService.getAbsolutePath(FileConfigService.KEY_CERT_PHOTO);
             Path certDir = Paths.get(certPath);
-            if (!Files.exists(certDir)) Files.createDirectories(certDir);
+            if (!Files.exists(certDir))
+                Files.createDirectories(certDir);
 
             String newFilename = employeeNo + "_" + System.currentTimeMillis() + "." + extension;
             Path filePath = certDir.resolve(newFilename);
@@ -319,8 +355,10 @@ public class FileController {
     @Operation(summary = "删除文件")
     @DeleteMapping("/delete")
     public Result<Boolean> delete(@RequestParam("path") String path) {
-        if (path == null || path.isEmpty()) return Result.error("文件路径不能为空");
-        if (path.contains("..")) return Result.error("非法的文件路径");
+        if (path == null || path.isEmpty())
+            return Result.error("文件路径不能为空");
+        if (path.contains(".."))
+            return Result.error("非法的文件路径");
 
         try {
             String relativePath = path;

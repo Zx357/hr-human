@@ -5,7 +5,7 @@ import com.kadmin.entity.SysFileConfig;
 import com.kadmin.service.FileConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,10 +16,10 @@ import java.util.List;
 @Tag(name = "文件路径配置")
 @RestController
 @RequestMapping("/system/file-config")
+@RequiredArgsConstructor
 public class FileConfigController {
 
-    @Autowired
-    private FileConfigService fileConfigService;
+    private final FileConfigService fileConfigService;
 
     @Operation(summary = "获取所有路径配置")
     @GetMapping("/list")

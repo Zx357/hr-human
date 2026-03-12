@@ -1,29 +1,27 @@
 {
-  "name": "@sa/elp",
+  "name": "kadmin-frontend",
   "type": "module",
-  "version": "1.3.15",
-  "description": "A fresh and elegant admin template, based on Vue3、Vite7、rolldown-vite、TypeScript、ElementPlus and UnoCSS. 一个基于Vue3、Vite7、rolldown-vite、TypeScript、ElementPlus and UnoCSS的清新优雅的中后台模版。",
+  "version": "1.0.0",
+  "description": "KAdmin 人力资源管理系统 PC 端，基于 Vue3、Vite7、TypeScript、ElementPlus 和 UnoCSS。",
   "author": {
     "name": "Soybean",
     "email": "soybeanjs@outlook.com",
     "url": "https://github.com/soybeanjs"
   },
   "license": "MIT",
-  "homepage": "https://github.com/soybeanjs/soybean-admin",
+  "homepage": "",
   "repository": {
-    "url": "https://github.com/soybeanjs/soybean-admin.git"
+    "url": ""
   },
   "bugs": {
-    "url": "https://github.com/soybeanjs/soybean-admin/issues"
+    "url": ""
   },
   "keywords": [
-    "Vue3 admin ",
-    "vue-admin-template",
-    "Vite7",
-    "rolldown-vite",
+    "kadmin",
+    "hr-management",
+    "Vue3",
     "TypeScript",
     "element-plus",
-    "element-plus-admin",
     "UnoCSS"
   ],
   "engines": {

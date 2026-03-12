@@ -8,8 +8,8 @@ import com.kadmin.service.SysRoleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -23,10 +23,10 @@ import java.util.Map;
 @Tag(name = "角色管理")
 @RestController
 @RequestMapping("/system/role")
+@RequiredArgsConstructor
 public class SysRoleController {
 
-    @Autowired
-    private SysRoleService roleService;
+    private final SysRoleService roleService;
 
     /**
      * 分页查询角色列表

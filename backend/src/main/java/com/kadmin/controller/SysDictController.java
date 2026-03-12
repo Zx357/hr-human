@@ -6,7 +6,7 @@ import com.kadmin.entity.SysDictType;
 import com.kadmin.service.SysDictService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,10 +17,10 @@ import java.util.List;
 @Tag(name = "字典管理")
 @RestController
 @RequestMapping("/system/dict")
+@RequiredArgsConstructor
 public class SysDictController {
 
-    @Autowired
-    private SysDictService dictService;
+    private final SysDictService dictService;
 
     // ==================== 字典类型 ====================
 

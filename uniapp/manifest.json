@@ -1,7 +1,7 @@
 {
-    "name" : "若依移动端",
+    "name" : "KAdmin",
     "appid" : "__UNI__25A9D80",
-    "description" : "",
+    "description" : "KAdmin 人力资源管理移动端",
     "versionName" : "1.2.0",
     "versionCode" : "100",
     "transformPx" : false,
@@ -60,7 +60,7 @@
             "port" : 9090,
             "https" : false
         },
-        "title" : "RuoYi-App",
+        "title" : "KAdmin",
         "router" : {
             "mode" : "hash",
             "base" : "./"

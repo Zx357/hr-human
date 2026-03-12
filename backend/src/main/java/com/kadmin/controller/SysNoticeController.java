@@ -7,7 +7,7 @@ import com.kadmin.entity.SysNotice;
 import com.kadmin.service.SysNoticeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -20,10 +20,10 @@ import java.util.Map;
 @Tag(name = "公告管理")
 @RestController
 @RequestMapping("/system/notice")
+@RequiredArgsConstructor
 public class SysNoticeController {
 
-    @Autowired
-    private SysNoticeService noticeService;
+    private final SysNoticeService noticeService;
 
     /**
      * 分页查询公告（后台管理用）

@@ -8,7 +8,7 @@ import com.kadmin.entity.SysRole;
 import com.kadmin.entity.SysUser;
 import com.kadmin.mapper.SysRoleMapper;
 import com.kadmin.mapper.SysUserMapper;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,13 +21,11 @@ import java.util.Set;
  * 用户服务
  */
 @Service
+@RequiredArgsConstructor
 public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private SysRoleMapper roleMapper;
+    private final PasswordEncoder passwordEncoder;
+    private final SysRoleMapper roleMapper;
 
     /**
      * 获取用户列表（不分页）

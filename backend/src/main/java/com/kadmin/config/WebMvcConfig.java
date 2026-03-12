@@ -1,9 +1,8 @@
 package com.kadmin.config;
 
 import com.kadmin.service.FileConfigService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -14,13 +13,12 @@ import java.io.File;
 /**
  * Web MVC 配置
  */
+@Slf4j
 @Configuration
+@RequiredArgsConstructor
 public class WebMvcConfig implements WebMvcConfigurer {
 
-    private static final Logger log = LoggerFactory.getLogger(WebMvcConfig.class);
-
-    @Autowired
-    private FileConfigService fileConfigService;
+    private final FileConfigService fileConfigService;
 
     @Override
     public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {

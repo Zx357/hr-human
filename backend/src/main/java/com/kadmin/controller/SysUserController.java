@@ -9,7 +9,7 @@ import com.kadmin.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -22,10 +22,10 @@ import java.util.Map;
 @Tag(name = "用户管理")
 @RestController
 @RequestMapping("/system/user")
+@RequiredArgsConstructor
 public class SysUserController {
 
-    @Autowired
-    private SysUserService userService;
+    private final SysUserService userService;
 
     /**
      * 获取用户列表（不分页）

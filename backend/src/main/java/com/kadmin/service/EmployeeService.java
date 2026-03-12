@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kadmin.entity.*;
 import com.kadmin.mapper.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,25 +16,15 @@ import java.util.List;
  * 员工服务
  */
 @Service
+@RequiredArgsConstructor
 public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
 
-    @Autowired
-    private HrEducationMapper educationMapper;
-
-    @Autowired
-    private HrFamilyMemberMapper familyMemberMapper;
-
-    @Autowired
-    private HrWorkExperienceMapper workExperienceMapper;
-
-    @Autowired
-    private HrCertificateMapper certificateMapper;
-
-    @Autowired
-    private HrEmployeeExtraMapper employeeExtraMapper;
-
-    @Autowired
-    private OrgUnitMapper orgUnitMapper;
+    private final HrEducationMapper educationMapper;
+    private final HrFamilyMemberMapper familyMemberMapper;
+    private final HrWorkExperienceMapper workExperienceMapper;
+    private final HrCertificateMapper certificateMapper;
+    private final HrEmployeeExtraMapper employeeExtraMapper;
+    private final OrgUnitMapper orgUnitMapper;
 
     /**
      * 分页查询员工

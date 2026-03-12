@@ -1,3 +1,8 @@
+# ========================================
+# KAdmin 通用配置
+# 环境相关配置请参见 application-{profile}.yml
+# ========================================
+
 server:
   port: 8080
   servlet:
@@ -7,12 +12,13 @@ spring:
   application:
     name: kadmin
 
-  # 数据源配置
+  # 激活的配置环境（可通过启动参数覆盖：--spring.profiles.active=prod）
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  # 数据源通用配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/kadmin?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: 123456
     hikari:
       minimum-idle: 5
       maximum-pool-size: 20
@@ -20,12 +26,9 @@ spring:
       max-lifetime: 1800000
       connection-timeout: 30000
 
-  # Redis配置
+  # Redis 通用配置
   data:
     redis:
-      host: localhost
-      port: 6379
-      password: newhope123456
       database: 0
       timeout: 10000ms
       lettuce:
@@ -35,7 +38,7 @@ spring:
           max-idle: 8
           min-idle: 0
 
-  # Jackson配置
+  # Jackson 序列化配置
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8
@@ -43,7 +46,7 @@ spring:
       write-dates-as-timestamps: false
     default-property-inclusion: non_null
 
-# MyBatis Plus配置
+# MyBatis-Plus 配置
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   type-aliases-package: com.kadmin.entity
@@ -54,26 +57,21 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
     cache-enabled: false
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
-# JWT配置
+# JWT 配置（密钥请通过环境变量覆盖）
 jwt:
-  secret: kadmin-hr-management-system-jwt-secret-key-2024
-  expiration: 86400000 # 24小时
-  refresh-expiration: 604800000 # 7天
+  secret: ${JWT_SECRET:kadmin-hr-management-system-jwt-secret-key-2024}
+  expiration: 86400000 # 24 小时
+  refresh-expiration: 604800000 # 7 天
   header: Authorization
   prefix: Bearer
 
 # 日志配置
 logging:
-  level:
-    root: info
-    com.kadmin: debug
-    com.kadmin.mapper: debug
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
-# Knife4j配置
+# Knife4j / SpringDoc 配置
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

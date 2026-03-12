@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kadmin.entity.*;
 import com.kadmin.mapper.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
@@ -18,22 +18,14 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrApplication> {
 
-    @Autowired
-    private EmployeeMapper employeeMapper;
-
-    @Autowired
-    private SysUserMapper sysUserMapper;
-
-    @Autowired
-    private AttScheduleMapper scheduleMapper;
-
-    @Autowired
-    private AttShiftMapper shiftMapper;
-
-    @Autowired
-    private AttShiftPeriodMapper shiftPeriodMapper;
+    private final EmployeeMapper employeeMapper;
+    private final SysUserMapper sysUserMapper;
+    private final AttScheduleMapper scheduleMapper;
+    private final AttShiftMapper shiftMapper;
+    private final AttShiftPeriodMapper shiftPeriodMapper;
 
     /**
      * 计算加班小时数
