@@ -5,7 +5,16 @@ import { request } from '@/service/request';
 
 defineOptions({ name: 'SystemNotice' });
 
-// 查询参数
+interface NoticeRow {
+  id: number;
+  noticeTitle: string;
+  noticeType: number;
+  noticeContent: string;
+  status: number;
+  publishTime?: string;
+  createdTime?: string;
+}
+
 const queryParams = reactive({
   current: 1,
   size: 10,
@@ -14,12 +23,10 @@ const queryParams = reactive({
   status: undefined as number | undefined
 });
 
-// 表格数据
-const tableData = ref<any[]>([]);
+const tableData = ref<NoticeRow[]>([]);
 const total = ref(0);
 const loading = ref(false);
 
-// 抽屉
 const drawerVisible = ref(false);
 const operateType = ref<'add' | 'edit'>('add');
 const formData = reactive({
@@ -31,7 +38,6 @@ const formData = reactive({
   publishTime: ''
 });
 
-// 获取公告列表
 async function fetchData() {
   loading.value = true;
   try {
@@ -40,6 +46,7 @@ async function fetchData() {
       method: 'get',
       params: queryParams
     });
+
     if (!error && data) {
       tableData.value = data.records || [];
       total.value = data.total || 0;
@@ -49,13 +56,11 @@ async function fetchData() {
   }
 }
 
-// 搜索
 function handleSearch() {
   queryParams.current = 1;
   fetchData();
 }
 
-// 重置
 function handleReset() {
   queryParams.noticeTitle = '';
   queryParams.noticeType = undefined;
@@ -63,7 +68,6 @@ function handleReset() {
   handleSearch();
 }
 
-// 分页
 function handlePageChange(page: number) {
   queryParams.current = page;
   fetchData();
@@ -75,7 +79,6 @@ function handleSizeChange(size: number) {
   fetchData();
 }
 
-// 新增
 function handleAdd() {
   operateType.value = 'add';
   Object.assign(formData, {
@@ -89,8 +92,7 @@ function handleAdd() {
   drawerVisible.value = true;
 }
 
-// 编辑
-function handleEdit(row: any) {
+function handleEdit(row: NoticeRow) {
   operateType.value = 'edit';
   Object.assign(formData, {
     id: row.id,
@@ -103,7 +105,6 @@ function handleEdit(row: any) {
   drawerVisible.value = true;
 }
 
-// 保存
 async function handleSave() {
   if (!formData.noticeTitle) {
     ElMessage.warning('请填写公告标题');
@@ -124,7 +125,6 @@ async function handleSave() {
   }
 }
 
-// 删除
 async function handleDelete(id: number) {
   try {
     await ElMessageBox.confirm('确定删除该公告吗？', '提示', { type: 'warning' });
@@ -132,6 +132,7 @@ async function handleDelete(id: number) {
       url: `/system/notice/${id}`,
       method: 'delete'
     });
+
     if (!error) {
       ElMessage.success('删除成功');
       fetchData();
@@ -139,7 +140,7 @@ async function handleDelete(id: number) {
       ElMessage.error('删除失败');
     }
   } catch {
-    // 用户取消
+    // canceled
   }
 }
 
@@ -150,7 +151,6 @@ onMounted(() => {
 
 <template>
   <div class="list-page">
-    <!-- 搜索区域 -->
     <ElCard class="search-card">
       <ElForm :model="queryParams" inline>
         <ElFormItem label="公告标题">
@@ -181,10 +181,9 @@ onMounted(() => {
       </ElForm>
     </ElCard>
 
-    <!-- 表格区域 -->
     <ElCard class="table-card">
       <template #header>
-        <div class="flex justify-between items-center">
+        <div class="flex items-center justify-between">
           <span>公告列表</span>
           <ElButton v-permission="'system:notice:add'" type="primary" @click="handleAdd">
             <template #icon><icon-ep-plus /></template>
@@ -196,7 +195,8 @@ onMounted(() => {
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="tableData" border stripe height="100%">
           <ElTableColumn prop="id" label="ID" width="80" />
-          <ElTableColumn prop="noticeTitle" label="公告标题" min-width="200" show-overflow-tooltip />
+          <ElTableColumn prop="noticeTitle" label="公告标题" min-width="220" show-overflow-tooltip />
+          <ElTableColumn prop="noticeContent" label="公告内容" min-width="320" show-overflow-tooltip />
           <ElTableColumn prop="noticeType" label="公告类型" width="100" align="center">
             <template #default="{ row }">
               <ElTag v-if="row.noticeType === 1" type="warning">公告</ElTag>
@@ -236,7 +236,6 @@ onMounted(() => {
       </div>
     </ElCard>
 
-    <!-- 新增/编辑抽屉 -->
     <ElDrawer v-model="drawerVisible" :title="operateType === 'add' ? '新增公告' : '编辑公告'" size="500px">
       <ElForm :model="formData" label-width="100px">
         <ElFormItem label="公告标题" required>
@@ -255,7 +254,13 @@ onMounted(() => {
           </ElRadioGroup>
         </ElFormItem>
         <ElFormItem label="发布日期">
-          <ElDatePicker v-model="formData.publishTime" type="date" value-format="YYYY-MM-DD" placeholder="请选择发布日期" style="width: 100%" />
+          <ElDatePicker
+            v-model="formData.publishTime"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择发布日期"
+            style="width: 100%"
+          />
         </ElFormItem>
         <ElFormItem label="内容">
           <ElInput v-model="formData.noticeContent" type="textarea" :rows="8" placeholder="请输入公告内容" />

@@ -30,47 +30,18 @@
     <view class="section-card">
       <view class="section-title">换休信息</view>
       <uni-forms ref="form" :modelValue="formData" :rules="rules" label-width="85px" label-align="right">
-        <uni-forms-item label="换休日期" name="exchangeDate" required>
-          <uni-datetime-picker type="date" v-model="formData.exchangeDate" placeholder="请选择换休日期" />
+        <uni-forms-item label="原工作日" name="startTime" required>
+          <uni-datetime-picker type="date" v-model="formData.startTime" placeholder="请选择原工作日" />
         </uni-forms-item>
 
-        <uni-forms-item label="换休时长" name="hours" required>
-          <view class="hours-selector">
-            <view
-              class="hours-option"
-              :class="{ active: formData.hours === 4 }"
-              @click="formData.hours = 4"
-            >
-              <text class="hours-value">4</text>
-              <text class="hours-unit">小时</text>
-              <text class="hours-label">半天</text>
-            </view>
-            <view
-              class="hours-option"
-              :class="{ active: formData.hours === 8 }"
-              @click="formData.hours = 8"
-            >
-              <text class="hours-value">8</text>
-              <text class="hours-unit">小时</text>
-              <text class="hours-label">一天</text>
-            </view>
-          </view>
+        <uni-forms-item label="换休日" name="endTime" required>
+          <uni-datetime-picker type="date" v-model="formData.endTime" placeholder="请选择换休日" />
         </uni-forms-item>
 
         <uni-forms-item label="换休原因" name="reason" required>
           <uni-easyinput type="textarea" v-model="formData.reason" placeholder="请输入换休原因" :maxlength="200" autoHeight />
         </uni-forms-item>
       </uni-forms>
-    </view>
-
-    <!-- 换休说明 -->
-    <view class="section-card tip-card">
-      <view class="tip-title">换休说明</view>
-      <view class="tip-list">
-        <text class="tip-item">· 换休需有足够的加班时长余额</text>
-        <text class="tip-item">· 半天换休：09:00 - 13:00</text>
-        <text class="tip-item">· 全天换休：09:00 - 18:00</text>
-      </view>
     </view>
 
     <!-- 底部按钮 -->
@@ -91,13 +62,13 @@ export default {
   data() {
     return {
       formData: {
-        exchangeDate: '',
-        hours: '',
+        startTime: '',
+        endTime: '',
         reason: ''
       },
       rules: {
-        exchangeDate: { rules: [{ required: true, errorMessage: '请选择换休日期' }] },
-        hours: { rules: [{ required: true, errorMessage: '请选择换休时长' }] },
+        startTime: { rules: [{ required: true, errorMessage: '请选择原工作日' }] },
+        endTime: { rules: [{ required: true, errorMessage: '请选择换休日' }] },
         reason: { rules: [{ required: true, errorMessage: '请输入换休原因' }] }
       },
       submitting: false,
@@ -118,7 +89,7 @@ export default {
   },
   methods: {
     handleReset() {
-      this.formData = { exchangeDate: '', hours: '', reason: '' }
+      this.formData = { startTime: '', endTime: '', reason: '' }
     },
     async handleSubmit() {
       try {
@@ -132,17 +103,12 @@ export default {
         this.submitting = true
         this.$modal.loading('提交中...')
 
-        const startTime = `${this.formData.exchangeDate} 09:00:00`
-        const endHour = this.formData.hours === 4 ? '13:00:00' : '18:00:00'
-        const endTime = `${this.formData.exchangeDate} ${endHour}`
-
         const data = {
           employeeId: this.employeeId,
           appType: 'exchange',
           title: '换休申请',
-          startTime: startTime,
-          endTime: endTime,
-          duration: this.formData.hours,
+          startTime: this.formData.startTime + ' 00:00:00',
+          endTime: this.formData.endTime + ' 00:00:00',
           reason: this.formData.reason,
           status: 0
         }
@@ -219,73 +185,6 @@ export default {
 .info-item { width: 50%; padding: 12rpx 16rpx; }
 .info-label { font-size: 24rpx; color: #999; display: block; }
 .info-value { font-size: 28rpx; color: #333; font-weight: 500; margin-top: 4rpx; display: block; }
-
-.hours-selector {
-  display: flex;
-  gap: 24rpx;
-}
-.hours-option {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 28rpx 0;
-  border-radius: 16rpx;
-  background-color: #f7f8fa;
-  border: 2rpx solid transparent;
-  transition: all 0.2s;
-}
-.hours-option.active {
-  background-color: #eafff8;
-  border-color: #00b894;
-}
-.hours-value {
-  font-size: 48rpx;
-  font-weight: 700;
-  color: #999;
-  line-height: 1;
-}
-.hours-option.active .hours-value {
-  color: #00b894;
-}
-.hours-unit {
-  font-size: 22rpx;
-  color: #999;
-  margin-top: 4rpx;
-}
-.hours-option.active .hours-unit {
-  color: #00b894;
-}
-.hours-label {
-  font-size: 24rpx;
-  color: #bbb;
-  margin-top: 8rpx;
-}
-.hours-option.active .hours-label {
-  color: #00b894;
-  font-weight: 500;
-}
-
-.tip-card {
-  background-color: #f0faf6;
-}
-.tip-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #00b894;
-  margin-bottom: 12rpx;
-}
-.tip-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-}
-.tip-item {
-  font-size: 24rpx;
-  color: #999;
-  line-height: 1.6;
-}
 
 .btn-group {
   position: fixed;

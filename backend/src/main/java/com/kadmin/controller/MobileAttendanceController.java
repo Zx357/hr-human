@@ -7,21 +7,41 @@ import com.kadmin.entity.AttDailyRecord;
 import com.kadmin.entity.AttSchedule;
 import com.kadmin.entity.AttShift;
 import com.kadmin.entity.HrEmployee;
-import com.kadmin.mapper.*;
+import com.kadmin.entity.OrgUnit;
+import com.kadmin.mapper.AttClockRecordMapper;
+import com.kadmin.mapper.AttDailyRecordMapper;
+import com.kadmin.mapper.AttScheduleMapper;
+import com.kadmin.mapper.AttShiftMapper;
+import com.kadmin.mapper.EmployeeMapper;
 import com.kadmin.security.LoginUser;
+import com.kadmin.service.OrgUnitService;
 import com.kadmin.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 /**
- * 移动端考勤接口
+ * Mobile attendance APIs.
  */
 @RestController
 @RequestMapping("/mobile/attendance")
@@ -33,10 +53,8 @@ public class MobileAttendanceController {
     private final AttScheduleMapper scheduleMapper;
     private final AttShiftMapper shiftMapper;
     private final EmployeeMapper employeeMapper;
+    private final OrgUnitService orgUnitService;
 
-    /**
-     * 获取打卡页面数据（当前时间、今日打卡记录）
-     */
     @GetMapping("/clock/info")
     public Result<Map<String, Object>> getClockInfo() {
         LoginUser loginUser = SecurityUtils.getCurrentUser();
@@ -44,74 +62,72 @@ public class MobileAttendanceController {
             return Result.error("请先登录");
         }
 
-        Long employeeId = loginUser.getEmployeeId();
-        if (employeeId == null) {
-            // 如果是员工登录，userId就是employeeId
-            employeeId = loginUser.getUserId();
-        }
-
+        Long employeeId = getCurrentEmployeeId(loginUser);
         Map<String, Object> result = new HashMap<>();
-        
-        // 当前服务器时间
         result.put("serverTime", LocalDateTime.now());
-        
-        // 今日打卡记录
+
         LocalDate today = LocalDate.now();
         LocalDateTime startOfDay = today.atStartOfDay();
         LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
-        
-        List<AttClockRecord> todayRecords = clockRecordMapper.selectList(
-            new LambdaQueryWrapper<AttClockRecord>()
-                .eq(AttClockRecord::getEmployeeId, employeeId)
-                .between(AttClockRecord::getClockTime, startOfDay, endOfDay)
-                .orderByAsc(AttClockRecord::getClockTime)
-        );
-        result.put("todayRecords", todayRecords);
-        
-        // 判断是否已上班打卡
-        boolean hasClockedIn = todayRecords.stream()
-            .anyMatch(r -> r.getClockType() == 1);
-        result.put("hasClockedIn", hasClockedIn);
-        
-        // 判断是否已下班打卡
-        boolean hasClockedOut = todayRecords.stream()
-            .anyMatch(r -> r.getClockType() == 2);
-        result.put("hasClockedOut", hasClockedOut);
 
-        // 今日排班与应打卡时间
-        AttSchedule todaySchedule = scheduleMapper.selectOne(
-            new LambdaQueryWrapper<AttSchedule>()
-                .eq(AttSchedule::getEmployeeId, employeeId)
-                .eq(AttSchedule::getScheduleDate, today)
-        );
+        List<AttClockRecord> todayRecords = clockRecordMapper.selectList(
+                new LambdaQueryWrapper<AttClockRecord>()
+                        .eq(AttClockRecord::getEmployeeId, employeeId)
+                        .between(AttClockRecord::getClockTime, startOfDay, endOfDay)
+                        .orderByAsc(AttClockRecord::getClockTime));
+        result.put("todayRecords", todayRecords);
+        result.put("hasClockedIn", todayRecords.stream().anyMatch(record -> Objects.equals(record.getClockType(), 1)));
+        result.put("hasClockedOut", todayRecords.stream().anyMatch(record -> Objects.equals(record.getClockType(), 2)));
+
+        List<AttSchedule> todaySchedules = scheduleMapper.selectList(
+                new LambdaQueryWrapper<AttSchedule>()
+                        .eq(AttSchedule::getEmployeeId, employeeId)
+                        .eq(AttSchedule::getScheduleDate, today)
+                        .orderByDesc(AttSchedule::getId));
+        AttSchedule todaySchedule = todaySchedules.isEmpty() ? null : todaySchedules.get(0);
         if (todaySchedule != null && todaySchedule.getShiftId() != null) {
             AttShift shift = shiftMapper.selectById(todaySchedule.getShiftId());
             if (shift != null) {
-                result.put("scheduledIn", shift.getWorkStartTime() != null ? shift.getWorkStartTime().toString().substring(0, 5) : null);
-                result.put("scheduledOut", shift.getWorkEndTime() != null ? shift.getWorkEndTime().toString().substring(0, 5) : null);
+                result.put(
+                        "scheduledIn",
+                        shift.getWorkStartTime() != null ? shift.getWorkStartTime().toString().substring(0, 5) : null);
+                result.put(
+                        "scheduledOut",
+                        shift.getWorkEndTime() != null ? shift.getWorkEndTime().toString().substring(0, 5) : null);
             }
         }
 
-        // 今日日考勤（用于显示迟到/早退状态）
-        AttDailyRecord todayDaily = dailyRecordMapper.selectOne(
-            new LambdaQueryWrapper<AttDailyRecord>()
-                .eq(AttDailyRecord::getEmployeeId, employeeId)
-                .eq(AttDailyRecord::getAttDate, today)
-        );
-        if (todayDaily != null) {
-            Map<String, Object> daily = new HashMap<>();
-            daily.put("status", todayDaily.getStatus());
-            daily.put("lateMinutes", todayDaily.getLateMinutes() != null ? todayDaily.getLateMinutes() : 0);
-            daily.put("earlyMinutes", todayDaily.getEarlyMinutes() != null ? todayDaily.getEarlyMinutes() : 0);
-            result.put("todayDaily", daily);
+        List<AttDailyRecord> todayDailyRecords = dailyRecordMapper.selectList(
+                new LambdaQueryWrapper<AttDailyRecord>()
+                        .eq(AttDailyRecord::getEmployeeId, employeeId)
+                        .eq(AttDailyRecord::getAttDate, today)
+                        .orderByAsc(AttDailyRecord::getPeriodId));
+        if (!todayDailyRecords.isEmpty()) {
+            Map<String, Object> todayDaily = new HashMap<>();
+            todayDaily.put("status", mergeDailyStatus(todayDailyRecords));
+            todayDaily.put("lateMinutes", sumLateMinutes(todayDailyRecords));
+            todayDaily.put("earlyMinutes", sumEarlyMinutes(todayDailyRecords));
+            result.put("todayDaily", todayDaily);
+        }
+
+        OrgUnit company = getEmployeeCompany(employeeId);
+        if (company != null) {
+            result.put("companyId", company.getId());
+            result.put("companyName", company.getUnitName());
+            result.put(
+                    "companyAddress",
+                    StringUtils.hasText(company.getAttendanceAddress()) ? company.getAttendanceAddress() : company.getAddress());
+            result.put("companyLat", company.getAttendanceLatitude());
+            result.put("companyLng", company.getAttendanceLongitude());
+            result.put("clockRange", company.getAttendanceRange());
+            result.put("attendanceConfigured", hasAttendanceConfig(company));
+        } else {
+            result.put("attendanceConfigured", false);
         }
 
         return Result.success(result);
     }
 
-    /**
-     * 打卡
-     */
     @PostMapping("/clock")
     public Result<AttClockRecord> clock(@RequestBody Map<String, Object> params) {
         LoginUser loginUser = SecurityUtils.getCurrentUser();
@@ -119,76 +135,66 @@ public class MobileAttendanceController {
             return Result.error("请先登录");
         }
 
-        Long employeeId = loginUser.getEmployeeId();
-        if (employeeId == null) {
-            employeeId = loginUser.getUserId();
+        Long employeeId = getCurrentEmployeeId(loginUser);
+        Integer clockType = resolveClockType(employeeId, params.get("clockType"));
+
+        OrgUnit company = getEmployeeCompany(employeeId);
+        if (hasAttendanceConfig(company)) {
+            String location = params.get("location") instanceof String ? (String) params.get("location") : null;
+            double[] userPoint = parseLocation(location);
+            if (userPoint == null) {
+                return Result.error("未获取到当前位置，请开启定位后重试");
+            }
+
+            double distance = calculateDistanceMeters(
+                    userPoint[0],
+                    userPoint[1],
+                    company.getAttendanceLatitude().doubleValue(),
+                    company.getAttendanceLongitude().doubleValue());
+            if (distance > company.getAttendanceRange()) {
+                long exceeded = Math.round(distance - company.getAttendanceRange());
+                return Result.error("当前位置不在打卡范围内，超出约 " + exceeded + " 米");
+            }
         }
 
-        // 获取打卡类型：1-上班 2-下班
-        Integer clockType = (Integer) params.get("clockType");
-        if (clockType == null) {
-            // 自动判断：如果今天没有上班打卡则为上班，否则为下班
-            LocalDate today = LocalDate.now();
-            LocalDateTime startOfDay = today.atStartOfDay();
-            LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
-            
-            long inCount = clockRecordMapper.selectCount(
-                new LambdaQueryWrapper<AttClockRecord>()
-                    .eq(AttClockRecord::getEmployeeId, employeeId)
-                    .eq(AttClockRecord::getClockType, 1)
-                    .between(AttClockRecord::getClockTime, startOfDay, endOfDay)
-            );
-            clockType = inCount == 0 ? 1 : 2;
-        }
-
-        // 创建打卡记录
         AttClockRecord record = new AttClockRecord();
         record.setEmployeeId(employeeId);
         record.setClockTime(LocalDateTime.now());
         record.setClockType(clockType);
-        record.setClockMethod(1); // 1-APP打卡
-        record.setLocation((String) params.get("location"));
-        record.setDeviceInfo((String) params.get("deviceInfo"));
+        record.setClockMethod(1);
+        record.setLocation(params.get("location") instanceof String ? (String) params.get("location") : null);
+        record.setDeviceInfo(params.get("deviceInfo") instanceof String ? (String) params.get("deviceInfo") : null);
         record.setRemark(clockType == 1 ? "移动端上班打卡" : "移动端下班打卡");
 
         clockRecordMapper.insert(record);
-
         return Result.success(record);
     }
 
-    /**
-     * 获取我的打卡记录（分页）
-     */
     @GetMapping("/clock/records")
     public Result<Map<String, Object>> getMyClockRecords(
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        
+
         LoginUser loginUser = SecurityUtils.getCurrentUser();
         if (loginUser == null) {
             return Result.error("请先登录");
         }
 
-        Long employeeId = loginUser.getEmployeeId();
-        if (employeeId == null) {
-            employeeId = loginUser.getUserId();
-        }
-
+        Long employeeId = getCurrentEmployeeId(loginUser);
         LambdaQueryWrapper<AttClockRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(AttClockRecord::getEmployeeId, employeeId);
-        
-        if (startDate != null && !startDate.isEmpty()) {
+
+        if (StringUtils.hasText(startDate)) {
             wrapper.ge(AttClockRecord::getClockTime, LocalDate.parse(startDate).atStartOfDay());
         }
-        if (endDate != null && !endDate.isEmpty()) {
+        if (StringUtils.hasText(endDate)) {
             wrapper.le(AttClockRecord::getClockTime, LocalDate.parse(endDate).atTime(LocalTime.MAX));
         }
-        
+
         wrapper.orderByDesc(AttClockRecord::getClockTime);
-        
-        // 简单分页
+
         long total = clockRecordMapper.selectCount(wrapper);
         wrapper.last("LIMIT " + (pageNum - 1) * pageSize + ", " + pageSize);
         List<AttClockRecord> records = clockRecordMapper.selectList(wrapper);
@@ -196,13 +202,9 @@ public class MobileAttendanceController {
         Map<String, Object> result = new HashMap<>();
         result.put("records", records);
         result.put("total", total);
-        
         return Result.success(result);
     }
 
-    /**
-     * 获取月度考勤数据（日历视图 + 统计）
-     */
     @GetMapping("/month")
     public Result<Map<String, Object>> getMonthAttendance(@RequestParam String month) {
         LoginUser loginUser = SecurityUtils.getCurrentUser();
@@ -210,101 +212,98 @@ public class MobileAttendanceController {
             return Result.error("请先登录");
         }
 
-        Long employeeId = loginUser.getEmployeeId();
-        if (employeeId == null) {
-            employeeId = loginUser.getUserId();
-        }
+        Long employeeId = getCurrentEmployeeId(loginUser);
+        YearMonth yearMonth = YearMonth.parse(month);
+        LocalDate startDate = yearMonth.atDay(1);
+        LocalDate endDate = yearMonth.atEndOfMonth();
 
-        YearMonth ym = YearMonth.parse(month);
-        LocalDate startDate = ym.atDay(1);
-        LocalDate endDate = ym.atEndOfMonth();
-
-        // 获取该月所有打卡记录
         List<AttClockRecord> clockRecords = clockRecordMapper.selectList(
-            new LambdaQueryWrapper<AttClockRecord>()
-                .eq(AttClockRecord::getEmployeeId, employeeId)
-                .between(AttClockRecord::getClockTime, startDate.atStartOfDay(), endDate.atTime(LocalTime.MAX))
-                .orderByAsc(AttClockRecord::getClockTime)
-        );
+                new LambdaQueryWrapper<AttClockRecord>()
+                        .eq(AttClockRecord::getEmployeeId, employeeId)
+                        .between(AttClockRecord::getClockTime, startDate.atStartOfDay(), endDate.atTime(LocalTime.MAX))
+                        .orderByAsc(AttClockRecord::getClockTime));
 
-        // 获取该月排班信息以确定应出勤天数
         List<AttSchedule> schedules = scheduleMapper.selectList(
-            new LambdaQueryWrapper<AttSchedule>()
-                .eq(AttSchedule::getEmployeeId, employeeId)
-                .between(AttSchedule::getScheduleDate, startDate, endDate)
-        );
+                new LambdaQueryWrapper<AttSchedule>()
+                        .eq(AttSchedule::getEmployeeId, employeeId)
+                        .between(AttSchedule::getScheduleDate, startDate, endDate));
 
-        // 获取该月日考勤记录
         List<AttDailyRecord> dailyRecords = dailyRecordMapper.selectList(
-            new LambdaQueryWrapper<AttDailyRecord>()
-                .eq(AttDailyRecord::getEmployeeId, employeeId)
-                .between(AttDailyRecord::getAttDate, startDate, endDate)
-        );
+                new LambdaQueryWrapper<AttDailyRecord>()
+                        .eq(AttDailyRecord::getEmployeeId, employeeId)
+                        .between(AttDailyRecord::getAttDate, startDate, endDate));
 
-        // 按日期分组打卡记录
         Map<String, List<AttClockRecord>> clockByDate = new LinkedHashMap<>();
-        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm");
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
-        for (AttClockRecord r : clockRecords) {
-            String dateKey = r.getClockTime().toLocalDate().format(dateFmt);
-            clockByDate.computeIfAbsent(dateKey, k -> new ArrayList<>()).add(r);
+        for (AttClockRecord record : clockRecords) {
+            String dateKey = record.getClockTime().toLocalDate().format(dateFormatter);
+            clockByDate.computeIfAbsent(dateKey, key -> new ArrayList<>()).add(record);
         }
 
-        // 按日期分组日考勤
         Map<LocalDate, AttDailyRecord> dailyByDate = new LinkedHashMap<>();
-        for (AttDailyRecord dr : dailyRecords) {
-            dailyByDate.putIfAbsent(dr.getAttDate(), dr);
+        for (AttDailyRecord record : dailyRecords) {
+            dailyByDate.putIfAbsent(record.getAttDate(), record);
         }
 
-        // 构建排班日期集合
         Set<LocalDate> scheduledDates = new HashSet<>();
-        for (AttSchedule s : schedules) {
-            if (s.getShiftId() != null) {
-                scheduledDates.add(s.getScheduleDate());
+        for (AttSchedule schedule : schedules) {
+            if (schedule.getShiftId() != null) {
+                scheduledDates.add(schedule.getScheduleDate());
             }
         }
 
-        // 构建每天的记录
         List<Map<String, Object>> records = new ArrayList<>();
-        int normalIn = 0, normalOut = 0, lateDays = 0, earlyDays = 0, absentDays = 0;
+        int normalIn = 0;
+        int normalOut = 0;
+        int lateDays = 0;
+        int earlyDays = 0;
+        int absentDays = 0;
 
         LocalDate current = startDate;
         LocalDate today = LocalDate.now();
 
         while (!current.isAfter(endDate)) {
-            String dateStr = current.format(dateFmt);
-            List<AttClockRecord> dayClock = clockByDate.getOrDefault(dateStr, Collections.emptyList());
+            String dateString = current.format(dateFormatter);
+            List<AttClockRecord> dayClockRecords = clockByDate.getOrDefault(dateString, Collections.emptyList());
             AttDailyRecord dailyRecord = dailyByDate.get(current);
 
             Map<String, Object> dayData = new HashMap<>();
-            dayData.put("attDate", dateStr);
+            dayData.put("attDate", dateString);
 
-            AttClockRecord clockIn = dayClock.stream().filter(c -> c.getClockType() == 1).findFirst().orElse(null);
-            AttClockRecord clockOut = dayClock.stream().filter(c -> c.getClockType() == 2).findFirst().orElse(null);
+            AttClockRecord clockInRecord = dayClockRecords.stream()
+                    .filter(record -> Objects.equals(record.getClockType(), 1))
+                    .findFirst()
+                    .orElse(null);
+            AttClockRecord clockOutRecord = dayClockRecords.stream()
+                    .filter(record -> Objects.equals(record.getClockType(), 2))
+                    .findFirst()
+                    .orElse(null);
 
-            if (clockIn != null) {
-                dayData.put("clockIn", clockIn.getClockTime().toLocalTime().format(timeFmt));
+            if (clockInRecord != null) {
+                dayData.put("clockIn", clockInRecord.getClockTime().toLocalTime().format(timeFormatter));
             }
-            if (clockOut != null) {
-                dayData.put("clockOut", clockOut.getClockTime().toLocalTime().format(timeFmt));
+            if (clockOutRecord != null) {
+                dayData.put("clockOut", clockOutRecord.getClockTime().toLocalTime().format(timeFormatter));
             }
 
-            // 从日考勤记录判断状态
-            boolean isLate = false, isEarly = false, isNormalIn = false, isNormalOut = false;
+            boolean isLate = false;
+            boolean isEarly = false;
+            boolean isNormalIn = false;
+            boolean isNormalOut = false;
 
             if (dailyRecord != null) {
                 Integer status = dailyRecord.getStatus();
                 if (status != null) {
-                    isLate = (status == 2 || status == 7);
-                    isEarly = (status == 3 || status == 7);
-                    isNormalIn = clockIn != null && !isLate;
-                    isNormalOut = clockOut != null && !isEarly;
+                    isLate = status == 2 || status == 7;
+                    isEarly = status == 3 || status == 7;
+                    isNormalIn = clockInRecord != null && !isLate;
+                    isNormalOut = clockOutRecord != null && !isEarly;
                 }
-            } else if (clockIn != null || clockOut != null) {
-                // 没有日考勤记录但有打卡，根据排班简单判断
-                isNormalIn = clockIn != null;
-                isNormalOut = clockOut != null;
+            } else if (clockInRecord != null || clockOutRecord != null) {
+                isNormalIn = clockInRecord != null;
+                isNormalOut = clockOutRecord != null;
             }
 
             dayData.put("lateIn", isLate);
@@ -312,19 +311,27 @@ public class MobileAttendanceController {
             dayData.put("normalIn", isNormalIn);
             dayData.put("normalOut", isNormalOut);
 
-            // 统计 (只统计已过的日期，且是排班日或有打卡记录的日期)
             boolean isPast = !current.isAfter(today);
-            boolean isScheduled = scheduledDates.contains(current) || !dayClock.isEmpty();
-
+            boolean isScheduled = scheduledDates.contains(current) || !dayClockRecords.isEmpty();
             if (isPast && isScheduled) {
-                if (isNormalIn) normalIn++;
-                if (isNormalOut) normalOut++;
-                if (isLate) lateDays++;
-                if (isEarly) earlyDays++;
-                if (clockIn == null || clockOut == null) absentDays++;
+                if (isNormalIn) {
+                    normalIn++;
+                }
+                if (isNormalOut) {
+                    normalOut++;
+                }
+                if (isLate) {
+                    lateDays++;
+                }
+                if (isEarly) {
+                    earlyDays++;
+                }
+                if (clockInRecord == null || clockOutRecord == null) {
+                    absentDays++;
+                }
             }
 
-            if (!dayClock.isEmpty() || dailyRecord != null) {
+            if (!dayClockRecords.isEmpty() || dailyRecord != null) {
                 records.add(dayData);
             }
 
@@ -341,7 +348,142 @@ public class MobileAttendanceController {
         Map<String, Object> result = new HashMap<>();
         result.put("records", records);
         result.put("stats", stats);
-
         return Result.success(result);
+    }
+
+    private Long getCurrentEmployeeId(LoginUser loginUser) {
+        return loginUser.getEmployeeId() != null ? loginUser.getEmployeeId() : loginUser.getUserId();
+    }
+
+    private Integer resolveClockType(Long employeeId, Object clockTypeValue) {
+        if (clockTypeValue instanceof Number number) {
+            return number.intValue();
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
+        long inCount = clockRecordMapper.selectCount(
+                new LambdaQueryWrapper<AttClockRecord>()
+                        .eq(AttClockRecord::getEmployeeId, employeeId)
+                        .eq(AttClockRecord::getClockType, 1)
+                        .between(AttClockRecord::getClockTime, startOfDay, endOfDay));
+        return inCount == 0 ? 1 : 2;
+    }
+
+    private OrgUnit getEmployeeCompany(Long employeeId) {
+        HrEmployee employee = employeeMapper.selectById(employeeId);
+        if (employee == null || employee.getDeptId() == null) {
+            return null;
+        }
+
+        Long companyId = orgUnitService.getCompanyId(employee.getDeptId());
+        return companyId == null ? null : orgUnitService.getById(companyId);
+    }
+
+    private boolean hasAttendanceConfig(OrgUnit company) {
+        return company != null
+                && company.getAttendanceLatitude() != null
+                && company.getAttendanceLongitude() != null
+                && company.getAttendanceRange() != null
+                && company.getAttendanceRange() > 0;
+    }
+
+    private double[] parseLocation(String location) {
+        if (!StringUtils.hasText(location)) {
+            return null;
+        }
+
+        String[] parts = location.split(",");
+        if (parts.length != 2) {
+            return null;
+        }
+
+        try {
+            double latitude = Double.parseDouble(parts[0].trim());
+            double longitude = Double.parseDouble(parts[1].trim());
+            return new double[] { latitude, longitude };
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private double calculateDistanceMeters(double lat1, double lng1, double lat2, double lng2) {
+        double radLat1 = Math.toRadians(lat1);
+        double radLat2 = Math.toRadians(lat2);
+        double deltaLat = radLat1 - radLat2;
+        double deltaLng = Math.toRadians(lng1 - lng2);
+
+        double distance = 2 * Math.asin(Math.sqrt(
+                Math.pow(Math.sin(deltaLat / 2), 2)
+                        + Math.cos(radLat1) * Math.cos(radLat2) * Math.pow(Math.sin(deltaLng / 2), 2)));
+        return distance * 6378137D;
+    }
+
+    private int sumLateMinutes(List<AttDailyRecord> dailyRecords) {
+        return dailyRecords.stream()
+                .map(AttDailyRecord::getLateMinutes)
+                .filter(Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .sum();
+    }
+
+    private int sumEarlyMinutes(List<AttDailyRecord> dailyRecords) {
+        return dailyRecords.stream()
+                .map(AttDailyRecord::getEarlyMinutes)
+                .filter(Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .sum();
+    }
+
+    private int mergeDailyStatus(List<AttDailyRecord> dailyRecords) {
+        boolean hasNormal = false;
+        boolean hasLate = false;
+        boolean hasEarly = false;
+        boolean hasAbsent = false;
+        boolean hasLeave = false;
+        boolean hasBusiness = false;
+
+        for (AttDailyRecord dailyRecord : dailyRecords) {
+            Integer status = dailyRecord.getStatus();
+            if (status == null) {
+                continue;
+            }
+
+            switch (status) {
+                case 1 -> hasNormal = true;
+                case 2 -> hasLate = true;
+                case 3 -> hasEarly = true;
+                case 4 -> hasAbsent = true;
+                case 5 -> hasLeave = true;
+                case 6 -> hasBusiness = true;
+                case 7 -> {
+                    hasLate = true;
+                    hasEarly = true;
+                }
+                default -> {
+                }
+            }
+        }
+
+        if (hasLate && hasEarly) {
+            return 7;
+        }
+        if (hasAbsent) {
+            return 4;
+        }
+        if (hasLeave) {
+            return 5;
+        }
+        if (hasBusiness) {
+            return 6;
+        }
+        if (hasLate) {
+            return 2;
+        }
+        if (hasEarly) {
+            return 3;
+        }
+        return hasNormal ? 1 : 0;
     }
 }

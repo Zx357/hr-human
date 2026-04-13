@@ -71,6 +71,10 @@ declare namespace Api {
       phone?: string;
       email?: string;
       address?: string;
+      attendanceAddress?: string;
+      attendanceLatitude?: number;
+      attendanceLongitude?: number;
+      attendanceRange?: number;
       description?: string;
       sortOrder?: number;
       unitTypeName?: string;
@@ -92,6 +96,10 @@ declare namespace Api {
       phone?: string;
       email?: string;
       address?: string;
+      attendanceAddress?: string;
+      attendanceLatitude?: number;
+      attendanceLongitude?: number;
+      attendanceRange?: number;
       description?: string;
       sortOrder?: number;
     }

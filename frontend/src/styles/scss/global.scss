@@ -1,39 +1,47 @@
 @forward 'element-plus';
 @forward 'scrollbar';
+@use 'scrollbar' as *;
 
-// 列表页面通用滚动样式
+// Shared scroll layout for list pages.
 .list-page {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 120px);
+  min-height: 0;
   overflow: hidden;
   gap: 16px;
-  
+
   .search-card {
     flex-shrink: 0;
   }
-  
+
   .table-card {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    
-    :deep(.el-card__body) {
+
+    .el-card__body {
       flex: 1;
+      min-height: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
   }
-  
+
   .table-wrapper {
     flex: 1;
     min-height: 0;
     overflow: auto;
+    @include scrollbar();
+
+    .el-scrollbar__wrap {
+      @include scrollbar();
+    }
   }
-  
-  // 分页固定在底部
+
   .mt-16px {
     flex-shrink: 0;
   }

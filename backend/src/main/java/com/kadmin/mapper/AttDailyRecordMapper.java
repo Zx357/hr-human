@@ -10,15 +10,21 @@ import java.util.List;
 
 @Mapper
 public interface AttDailyRecordMapper extends BaseMapper<AttDailyRecord> {
-    IPage<AttDailyRecord> selectPageWithEmployee(Page<AttDailyRecord> page, 
-        @Param("startDate") String startDate, @Param("endDate") String endDate,
-        @Param("orgIds") List<Long> orgIds, 
-        @Param("employeeNo") String employeeNo, @Param("employeeName") String employeeName, 
-        @Param("status") Integer status);
-    
+    IPage<AttDailyRecord> selectPageWithEmployee(Page<AttDailyRecord> page,
+            @Param("startDate") String startDate, @Param("endDate") String endDate,
+            @Param("orgIds") List<Long> orgIds,
+            @Param("employeeNo") String employeeNo, @Param("employeeName") String employeeName,
+            @Param("status") Integer status);
+
     List<AttDailyRecord> selectListWithEmployee(
-        @Param("startDate") String startDate, @Param("endDate") String endDate,
-        @Param("orgIds") List<Long> orgIds, 
-        @Param("employeeNo") String employeeNo, @Param("employeeName") String employeeName, 
-        @Param("status") Integer status);
+            @Param("startDate") String startDate, @Param("endDate") String endDate,
+            @Param("orgIds") List<Long> orgIds,
+            @Param("employeeNo") String employeeNo, @Param("employeeName") String employeeName,
+            @Param("status") Integer status);
+
+    IPage<AttDailyRecord> selectGroupedPage(Page<AttDailyRecord> page,
+            @Param("startDate") String startDate, @Param("endDate") String endDate,
+            @Param("orgIds") List<Long> orgIds,
+            @Param("employeeNo") String employeeNo, @Param("employeeName") String employeeName,
+            @Param("status") Integer status);
 }

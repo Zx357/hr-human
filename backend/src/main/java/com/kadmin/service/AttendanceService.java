@@ -48,110 +48,23 @@ public class AttendanceService {
         clockRecordMapper.deleteById(id);
     }
 
-    // 日考勤分页查询（按员工+日期聚合，包含各时段明细）
+    // 日考勤分页查询（按员工+日期聚合，数据库层面分页）
     public IPage<AttDailyRecord> getDailyRecordPage(int page, int size, String startDate, String endDate,
             List<Long> orgIds, String employeeNo, String employeeName, Integer status) {
-        // 查询所有时段记录（不分页，因为需要聚合）
-        List<AttDailyRecord> allRecords = dailyRecordMapper.selectListWithEmployee(startDate, endDate, orgIds,
-                employeeNo, employeeName, status);
+        IPage<AttDailyRecord> resultPage = dailyRecordMapper.selectGroupedPage(
+                new Page<>(page, size), startDate, endDate, orgIds, employeeNo, employeeName, status);
 
-        // 按员工+日期聚合
-        java.util.Map<String, AttDailyRecord> groupedMap = new java.util.LinkedHashMap<>();
-        for (AttDailyRecord record : allRecords) {
-            String key = record.getEmployeeId() + "_" + record.getAttDate();
-            if (!groupedMap.containsKey(key)) {
-                // 创建聚合记录
-                AttDailyRecord grouped = new AttDailyRecord();
-                grouped.setId(record.getId());
-                grouped.setEmployeeId(record.getEmployeeId());
-                grouped.setAttDate(record.getAttDate());
-                grouped.setShiftId(record.getShiftId());
-                grouped.setEmployeeName(record.getEmployeeName());
-                grouped.setEmployeeNo(record.getEmployeeNo());
-                grouped.setCompanyName(record.getCompanyName());
-                grouped.setDeptName(record.getDeptName());
-                grouped.setShiftName(record.getShiftName());
-                grouped.setPeriods(new java.util.ArrayList<>());
-                grouped.setLateMinutes(0);
-                grouped.setEarlyMinutes(0);
-                grouped.setWorkHours(java.math.BigDecimal.ZERO);
-                grouped.setStatus(1); // 默认正常
-                grouped.setLocked(0); // 默认未锁定
-                groupedMap.put(key, grouped);
-            }
-
-            AttDailyRecord grouped = groupedMap.get(key);
-            grouped.getPeriods().add(record);
-
-            // 累计迟到、早退、工时
-            grouped.setLateMinutes(
-                    grouped.getLateMinutes() + (record.getLateMinutes() != null ? record.getLateMinutes() : 0));
-            grouped.setEarlyMinutes(
-                    grouped.getEarlyMinutes() + (record.getEarlyMinutes() != null ? record.getEarlyMinutes() : 0));
-            grouped.setWorkHours(grouped.getWorkHours()
-                    .add(record.getWorkHours() != null ? record.getWorkHours() : java.math.BigDecimal.ZERO));
-
-            // 累计申请相关时长（只取第一条记录的值，因为同一天同一员工的值相同）
-            if (grouped.getOvertimeDuration() == null
-                    || grouped.getOvertimeDuration().compareTo(java.math.BigDecimal.ZERO) == 0) {
-                grouped.setOvertimeDuration(record.getOvertimeDuration());
-            }
-            if (grouped.getBusinessDuration() == null
-                    || grouped.getBusinessDuration().compareTo(java.math.BigDecimal.ZERO) == 0) {
-                grouped.setBusinessDuration(record.getBusinessDuration());
-            }
-            if (grouped.getAnnualLeaveDuration() == null
-                    || grouped.getAnnualLeaveDuration().compareTo(java.math.BigDecimal.ZERO) == 0) {
-                grouped.setAnnualLeaveDuration(record.getAnnualLeaveDuration());
-            }
-            if (grouped.getPersonalLeaveDuration() == null
-                    || grouped.getPersonalLeaveDuration().compareTo(java.math.BigDecimal.ZERO) == 0) {
-                grouped.setPersonalLeaveDuration(record.getPersonalLeaveDuration());
-            }
-            if (grouped.getSickLeaveDuration() == null
-                    || grouped.getSickLeaveDuration().compareTo(java.math.BigDecimal.ZERO) == 0) {
-                grouped.setSickLeaveDuration(record.getSickLeaveDuration());
-            }
-            if (grouped.getMarriageLeaveDuration() == null
-                    || grouped.getMarriageLeaveDuration().compareTo(java.math.BigDecimal.ZERO) == 0) {
-                grouped.setMarriageLeaveDuration(record.getMarriageLeaveDuration());
-            }
-            if (grouped.getMaternityLeaveDuration() == null
-                    || grouped.getMaternityLeaveDuration().compareTo(java.math.BigDecimal.ZERO) == 0) {
-                grouped.setMaternityLeaveDuration(record.getMaternityLeaveDuration());
-            }
-            if (grouped.getPaternityLeaveDuration() == null
-                    || grouped.getPaternityLeaveDuration().compareTo(java.math.BigDecimal.ZERO) == 0) {
-                grouped.setPaternityLeaveDuration(record.getPaternityLeaveDuration());
-            }
-            if (grouped.getBereavementLeaveDuration() == null
-                    || grouped.getBereavementLeaveDuration().compareTo(java.math.BigDecimal.ZERO) == 0) {
-                grouped.setBereavementLeaveDuration(record.getBereavementLeaveDuration());
-            }
-
-            // 状态取最差的
-            if (record.getStatus() != null && record.getStatus() > grouped.getStatus()) {
-                grouped.setStatus(record.getStatus());
-            }
-
-            // 锁定状态：只要有一个时段锁定，整条记录就显示锁定
-            if (record.getLocked() != null && record.getLocked() == 1) {
-                grouped.setLocked(1);
-            }
+        // 为每条聚合记录加载各时段明细
+        for (AttDailyRecord grouped : resultPage.getRecords()) {
+            List<AttDailyRecord> periods = dailyRecordMapper.selectListWithEmployee(
+                    grouped.getAttDate().toString(), grouped.getAttDate().toString(),
+                    null, null, null, null);
+            List<AttDailyRecord> empPeriods = periods.stream()
+                    .filter(r -> r.getEmployeeId().equals(grouped.getEmployeeId()))
+                    .toList();
+            grouped.setPeriods(empPeriods);
         }
 
-        // 手动分页
-        List<AttDailyRecord> groupedList = new java.util.ArrayList<>(groupedMap.values());
-        int total = groupedList.size();
-        int fromIndex = (page - 1) * size;
-        int toIndex = Math.min(fromIndex + size, total);
-        List<AttDailyRecord> pageRecords = fromIndex < total ? groupedList.subList(fromIndex, toIndex)
-                : new java.util.ArrayList<>();
-
-        // 构建返回结果
-        Page<AttDailyRecord> resultPage = new Page<>(page, size);
-        resultPage.setRecords(pageRecords);
-        resultPage.setTotal(total);
         return resultPage;
     }
 
@@ -191,123 +104,105 @@ public class AttendanceService {
         List<AttDailyRecord> allRecords = dailyRecordMapper.selectListWithEmployee(startDate, endDate, orgIds,
                 employeeNo, employeeName, null);
 
-        // 按员工汇总
-        java.util.Map<Long, java.util.Map<String, Object>> summaryMap = new java.util.LinkedHashMap<>();
+        // 先按 员工ID -> 日期 -> 时段列表 分组
+        java.util.Map<Long, java.util.Map<LocalDate, List<AttDailyRecord>>> empDateMap = new java.util.LinkedHashMap<>();
+        java.util.Map<Long, AttDailyRecord> empInfoMap = new java.util.LinkedHashMap<>(); // 保存员工基本信息
 
         for (AttDailyRecord record : allRecords) {
             Long empId = record.getEmployeeId();
-            java.util.Map<String, Object> summary = summaryMap.get(empId);
-
-            if (summary == null) {
-                summary = new java.util.HashMap<>();
-                summary.put("employeeId", empId);
-                summary.put("employeeName", record.getEmployeeName());
-                summary.put("employeeNo", record.getEmployeeNo());
-                summary.put("companyName", record.getCompanyName());
-                summary.put("deptName", record.getDeptName());
-                summary.put("month", month);
-                summary.put("workDays", 0); // 应出勤（有排班的天数）
-                summary.put("actualDays", 0); // 实出勤（正常打卡的天数）
-                summary.put("lateTimes", 0); // 迟到次数
-                summary.put("earlyTimes", 0); // 早退次数
-                summary.put("absentDays", 0); // 旷工天数
-                summary.put("leaveDays", 0); // 请假天数
-                summary.put("totalWorkHours", java.math.BigDecimal.ZERO);
-                summary.put("totalLateMinutes", 0);
-                summary.put("totalEarlyMinutes", 0);
-                summary.put("dates", new java.util.HashSet<LocalDate>()); // 用于去重统计天数
-                summaryMap.put(empId, summary);
-            }
-
-            @SuppressWarnings("unchecked")
-            java.util.Set<LocalDate> dates = (java.util.Set<LocalDate>) summary.get("dates");
-            LocalDate attDate = record.getAttDate();
-
-            // 每天只统计一次（多时段只算一天）
-            if (!dates.contains(attDate)) {
-                dates.add(attDate);
-                summary.put("workDays", (int) summary.get("workDays") + 1);
-            }
-
-            // 统计各项数据
-            Integer status = record.getStatus();
-            if (status != null) {
-                if (status == 1) { // 正常
-                    // 实出勤按天统计，在下面处理
-                } else if (status == 2 || status == 7) { // 迟到或迟到+早退
-                    summary.put("lateTimes", (int) summary.get("lateTimes") + 1);
-                }
-                if (status == 3 || status == 7) { // 早退或迟到+早退
-                    summary.put("earlyTimes", (int) summary.get("earlyTimes") + 1);
-                }
-                if (status == 4) { // 旷工
-                    // 旷工按时段统计
-                }
-                if (status == 5) { // 请假
-                    // 请假按时段统计
-                }
-            }
-
-            // 累计工时
-            if (record.getWorkHours() != null) {
-                java.math.BigDecimal total = (java.math.BigDecimal) summary.get("totalWorkHours");
-                summary.put("totalWorkHours", total.add(record.getWorkHours()));
-            }
-
-            // 累计迟到分钟
-            if (record.getLateMinutes() != null && record.getLateMinutes() > 0) {
-                summary.put("totalLateMinutes", (int) summary.get("totalLateMinutes") + record.getLateMinutes());
-            }
-
-            // 累计早退分钟
-            if (record.getEarlyMinutes() != null && record.getEarlyMinutes() > 0) {
-                summary.put("totalEarlyMinutes", (int) summary.get("totalEarlyMinutes") + record.getEarlyMinutes());
-            }
+            empInfoMap.putIfAbsent(empId, record);
+            empDateMap.computeIfAbsent(empId, k -> new java.util.LinkedHashMap<>())
+                    .computeIfAbsent(record.getAttDate(), k -> new java.util.ArrayList<>())
+                    .add(record);
         }
 
-        // 计算实出勤天数和旷工天数
-        for (java.util.Map<String, Object> summary : summaryMap.values()) {
-            Long empId = (Long) summary.get("employeeId");
-            @SuppressWarnings("unchecked")
-            java.util.Set<LocalDate> dates = (java.util.Set<LocalDate>) summary.get("dates");
+        // 按员工汇总
+        List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
 
+        for (java.util.Map.Entry<Long, java.util.Map<LocalDate, List<AttDailyRecord>>> empEntry : empDateMap
+                .entrySet()) {
+            Long empId = empEntry.getKey();
+            java.util.Map<LocalDate, List<AttDailyRecord>> dateRecords = empEntry.getValue();
+            AttDailyRecord empInfo = empInfoMap.get(empId);
+
+            java.util.Map<String, Object> summary = new java.util.HashMap<>();
+            summary.put("employeeId", empId);
+            summary.put("employeeName", empInfo.getEmployeeName());
+            summary.put("employeeNo", empInfo.getEmployeeNo());
+            summary.put("companyName", empInfo.getCompanyName());
+            summary.put("deptName", empInfo.getDeptName());
+            summary.put("month", month);
+
+            int workDays = 0;
             int actualDays = 0;
+            int lateTimes = 0;
+            int earlyTimes = 0;
             int absentDays = 0;
             int leaveDays = 0;
+            java.math.BigDecimal totalWorkHours = java.math.BigDecimal.ZERO;
+            int totalLateMinutes = 0;
+            int totalEarlyMinutes = 0;
 
-            for (LocalDate date : dates) {
-                // 查询该员工该天的所有时段状态
-                List<AttDailyRecord> dayRecords = allRecords.stream()
-                        .filter(r -> r.getEmployeeId().equals(empId) && r.getAttDate().equals(date))
-                        .toList();
+            for (java.util.Map.Entry<LocalDate, List<AttDailyRecord>> dateEntry : dateRecords.entrySet()) {
+                List<AttDailyRecord> dayRecords = dateEntry.getValue();
+                workDays++;
 
+                // 按天判定状态
                 boolean hasAbsent = dayRecords.stream().anyMatch(r -> r.getStatus() != null && r.getStatus() == 4);
                 boolean hasLeave = dayRecords.stream().anyMatch(r -> r.getStatus() != null && r.getStatus() == 5);
-                boolean allNormal = dayRecords.stream().allMatch(r -> r.getStatus() != null
-                        && (r.getStatus() == 1 || r.getStatus() == 2 || r.getStatus() == 3 || r.getStatus() == 7));
+                boolean dayHasLate = false;
+                boolean dayHasEarly = false;
 
+                for (AttDailyRecord r : dayRecords) {
+                    // 累计工时
+                    if (r.getWorkHours() != null) {
+                        totalWorkHours = totalWorkHours.add(r.getWorkHours());
+                    }
+                    // 累计迟到/早退分钟
+                    if (r.getLateMinutes() != null && r.getLateMinutes() > 0) {
+                        totalLateMinutes += r.getLateMinutes();
+                        dayHasLate = true;
+                    }
+                    if (r.getEarlyMinutes() != null && r.getEarlyMinutes() > 0) {
+                        totalEarlyMinutes += r.getEarlyMinutes();
+                        dayHasEarly = true;
+                    }
+                }
+
+                // 迟到/早退次数按天统计（一天算一次）
+                if (dayHasLate)
+                    lateTimes++;
+                if (dayHasEarly)
+                    earlyTimes++;
+
+                // 出勤/旷工/请假按天统计
                 if (hasAbsent) {
                     absentDays++;
                 } else if (hasLeave) {
                     leaveDays++;
-                } else if (allNormal
-                        || dayRecords.stream().anyMatch(r -> r.getActualIn() != null && r.getActualOut() != null)) {
+                } else if (dayRecords.stream().anyMatch(r -> r.getActualIn() != null || r.getActualOut() != null)) {
                     actualDays++;
                 }
             }
 
+            summary.put("workDays", workDays);
             summary.put("actualDays", actualDays);
+            summary.put("lateTimes", lateTimes);
+            summary.put("earlyTimes", earlyTimes);
             summary.put("absentDays", absentDays);
             summary.put("leaveDays", leaveDays);
-            summary.remove("dates"); // 移除临时字段
+            summary.put("totalWorkHours", totalWorkHours);
+            summary.put("totalLateMinutes", totalLateMinutes);
+            summary.put("totalEarlyMinutes", totalEarlyMinutes);
+            result.add(summary);
         }
 
-        return new java.util.ArrayList<>(summaryMap.values());
+        return result;
     }
 
     /**
      * 计算指定日期范围的日考勤
-     * 
+     *
      * @param startDate    开始日期
      * @param endDate      结束日期
      * @param orgIds       组织ID列表筛选
@@ -442,9 +337,9 @@ public class AttendanceService {
         LocalTime actualIn = null;
         LocalTime actualOut = null;
 
-        // 时段时间范围（前后各扩展2小时用于匹配打卡）
-        LocalTime matchStart = scheduledIn.minusHours(2);
-        LocalTime matchEnd = scheduledOut.plusHours(2);
+        // 时段时间范围（前后各扩展1小时用于匹配打卡）
+        LocalTime matchStart = scheduledIn.minusHours(1);
+        LocalTime matchEnd = scheduledOut.plusHours(1);
 
         for (AttClockRecord record : clockRecords) {
             LocalTime clockTime = record.getClockTime().toLocalTime();
@@ -488,12 +383,17 @@ public class AttendanceService {
         }
         dailyRecord.setEarlyMinutes(earlyMinutes);
 
-        // 计算工作时长（按排班时段计算，正常打卡则算满时段工时）
+        // 计算工作时长（基于实际打卡时间，但不超过排班时长）
         BigDecimal workHours = BigDecimal.ZERO;
         if (actualIn != null && actualOut != null && scheduledIn != null && scheduledOut != null) {
-            // 按排班时段计算工时
-            long scheduledMinutes = ChronoUnit.MINUTES.between(scheduledIn, scheduledOut);
-            workHours = BigDecimal.valueOf(scheduledMinutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+            // 实际有效开始时间 = max(actualIn, scheduledIn)（早到不多算）
+            LocalTime effectiveIn = actualIn.isBefore(scheduledIn) ? scheduledIn : actualIn;
+            // 实际有效结束时间 = min(actualOut, scheduledOut)（晚走不多算）
+            LocalTime effectiveOut = actualOut.isAfter(scheduledOut) ? scheduledOut : actualOut;
+            long actualMinutes = ChronoUnit.MINUTES.between(effectiveIn, effectiveOut);
+            if (actualMinutes > 0) {
+                workHours = BigDecimal.valueOf(actualMinutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+            }
         }
         dailyRecord.setWorkHours(workHours);
 

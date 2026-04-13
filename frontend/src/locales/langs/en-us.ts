@@ -269,6 +269,7 @@ const local: App.I18n.Schema = {
     system_role: 'Role Management',
     system_menu: 'Menu Management',
     system_dict: 'Dictionary Management',
+    system_notice: 'Notice Management',
     'system_mobile-menu': 'Mobile Menu',
     'system_file-config': 'File Config'
   },

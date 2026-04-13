@@ -1,14 +1,18 @@
 package com.kadmin.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.kadmin.common.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * 统一组织架构实体（集团、公司、部门）
+ * Unified organization node (group / company / department).
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -18,57 +22,68 @@ public class OrgUnit extends BaseEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    /** 父级ID，0表示顶级 */
+    /** Parent ID, 0 means root. */
     private Long parentId;
 
-    /** 类型：1-集团，2-公司，3-部门 */
+    /** 1-group, 2-company, 3-department. */
     private Integer unitType;
 
-    /** 编码 */
+    /** Code. */
     private String unitCode;
 
-    /** 名称 */
+    /** Name. */
     private String unitName;
 
-    /** 简称 */
+    /** Short name. */
     private String shortName;
 
-    /** 负责人ID */
+    /** Leader employee ID. */
     private Long leaderId;
 
-    /** 联系电话 */
+    /** Contact phone. */
     private String phone;
 
-    /** 邮箱 */
+    /** Contact email. */
     private String email;
 
-    /** 地址 */
+    /** Organization address. */
     private String address;
 
-    /** 描述 */
+    /** Attendance location address shown to mobile users. */
+    private String attendanceAddress;
+
+    /** Attendance location latitude (GCJ-02). */
+    private BigDecimal attendanceLatitude;
+
+    /** Attendance location longitude (GCJ-02). */
+    private BigDecimal attendanceLongitude;
+
+    /** Allowed clock-in radius in meters. */
+    private Integer attendanceRange;
+
+    /** Description. */
     private String description;
 
-    /** 排序 */
+    /** Sort order. */
     private Integer sortOrder;
 
-    /** 子节点（非数据库字段） */
+    /** Child nodes. */
     @TableField(exist = false)
     private List<OrgUnit> children;
 
-    /** 负责人姓名（非数据库字段） */
+    /** Leader name. */
     @TableField(exist = false)
     private String leaderName;
 
-    /** 类型名称（非数据库字段） */
+    /** Type label. */
     @TableField(exist = false)
     private String unitTypeName;
 
-    /** 员工数量（非数据库字段） */
+    /** Employee count under this node. */
     @TableField(exist = false)
     private Integer employeeCount;
 
-    // 类型常量
-    public static final int TYPE_GROUP = 1; // 集团
-    public static final int TYPE_COMPANY = 2; // 公司
-    public static final int TYPE_DEPT = 3; // 部门
+    public static final int TYPE_GROUP = 1;
+    public static final int TYPE_COMPANY = 2;
+    public static final int TYPE_DEPT = 3;
 }

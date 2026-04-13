@@ -15,8 +15,8 @@ interface FormModel {
 }
 
 const model = ref<FormModel>({
-  userName: 'nhsys',
-  password: '123456'
+  userName: '',
+  password: ''
 });
 
 const rules = computed<Record<keyof FormModel, App.Global.FormRule[]>>(() => {

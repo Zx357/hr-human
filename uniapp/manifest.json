@@ -1,6 +1,6 @@
 {
     "name" : "KAdmin",
-    "appid" : "__UNI__25A9D80",
+    "appid" : "__UNI__BC57DA6",
     "description" : "KAdmin 人力资源管理移动端",
     "versionName" : "1.2.0",
     "versionCode" : "100",
@@ -64,6 +64,16 @@
         "router" : {
             "mode" : "hash",
             "base" : "./"
+        },
+        "sdkConfigs" : {
+            "maps" : {
+                "qqmap" : {
+                    "key" : "A6DBZ-KXPLW-JKSRY-ONZF4-CPHY3-K6BL7"
+                },
+                "tencent" : {
+                    "key" : "A6DBZ-KXPLW-JKSRY-ONZF4-CPHY3-K6BL7"
+                }
+            }
         }
     }
 }

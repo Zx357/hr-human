@@ -56,7 +56,7 @@
         </uni-forms-item>
 
         <uni-forms-item label="补卡时间" name="cardTime" required>
-          <uni-datetime-picker type="time" v-model="formData.cardTime" placeholder="请选择补卡时间" />
+          <uni-datetime-picker type="time" v-model="formData.cardTime" placeholder="请选择补卡时间" :hideSecond="true" />
         </uni-forms-item>
 
         <uni-forms-item label="补卡原因" name="reason" required>
@@ -111,6 +111,15 @@ export default {
     if (info) this.userInfo = info
   },
   methods: {
+    extractTime(val) {
+      if (!val) return ''
+      const str = String(val).trim()
+      const timePart = str.includes(' ') ? str.split(' ').pop() : str
+      const segments = timePart.split(':')
+      if (segments.length === 2) return `${segments[0]}:${segments[1]}:00`
+      if (segments.length >= 3) return `${segments[0]}:${segments[1]}:${segments[2]}`
+      return timePart
+    },
     handleReset() {
       this.formData = { cardDate: '', cardType: '', cardTime: '', reason: '' }
     },
@@ -126,7 +135,7 @@ export default {
         this.submitting = true
         this.$modal.loading('提交中...')
 
-        const dateTime = `${this.formData.cardDate} ${this.formData.cardTime}:00`
+        const dateTime = `${this.formData.cardDate} ${this.extractTime(this.formData.cardTime)}`
 
         const data = {
           employeeId: this.employeeId,

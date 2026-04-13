@@ -269,6 +269,7 @@ const local: App.I18n.Schema = {
     system_role: '角色管理',
     system_menu: '菜单管理',
     system_dict: '字典管理',
+    system_notice: '公告管理',
     'system_mobile-menu': '移动端菜单',
     'system_file-config': '路径管理'
   },

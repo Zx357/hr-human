@@ -2,9 +2,12 @@ package com.kadmin.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.kadmin.common.Result;
+import com.kadmin.dto.CalculateAttendanceRequest;
+import com.kadmin.dto.LockDailyRecordRequest;
 import com.kadmin.entity.AttClockRecord;
 import com.kadmin.entity.AttDailyRecord;
 import com.kadmin.service.AttendanceService;
+import com.kadmin.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,7 +29,8 @@ public class AttendanceController {
             @RequestParam(required = false) String employeeName,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
-        return Result.success(attendanceService.getClockRecordPage(page, size, orgIds, employeeName, startDate, endDate));
+        return Result
+                .success(attendanceService.getClockRecordPage(page, size, orgIds, employeeName, startDate, endDate));
     }
 
     // 保存打卡记录
@@ -54,7 +58,8 @@ public class AttendanceController {
             @RequestParam(required = false) String employeeNo,
             @RequestParam(required = false) String employeeName,
             @RequestParam(required = false) Integer status) {
-        return Result.success(attendanceService.getDailyRecordPage(page, size, startDate, endDate, orgIds, employeeNo, employeeName, status));
+        return Result.success(attendanceService.getDailyRecordPage(page, size, startDate, endDate, orgIds, employeeNo,
+                employeeName, status));
     }
 
     // 保存日考勤记录
@@ -66,37 +71,20 @@ public class AttendanceController {
 
     // 计算指定日期范围的日考勤
     @PostMapping("/daily/calculate")
-    public Result<Void> calculateDailyAttendance(@RequestBody java.util.Map<String, Object> params) {
-        String startDate = (String) params.get("startDate");
-        String endDate = (String) params.get("endDate");
-        @SuppressWarnings("unchecked")
-        List<Long> orgIds = params.get("orgIds") != null ? 
-            ((List<Integer>) params.get("orgIds")).stream().map(Integer::longValue).toList() : null;
-        String employeeNo = (String) params.get("employeeNo");
-        String employeeName = (String) params.get("employeeName");
-        @SuppressWarnings("unchecked")
-        java.util.List<Integer> employeeIds = (java.util.List<Integer>) params.get("employeeIds");
-        
-        LocalDate start = LocalDate.parse(startDate);
-        LocalDate end = LocalDate.parse(endDate);
-        java.util.List<Long> empIds = employeeIds != null && !employeeIds.isEmpty() 
-            ? employeeIds.stream().map(Integer::longValue).toList() : null;
-        
-        attendanceService.calculateDailyAttendance(start, end, orgIds, employeeNo, employeeName, empIds);
+    public Result<Void> calculateDailyAttendance(@RequestBody CalculateAttendanceRequest request) {
+        LocalDate start = LocalDate.parse(request.getStartDate());
+        LocalDate end = LocalDate.parse(request.getEndDate());
+        attendanceService.calculateDailyAttendance(start, end, request.getOrgIds(),
+                request.getEmployeeNo(), request.getEmployeeName(), request.getEmployeeIds());
         return Result.success();
     }
 
     // 锁定日考勤记录
     @PostMapping("/daily/lock")
-    public Result<Void> lockDailyRecords(@RequestBody java.util.Map<String, Object> params) {
-        @SuppressWarnings("unchecked")
-        java.util.List<Integer> ids = (java.util.List<Integer>) params.get("ids");
-        Boolean lock = (Boolean) params.get("lock");
-        // TODO: 从SecurityContext获取当前用户ID
-        Long userId = 1L;
-        
-        java.util.List<Long> recordIds = ids.stream().map(Integer::longValue).toList();
-        attendanceService.lockDailyRecords(recordIds, lock != null && lock, userId);
+    public Result<Void> lockDailyRecords(@RequestBody LockDailyRecordRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        attendanceService.lockDailyRecords(request.getIds(),
+                request.getLock() != null && request.getLock(), userId);
         return Result.success();
     }
 

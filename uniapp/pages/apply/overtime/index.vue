@@ -35,11 +35,11 @@
         </uni-forms-item>
 
         <uni-forms-item label="开始时间" name="startTime" required>
-          <uni-datetime-picker type="time" v-model="formData.startTime" placeholder="请选择开始时间" />
+          <uni-datetime-picker type="time" v-model="formData.startTime" placeholder="请选择开始时间" :hideSecond="true" />
         </uni-forms-item>
 
         <uni-forms-item label="结束时间" name="endTime" required>
-          <uni-datetime-picker type="time" v-model="formData.endTime" placeholder="请选择结束时间" />
+          <uni-datetime-picker type="time" v-model="formData.endTime" placeholder="请选择结束时间" :hideSecond="true" />
         </uni-forms-item>
 
         <uni-forms-item label="加班时长" name="duration">
@@ -109,13 +109,24 @@ export default {
     if (info) this.userInfo = info
   },
   methods: {
+    extractTime(val) {
+      if (!val) return ''
+      const str = String(val).trim()
+      // If value contains a space (datetime string), take the time part after the last space
+      const timePart = str.includes(' ') ? str.split(' ').pop() : str
+      // Ensure HH:mm:ss format
+      const segments = timePart.split(':')
+      if (segments.length === 2) return `${segments[0]}:${segments[1]}:00`
+      if (segments.length >= 3) return `${segments[0]}:${segments[1]}:${segments[2]}`
+      return timePart
+    },
     async calcHours() {
       if (!this.formData.overtimeDate || !this.formData.startTime || !this.formData.endTime) {
         this.overtimeHours = 0
         return
       }
-      const startDateTime = `${this.formData.overtimeDate} ${this.formData.startTime}:00`
-      const endDateTime = `${this.formData.overtimeDate} ${this.formData.endTime}:00`
+      const startDateTime = `${this.formData.overtimeDate} ${this.extractTime(this.formData.startTime)}`
+      const endDateTime = `${this.formData.overtimeDate} ${this.extractTime(this.formData.endTime)}`
 
       if (this.employeeId) {
         this.calculating = true
@@ -154,8 +165,8 @@ export default {
         this.submitting = true
         this.$modal.loading('提交中...')
 
-        const startDateTime = `${this.formData.overtimeDate} ${this.formData.startTime}:00`
-        const endDateTime = `${this.formData.overtimeDate} ${this.formData.endTime}:00`
+        const startDateTime = `${this.formData.overtimeDate} ${this.extractTime(this.formData.startTime)}`
+        const endDateTime = `${this.formData.overtimeDate} ${this.extractTime(this.formData.endTime)}`
 
         const data = {
           employeeId: this.employeeId,

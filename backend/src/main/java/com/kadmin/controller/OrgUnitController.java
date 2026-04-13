@@ -5,12 +5,21 @@ import com.kadmin.dto.OrgStatisticsDTO;
 import com.kadmin.entity.OrgUnit;
 import com.kadmin.service.OrgUnitService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 /**
- * 组织架构控制器
+ * Organization structure APIs.
  */
 @RestController
 @RequestMapping("/org-unit")
@@ -19,41 +28,26 @@ public class OrgUnitController {
 
     private final OrgUnitService orgUnitService;
 
-    /**
-     * 获取完整组织架构树
-     */
     @GetMapping("/tree")
     public Result<List<OrgUnit>> getTree() {
         return Result.success(orgUnitService.getOrgTree());
     }
 
-    /**
-     * 获取带员工数量的组织架构树
-     */
     @GetMapping("/tree-with-count")
     public Result<List<OrgUnit>> getTreeWithCount() {
         return Result.success(orgUnitService.getOrgTreeWithCount());
     }
 
-    /**
-     * 获取组织统计数据
-     */
     @GetMapping("/{id}/statistics")
     public Result<OrgStatisticsDTO> getStatistics(@PathVariable Long id) {
         return Result.success(orgUnitService.getStatistics(id));
     }
 
-    /**
-     * 获取全局统计数据
-     */
     @GetMapping("/statistics")
     public Result<OrgStatisticsDTO> getAllStatistics() {
         return Result.success(orgUnitService.getStatistics(0L));
     }
 
-    /**
-     * 获取指定类型的组织列表
-     */
     @GetMapping("/list")
     public Result<List<OrgUnit>> getList(@RequestParam(required = false) Integer unitType) {
         if (unitType != null) {
@@ -62,83 +56,116 @@ public class OrgUnitController {
         return Result.success(orgUnitService.list());
     }
 
-    /**
-     * 获取公司列表（兼容旧接口）
-     */
     @GetMapping("/companies")
     public Result<List<OrgUnit>> getCompanies() {
         return Result.success(orgUnitService.getCompanyList());
     }
 
-    /**
-     * 获取部门树（兼容旧接口）
-     */
     @GetMapping("/depts")
     public Result<List<OrgUnit>> getDepts(@RequestParam(required = false) Long parentId) {
         return Result.success(orgUnitService.getDeptTree(parentId != null ? parentId : 0L));
     }
 
-    /**
-     * 获取单个组织详情
-     */
     @GetMapping("/{id}")
     public Result<OrgUnit> getById(@PathVariable Long id) {
         return Result.success(orgUnitService.getById(id));
     }
 
-    /**
-     * 创建组织节点
-     */
     @PostMapping
     public Result<Void> create(@RequestBody OrgUnit unit) {
-        // 检查编码是否重复
         if (orgUnitService.checkCodeExists(unit.getUnitCode(), null)) {
-            return Result.error("编码已存在");
+            return Result.error("组织编码已存在");
         }
+
+        String attendanceError = validateAttendanceConfig(unit);
+        if (attendanceError != null) {
+            return Result.error(attendanceError);
+        }
+
         orgUnitService.createUnit(unit);
         return Result.success();
     }
 
-    /**
-     * 更新组织节点
-     */
     @PutMapping("/{id}")
     public Result<Void> update(@PathVariable Long id, @RequestBody OrgUnit unit) {
-        // 检查编码是否重复
         if (orgUnitService.checkCodeExists(unit.getUnitCode(), id)) {
-            return Result.error("编码已存在");
+            return Result.error("组织编码已存在");
         }
+
+        String attendanceError = validateAttendanceConfig(unit);
+        if (attendanceError != null) {
+            return Result.error(attendanceError);
+        }
+
         unit.setId(id);
         orgUnitService.updateUnit(unit);
         return Result.success();
     }
 
-    /**
-     * 删除组织节点
-     */
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         try {
             orgUnitService.deleteUnit(id);
             return Result.success();
-        } catch (RuntimeException e) {
-            return Result.error(e.getMessage());
+        } catch (RuntimeException exception) {
+            return Result.error(exception.getMessage());
         }
     }
 
-    /**
-     * 检查编码是否存在
-     */
     @GetMapping("/check-code")
     public Result<Boolean> checkCode(@RequestParam String unitCode, @RequestParam(required = false) Long excludeId) {
         return Result.success(orgUnitService.checkCodeExists(unitCode, excludeId));
     }
 
-    /**
-     * 获取节点所属公司ID
-     */
     @GetMapping("/{id}/company")
     public Result<Long> getCompanyId(@PathVariable Long id) {
         return Result.success(orgUnitService.getCompanyId(id));
+    }
+
+    private String validateAttendanceConfig(OrgUnit unit) {
+        if (unit.getUnitType() == null || unit.getUnitType() != OrgUnit.TYPE_COMPANY) {
+            unit.setAttendanceAddress(null);
+            unit.setAttendanceLatitude(null);
+            unit.setAttendanceLongitude(null);
+            unit.setAttendanceRange(null);
+            return null;
+        }
+
+        boolean hasLatitude = unit.getAttendanceLatitude() != null;
+        boolean hasLongitude = unit.getAttendanceLongitude() != null;
+        boolean hasAddress = StringUtils.hasText(unit.getAttendanceAddress());
+        boolean hasRange = unit.getAttendanceRange() != null;
+
+        if (hasLatitude != hasLongitude) {
+            return "请同时填写打卡纬度和经度";
+        }
+
+        if (hasLatitude) {
+            double latitude = unit.getAttendanceLatitude().doubleValue();
+            double longitude = unit.getAttendanceLongitude().doubleValue();
+            if (latitude < -90 || latitude > 90) {
+                return "打卡纬度必须在 -90 到 90 之间";
+            }
+            if (longitude < -180 || longitude > 180) {
+                return "打卡经度必须在 -180 到 180 之间";
+            }
+
+            if (unit.getAttendanceRange() == null) {
+                unit.setAttendanceRange(300);
+            }
+            if (unit.getAttendanceRange() <= 0) {
+                return "打卡范围必须大于 0";
+            }
+        } else {
+            if (hasAddress || hasRange) {
+                return "配置打卡地址或范围时，请先填写打卡经纬度";
+            }
+            unit.setAttendanceRange(null);
+        }
+
+        if (!StringUtils.hasText(unit.getAttendanceAddress())) {
+            unit.setAttendanceAddress(null);
+        }
+        return null;
     }
 }

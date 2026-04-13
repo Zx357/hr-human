@@ -10,6 +10,11 @@ declare global {
     $message?: import('element-plus').Message;
     /** Notification instance */
     $notification?: import('element-plus').Notify;
+    /** AMap JS API security config */
+    _AMapSecurityConfig?: {
+      securityJsCode?: string;
+      serviceHost?: string;
+    };
   }
 
   /** Build time of the project */
