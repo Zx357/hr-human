@@ -1,13 +1,13 @@
 <script setup lang="tsx">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import type { UploadProps } from 'element-plus';
+import { Plus } from '@element-plus/icons-vue';
+import { type Contract, createContract, deleteContract, fetchContractPage, updateContract } from '@/service/api/contract';
+import { getFileUrl, uploadContractPhoto } from '@/service/api/file';
 import { fetchEmployeePage } from '@/service/api/hr';
 import { fetchOrgTree } from '@/service/api/organization';
 import { fetchDictDataByCode } from '@/service/api/system';
-import { fetchContractPage, createContract, updateContract, deleteContract, type Contract } from '@/service/api/contract';
-import { uploadContractPhoto, getFileUrl } from '@/service/api/file';
-import type { UploadProps } from 'element-plus';
-import { Plus } from '@element-plus/icons-vue';
 
 defineOptions({ name: 'ContractManage' });
 
@@ -53,6 +53,7 @@ const submitLoading = ref(false);
 
 // 合同图片列表
 const contractImageList = ref<string[]>([]);
+const employeeDisplayName = ref('');
 
 // 判断是否为无固定期限合同 (dict_value: '2' = 无固定期限)
 const isNoFixedTerm = computed(() => editingData.value.contractType === '2');
@@ -141,6 +142,11 @@ onMounted(() => {
   loadOrgTree();
   loadData();
 });
+
+function handleContractDialogOpened() {
+  const dialogBody = document.querySelector<HTMLElement>('.contract-dialog .el-dialog__body');
+  dialogBody?.scrollTo({ top: 0, behavior: 'auto' });
+}
 
 function handleAdd() {
   operateType.value = 'add';
@@ -267,7 +273,6 @@ function handleEmployeeDialogSizeChange(size: number) {
 }
 
 // 选择员工
-const employeeDisplayName = ref('');
 async function handleSelectEmployee(row: Api.Hr.Employee) {
   selectedEmployee.value = row;
   editingData.value.employeeId = row.id!;
@@ -290,7 +295,7 @@ async function calculateContractCount(employeeId: number) {
     const res = await fetchContractPage({
       pageNum: 1,
       pageSize: 1000,
-      employeeId: employeeId
+      employeeId
     });
     if (res.data) {
       // 合同次数 = 该员工现有合同数 + 1
@@ -313,11 +318,9 @@ async function handleSubmit() {
       ElMessage.warning('请选择开始日期');
       return;
     }
-  } else {
-    if (!editingData.value.dateRange || editingData.value.dateRange.length !== 2) {
-      ElMessage.warning('请选择合同期限');
-      return;
-    }
+  } else if (!editingData.value.dateRange || editingData.value.dateRange.length !== 2) {
+    ElMessage.warning('请选择合同期限');
+    return;
   }
   submitLoading.value = true;
   try {
@@ -503,7 +506,16 @@ const statusMap: Record<number, { label: string; type: string }> = {
     </ElCard>
 
     <!-- 新增/编辑弹窗 -->
-    <ElDialog v-model="drawerVisible" :title="operateType === 'add' ? '新增合同' : '编辑合同'" width="600px" destroy-on-close>
+    <ElDialog
+      v-model="drawerVisible"
+      :title="operateType === 'add' ? '新增合同' : '编辑合同'"
+      width="600px"
+      top="24px"
+      destroy-on-close
+      append-to-body
+      class="contract-dialog"
+      @opened="handleContractDialogOpened"
+    >
       <ElForm label-width="100px" :model="editingData">
         <ElFormItem label="合同编号" required>
           <ElInput v-model="editingData.contractNo" placeholder="请输入合同编号" />
@@ -589,7 +601,7 @@ const statusMap: Record<number, { label: string; type: string }> = {
     </ElDialog>
 
     <!-- 员工选择弹窗 -->
-    <ElDialog v-model="employeeDialogVisible" title="选择员工" width="900px" destroy-on-close>
+    <ElDialog v-model="employeeDialogVisible" title="选择员工" width="900px" destroy-on-close append-to-body>
       <div class="mb-16px">
         <ElForm inline :model="employeeDialogSearch">
           <ElFormItem label="姓名">
@@ -657,3 +669,14 @@ const statusMap: Record<number, { label: string; type: string }> = {
     </ElDialog>
   </div>
 </template>
+
+<style scoped>
+.contract-dialog :deep(.el-dialog) {
+  margin-bottom: 24px;
+}
+
+.contract-dialog :deep(.el-dialog__body) {
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+}
+</style>

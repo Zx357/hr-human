@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.kadmin.common.Result;
 import com.kadmin.entity.AttClockRecord;
 import com.kadmin.entity.AttDailyRecord;
+import com.kadmin.entity.AttLocation;
 import com.kadmin.entity.AttSchedule;
 import com.kadmin.entity.AttShift;
 import com.kadmin.entity.HrEmployee;
@@ -15,6 +16,7 @@ import com.kadmin.mapper.AttShiftMapper;
 import com.kadmin.mapper.EmployeeMapper;
 import com.kadmin.security.LoginUser;
 import com.kadmin.service.OrgUnitService;
+import com.kadmin.service.AttLocationService;
 import com.kadmin.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
@@ -54,6 +56,7 @@ public class MobileAttendanceController {
     private final AttShiftMapper shiftMapper;
     private final EmployeeMapper employeeMapper;
     private final OrgUnitService orgUnitService;
+    private final AttLocationService attLocationService;
 
     @GetMapping("/clock/info")
     public Result<Map<String, Object>> getClockInfo() {
@@ -110,17 +113,19 @@ public class MobileAttendanceController {
             result.put("todayDaily", todayDaily);
         }
 
-        OrgUnit company = getEmployeeCompany(employeeId);
-        if (company != null) {
-            result.put("companyId", company.getId());
-            result.put("companyName", company.getUnitName());
+        List<AttLocation> locations = attLocationService.getAssignedActiveLocations(employeeId);
+        AttLocation location = locations.stream().filter(this::hasAttendanceConfig).findFirst().orElse(null);
+        result.put("clockLocations", locations);
+        if (location != null) {
+            result.put("companyId", location.getId());
+            result.put("companyName", location.getLocationName());
             result.put(
                     "companyAddress",
-                    StringUtils.hasText(company.getAttendanceAddress()) ? company.getAttendanceAddress() : company.getAddress());
-            result.put("companyLat", company.getAttendanceLatitude());
-            result.put("companyLng", company.getAttendanceLongitude());
-            result.put("clockRange", company.getAttendanceRange());
-            result.put("attendanceConfigured", hasAttendanceConfig(company));
+                    StringUtils.hasText(location.getAddress()) ? location.getAddress() : location.getLocationName());
+            result.put("companyLat", location.getLatitude());
+            result.put("companyLng", location.getLongitude());
+            result.put("clockRange", location.getClockRange());
+            result.put("attendanceConfigured", hasAttendanceConfig(location));
         } else {
             result.put("attendanceConfigured", false);
         }
@@ -138,21 +143,32 @@ public class MobileAttendanceController {
         Long employeeId = getCurrentEmployeeId(loginUser);
         Integer clockType = resolveClockType(employeeId, params.get("clockType"));
 
-        OrgUnit company = getEmployeeCompany(employeeId);
-        if (hasAttendanceConfig(company)) {
+        List<AttLocation> assignedLocations = attLocationService.getAssignedActiveLocations(employeeId);
+        List<AttLocation> configuredLocations = assignedLocations.stream().filter(this::hasAttendanceConfig).toList();
+        if (!configuredLocations.isEmpty()) {
             String location = params.get("location") instanceof String ? (String) params.get("location") : null;
             double[] userPoint = parseLocation(location);
             if (userPoint == null) {
                 return Result.error("未获取到当前位置，请开启定位后重试");
             }
 
-            double distance = calculateDistanceMeters(
-                    userPoint[0],
-                    userPoint[1],
-                    company.getAttendanceLatitude().doubleValue(),
-                    company.getAttendanceLongitude().doubleValue());
-            if (distance > company.getAttendanceRange()) {
-                long exceeded = Math.round(distance - company.getAttendanceRange());
+            double tolerance = resolveAccuracyToleranceMeters(params.get("accuracy"));
+            double minExceeded = Double.MAX_VALUE;
+            for (AttLocation assignedLocation : configuredLocations) {
+                double distance = calculateDistanceMeters(
+                        userPoint[0],
+                        userPoint[1],
+                        assignedLocation.getLatitude(),
+                        assignedLocation.getLongitude());
+                double allowedRange = assignedLocation.getClockRange().doubleValue() + tolerance;
+                if (distance <= allowedRange) {
+                    minExceeded = 0D;
+                    break;
+                }
+                minExceeded = Math.min(minExceeded, distance - allowedRange);
+            }
+            if (minExceeded > 0D) {
+                long exceeded = Math.round(minExceeded);
                 return Result.error("当前位置不在打卡范围内，超出约 " + exceeded + " 米");
             }
         }
@@ -389,6 +405,14 @@ public class MobileAttendanceController {
                 && company.getAttendanceRange() > 0;
     }
 
+    private boolean hasAttendanceConfig(AttLocation location) {
+        return location != null
+                && location.getLatitude() != null
+                && location.getLongitude() != null
+                && location.getClockRange() != null
+                && location.getClockRange() > 0;
+    }
+
     private double[] parseLocation(String location) {
         if (!StringUtils.hasText(location)) {
             return null;
@@ -405,6 +429,22 @@ public class MobileAttendanceController {
             return new double[] { latitude, longitude };
         } catch (NumberFormatException exception) {
             return null;
+        }
+    }
+
+    private double resolveAccuracyToleranceMeters(Object accuracyValue) {
+        if (accuracyValue == null) {
+            return 0D;
+        }
+
+        try {
+            double accuracy = Double.parseDouble(String.valueOf(accuracyValue));
+            if (accuracy <= 0D || accuracy > 200D) {
+                return 0D;
+            }
+            return Math.min(Math.round(accuracy), 80D);
+        } catch (NumberFormatException exception) {
+            return 0D;
         }
     }
 

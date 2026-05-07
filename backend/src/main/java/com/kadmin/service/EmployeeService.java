@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -290,5 +291,23 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
             wrapper.ne(HrEmployee::getId, excludeId);
         }
         return count(wrapper) > 0;
+    }
+
+    /**
+     * 生成下一个员工编号
+     * 格式: K + yyyyMMdd + 3位序号
+     */
+    public String generateNextEmployeeNo() {
+        String today = LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String prefix = "K" + today;
+
+        // 查询当天最大的工号
+        String maxNo = baseMapper.selectMaxEmployeeNo(prefix);
+
+        if (maxNo != null && maxNo.length() > prefix.length()) {
+            int seq = Integer.parseInt(maxNo.substring(prefix.length())) + 1;
+            return prefix + String.format("%03d", seq);
+        }
+        return prefix + "001";
     }
 }

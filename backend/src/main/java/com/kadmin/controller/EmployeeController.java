@@ -138,6 +138,15 @@ public class EmployeeController {
     }
 
     /**
+     * 生成下一个员工编号
+     */
+    @GetMapping("/next-no")
+    public Result<String> generateNextEmployeeNo() {
+        String nextNo = employeeService.generateNextEmployeeNo();
+        return Result.success(nextNo);
+    }
+
+    /**
      * 检查工号是否存在
      */
     @GetMapping("/check-no")

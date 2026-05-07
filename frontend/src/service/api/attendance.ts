@@ -60,6 +60,20 @@ export interface AttDailyRecord {
   bereavementLeaveDuration?: number;
 }
 
+export interface AttLocation {
+  id?: number;
+  locationName: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  clockRange?: number;
+  status?: number;
+  remark?: string;
+  assignedCount?: number;
+  employeeIds?: number[];
+  employees?: Api.Hr.Employee[];
+}
+
 export function fetchClockRecordPage(params: {
   page: number;
   size: number;
@@ -163,5 +177,43 @@ export function fetchMonthlyAttendance(params: {
     url: '/attendance/monthly',
     method: 'get',
     params: { ...rest, orgIds: normalizeOrgIds(orgIds) }
+  });
+}
+
+export function fetchAttLocationPage(params: { pageNum: number; pageSize: number; keyword?: string }) {
+  return request<Api.Common.PageResult<AttLocation>>({
+    url: '/attendance/location/page',
+    method: 'get',
+    params
+  });
+}
+
+export function fetchAttLocationDetail(id: number) {
+  return request<AttLocation>({
+    url: `/attendance/location/${id}`,
+    method: 'get'
+  });
+}
+
+export function createAttLocation(data: AttLocation) {
+  return request<boolean>({
+    url: '/attendance/location',
+    method: 'post',
+    data
+  });
+}
+
+export function updateAttLocation(id: number, data: AttLocation) {
+  return request<boolean>({
+    url: `/attendance/location/${id}`,
+    method: 'put',
+    data
+  });
+}
+
+export function deleteAttLocation(id: number) {
+  return request<boolean>({
+    url: `/attendance/location/${id}`,
+    method: 'delete'
   });
 }

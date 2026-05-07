@@ -79,3 +79,11 @@ export function checkEmployeeNo(employeeNo: string, excludeId?: number) {
     params: { employeeNo, excludeId }
   });
 }
+
+/** 生成下一个员工编号 */
+export function generateEmployeeNo() {
+  return request<string>({
+    url: '/employee/next-no',
+    method: 'get'
+  });
+}

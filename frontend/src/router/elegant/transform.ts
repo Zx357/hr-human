@@ -185,6 +185,7 @@ const routeMap: RouteMap = {
   "attendance_clock": "/attendance/clock",
   "attendance_daily": "/attendance/daily",
   "attendance_holiday": "/attendance/holiday",
+  "attendance_location": "/attendance/location",
   "attendance_monthly": "/attendance/monthly",
   "attendance_schedule": "/attendance/schedule",
   "attendance_shift": "/attendance/shift",

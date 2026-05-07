@@ -36,6 +36,7 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   attendance_clock: () => import("@/views/attendance/clock/index.vue"),
   attendance_daily: () => import("@/views/attendance/daily/index.vue"),
   attendance_holiday: () => import("@/views/attendance/holiday/index.vue"),
+  attendance_location: () => import("@/views/attendance/location/index.vue"),
   attendance_monthly: () => import("@/views/attendance/monthly/index.vue"),
   attendance_schedule: () => import("@/views/attendance/schedule/index.vue"),
   attendance_shift: () => import("@/views/attendance/shift/index.vue"),

@@ -1,6 +1,17 @@
 <template>
   <view class="page-wrap">
     <view class="map-section">
+      <!-- #ifdef H5 -->
+      <view class="attendance-map google-map-shell">
+        <view ref="googleMapCanvas" class="google-map-canvas"></view>
+        <view v-if="googleMapLoading || googleMapError" class="google-map-state">
+          <text v-if="googleMapLoading">Google 地图加载中...</text>
+          <text v-else>{{ googleMapError }}</text>
+        </view>
+      </view>
+      <!-- #endif -->
+
+      <!-- #ifndef H5 -->
       <map
         id="attendanceMap"
         class="attendance-map"
@@ -13,6 +24,7 @@
         show-location
         show-compass
       />
+      <!-- #endif -->
 
       <view class="map-overlay">
         <view class="status-chip" :class="attendanceStatusClass">
@@ -110,6 +122,10 @@
             <text class="info-value">{{ rangeDisplay }}</text>
           </view>
           <view class="info-item">
+            <text class="info-label">定位精度</text>
+            <text class="info-value">{{ locationAccuracyDisplay }}</text>
+          </view>
+          <view class="info-item">
             <text class="info-label">当前位置</text>
             <text class="info-value">{{ formatCoordinate(latitude) }}, {{ formatCoordinate(longitude) }}</text>
           </view>
@@ -192,6 +208,8 @@
 
 <script>
 import { clock, getClockInfo } from '@/api/attendance'
+import config from '@/config'
+import { loadGoogleMapsApi } from '@/utils/google-maps'
 
 const DEFAULT_MAP_POINT = {
   latitude: 39.9042,
@@ -210,20 +228,28 @@ const IS_H5 = isH5Platform
 export default {
   data() {
     return {
+      isH5: IS_H5,
       mapLatitude: DEFAULT_MAP_POINT.latitude,
       mapLongitude: DEFAULT_MAP_POINT.longitude,
       scale: 15,
       markers: [],
       circles: [],
       includePoints: [],
+      googleMapLoading: IS_H5,
+      googleMapReady: false,
+      googleMapError: '',
       latitude: null,
       longitude: null,
+      rawLatitude: null,
+      rawLongitude: null,
+      locationAccuracy: null,
       companyId: null,
       companyName: '',
       companyAddress: '',
       companyLat: null,
       companyLng: null,
       clockRange: null,
+      clockLocations: [],
       attendanceConfigured: false,
       locationReady: false,
       locationDenied: false,
@@ -254,7 +280,17 @@ export default {
     withinClockRange() {
       if (!this.attendanceConfigured) return true
       if (!this.hasCompanyLocation || !this.hasLocation || this.distance === null || this.clockRange === null) return false
-      return this.distance <= this.clockRange
+      return this.distance <= this.effectiveClockRange
+    },
+    effectiveClockRange() {
+      if (this.clockRange === null || this.clockRange === undefined) return null
+      const baseRange = Number(this.clockRange)
+      if (!IS_H5 || !Number.isFinite(Number(this.locationAccuracy))) return baseRange
+
+      const accuracy = Number(this.locationAccuracy)
+      if (accuracy <= 0 || accuracy > 200) return baseRange
+
+      return baseRange + Math.min(Math.round(accuracy), 80)
     },
     canClockAction() {
       if (!this.attendanceConfigured) return true
@@ -330,6 +366,12 @@ export default {
       if (this.clockRange === null || this.clockRange === undefined || this.clockRange <= 0) return '--'
       return `${this.clockRange}米`
     },
+    locationAccuracyDisplay() {
+      if (!Number.isFinite(Number(this.locationAccuracy))) return '--'
+      const accuracy = Number(this.locationAccuracy)
+      if (accuracy >= 1000) return `${(accuracy / 1000).toFixed(2)}公里`
+      return `${Math.round(accuracy)}米`
+    },
     clockInTime() {
       return this.clockInRecord ? this.formatTime(this.clockInRecord.clockTime) : ''
     },
@@ -355,12 +397,25 @@ export default {
       return ''
     }
   },
+  created() {
+    this.googleMapRuntime = {
+      map: null,
+      companyRangeCircle: null,
+      companyPointCircle: null,
+      userPointCircle: null
+    }
+  },
   onLoad() {
     this.updateTime()
     this.timer = setInterval(() => {
       this.updateTime()
     }, 1000)
     this.refreshPage()
+  },
+  onReady() {
+    if (IS_H5) {
+      this.initGoogleMap()
+    }
   },
   onShow() {
     this.refreshPage()
@@ -374,6 +429,9 @@ export default {
     if (this.timer) {
       clearInterval(this.timer)
       this.timer = null
+    }
+    if (IS_H5) {
+      this.disposeGoogleMap()
     }
   },
   methods: {
@@ -429,25 +487,64 @@ export default {
           return
         }
 
-        window.navigator.geolocation.getCurrentPosition(
-          position => {
-            const normalizedPoint = this.normalizeH5Location(position.coords.latitude, position.coords.longitude)
-            this.applyLocationSuccess(normalizedPoint.latitude, normalizedPoint.longitude)
+        this.getBestH5Position()
+          .then(position => {
+            const rawLatitude = Number(position.coords.latitude)
+            const rawLongitude = Number(position.coords.longitude)
+            const accuracy = Number(position.coords.accuracy)
+            const normalizedPoint = this.normalizeH5Location(rawLatitude, rawLongitude)
+            this.applyLocationSuccess(
+              normalizedPoint.latitude,
+              normalizedPoint.longitude,
+              rawLatitude,
+              rawLongitude,
+              accuracy
+            )
             resolve(normalizedPoint)
-          },
-          err => {
+          })
+          .catch(err => {
             this.applyLocationFailure(this.resolveLocationFailureReason(err), err, showError)
             resolve(null)
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-          }
-        )
+          })
       })
     },
-    applyLocationSuccess(latitude, longitude) {
+    getH5PositionOnce(timeout = 6000) {
+      return new Promise((resolve, reject) => {
+        window.navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout,
+          maximumAge: 0
+        })
+      })
+    },
+    async getBestH5Position() {
+      const positions = []
+      let lastError = null
+
+      for (let index = 0; index < 3; index += 1) {
+        try {
+          const position = await this.getH5PositionOnce(index === 0 ? 8000 : 5000)
+          positions.push(position)
+          const accuracy = Number(position.coords && position.coords.accuracy)
+          if (Number.isFinite(accuracy) && accuracy <= 60) break
+        } catch (error) {
+          lastError = error
+        }
+      }
+
+      if (!positions.length) {
+        throw lastError || new Error('定位失败')
+      }
+
+      return positions.reduce((best, current) => {
+        const bestAccuracy = Number(best.coords && best.coords.accuracy)
+        const currentAccuracy = Number(current.coords && current.coords.accuracy)
+        if (!Number.isFinite(bestAccuracy)) return current
+        if (!Number.isFinite(currentAccuracy)) return best
+        return currentAccuracy < bestAccuracy ? current : best
+      })
+    },
+    applyLocationSuccess(latitude, longitude, rawLatitude = null, rawLongitude = null, accuracy = null) {
       const parsedLatitude = Number(latitude)
       const parsedLongitude = Number(longitude)
 
@@ -458,18 +555,25 @@ export default {
 
       this.latitude = parsedLatitude
       this.longitude = parsedLongitude
+      this.rawLatitude = Number.isFinite(Number(rawLatitude)) ? Number(rawLatitude) : null
+      this.rawLongitude = Number.isFinite(Number(rawLongitude)) ? Number(rawLongitude) : null
+      this.locationAccuracy = Number.isFinite(Number(accuracy)) ? Math.round(Number(accuracy)) : null
       this.locationReady = true
       this.locationDenied = false
       this.locationFailureReason = ''
       if (IS_H5) {
         this.locationPermissionState = 'granted'
       }
+      this.updateActiveClockLocation()
       this.calcDistance()
       this.refreshMapData()
     },
     applyLocationFailure(reason, err, showError = false) {
       this.latitude = null
       this.longitude = null
+      this.rawLatitude = null
+      this.rawLongitude = null
+      this.locationAccuracy = null
       this.locationReady = true
       this.locationFailureReason = reason || 'unknown'
       this.locationDenied = this.locationFailureReason === 'permission-denied' || this.locationPermissionState === 'denied'
@@ -604,6 +708,8 @@ export default {
         this.companyLat = this.parseNumber(res.data.companyLat)
         this.companyLng = this.parseNumber(res.data.companyLng)
         this.clockRange = this.parseNumber(res.data.clockRange)
+        this.clockLocations = this.normalizeClockLocations(res.data.clockLocations)
+        this.updateActiveClockLocation()
         this.attendanceConfigured = !!res.data.attendanceConfigured
         this.clockInRecord = this.todayRecords.find(item => item.clockType === 1) || null
         this.clockOutRecord = this.todayRecords.find(item => item.clockType === 2) || null
@@ -618,6 +724,39 @@ export default {
       if (value === null || value === undefined || value === '') return null
       const number = Number(value)
       return Number.isFinite(number) ? number : null
+    },
+    normalizeClockLocations(locations) {
+      if (!Array.isArray(locations)) return []
+      return locations
+        .map(item => ({
+          id: item.id,
+          name: item.locationName || item.companyName || '',
+          address: item.address || item.companyAddress || item.locationName || '',
+          latitude: this.parseNumber(item.latitude ?? item.companyLat),
+          longitude: this.parseNumber(item.longitude ?? item.companyLng),
+          range: this.parseNumber(item.clockRange)
+        }))
+        .filter(item => item.latitude !== null && item.longitude !== null && item.range !== null && item.range > 0)
+    },
+    updateActiveClockLocation() {
+      if (!this.clockLocations.length) return
+
+      let activeLocation = this.clockLocations[0]
+      if (this.hasLocation) {
+        activeLocation = this.clockLocations
+          .map(item => ({
+            ...item,
+            distance: this.calculateDistanceMeters(this.latitude, this.longitude, item.latitude, item.longitude)
+          }))
+          .sort((a, b) => a.distance - b.distance)[0]
+      }
+
+      this.companyId = activeLocation.id || null
+      this.companyName = activeLocation.name || ''
+      this.companyAddress = activeLocation.address || ''
+      this.companyLat = activeLocation.latitude
+      this.companyLng = activeLocation.longitude
+      this.clockRange = activeLocation.range
     },
     wgs84ToGcj02(latitude, longitude) {
       if (this.isOutOfChina(latitude, longitude)) {
@@ -636,6 +775,14 @@ export default {
 
       return [latitude + deltaLatitude, longitude + deltaLongitude]
     },
+    gcj02ToWgs84(latitude, longitude) {
+      if (this.isOutOfChina(latitude, longitude)) {
+        return [latitude, longitude]
+      }
+
+      const [gcjLatitude, gcjLongitude] = this.wgs84ToGcj02(latitude, longitude)
+      return [latitude * 2 - gcjLatitude, longitude * 2 - gcjLongitude]
+    },
     isOutOfChina(latitude, longitude) {
       return longitude < 72.004 || longitude > 137.8347 || latitude < 0.8293 || latitude > 55.8271
     },
@@ -653,11 +800,180 @@ export default {
       result += ((150.0 * Math.sin((x / 12.0) * Math.PI) + 300.0 * Math.sin((x / 30.0) * Math.PI)) * 2.0) / 3.0
       return result
     },
+    async initGoogleMap() {
+      if (!IS_H5) return
+
+      const googleMapConfig = (config && config.googleMaps) || {}
+      if (!googleMapConfig.apiKey) {
+        this.googleMapLoading = false
+        this.googleMapReady = false
+        this.googleMapError = '未配置 Google Maps API Key，H5 无法加载谷歌地图'
+        return
+      }
+
+      const mapCanvas = this.$refs.googleMapCanvas
+      const mapElement = mapCanvas && (mapCanvas.$el || mapCanvas)
+      if (!mapElement) {
+        this.googleMapLoading = false
+        this.googleMapReady = false
+        this.googleMapError = '未找到谷歌地图容器，H5 地图初始化失败'
+        return
+      }
+
+      this.googleMapLoading = true
+      this.googleMapError = ''
+
+      try {
+        await loadGoogleMapsApi({
+          apiKey: googleMapConfig.apiKey,
+          language: googleMapConfig.language || 'zh-CN',
+          region: googleMapConfig.region || 'CN'
+        })
+
+        this.googleMapRuntime.map = new window.google.maps.Map(mapElement, {
+          center: { lat: DEFAULT_MAP_POINT.latitude, lng: DEFAULT_MAP_POINT.longitude },
+          zoom: 12,
+          disableDefaultUI: true,
+          zoomControl: true,
+          fullscreenControl: false,
+          streetViewControl: false,
+          mapTypeControl: false,
+          gestureHandling: 'greedy'
+        })
+
+        this.googleMapReady = true
+        this.googleMapLoading = false
+        this.refreshGoogleMap()
+      } catch (error) {
+        console.log('Google Maps 初始化失败', error)
+        this.googleMapReady = false
+        this.googleMapLoading = false
+        this.googleMapError = 'Google 地图加载失败，请检查 API Key、Billing 配置和当前网络是否可访问 maps.googleapis.com'
+      }
+    },
+    refreshGoogleMap() {
+      if (!IS_H5 || !this.googleMapReady || !this.googleMapRuntime.map || !window.google || !window.google.maps) {
+        return
+      }
+
+      const companyPoint = this.getGoogleMapCompanyPoint()
+      const userPoint = this.getGoogleMapUserPoint()
+
+      this.syncGoogleCircle('companyRangeCircle', companyPoint, {
+        radius: this.clockRange || 0,
+        strokeColor: '#6366f1',
+        strokeOpacity: 0.95,
+        strokeWeight: 2,
+        fillColor: '#6366f1',
+        fillOpacity: 0.14
+      }, !!(companyPoint && this.clockRange))
+
+      this.syncGoogleCircle('companyPointCircle', companyPoint, {
+        radius: 12,
+        strokeColor: '#1d4ed8',
+        strokeOpacity: 1,
+        strokeWeight: 2,
+        fillColor: '#2563eb',
+        fillOpacity: 1
+      }, !!companyPoint)
+
+      this.syncGoogleCircle('userAccuracyCircle', userPoint, {
+        radius: Math.max(Number(this.locationAccuracy) || 0, 20),
+        strokeColor: '#10b981',
+        strokeOpacity: 0.65,
+        strokeWeight: 1,
+        fillColor: '#10b981',
+        fillOpacity: 0.08
+      }, !!(userPoint && Number.isFinite(Number(this.locationAccuracy))))
+
+      this.syncGoogleCircle('userPointCircle', userPoint, {
+        radius: 12,
+        strokeColor: '#047857',
+        strokeOpacity: 1,
+        strokeWeight: 2,
+        fillColor: '#10b981',
+        fillOpacity: 1
+      }, !!userPoint)
+
+      this.fitGoogleMapViewport(companyPoint, userPoint)
+    },
+    syncGoogleCircle(key, point, styleOptions, shouldShow) {
+      if (!this.googleMapRuntime[key]) {
+        this.googleMapRuntime[key] = new window.google.maps.Circle({
+          strokeOpacity: 0,
+          strokeWeight: 0,
+          fillOpacity: 0
+        })
+      }
+
+      const overlay = this.googleMapRuntime[key]
+      if (!shouldShow || !point) {
+        overlay.setMap(null)
+        return
+      }
+
+      overlay.setOptions({
+        ...styleOptions,
+        center: point,
+        map: this.googleMapRuntime.map
+      })
+    },
+    fitGoogleMapViewport(companyPoint, userPoint) {
+      if (!this.googleMapRuntime.map) return
+
+      if (companyPoint && userPoint) {
+        const bounds = new window.google.maps.LatLngBounds()
+        bounds.extend(companyPoint)
+        bounds.extend(userPoint)
+        this.googleMapRuntime.map.fitBounds(bounds, 60)
+        return
+      }
+
+      if (companyPoint) {
+        this.googleMapRuntime.map.setCenter(companyPoint)
+        this.googleMapRuntime.map.setZoom(this.getScaleByDistance(this.clockRange || 300))
+        return
+      }
+
+      if (userPoint) {
+        this.googleMapRuntime.map.setCenter(userPoint)
+        this.googleMapRuntime.map.setZoom(16)
+        return
+      }
+
+      this.googleMapRuntime.map.setCenter({ lat: DEFAULT_MAP_POINT.latitude, lng: DEFAULT_MAP_POINT.longitude })
+      this.googleMapRuntime.map.setZoom(12)
+    },
+    getGoogleMapCompanyPoint() {
+      if (!this.hasCompanyLocation) return null
+      const [latitude, longitude] = this.gcj02ToWgs84(this.companyLat, this.companyLng)
+      return { lat: latitude, lng: longitude }
+    },
+    getGoogleMapUserPoint() {
+      if (Number.isFinite(this.rawLatitude) && Number.isFinite(this.rawLongitude)) {
+        return { lat: this.rawLatitude, lng: this.rawLongitude }
+      }
+
+      if (!this.hasLocation) return null
+      const [latitude, longitude] = this.gcj02ToWgs84(this.latitude, this.longitude)
+      return { lat: latitude, lng: longitude }
+    },
+    disposeGoogleMap() {
+      if (!this.googleMapRuntime) return
+      ;['companyRangeCircle', 'companyPointCircle', 'userAccuracyCircle', 'userPointCircle'].forEach(key => {
+        if (this.googleMapRuntime[key]) {
+          this.googleMapRuntime[key].setMap(null)
+          this.googleMapRuntime[key] = null
+        }
+      })
+      this.googleMapRuntime.map = null
+    },
     refreshMapData() {
       this.markers = this.buildMarkers()
       this.circles = this.buildCircles()
       this.includePoints = this.buildIncludePoints()
       this.refreshMapCenter()
+      this.refreshGoogleMap()
     },
     buildMarkers() {
       const markers = []
@@ -749,17 +1065,21 @@ export default {
         return
       }
 
-      const radLat1 = (this.latitude * Math.PI) / 180
-      const radLat2 = (this.companyLat * Math.PI) / 180
+      this.updateActiveClockLocation()
+      this.distance = Math.round(this.calculateDistanceMeters(this.latitude, this.longitude, this.companyLat, this.companyLng))
+    },
+    calculateDistanceMeters(latitude, longitude, targetLatitude, targetLongitude) {
+      const radLat1 = (latitude * Math.PI) / 180
+      const radLat2 = (targetLatitude * Math.PI) / 180
       const deltaLat = radLat1 - radLat2
-      const deltaLng = ((this.longitude - this.companyLng) * Math.PI) / 180
+      const deltaLng = ((longitude - targetLongitude) * Math.PI) / 180
       const angle = 2 * Math.asin(
         Math.sqrt(
           Math.pow(Math.sin(deltaLat / 2), 2) +
           Math.cos(radLat1) * Math.cos(radLat2) * Math.pow(Math.sin(deltaLng / 2), 2)
         )
       )
-      this.distance = Math.round(angle * 6378137)
+      return angle * 6378137
     },
     getScaleByDistance(distance) {
       if (!distance || distance <= 200) return 16
@@ -824,6 +1144,9 @@ export default {
         const payload = { clockType }
         if (this.hasLocation) {
           payload.location = `${this.latitude},${this.longitude}`
+          if (Number.isFinite(Number(this.locationAccuracy))) {
+            payload.accuracy = Math.round(Number(this.locationAccuracy))
+          }
         }
 
         const res = await clock(payload)
@@ -876,6 +1199,30 @@ export default {
   width: 100%;
   height: 100%;
   background: linear-gradient(180deg, #dbeafe 0%, #eef2ff 48%, #f8fafc 100%);
+}
+
+.google-map-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.google-map-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.google-map-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32rpx;
+  text-align: center;
+  color: #1f2937;
+  font-size: 24rpx;
+  line-height: 1.6;
+  background: rgba(255, 255, 255, 0.76);
 }
 
 .map-overlay {

@@ -64,16 +64,6 @@
         "router" : {
             "mode" : "hash",
             "base" : "./"
-        },
-        "sdkConfigs" : {
-            "maps" : {
-                "qqmap" : {
-                    "key" : "A6DBZ-KXPLW-JKSRY-ONZF4-CPHY3-K6BL7"
-                },
-                "tencent" : {
-                    "key" : "A6DBZ-KXPLW-JKSRY-ONZF4-CPHY3-K6BL7"
-                }
-            }
         }
     }
 }

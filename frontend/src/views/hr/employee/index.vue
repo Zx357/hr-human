@@ -8,7 +8,8 @@ import {
   fetchEmployeeById,
   fetchEmployeePage,
   updateEmployee,
-  checkEmployeeNo
+  checkEmployeeNo,
+  generateEmployeeNo
 } from '@/service/api/hr';
 import { fetchCompanyList, fetchDepartmentTree, fetchOrgTree } from '@/service/api/organization';
 import { fetchDictDataByCode } from '@/service/api/system';
@@ -124,7 +125,7 @@ watch(() => searchParams.value.orgIds, () => { /* 组织变化时重新加载数
 
 onMounted(async () => { await loadCompanyList(); await loadOrgTree(); await loadDictData(); loadData(); });
 
-function handleAdd() {
+async function handleAdd() {
   operateType.value = 'add';
   editingData.value = { employeeNo: '', name: '', avatar: '', idCardFront: '', idCardBack: '', deptId: undefined, gender: '', phone: '', email: '', entryDate: '', status: 1 };
   educationList.value = [{ schoolName: '', major: '', education: '', isFullTime: '', startDate: '', endDate: '', diplomaPhoto: '' }];
@@ -135,6 +136,16 @@ function handleAdd() {
   employeeNoError.value = '';
   activeTab.value = 'basic';
   drawerVisible.value = true;
+
+  // 自动获取下一个工号
+  try {
+    const res = await generateEmployeeNo();
+    if (res.data) {
+      editingData.value.employeeNo = res.data;
+    }
+  } catch (error) {
+    console.error('获取工号失败:', error);
+  }
 }
 
 async function handleEdit(row: Api.Hr.Employee) {

@@ -244,6 +244,7 @@ const local: App.I18n.Schema = {
     attendance_schedule: '员工排班',
     attendance_holiday: '节假日管理',
     attendance_clock: '打卡记录',
+    attendance_location: '打卡地点',
     attendance_daily: '日考勤',
     attendance_monthly: '月考勤',
     application: '申请管理',

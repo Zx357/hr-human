@@ -247,6 +247,17 @@ export const generatedRoutes: GeneratedRoute[] = [
         }
       },
       {
+        name: 'attendance_location',
+        path: '/attendance/location',
+        component: 'view.attendance_location',
+        meta: {
+          title: 'attendance_location',
+          i18nKey: 'route.attendance_location',
+          order: 3,
+          icon: 'mdi:map-marker-radius'
+        }
+      },
+      {
         name: 'attendance_monthly',
         path: '/attendance/monthly',
         component: 'view.attendance_monthly',

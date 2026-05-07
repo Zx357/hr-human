@@ -244,6 +244,7 @@ const local: App.I18n.Schema = {
     attendance_schedule: 'Employee Schedule',
     attendance_holiday: 'Holiday Management',
     attendance_clock: 'Clock Records',
+    attendance_location: 'Clock Locations',
     attendance_daily: 'Daily Attendance',
     attendance_monthly: 'Monthly Attendance',
     application: 'Applications',

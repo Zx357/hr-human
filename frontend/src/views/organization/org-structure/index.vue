@@ -13,29 +13,21 @@ import {
   updateOrgUnit
 } from '@/service/api/organization';
 import { fetchEmployeePage } from '@/service/api/hr';
-import AttendanceLocationPicker from './components/attendance-location-picker.vue';
 
 defineOptions({ name: 'OrgStructure' });
 
 type StatsDimension = 'age' | 'gender' | 'education' | 'status' | 'employeeType';
 type ChartDatum = { name: string; value: number };
 type TableRow = { index: number; label: string; count: number; percent: string };
-type ContextMenuCommand = { action: 'add' | 'edit' | 'delete' | 'attendance'; node: Api.Organization.OrgUnit };
+type ContextMenuCommand = { action: 'add' | 'edit' | 'delete'; node: Api.Organization.OrgUnit };
 type TypeOption = { label: string; value: number };
-type AttendanceLocationPayload = { address: string; latitude: number; longitude: number };
 
 const loading = ref(false);
 const statsLoading = ref(false);
 const submitLoading = ref(false);
 const dialogVisible = ref(false);
-const attendanceDialogVisible = ref(false);
-const attendanceDialogLoading = ref(false);
-const attendanceSubmitLoading = ref(false);
-const attendanceLocationPickerVisible = ref(false);
 const operateType = ref<'add' | 'edit'>('add');
 const editingId = ref<number | null>(null);
-const attendanceEditingId = ref<number | null>(null);
-const attendanceCompanyName = ref('');
 
 const treeData = ref<Api.Organization.OrgUnit[]>([]);
 const selectedNode = ref<Api.Organization.OrgUnit | null>(null);
@@ -67,23 +59,7 @@ const statsDimension = ref<StatsDimension>('age');
 const parentNode = ref<Api.Organization.OrgUnit | null>(null);
 
 const editingData = ref<Api.Organization.OrgUnitForm>(createEmptyForm(OrgUnitType.GROUP, 0));
-const attendanceData = ref<Api.Organization.OrgUnitForm>(createEmptyForm(OrgUnitType.COMPANY, 0));
 const isCompanyUnit = computed(() => editingData.value.unitType === OrgUnitType.COMPANY);
-const canConfigureSelectedAttendance = computed(() => selectedNode.value?.unitType === OrgUnitType.COMPANY);
-
-function hasCoordinateValue(value?: number) {
-  return value !== undefined && value !== null;
-}
-
-function hasAttendanceLocationConfig(form: Api.Organization.OrgUnitForm) {
-  return (
-    hasCoordinateValue(form.attendanceLatitude) ||
-    hasCoordinateValue(form.attendanceLongitude) ||
-    Boolean(form.attendanceAddress?.trim())
-  );
-}
-
-const hasAttendanceDialogLocationConfig = computed(() => hasAttendanceLocationConfig(attendanceData.value));
 
 const statistics = ref<Api.Organization.OrgStatistics>(createEmptyStatistics());
 
@@ -370,10 +346,6 @@ function handleContextMenuCommand(command: ContextMenuCommand) {
     handleAdd(command.node);
     return;
   }
-  if (command.action === 'attendance') {
-    runAsyncTask(handleConfigureAttendance(command.node));
-    return;
-  }
   if (command.action === 'edit') {
     handleEdit(command.node);
     return;
@@ -415,27 +387,6 @@ function handleEdit(row: Api.Organization.OrgUnit) {
   dialogVisible.value = true;
 }
 
-async function handleConfigureAttendance(row: Api.Organization.OrgUnit) {
-  if (row.unitType !== OrgUnitType.COMPANY) {
-    ElMessage.warning('只有公司节点支持配置打卡点');
-    return;
-  }
-
-  attendanceDialogLoading.value = true;
-  try {
-    const response = await fetchOrgUnitById(row.id);
-    const company = response.data ?? row;
-    attendanceEditingId.value = company.id;
-    attendanceCompanyName.value = company.unitName;
-    attendanceData.value = buildOrgUnitForm(company);
-    attendanceDialogVisible.value = true;
-  } catch (error: any) {
-    ElMessage.error(error?.message || '加载打卡配置失败');
-  } finally {
-    attendanceDialogLoading.value = false;
-  }
-}
-
 async function handleDelete(row: Api.Organization.OrgUnit) {
   if (row.children?.length) {
     ElMessage.warning('当前节点下还有子节点，请先删除子节点');
@@ -458,71 +409,6 @@ async function handleDelete(row: Api.Organization.OrgUnit) {
   }
 }
 
-function validateAttendanceForm(form: Api.Organization.OrgUnitForm, isCompany: boolean) {
-  if (!isCompany) {
-    form.attendanceAddress = '';
-    form.attendanceLatitude = undefined;
-    form.attendanceLongitude = undefined;
-    form.attendanceRange = undefined;
-    return true;
-  }
-
-  const { attendanceLatitude, attendanceLongitude, attendanceRange } = form;
-  const hasAddress = Boolean(form.attendanceAddress?.trim());
-  const hasLatitude = attendanceLatitude !== undefined && attendanceLatitude !== null;
-  const hasLongitude = attendanceLongitude !== undefined && attendanceLongitude !== null;
-  const hasRange = attendanceRange !== undefined && attendanceRange !== null;
-
-  if (hasLatitude !== hasLongitude) {
-    ElMessage.warning('请同时填写打卡纬度和经度');
-    return false;
-  }
-
-  if (hasLatitude) {
-    if ((attendanceLatitude as number) < -90 || (attendanceLatitude as number) > 90) {
-      ElMessage.warning('打卡纬度必须在 -90 到 90 之间');
-      return false;
-    }
-    if ((attendanceLongitude as number) < -180 || (attendanceLongitude as number) > 180) {
-      ElMessage.warning('打卡经度必须在 -180 到 180 之间');
-      return false;
-    }
-
-    if (!hasRange) {
-      form.attendanceRange = 300;
-    } else if ((attendanceRange as number) <= 0) {
-      ElMessage.warning('打卡范围必须大于 0');
-      return false;
-    }
-  } else if (hasAddress || hasRange) {
-    ElMessage.warning('配置打卡地址或范围时，请先填写打卡经纬度');
-    return false;
-  }
-
-  return true;
-}
-
-function handleOpenAttendanceLocationPicker() {
-  attendanceLocationPickerVisible.value = true;
-}
-
-function handleAttendanceLocationConfirm(location: AttendanceLocationPayload) {
-  attendanceData.value.attendanceAddress = location.address;
-  attendanceData.value.attendanceLatitude = location.latitude;
-  attendanceData.value.attendanceLongitude = location.longitude;
-
-  if (!attendanceData.value.attendanceRange || attendanceData.value.attendanceRange <= 0) {
-    attendanceData.value.attendanceRange = 300;
-  }
-}
-
-function handleClearAttendanceLocation() {
-  attendanceData.value.attendanceAddress = '';
-  attendanceData.value.attendanceLatitude = undefined;
-  attendanceData.value.attendanceLongitude = undefined;
-  attendanceData.value.attendanceRange = undefined;
-}
-
 async function handleSubmit() {
   if (!editingData.value.unitCode?.trim()) {
     ElMessage.warning('请输入组织编码');
@@ -531,10 +417,6 @@ async function handleSubmit() {
 
   if (!editingData.value.unitName?.trim()) {
     ElMessage.warning('请输入组织名称');
-    return;
-  }
-
-  if (!validateAttendanceForm(editingData.value, isCompanyUnit.value)) {
     return;
   }
 
@@ -555,38 +437,6 @@ async function handleSubmit() {
     ElMessage.error(error?.message || '保存失败');
   } finally {
     submitLoading.value = false;
-  }
-}
-
-async function handleAttendanceSubmit() {
-  if (attendanceEditingId.value === null) {
-    ElMessage.warning('当前公司信息缺失，无法保存打卡配置');
-    return;
-  }
-
-  if (!validateAttendanceForm(attendanceData.value, true)) {
-    return;
-  }
-
-  attendanceSubmitLoading.value = true;
-  try {
-    await updateOrgUnit(attendanceEditingId.value, attendanceData.value);
-    ElMessage.success('打卡配置已保存');
-    attendanceDialogVisible.value = false;
-    await loadTreeData();
-    if (selectedNode.value?.id === attendanceEditingId.value) {
-      selectedNode.value = {
-        ...selectedNode.value,
-        attendanceAddress: attendanceData.value.attendanceAddress,
-        attendanceLatitude: attendanceData.value.attendanceLatitude,
-        attendanceLongitude: attendanceData.value.attendanceLongitude,
-        attendanceRange: attendanceData.value.attendanceRange
-      };
-    }
-  } catch (error: any) {
-    ElMessage.error(error?.message || '保存打卡配置失败');
-  } finally {
-    attendanceSubmitLoading.value = false;
   }
 }
 
@@ -695,15 +545,6 @@ onBeforeUnmount(() => {
                   <ElButton type="success" link size="small" @click.stop="handleAdd(data)">
                     <icon-ep-plus />
                   </ElButton>
-                  <ElButton
-                    v-if="data.unitType === OrgUnitType.COMPANY"
-                    type="warning"
-                    link
-                    size="small"
-                    @click.stop="handleConfigureAttendance(data)"
-                  >
-                    打卡
-                  </ElButton>
                   <ElButton type="primary" link size="small" @click.stop="handleEdit(data)">
                     <icon-ep-edit />
                   </ElButton>
@@ -726,13 +567,6 @@ onBeforeUnmount(() => {
                 <ElDropdownItem v-if="contextMenuNode" :command="{ action: 'add', node: contextMenuNode }">
                   <icon-ep-plus class="mr-8px" />
                   {{ getAddButtonText(contextMenuNode.unitType) }}
-                </ElDropdownItem>
-                <ElDropdownItem
-                  v-if="contextMenuNode && contextMenuNode.unitType === OrgUnitType.COMPANY"
-                  :command="{ action: 'attendance', node: contextMenuNode }"
-                >
-                  <icon-ep-check class="mr-8px" />
-                  打卡设置
                 </ElDropdownItem>
                 <ElDropdownItem v-if="contextMenuNode" :command="{ action: 'edit', node: contextMenuNode }">
                   <icon-ep-edit class="mr-8px" />
@@ -762,15 +596,6 @@ onBeforeUnmount(() => {
               </ElTag>
             </div>
             <div class="stats-actions">
-              <ElButton
-                v-if="canConfigureSelectedAttendance && selectedNode"
-                type="warning"
-                plain
-                size="small"
-                @click="handleConfigureAttendance(selectedNode)"
-              >
-                打卡设置
-              </ElButton>
               <ElButton v-if="selectedNode" type="primary" link @click="handleViewAll">
                 <icon-ep-back class="mr-4px" />
                 查看全公司
@@ -937,8 +762,8 @@ onBeforeUnmount(() => {
             <ElAlert
               :title="
                 operateType === 'add'
-                  ? '公司创建完成后，可在左侧公司节点或右侧顶部点击“打卡设置”单独维护打卡位置。'
-                  : '打卡点已拆分为独立入口，请使用“打卡设置”按钮维护地图位置、经纬度和打卡范围。'
+                  ? '公司创建完成后，请到“考勤管理 -> 打卡地点”维护打卡位置并分配员工。'
+                  : '打卡点已拆分到“考勤管理 -> 打卡地点”，组织架构这里只维护公司和部门基础信息。'
               "
               type="info"
               :closable="false"
@@ -971,106 +796,6 @@ onBeforeUnmount(() => {
       </template>
     </ElDialog>
 
-    <ElDialog
-      v-model="attendanceDialogVisible"
-      :title="attendanceCompanyName ? `${attendanceCompanyName} - 打卡设置` : '打卡设置'"
-      width="720px"
-      destroy-on-close
-    >
-      <div v-loading="attendanceDialogLoading">
-        <ElForm :model="attendanceData" label-width="110px">
-          <ElFormItem label="打卡说明">
-            <ElAlert
-              title="这里配置的小程序考勤点会用于地图打卡校验，请填写 GCJ-02 坐标。"
-              type="info"
-              :closable="false"
-              show-icon
-            />
-          </ElFormItem>
-
-          <ElFormItem label="地图选点">
-            <div class="attendance-picker-actions">
-              <ElButton type="primary" plain @click="handleOpenAttendanceLocationPicker">地图选择打卡点</ElButton>
-              <ElButton
-                link
-                type="danger"
-                :disabled="!hasAttendanceDialogLocationConfig"
-                @click="handleClearAttendanceLocation"
-              >
-                清空打卡配置
-              </ElButton>
-              <span class="attendance-picker-tip">地图点击后会自动回填地址和经纬度</span>
-            </div>
-          </ElFormItem>
-
-          <ElFormItem label="打卡地址">
-            <ElInput
-              v-model="attendanceData.attendanceAddress"
-              placeholder="用于小程序展示，可与办公地址不同"
-              maxlength="255"
-              show-word-limit
-            />
-          </ElFormItem>
-
-          <ElRow :gutter="12">
-            <ElCol :span="12">
-              <ElFormItem label="打卡纬度">
-                <ElInputNumber
-                  v-model="attendanceData.attendanceLatitude"
-                  class="w-full"
-                  :precision="6"
-                  :step="0.000001"
-                  :min="-90"
-                  :max="90"
-                  controls-position="right"
-                />
-              </ElFormItem>
-            </ElCol>
-            <ElCol :span="12">
-              <ElFormItem label="打卡经度">
-                <ElInputNumber
-                  v-model="attendanceData.attendanceLongitude"
-                  class="w-full"
-                  :precision="6"
-                  :step="0.000001"
-                  :min="-180"
-                  :max="180"
-                  controls-position="right"
-                />
-              </ElFormItem>
-            </ElCol>
-          </ElRow>
-
-          <ElFormItem label="打卡范围">
-            <ElInputNumber
-              v-model="attendanceData.attendanceRange"
-              class="w-full"
-              :min="1"
-              :max="5000"
-              :step="10"
-              controls-position="right"
-              placeholder="单位：米，默认 300"
-            />
-          </ElFormItem>
-        </ElForm>
-      </div>
-
-      <template #footer>
-        <ElButton @click="attendanceDialogVisible = false">取消</ElButton>
-        <ElButton type="primary" :loading="attendanceSubmitLoading" @click="handleAttendanceSubmit">
-          保存打卡配置
-        </ElButton>
-      </template>
-    </ElDialog>
-
-    <AttendanceLocationPicker
-      v-model="attendanceLocationPickerVisible"
-      :latitude="attendanceData.attendanceLatitude"
-      :longitude="attendanceData.attendanceLongitude"
-      :address="attendanceData.attendanceAddress"
-      :reference-address="attendanceData.address"
-      @confirm="handleAttendanceLocationConfirm"
-    />
   </div>
 </template>
 
@@ -1188,18 +913,6 @@ onBeforeUnmount(() => {
 
 .chart-container {
   height: 340px;
-}
-
-.attendance-picker-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-
-.attendance-picker-tip {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
 }
 
 :deep(.el-card__header) {

@@ -24,4 +24,10 @@ public interface EmployeeMapper extends BaseMapper<HrEmployee> {
      */
     @Select("SELECT * FROM hr_employee WHERE employee_no = #{employeeNo}")
     HrEmployee selectByEmployeeNo(@Param("employeeNo") String employeeNo);
+
+    /**
+     * 查询指定前缀的最大员工编号
+     */
+    @Select("SELECT MAX(employee_no) FROM hr_employee WHERE employee_no LIKE CONCAT(#{prefix}, '%')")
+    String selectMaxEmployeeNo(@Param("prefix") String prefix);
 }

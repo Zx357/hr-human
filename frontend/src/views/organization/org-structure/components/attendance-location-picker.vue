@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { AMAP_SECURITY_JS_CODE } from '@/constants/map-sdk';
-import { loadAmapPlugins } from '@/utils/amap';
+import { GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_LANGUAGE, GOOGLE_MAPS_REGION } from '@/constants/map-sdk';
+import { gcj02ToWgs84, wgs84ToGcj02 } from '@/utils/coord-transform';
+import { loadGoogleMapsApi } from '@/utils/google-maps';
 
 interface Props {
   modelValue: boolean;
@@ -44,16 +45,15 @@ const selectedAddress = ref('');
 const selectedLatitude = ref<number>();
 const selectedLongitude = ref<number>();
 
-const defaultCenter: [number, number] = [116.397428, 39.90923];
+const defaultCenter = { lat: 39.90923, lng: 116.397428 };
+const serviceTimeout = 8000;
 
-let amapApi: any = null;
+let googleMaps: any = null;
 let map: any = null;
 let marker: any = null;
 let geocoder: any = null;
-let placeSearch: any = null;
-let autoComplete: any = null;
-let defaultLayer: any = null;
-const serviceTimeout = 8000;
+let placesService: any = null;
+let mapClickListener: any = null;
 
 const preferredKeyword = computed(() => props.address?.trim() || props.referenceAddress?.trim() || '');
 const hasSelection = computed(() => hasCoordinatePair(selectedLatitude.value, selectedLongitude.value));
@@ -71,40 +71,31 @@ function getDisplayAddress() {
 }
 
 function getFallbackAddress(longitude: number, latitude: number) {
-  return `已选择位置 (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`;
-}
-
-function getLocationValues(location: any) {
-  if (!location) {
-    return null;
-  }
-
-  const longitude = typeof location.getLng === 'function' ? location.getLng() : location.lng;
-  const latitude = typeof location.getLat === 'function' ? location.getLat() : location.lat;
-
-  if (typeof longitude !== 'number' || typeof latitude !== 'number') {
-    return null;
-  }
-
-  return {
-    longitude,
-    latitude
-  };
+  return `已选位置 (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`;
 }
 
 function parseCoordinateKeyword(keyword: string) {
-  const match = keyword.trim().match(/^(-?\d+(?:\.\d+)?)\s*[,，\s]\s*(-?\d+(?:\.\d+)?)$/);
+  const trimmedKeyword = keyword.trim();
+  const exactMatch = trimmedKeyword.match(/^(-?\d+(?:\.\d+)?)\s*[,，\s]\s*(-?\d+(?:\.\d+)?)$/);
+  const wrappedMatch = trimmedKeyword.match(/[（(]\s*(-?\d+(?:\.\d+)?)\s*[,，\s]\s*(-?\d+(?:\.\d+)?)\s*[）)]/);
+  const match = exactMatch || wrappedMatch;
 
   if (!match) {
     return null;
   }
 
-  const longitude = Number(match[1]);
-  const latitude = Number(match[2]);
+  const first = Number(match[1]);
+  const second = Number(match[2]);
 
-  if (Number.isNaN(longitude) || Number.isNaN(latitude)) {
+  if (Number.isNaN(first) || Number.isNaN(second)) {
     return null;
   }
+
+  const looksLikeLatitudeLongitude =
+    Boolean(wrappedMatch) || (Math.abs(first) <= 90 && Math.abs(second) > 90);
+
+  const longitude = looksLikeLatitudeLongitude ? second : first;
+  const latitude = looksLikeLatitudeLongitude ? first : second;
 
   if (longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90) {
     return null;
@@ -114,30 +105,6 @@ function parseCoordinateKeyword(keyword: string) {
     longitude,
     latitude
   };
-}
-
-function updateMarker(longitude: number, latitude: number, zoom = 16) {
-  if (!marker || !map) {
-    return;
-  }
-
-  marker.setPosition([longitude, latitude]);
-  marker.show();
-  map.setZoomAndCenter(zoom, [longitude, latitude]);
-}
-
-function applySelection(longitude: number, latitude: number, address?: string) {
-  const roundedLongitude = roundCoordinate(longitude);
-  const roundedLatitude = roundCoordinate(latitude);
-
-  selectedLongitude.value = roundedLongitude;
-  selectedLatitude.value = roundedLatitude;
-  selectedAddress.value = address?.trim() || getFallbackAddress(roundedLongitude, roundedLatitude);
-  updateMarker(roundedLongitude, roundedLatitude);
-}
-
-function hideMarker() {
-  marker?.hide();
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
@@ -158,6 +125,51 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string)
   });
 }
 
+function createLatLng(latitude: number, longitude: number) {
+  return new googleMaps.LatLng(latitude, longitude);
+}
+
+function hideMarker() {
+  marker?.setMap(null);
+}
+
+function updateMarkerFromGcj(longitude: number, latitude: number, zoom = 16) {
+  if (!googleMaps || !map || !marker) {
+    return;
+  }
+
+  const [wgsLatitude, wgsLongitude] = gcj02ToWgs84(latitude, longitude);
+  const point = createLatLng(wgsLatitude, wgsLongitude);
+  marker.setPosition(point);
+  marker.setMap(map);
+  map.setCenter(point);
+  map.setZoom(zoom);
+}
+
+function applySelectionFromGcj(longitude: number, latitude: number, address?: string) {
+  const roundedLongitude = roundCoordinate(longitude);
+  const roundedLatitude = roundCoordinate(latitude);
+
+  selectedLongitude.value = roundedLongitude;
+  selectedLatitude.value = roundedLatitude;
+  selectedAddress.value = address?.trim() || getFallbackAddress(roundedLongitude, roundedLatitude);
+  updateMarkerFromGcj(roundedLongitude, roundedLatitude);
+}
+
+function applySelectionFromWgs84(longitude: number, latitude: number, address?: string) {
+  const [gcjLatitude, gcjLongitude] = wgs84ToGcj02(latitude, longitude);
+  applySelectionFromGcj(gcjLongitude, gcjLatitude, address);
+}
+
+function normalizeAddressText(value?: string) {
+  return value?.replace(/\s+/g, ' ').trim() || '';
+}
+
+function mergeAddressParts(parts: Array<string | undefined>) {
+  const normalizedParts = parts.map(normalizeAddressText).filter(Boolean);
+  return Array.from(new Set(normalizedParts)).join(' ');
+}
+
 function reverseGeocode(longitude: number, latitude: number) {
   return withTimeout(
     new Promise<string>((resolve, reject) => {
@@ -166,130 +178,18 @@ function reverseGeocode(longitude: number, latitude: number) {
         return;
       }
 
-      geocoder.getAddress([longitude, latitude], (status: string, result: any) => {
-        if (status !== 'complete' || !result?.regeocode) {
+      geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results: any[], status: string) => {
+        if (status !== googleMaps.GeocoderStatus.OK || !results?.length) {
           reject(new Error('Reverse geocoding failed'));
           return;
         }
 
-        resolve(result.regeocode.formattedAddress || '');
+        resolve(results[0]?.formatted_address || '');
       });
     }),
     serviceTimeout,
     'Reverse geocoding timeout'
   );
-}
-
-function searchPoi(keyword: string) {
-  return withTimeout(
-    new Promise<any>((resolve, reject) => {
-      if (!placeSearch) {
-        reject(new Error('PlaceSearch is not ready'));
-        return;
-      }
-
-      placeSearch.search(keyword, (status: string, result: any) => {
-        const poi = result?.poiList?.pois?.[0];
-        if (status !== 'complete' || !poi) {
-          reject(new Error('No POI result'));
-          return;
-        }
-
-        resolve(poi);
-      });
-    }),
-    serviceTimeout,
-    'POI search timeout'
-  );
-}
-
-function searchTips(keyword: string) {
-  return withTimeout(
-    new Promise<any>((resolve, reject) => {
-      if (!autoComplete) {
-        reject(new Error('AutoComplete is not ready'));
-        return;
-      }
-
-      autoComplete.search(keyword, (status: string, result: any) => {
-        const tip = result?.tips?.find((item: any) => {
-          return item?.location || item?.district || item?.address || item?.name;
-        });
-
-        if (status !== 'complete' || !tip) {
-          reject(new Error('No tips result'));
-          return;
-        }
-
-        resolve(tip);
-      });
-    }),
-    serviceTimeout,
-    'Input tips timeout'
-  );
-}
-
-function buildSearchAddress(parts: Array<string | undefined>, fallbackKeyword: string) {
-  return parts.filter(Boolean).join(' ').trim() || fallbackKeyword;
-}
-
-async function resolveLocationFromTip(tip: any, fallbackKeyword: string) {
-  const tipLocation = getLocationValues(tip.location);
-  if (tipLocation) {
-    return {
-      location: tipLocation,
-      address: buildSearchAddress([tip.district, tip.address, tip.name], fallbackKeyword)
-    };
-  }
-
-  const mergedKeyword = buildSearchAddress([tip.district, tip.address, tip.name], fallbackKeyword);
-  const geocode = await geocodeAddress(mergedKeyword);
-  const geocodeLocation = getLocationValues(geocode.location);
-
-  if (!geocodeLocation) {
-    return null;
-  }
-
-  return {
-    location: geocodeLocation,
-    address: geocode.formattedAddress || mergedKeyword
-  };
-}
-
-async function resolveLocationByKeyword(keyword: string) {
-  try {
-    const poi = await searchPoi(keyword);
-    const poiLocation = getLocationValues(poi.location);
-    if (poiLocation) {
-      return {
-        location: poiLocation,
-        address: buildSearchAddress([poi.name, poi.address], keyword)
-      };
-    }
-  } catch {
-    // Fall through to tip/geocode search.
-  }
-
-  try {
-    const tip = await searchTips(keyword);
-    const tipResult = await resolveLocationFromTip(tip, keyword);
-    if (tipResult) {
-      return tipResult;
-    }
-  } catch {
-    // Fall through to geocode search.
-  }
-
-  const geocode = await geocodeAddress(keyword);
-  const geocodeLocation = getLocationValues(geocode.location);
-  if (!geocodeLocation) {
-    return null;
-  }
-
-  return {
-    location: geocodeLocation,
-    address: geocode.formattedAddress || keyword
-  };
 }
 
 function geocodeAddress(keyword: string) {
@@ -300,27 +200,106 @@ function geocodeAddress(keyword: string) {
         return;
       }
 
-      geocoder.getLocation(keyword, (status: string, result: any) => {
-        const geocode = result?.geocodes?.[0];
-        if (status !== 'complete' || !geocode) {
-          reject(new Error('No geocode result'));
+      geocoder.geocode(
+        {
+          address: keyword,
+          region: GOOGLE_MAPS_REGION
+        },
+        (results: any[], status: string) => {
+        if (status !== googleMaps.GeocoderStatus.OK || !results?.length) {
+          reject(new Error(`Geocode failed: ${status}`));
           return;
         }
 
-        resolve(geocode);
-      });
+        resolve(results[0]);
+        }
+      );
     }),
     serviceTimeout,
     'Geocode timeout'
   );
 }
 
+function searchPlace(keyword: string) {
+  return withTimeout(
+    new Promise<any>((resolve, reject) => {
+      if (!placesService) {
+        reject(new Error('PlacesService is not ready'));
+        return;
+      }
+
+      placesService.textSearch(
+        {
+          query: keyword,
+          region: GOOGLE_MAPS_REGION
+        },
+        (results: any[], status: string) => {
+        if (status !== googleMaps.places.PlacesServiceStatus.OK || !results?.length) {
+          reject(new Error(`Place search failed: ${status}`));
+          return;
+        }
+
+        resolve(results[0]);
+        }
+      );
+    }),
+    serviceTimeout,
+    'Place search timeout'
+  );
+}
+
+function getPlaceDetails(placeId: string) {
+  return withTimeout(
+    new Promise<any>((resolve, reject) => {
+      if (!placesService) {
+        reject(new Error('PlacesService is not ready'));
+        return;
+      }
+
+      placesService.getDetails(
+        {
+          placeId,
+          fields: ['name', 'formatted_address', 'geometry']
+        },
+        (result: any, status: string) => {
+          if (status !== googleMaps.places.PlacesServiceStatus.OK || !result) {
+            reject(new Error(`Place details failed: ${status}`));
+            return;
+          }
+
+          resolve(result);
+        }
+      );
+    }),
+    serviceTimeout,
+    'Place details timeout'
+  );
+}
+
 function getSearchFailureMessage() {
-  if (!AMAP_SECURITY_JS_CODE) {
-    return '当前未配置高德安全密钥，搜索服务可能不可用。请先补充 VITE_AMAP_SECURITY_JS_CODE。';
+  if (!GOOGLE_MAPS_API_KEY) {
+    return '当前未配置 Google Maps API Key，请先补充 VITE_GOOGLE_MAPS_API_KEY。';
   }
 
-  return '未找到匹配地点，或当前地图 Key 未开通搜索服务';
+  return '未找到匹配地点，或当前 Google Maps Key 未开通 Geocoding / Places 服务。';
+}
+
+function getGoogleSearchFailureMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (message.includes('REQUEST_DENIED')) {
+    return 'Google 拒绝了搜索请求，请检查 Key 是否已启用 Places API 和 Geocoding API，并放行当前访问来源。';
+  }
+
+  if (message.includes('ZERO_RESULTS')) {
+    return '没有找到匹配地点，请尝试输入更完整的地址或直接输入经纬度。';
+  }
+
+  if (message.includes('OVER_QUERY_LIMIT')) {
+    return 'Google Maps 查询额度暂时受限，请稍后再试或检查计费配置。';
+  }
+
+  return getSearchFailureMessage();
 }
 
 async function restoreSelection() {
@@ -328,11 +307,12 @@ async function restoreSelection() {
   searchKeyword.value = preferredKeyword.value;
 
   if (hasCoordinateValue) {
-    applySelection(props.longitude as number, props.latitude as number, props.address);
+    applySelectionFromGcj(props.longitude as number, props.latitude as number, props.address);
 
     if (!props.address?.trim()) {
       try {
-        const address = await reverseGeocode(props.longitude as number, props.latitude as number);
+        const [wgsLatitude, wgsLongitude] = gcj02ToWgs84(props.latitude as number, props.longitude as number);
+        const address = await reverseGeocode(wgsLongitude, wgsLatitude);
         selectedAddress.value = address || getFallbackAddress(props.longitude as number, props.latitude as number);
       } catch {
         selectedAddress.value = getFallbackAddress(props.longitude as number, props.latitude as number);
@@ -351,14 +331,54 @@ async function restoreSelection() {
     return;
   }
 
-  map?.setZoomAndCenter(11, defaultCenter);
+  map?.setCenter(defaultCenter);
+  map?.setZoom(11);
+}
+
+async function resolveLocationByKeyword(keyword: string) {
+  try {
+    const place = await searchPlace(keyword);
+    const details = place?.place_id ? await getPlaceDetails(place.place_id).catch(() => null) : null;
+    const location = details?.geometry?.location || place?.geometry?.location;
+    if (location) {
+      const longitude = location.lng();
+      const latitude = location.lat();
+      const reverseAddress = await reverseGeocode(longitude, latitude).catch(() => '');
+
+      return {
+        longitude,
+        latitude,
+        address:
+          mergeAddressParts([
+            reverseAddress,
+            details?.formatted_address,
+            place.formatted_address,
+            details?.name || place.name
+          ]) || keyword
+      };
+    }
+  } catch {
+    // Fall through to geocode search.
+  }
+
+  const geocode = await geocodeAddress(keyword);
+  const location = geocode?.geometry?.location;
+  if (!location) {
+    return null;
+  }
+
+  return {
+    longitude: location.lng(),
+    latitude: location.lat(),
+    address: geocode.formatted_address || keyword
+  };
 }
 
 async function locateByKeyword(keyword: string, showMessage = true) {
   const normalizedKeyword = keyword.trim();
   if (!normalizedKeyword) {
     if (showMessage) {
-      ElMessage.warning('请输入地点或地址后再搜索');
+      ElMessage.warning('请输入地点、地址或经纬度后再搜索');
     }
     return;
   }
@@ -367,8 +387,9 @@ async function locateByKeyword(keyword: string, showMessage = true) {
   try {
     const coordinateLocation = parseCoordinateKeyword(normalizedKeyword);
     if (coordinateLocation) {
-      const address = await reverseGeocode(coordinateLocation.longitude, coordinateLocation.latitude).catch(() => '');
-      applySelection(coordinateLocation.longitude, coordinateLocation.latitude, address || normalizedKeyword);
+      const [wgsLatitude, wgsLongitude] = gcj02ToWgs84(coordinateLocation.latitude, coordinateLocation.longitude);
+      const address = await reverseGeocode(wgsLongitude, wgsLatitude).catch(() => '');
+      applySelectionFromGcj(coordinateLocation.longitude, coordinateLocation.latitude, address || normalizedKeyword);
       if (showMessage) {
         ElMessage.success('已按经纬度定位，请确认地图点位');
       }
@@ -380,13 +401,14 @@ async function locateByKeyword(keyword: string, showMessage = true) {
       throw new Error('Location not found');
     }
 
-    applySelection(result.location.longitude, result.location.latitude, result.address);
+    applySelectionFromWgs84(result.longitude, result.latitude, result.address);
     if (showMessage) {
       ElMessage.success('已定位到搜索结果，请确认地图点位');
     }
-  } catch {
+  } catch (error) {
+    console.warn('Google Maps search failed:', error);
     if (showMessage) {
-      ElMessage.warning(getSearchFailureMessage());
+      ElMessage.warning(getGoogleSearchFailureMessage(error));
     }
   } finally {
     searching.value = false;
@@ -394,18 +416,57 @@ async function locateByKeyword(keyword: string, showMessage = true) {
 }
 
 async function handleMapClick(event: any) {
-  const location = getLocationValues(event?.lnglat);
-  if (!location) {
+  const latLng = event?.latLng;
+  if (!latLng) {
     return;
   }
 
   locating.value = true;
   try {
-    const address = await reverseGeocode(location.longitude, location.latitude);
-    applySelection(location.longitude, location.latitude, address);
+    const longitude = latLng.lng();
+    const latitude = latLng.lat();
+    const address = await reverseGeocode(longitude, latitude);
+    applySelectionFromWgs84(longitude, latitude, address);
   } catch {
-    applySelection(location.longitude, location.latitude);
+    applySelectionFromWgs84(latLng.lng(), latLng.lat());
     ElMessage.warning('该位置无法自动解析完整地址，已保留经纬度');
+  } finally {
+    locating.value = false;
+  }
+}
+
+function getCurrentBrowserPosition() {
+  return withTimeout(
+    new Promise<GeolocationPosition>((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation is not supported'));
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: serviceTimeout,
+        maximumAge: 0
+      });
+    }),
+    serviceTimeout + 1000,
+    'Geolocation timeout'
+  );
+}
+
+async function handleUseMyLocation() {
+  locating.value = true;
+  try {
+    const position = await getCurrentBrowserPosition();
+    const longitude = position.coords.longitude;
+    const latitude = position.coords.latitude;
+    const address = await reverseGeocode(longitude, latitude).catch(() => '');
+
+    applySelectionFromWgs84(longitude, latitude, address || '我的位置');
+    ElMessage.success('已选中我的位置');
+  } catch (error) {
+    console.warn('Browser geolocation failed:', error);
+    ElMessage.warning('无法获取我的位置，请确认浏览器定位权限已开启；线上访问建议使用 HTTPS。');
   } finally {
     locating.value = false;
   }
@@ -414,49 +475,49 @@ async function handleMapClick(event: any) {
 async function handleOpened() {
   loading.value = true;
   try {
-    amapApi = await loadAmapPlugins(['AMap.Geocoder', 'AMap.PlaceSearch', 'AMap.AutoComplete']);
+    googleMaps = await loadGoogleMapsApi({
+      apiKey: GOOGLE_MAPS_API_KEY,
+      language: GOOGLE_MAPS_LANGUAGE,
+      region: GOOGLE_MAPS_REGION,
+      libraries: ['places']
+    });
+
     await nextTick();
 
     if (!mapContainerRef.value) {
       return;
     }
 
-    map = new amapApi.Map(mapContainerRef.value, {
-      viewMode: '2D',
-      zoom: 11,
+    map = new googleMaps.Map(mapContainerRef.value, {
       center: defaultCenter,
-      resizeEnable: true,
-      mapStyle: 'amap://styles/normal'
+      zoom: 11,
+      disableDefaultUI: true,
+      zoomControl: true,
+      fullscreenControl: false,
+      streetViewControl: false,
+      mapTypeControl: false,
+      gestureHandling: 'greedy'
     });
 
-    defaultLayer = new amapApi.TileLayer();
-    map.add(defaultLayer);
-
-    marker = new amapApi.Marker({
-      anchor: 'bottom-center',
-      offset: new amapApi.Pixel(0, 0)
+    marker = new googleMaps.Marker({
+      clickable: false
     });
-    marker.setMap(map);
+    geocoder = new googleMaps.Geocoder();
+    placesService = googleMaps.places ? new googleMaps.places.PlacesService(map) : null;
+    mapClickListener = map.addListener('click', handleMapClick);
+
     hideMarker();
-
-    geocoder = new amapApi.Geocoder({});
-    placeSearch = new amapApi.PlaceSearch({
-      pageSize: 1,
-      pageIndex: 1
-    });
-    autoComplete = new amapApi.AutoComplete({});
-
-    map.on('click', handleMapClick);
     await restoreSelection();
-    map.resize();
+    googleMaps.event.trigger(map, 'resize');
     window.setTimeout(() => {
-      map?.resize();
+      googleMaps.event.trigger(map, 'resize');
       if (!hasSelection.value) {
-        map?.setZoomAndCenter(11, defaultCenter);
+        map?.setCenter(defaultCenter);
+        map?.setZoom(11);
       }
     }, 120);
   } catch {
-    ElMessage.error('地图加载失败，请检查高德地图 Key、域名白名单或安全密钥配置');
+    ElMessage.error('Google 地图加载失败，请检查 API Key、Places/Geocoding 配置和当前网络是否可访问 maps.googleapis.com');
     dialogVisible.value = false;
   } finally {
     loading.value = false;
@@ -468,18 +529,20 @@ function runAsyncTask(task: Promise<unknown>) {
 }
 
 function destroyMap() {
-  if (map) {
-    map.off('click', handleMapClick);
-    map.destroy();
+  if (mapClickListener) {
+    mapClickListener.remove();
   }
 
-  map = null;
+  if (marker) {
+    marker.setMap(null);
+  }
+
+  mapClickListener = null;
   marker = null;
   geocoder = null;
-  placeSearch = null;
-  autoComplete = null;
-  defaultLayer = null;
-  amapApi = null;
+  placesService = null;
+  map = null;
+  googleMaps = null;
 }
 
 function handleClosed() {
@@ -535,7 +598,12 @@ function handleConfirm() {
   >
     <div class="location-picker">
       <div class="location-toolbar">
-        <ElInput v-model="searchKeyword" placeholder="搜索地址、园区、楼宇或地标" clearable @keyup.enter="handleSearch">
+        <ElInput
+          v-model="searchKeyword"
+          placeholder="搜索地址、园区、楼宇、地标，或输入经纬度（经度,纬度）"
+          clearable
+          @keyup.enter="handleSearch"
+        >
           <template #append>
             <ElButton :loading="searching" @click="handleSearch">搜索定位</ElButton>
           </template>
@@ -545,7 +613,7 @@ function handleConfirm() {
       </div>
 
       <ElAlert
-        title="在地图上点击任意位置后，会自动反查地址并回填经纬度。"
+        title="这里使用 Google 地图搜索和选点，点击地图后会自动回填地址；保存到后台时会自动换算回 GCJ-02 坐标。"
         type="info"
         :closable="false"
         show-icon
@@ -553,20 +621,25 @@ function handleConfirm() {
       />
 
       <ElAlert
-        v-if="!AMAP_SECURITY_JS_CODE"
-        title="当前未配置高德安全密钥，若地图底图空白，请在前端环境变量中补充 VITE_AMAP_SECURITY_JS_CODE。"
+        v-if="!GOOGLE_MAPS_API_KEY"
+        title="当前未配置 Google Maps API Key，请在前端环境变量中补充 VITE_GOOGLE_MAPS_API_KEY。"
         type="warning"
         :closable="false"
         show-icon
         class="mb-16px"
       />
 
-      <div
-        ref="mapContainerRef"
-        v-loading="loading || locating"
-        class="location-map"
-        element-loading-text="地图加载中..."
-      />
+      <div class="location-map-shell">
+        <div
+          ref="mapContainerRef"
+          v-loading="loading || locating"
+          class="location-map"
+          element-loading-text="地图加载中..."
+        />
+        <ElButton class="my-location-button" :loading="locating" @click="handleUseMyLocation">
+          我的位置
+        </ElButton>
+      </div>
 
       <div class="location-info">
         <div class="location-info-item">
@@ -575,11 +648,11 @@ function handleConfirm() {
         </div>
         <div class="location-info-grid">
           <div class="location-info-item">
-            <span class="location-info-label">纬度</span>
+            <span class="location-info-label">纬度（GCJ-02）</span>
             <span class="location-info-value">{{ selectedLatitude ?? '--' }}</span>
           </div>
           <div class="location-info-item">
-            <span class="location-info-label">经度</span>
+            <span class="location-info-label">经度（GCJ-02）</span>
             <span class="location-info-value">{{ selectedLongitude ?? '--' }}</span>
           </div>
         </div>
@@ -606,6 +679,10 @@ function handleConfirm() {
   margin-bottom: 16px;
 }
 
+.location-map-shell {
+  position: relative;
+}
+
 .location-map {
   width: 100%;
   height: 460px;
@@ -613,6 +690,15 @@ function handleConfirm() {
   border: 1px solid var(--el-border-color);
   border-radius: 12px;
   background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+}
+
+.my-location-button {
+  position: absolute;
+  right: 14px;
+  bottom: 92px;
+  z-index: 2;
+  background: var(--el-bg-color);
+  box-shadow: var(--el-box-shadow-light);
 }
 
 .location-info {
