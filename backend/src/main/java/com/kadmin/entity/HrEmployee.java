@@ -258,4 +258,10 @@ public class HrEmployee extends BaseEntity {
      */
     @TableField(exist = false)
     private List<HrEmployeeExtra> extraFieldList;
+
+    /**
+     * Mini app password for admin maintenance.
+     */
+    @TableField(exist = false)
+    private String miniAppPassword;
 }

@@ -10,7 +10,8 @@ import java.util.List;
 @Mapper
 public interface AttScheduleMapper extends BaseMapper<AttSchedule> {
     
-    List<AttSchedule> selectScheduleList(@Param("orgIds") List<Long> orgIds, 
+    List<AttSchedule> selectScheduleList(@Param("orgIds") List<Long> orgIds,
+                                          @Param("employeeNo") String employeeNo,
                                           @Param("employeeName") String employeeName,
                                           @Param("startDate") LocalDate startDate, 
                                           @Param("endDate") LocalDate endDate);

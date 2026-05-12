@@ -8,8 +8,18 @@ export interface ScheduleRow {
   schedule: Record<string, { shiftId: number; shiftName: string; shiftCode: string }>;
 }
 
-export function fetchWeekSchedule(params: { deptId?: number; employeeName?: string; startDate: string; endDate: string }) {
-  return request<ScheduleRow[]>({ url: '/attendance/schedule/week', method: 'get', params });
+export function fetchWeekSchedule(params: {
+  orgIds?: number[];
+  employeeNo?: string;
+  employeeName?: string;
+  startDate: string;
+  endDate: string;
+}) {
+  return request<ScheduleRow[]>({
+    url: '/attendance/schedule/week',
+    method: 'get',
+    params: { ...params, orgIds: params.orgIds?.length ? params.orgIds.join(',') : undefined }
+  });
 }
 
 export function saveSchedule(data: { employeeId: number; shiftId: number | null; scheduleDate: string }) {

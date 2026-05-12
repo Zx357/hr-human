@@ -142,6 +142,12 @@ public class MobileAttendanceController {
 
         Long employeeId = getCurrentEmployeeId(loginUser);
         Integer clockType = resolveClockType(employeeId, params.get("clockType"));
+        if (clockType == null || (clockType != 1 && clockType != 2)) {
+            return Result.error("打卡类型不正确");
+        }
+        if (hasClockRecordToday(employeeId, clockType)) {
+            return Result.error(clockType == 1 ? "今日已签到，请勿重复打卡" : "今日已签退，请勿重复打卡");
+        }
 
         List<AttLocation> assignedLocations = attLocationService.getAssignedActiveLocations(employeeId);
         List<AttLocation> configuredLocations = assignedLocations.stream().filter(this::hasAttendanceConfig).toList();
@@ -258,9 +264,9 @@ public class MobileAttendanceController {
             clockByDate.computeIfAbsent(dateKey, key -> new ArrayList<>()).add(record);
         }
 
-        Map<LocalDate, AttDailyRecord> dailyByDate = new LinkedHashMap<>();
+        Map<LocalDate, List<AttDailyRecord>> dailyByDate = new LinkedHashMap<>();
         for (AttDailyRecord record : dailyRecords) {
-            dailyByDate.putIfAbsent(record.getAttDate(), record);
+            dailyByDate.computeIfAbsent(record.getAttDate(), key -> new ArrayList<>()).add(record);
         }
 
         Set<LocalDate> scheduledDates = new HashSet<>();
@@ -283,7 +289,7 @@ public class MobileAttendanceController {
         while (!current.isAfter(endDate)) {
             String dateString = current.format(dateFormatter);
             List<AttClockRecord> dayClockRecords = clockByDate.getOrDefault(dateString, Collections.emptyList());
-            AttDailyRecord dailyRecord = dailyByDate.get(current);
+            List<AttDailyRecord> dayDailyRecords = dailyByDate.getOrDefault(current, Collections.emptyList());
 
             Map<String, Object> dayData = new HashMap<>();
             dayData.put("attDate", dateString);
@@ -294,7 +300,7 @@ public class MobileAttendanceController {
                     .orElse(null);
             AttClockRecord clockOutRecord = dayClockRecords.stream()
                     .filter(record -> Objects.equals(record.getClockType(), 2))
-                    .findFirst()
+                    .reduce((first, second) -> second)
                     .orElse(null);
 
             if (clockInRecord != null) {
@@ -308,15 +314,15 @@ public class MobileAttendanceController {
             boolean isEarly = false;
             boolean isNormalIn = false;
             boolean isNormalOut = false;
+            boolean isExcused = false;
 
-            if (dailyRecord != null) {
-                Integer status = dailyRecord.getStatus();
-                if (status != null) {
-                    isLate = status == 2 || status == 7;
-                    isEarly = status == 3 || status == 7;
-                    isNormalIn = clockInRecord != null && !isLate;
-                    isNormalOut = clockOutRecord != null && !isEarly;
-                }
+            if (!dayDailyRecords.isEmpty()) {
+                Integer status = mergeDailyStatus(dayDailyRecords);
+                isLate = status == 2 || status == 7;
+                isEarly = status == 3 || status == 7;
+                isExcused = status == 5 || status == 6;
+                isNormalIn = clockInRecord != null && !isLate;
+                isNormalOut = clockOutRecord != null && !isEarly;
             } else if (clockInRecord != null || clockOutRecord != null) {
                 isNormalIn = clockInRecord != null;
                 isNormalOut = clockOutRecord != null;
@@ -329,6 +335,7 @@ public class MobileAttendanceController {
 
             boolean isPast = !current.isAfter(today);
             boolean isScheduled = scheduledDates.contains(current) || !dayClockRecords.isEmpty();
+            dayData.put("scheduled", isScheduled);
             if (isPast && isScheduled) {
                 if (isNormalIn) {
                     normalIn++;
@@ -342,12 +349,12 @@ public class MobileAttendanceController {
                 if (isEarly) {
                     earlyDays++;
                 }
-                if (clockInRecord == null || clockOutRecord == null) {
+                if (!isExcused && (clockInRecord == null || clockOutRecord == null)) {
                     absentDays++;
                 }
             }
 
-            if (!dayClockRecords.isEmpty() || dailyRecord != null) {
+            if (!dayClockRecords.isEmpty() || !dayDailyRecords.isEmpty() || scheduledDates.contains(current)) {
                 records.add(dayData);
             }
 
@@ -385,6 +392,18 @@ public class MobileAttendanceController {
                         .eq(AttClockRecord::getClockType, 1)
                         .between(AttClockRecord::getClockTime, startOfDay, endOfDay));
         return inCount == 0 ? 1 : 2;
+    }
+
+    private boolean hasClockRecordToday(Long employeeId, Integer clockType) {
+        if (clockType == null) {
+            return false;
+        }
+        LocalDate today = LocalDate.now();
+        return clockRecordMapper.selectCount(
+                new LambdaQueryWrapper<AttClockRecord>()
+                        .eq(AttClockRecord::getEmployeeId, employeeId)
+                        .eq(AttClockRecord::getClockType, clockType)
+                        .between(AttClockRecord::getClockTime, today.atStartOfDay(), today.atTime(LocalTime.MAX))) > 0;
     }
 
     private OrgUnit getEmployeeCompany(Long employeeId) {

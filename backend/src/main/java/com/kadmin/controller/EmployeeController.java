@@ -81,7 +81,7 @@ public class EmployeeController {
      */
     @GetMapping("/{id}")
     public Result<HrEmployee> getDetail(@PathVariable Long id) {
-        HrEmployee employee = employeeService.getEmployeeDetail(id);
+        HrEmployee employee = employeeService.getEmployeeDetail(id, true);
         return Result.success(employee);
     }
 

@@ -12,9 +12,14 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -26,11 +31,14 @@ public class AttendanceService {
     private final AttShiftPeriodMapper shiftPeriodMapper;
     private final AttCalendarRuleMapper calendarRuleMapper;
     private final EmployeeMapper employeeMapper;
+    private final OrgUnitMapper orgUnitMapper;
+    private final HrApplicationMapper applicationMapper;
 
     // 打卡记录分页查询
     public IPage<AttClockRecord> getClockRecordPage(int page, int size, List<Long> orgIds, String employeeName,
             String startDate, String endDate) {
-        return clockRecordMapper.selectPageWithEmployee(new Page<>(page, size), orgIds, employeeName, startDate,
+        return clockRecordMapper.selectPageWithEmployee(new Page<>(page, size), expandOrgIds(orgIds), employeeName,
+                startDate,
                 endDate);
     }
 
@@ -52,7 +60,7 @@ public class AttendanceService {
     public IPage<AttDailyRecord> getDailyRecordPage(int page, int size, String startDate, String endDate,
             List<Long> orgIds, String employeeNo, String employeeName, Integer status) {
         IPage<AttDailyRecord> resultPage = dailyRecordMapper.selectGroupedPage(
-                new Page<>(page, size), startDate, endDate, orgIds, employeeNo, employeeName, status);
+                new Page<>(page, size), startDate, endDate, expandOrgIds(orgIds), employeeNo, employeeName, status);
 
         // 为每条聚合记录加载各时段明细
         for (AttDailyRecord grouped : resultPage.getRecords()) {
@@ -101,7 +109,8 @@ public class AttendanceService {
         String endDate = month + "-" + String.format("%02d", ym.lengthOfMonth());
 
         // 查询该月所有日考勤记录
-        List<AttDailyRecord> allRecords = dailyRecordMapper.selectListWithEmployee(startDate, endDate, orgIds,
+        List<AttDailyRecord> allRecords = dailyRecordMapper.selectListWithEmployee(startDate, endDate,
+                expandOrgIds(orgIds),
                 employeeNo, employeeName, null);
 
         // 先按 员工ID -> 日期 -> 时段列表 分组
@@ -222,7 +231,7 @@ public class AttendanceService {
         } else {
             // 否则按搜索条件筛选
             if (orgIds != null && !orgIds.isEmpty()) {
-                wrapper.in(HrEmployee::getDeptId, orgIds);
+                wrapper.in(HrEmployee::getDeptId, expandOrgIds(orgIds));
             }
             if (employeeNo != null && !employeeNo.isEmpty()) {
                 wrapper.like(HrEmployee::getEmployeeNo, employeeNo);
@@ -248,8 +257,9 @@ public class AttendanceService {
      * 计算单个员工某天的考勤（按时段）
      */
     private void calculateEmployeeDailyAttendance(HrEmployee emp, LocalDate date) {
-        // 1. 检查是否是休息日（使用员工部门ID）
-        if (isRestDay(emp.getDeptId(), date)) {
+        // 1. 检查是否是休息日（考勤日历规则挂在公司上）
+        Long companyId = resolveCompanyId(emp.getDeptId());
+        if (isRestDay(companyId, date)) {
             return; // 休息日不生成考勤记录
         }
 
@@ -275,40 +285,60 @@ public class AttendanceService {
                         .eq(AttShiftPeriod::getShiftId, shift.getId())
                         .orderByAsc(AttShiftPeriod::getSortOrder));
 
-        // 5. 获取当天打卡记录
+        List<ShiftPeriodPlan> periodPlans = buildPeriodPlans(date, shift, periods);
+        if (periodPlans.isEmpty()) {
+            return;
+        }
+
+        LocalDateTime queryStart = periodPlans.stream()
+                .map(ShiftPeriodPlan::scheduledIn)
+                .min(Comparator.naturalOrder())
+                .orElse(date.atStartOfDay())
+                .minusHours(1);
+        LocalDateTime queryEnd = periodPlans.stream()
+                .map(ShiftPeriodPlan::scheduledOut)
+                .max(Comparator.naturalOrder())
+                .orElse(date.plusDays(1).atStartOfDay())
+                .plusHours(1);
+
+        // 5. 获取班次窗口内的打卡记录，支持跨天班次
         List<AttClockRecord> clockRecords = clockRecordMapper.selectList(
                 new LambdaQueryWrapper<AttClockRecord>()
                         .eq(AttClockRecord::getEmployeeId, emp.getId())
-                        .apply("DATE(clock_time) = {0}", date)
+                        .between(AttClockRecord::getClockTime, queryStart, queryEnd)
                         .orderByAsc(AttClockRecord::getClockTime));
 
-        // 6. 如果没有时段，使用班次的整体时间作为一个时段
-        if (periods == null || periods.isEmpty()) {
-            calculateSinglePeriod(emp, date, shift, null, shift.getWorkStartTime(), shift.getWorkEndTime(), "全天",
-                    clockRecords);
-        } else {
-            // 按每个时段计算
-            for (AttShiftPeriod period : periods) {
-                LocalTime startTime = LocalTime.parse(period.getStartTime());
-                LocalTime endTime = LocalTime.parse(period.getEndTime());
-                calculateSinglePeriod(emp, date, shift, period.getId(), startTime, endTime, period.getPeriodName(),
-                        clockRecords);
-            }
+        LocalDateTime shiftActualIn = clockRecords.stream()
+                .filter(record -> record.getClockType() != null && record.getClockType() == 1)
+                .map(AttClockRecord::getClockTime)
+                .min(Comparator.naturalOrder())
+                .orElse(null);
+        LocalDateTime shiftActualOut = clockRecords.stream()
+                .filter(record -> record.getClockType() != null && record.getClockType() == 2)
+                .map(AttClockRecord::getClockTime)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+        Integer approvedAbsenceStatus = resolveApprovedAbsenceStatus(emp.getId(), date);
+
+        for (ShiftPeriodPlan plan : periodPlans) {
+            calculateSinglePeriod(emp, date, shift, plan, clockRecords, shiftActualIn, shiftActualOut,
+                    approvedAbsenceStatus);
         }
     }
 
     /**
      * 计算单个时段的考勤
      */
-    private void calculateSinglePeriod(HrEmployee emp, LocalDate date, AttShift shift, Long periodId,
-            LocalTime scheduledIn, LocalTime scheduledOut, String periodName, List<AttClockRecord> clockRecords) {
+    private void calculateSinglePeriod(HrEmployee emp, LocalDate date, AttShift shift, ShiftPeriodPlan plan,
+            List<AttClockRecord> clockRecords, LocalDateTime shiftActualIn, LocalDateTime shiftActualOut,
+            Integer approvedAbsenceStatus) {
 
         // 查找或创建该时段的考勤记录
         LambdaQueryWrapper<AttDailyRecord> wrapper = new LambdaQueryWrapper<AttDailyRecord>()
                 .eq(AttDailyRecord::getEmployeeId, emp.getId())
                 .eq(AttDailyRecord::getAttDate, date);
-        if (periodId != null) {
-            wrapper.eq(AttDailyRecord::getPeriodId, periodId);
+        if (plan.periodId() != null) {
+            wrapper.eq(AttDailyRecord::getPeriodId, plan.periodId());
         } else {
             wrapper.isNull(AttDailyRecord::getPeriodId);
         }
@@ -328,73 +358,49 @@ public class AttendanceService {
 
         // 设置排班信息
         dailyRecord.setShiftId(shift.getId());
-        dailyRecord.setPeriodId(periodId);
-        dailyRecord.setPeriodName(periodName);
-        dailyRecord.setScheduledIn(scheduledIn);
-        dailyRecord.setScheduledOut(scheduledOut);
+        dailyRecord.setPeriodId(plan.periodId());
+        dailyRecord.setPeriodName(plan.periodName());
+        dailyRecord.setScheduledIn(plan.scheduledInTime());
+        dailyRecord.setScheduledOut(plan.scheduledOutTime());
 
         // 匹配该时段的打卡记录
-        LocalTime actualIn = null;
-        LocalTime actualOut = null;
-
-        // 时段时间范围（前后各扩展1小时用于匹配打卡）
-        LocalTime matchStart = scheduledIn.minusHours(1);
-        LocalTime matchEnd = scheduledOut.plusHours(1);
-
-        for (AttClockRecord record : clockRecords) {
-            LocalTime clockTime = record.getClockTime().toLocalTime();
-
-            // 判断打卡时间是否在该时段范围内
-            if (clockTime.isAfter(matchStart) && clockTime.isBefore(matchEnd)) {
-                if (record.getClockType() == 1) { // 上班打卡
-                    // 取最接近应打卡时间的上班打卡
-                    if (actualIn == null || Math.abs(ChronoUnit.MINUTES.between(clockTime, scheduledIn)) < Math
-                            .abs(ChronoUnit.MINUTES.between(actualIn, scheduledIn))) {
-                        actualIn = clockTime;
-                    }
-                } else { // 下班打卡
-                    // 取最接近应打卡时间的下班打卡
-                    if (actualOut == null || Math.abs(ChronoUnit.MINUTES.between(clockTime, scheduledOut)) < Math
-                            .abs(ChronoUnit.MINUTES.between(actualOut, scheduledOut))) {
-                        actualOut = clockTime;
-                    }
-                }
-            }
+        LocalDateTime actualIn = findClosestClock(clockRecords, 1, plan.scheduledIn());
+        LocalDateTime actualOut = findClosestClock(clockRecords, 2, plan.scheduledOut());
+        if (actualIn == null && plan.firstPeriod()) {
+            actualIn = shiftActualIn;
+        }
+        if (actualOut == null && plan.lastPeriod()) {
+            actualOut = shiftActualOut;
         }
 
-        dailyRecord.setActualIn(actualIn);
-        dailyRecord.setActualOut(actualOut);
+        dailyRecord.setActualIn(actualIn == null ? null : actualIn.toLocalTime());
+        dailyRecord.setActualOut(actualOut == null ? null : actualOut.toLocalTime());
+
+        BigDecimal workHours = calculateWorkHours(plan.scheduledIn(), plan.scheduledOut(), shiftActualIn,
+                shiftActualOut);
+
+        int lateTolerance = shift.getLateMinutes() == null ? 0 : Math.max(shift.getLateMinutes(), 0);
+        int earlyTolerance = shift.getEarlyMinutes() == null ? 0 : Math.max(shift.getEarlyMinutes(), 0);
 
         // 计算考勤状态
-        int status = calculatePeriodStatus(scheduledIn, scheduledOut, actualIn, actualOut);
+        int status = calculatePeriodStatus(plan, actualIn, actualOut, workHours, approvedAbsenceStatus,
+                lateTolerance, earlyTolerance);
         dailyRecord.setStatus(status);
 
         // 计算迟到分钟数
         int lateMinutes = 0;
-        if (actualIn != null && scheduledIn != null && actualIn.isAfter(scheduledIn)) {
-            lateMinutes = (int) ChronoUnit.MINUTES.between(scheduledIn, actualIn);
+        if (plan.firstPeriod() && actualIn != null && actualIn.isAfter(plan.scheduledIn())) {
+            lateMinutes = (int) ChronoUnit.MINUTES.between(plan.scheduledIn(), actualIn);
         }
         dailyRecord.setLateMinutes(lateMinutes);
 
         // 计算早退分钟数
         int earlyMinutes = 0;
-        if (actualOut != null && scheduledOut != null && actualOut.isBefore(scheduledOut)) {
-            earlyMinutes = (int) ChronoUnit.MINUTES.between(actualOut, scheduledOut);
+        if (plan.lastPeriod() && actualOut != null && actualOut.isBefore(plan.scheduledOut())) {
+            earlyMinutes = (int) ChronoUnit.MINUTES.between(actualOut, plan.scheduledOut());
         }
         dailyRecord.setEarlyMinutes(earlyMinutes);
 
-        // 计算工作时长（基于实际打卡时间，但不超过排班时长）
-        BigDecimal workHours = BigDecimal.ZERO;
-        if (actualIn != null && actualOut != null && scheduledIn != null && scheduledOut != null) {
-            // 实际有效开始时间 = max(actualIn, scheduledIn)（早到不多算）
-            LocalTime effectiveIn = actualIn.isBefore(scheduledIn) ? scheduledIn : actualIn;
-            // 实际有效结束时间 = min(actualOut, scheduledOut)（晚走不多算）
-            LocalTime effectiveOut = actualOut.isAfter(scheduledOut) ? scheduledOut : actualOut;
-            long actualMinutes = ChronoUnit.MINUTES.between(effectiveIn, effectiveOut);
-            if (actualMinutes > 0) {
-                workHours = BigDecimal.valueOf(actualMinutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
-            }
-        }
         dailyRecord.setWorkHours(workHours);
 
         // 保存
@@ -408,15 +414,27 @@ public class AttendanceService {
     /**
      * 计算时段考勤状态
      */
-    private int calculatePeriodStatus(LocalTime scheduledIn, LocalTime scheduledOut, LocalTime actualIn,
-            LocalTime actualOut) {
+    private int calculatePeriodStatus(ShiftPeriodPlan plan, LocalDateTime actualIn, LocalDateTime actualOut,
+            BigDecimal workHours, Integer approvedAbsenceStatus, int lateTolerance, int earlyTolerance) {
         // 0-未处理 1-正常 2-迟到 3-早退 4-旷工 5-请假 6-出差 7-迟到+早退
-        if (actualIn == null && actualOut == null) {
-            return 4; // 旷工
+        boolean hasWorkHours = workHours != null && workHours.compareTo(BigDecimal.ZERO) > 0;
+        boolean missingIn = plan.firstPeriod() && plan.needClockIn() && actualIn == null;
+        boolean missingOut = plan.lastPeriod() && plan.needClockOut() && actualOut == null;
+
+        if ((missingIn || missingOut) && approvedAbsenceStatus != null) {
+            return approvedAbsenceStatus;
+        }
+        if (actualIn == null && actualOut == null && !hasWorkHours) {
+            return approvedAbsenceStatus != null ? approvedAbsenceStatus : 4; // 旷工
+        }
+        if (missingIn || missingOut) {
+            return 0; // 未处理（缺少打卡）
         }
 
-        boolean isLate = actualIn != null && scheduledIn != null && actualIn.isAfter(scheduledIn);
-        boolean isEarly = actualOut != null && scheduledOut != null && actualOut.isBefore(scheduledOut);
+        boolean isLate = plan.firstPeriod() && plan.needClockIn() && actualIn != null
+                && actualIn.isAfter(plan.scheduledIn().plusMinutes(lateTolerance));
+        boolean isEarly = plan.lastPeriod() && plan.needClockOut() && actualOut != null
+                && actualOut.isBefore(plan.scheduledOut().minusMinutes(earlyTolerance));
 
         if (isLate && isEarly) {
             return 7; // 迟到+早退
@@ -424,17 +442,163 @@ public class AttendanceService {
             return 2; // 迟到
         } else if (isEarly) {
             return 3; // 早退
-        } else if (actualIn == null || actualOut == null) {
-            return 0; // 未处理（缺少打卡）
         }
 
         return 1; // 正常
+    }
+
+    private List<ShiftPeriodPlan> buildPeriodPlans(LocalDate date, AttShift shift, List<AttShiftPeriod> periods) {
+        List<ShiftPeriodPlan> plans = new ArrayList<>();
+        if (periods == null || periods.isEmpty()) {
+            if (shift.getWorkStartTime() == null || shift.getWorkEndTime() == null) {
+                return plans;
+            }
+            plans.add(createPeriodPlan(date, null, "全天", shift.getWorkStartTime(), shift.getWorkEndTime(),
+                    shift.getIsNextDay() != null && shift.getIsNextDay() == 1, true, true, true, true));
+            return plans;
+        }
+
+        LocalDateTime previousOut = null;
+        for (int i = 0; i < periods.size(); i++) {
+            AttShiftPeriod period = periods.get(i);
+            if (period.getStartTime() == null || period.getEndTime() == null) {
+                continue;
+            }
+            LocalTime startTime = LocalTime.parse(period.getStartTime());
+            LocalTime endTime = LocalTime.parse(period.getEndTime());
+            boolean crossDay = period.getCrossDay() != null && period.getCrossDay() == 1;
+            boolean needClockIn = period.getNeedClockIn() == null || period.getNeedClockIn() == 1;
+            boolean needClockOut = period.getNeedClockOut() == null || period.getNeedClockOut() == 1;
+
+            LocalDateTime scheduledIn = date.atTime(startTime);
+            while (previousOut != null && scheduledIn.isBefore(previousOut)) {
+                scheduledIn = scheduledIn.plusDays(1);
+            }
+            LocalDateTime scheduledOut = scheduledIn.toLocalDate().atTime(endTime);
+            if (crossDay || !scheduledOut.isAfter(scheduledIn)) {
+                scheduledOut = scheduledOut.plusDays(1);
+            }
+            plans.add(new ShiftPeriodPlan(period.getId(), period.getPeriodName(), startTime, endTime, scheduledIn,
+                    scheduledOut, needClockIn, needClockOut, i == 0, i == periods.size() - 1));
+            previousOut = scheduledOut;
+        }
+        return plans;
+    }
+
+    private ShiftPeriodPlan createPeriodPlan(LocalDate date, Long periodId, String periodName, LocalTime startTime,
+            LocalTime endTime, boolean configuredCrossDay, boolean needClockIn, boolean needClockOut,
+            boolean firstPeriod, boolean lastPeriod) {
+        LocalDateTime scheduledIn = date.atTime(startTime);
+        LocalDateTime scheduledOut = date.atTime(endTime);
+        if (configuredCrossDay || !scheduledOut.isAfter(scheduledIn)) {
+            scheduledOut = scheduledOut.plusDays(1);
+        }
+        return new ShiftPeriodPlan(periodId, periodName, startTime, endTime, scheduledIn, scheduledOut, needClockIn,
+                needClockOut, firstPeriod, lastPeriod);
+    }
+
+    private LocalDateTime findClosestClock(List<AttClockRecord> clockRecords, int clockType,
+            LocalDateTime scheduledTime) {
+        LocalDateTime matchStart = scheduledTime.minusHours(1);
+        LocalDateTime matchEnd = scheduledTime.plusHours(1);
+        LocalDateTime closest = null;
+
+        for (AttClockRecord record : clockRecords) {
+            if (record.getClockType() == null || record.getClockType() != clockType || record.getClockTime() == null) {
+                continue;
+            }
+            LocalDateTime clockTime = record.getClockTime();
+            if (clockTime.isBefore(matchStart) || clockTime.isAfter(matchEnd)) {
+                continue;
+            }
+            if (closest == null || Math.abs(ChronoUnit.MINUTES.between(clockTime, scheduledTime)) < Math
+                    .abs(ChronoUnit.MINUTES.between(closest, scheduledTime))) {
+                closest = clockTime;
+            }
+        }
+
+        return closest;
+    }
+
+    private BigDecimal calculateWorkHours(LocalDateTime scheduledIn, LocalDateTime scheduledOut,
+            LocalDateTime actualIn, LocalDateTime actualOut) {
+        if (scheduledIn == null || scheduledOut == null || actualIn == null || actualOut == null) {
+            return BigDecimal.ZERO;
+        }
+        LocalDateTime effectiveIn = actualIn.isBefore(scheduledIn) ? scheduledIn : actualIn;
+        LocalDateTime effectiveOut = actualOut.isAfter(scheduledOut) ? scheduledOut : actualOut;
+        long actualMinutes = ChronoUnit.MINUTES.between(effectiveIn, effectiveOut);
+        if (actualMinutes <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return BigDecimal.valueOf(actualMinutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+    }
+
+    private Integer resolveApprovedAbsenceStatus(Long employeeId, LocalDate date) {
+        LocalDateTime dayStart = date.atStartOfDay();
+        LocalDateTime dayEnd = date.atTime(LocalTime.MAX);
+        List<HrApplication> applications = applicationMapper.selectList(
+                new LambdaQueryWrapper<HrApplication>()
+                        .eq(HrApplication::getEmployeeId, employeeId)
+                        .eq(HrApplication::getStatus, 1)
+                        .in(HrApplication::getAppType, "leave", "business")
+                        .le(HrApplication::getStartTime, dayEnd)
+                        .ge(HrApplication::getEndTime, dayStart));
+
+        boolean hasBusiness = applications.stream().anyMatch(app -> "business".equals(app.getAppType()));
+        if (hasBusiness) {
+            return 6;
+        }
+        boolean hasLeave = applications.stream().anyMatch(app -> "leave".equals(app.getAppType()));
+        return hasLeave ? 5 : null;
+    }
+
+    private List<Long> expandOrgIds(List<Long> orgIds) {
+        if (orgIds == null || orgIds.isEmpty()) {
+            return orgIds;
+        }
+        Set<Long> expanded = new LinkedHashSet<>();
+        for (Long orgId : orgIds) {
+            if (orgId == null) {
+                continue;
+            }
+            List<Long> childIds = orgUnitMapper.selectOrgAndChildIds(orgId);
+            if (childIds == null || childIds.isEmpty()) {
+                expanded.add(orgId);
+            } else {
+                expanded.addAll(childIds);
+            }
+        }
+        return new ArrayList<>(expanded);
+    }
+
+    private Long resolveCompanyId(Long unitId) {
+        OrgUnit current = unitId == null ? null : orgUnitMapper.selectById(unitId);
+        while (current != null) {
+            if (current.getUnitType() != null && current.getUnitType() == OrgUnit.TYPE_COMPANY) {
+                return current.getId();
+            }
+            if (current.getParentId() == null || current.getParentId() == 0) {
+                break;
+            }
+            current = orgUnitMapper.selectById(current.getParentId());
+        }
+        return null;
+    }
+
+    private record ShiftPeriodPlan(Long periodId, String periodName, LocalTime scheduledInTime,
+            LocalTime scheduledOutTime, LocalDateTime scheduledIn, LocalDateTime scheduledOut, boolean needClockIn,
+            boolean needClockOut, boolean firstPeriod, boolean lastPeriod) {
     }
 
     /**
      * 判断是否是休息日
      */
     private boolean isRestDay(Long companyId, LocalDate date) {
+        if (companyId == null) {
+            return false;
+        }
+
         // 1. 检查是否是调休上班日（优先级最高）
         AttCalendarRule workDay = calendarRuleMapper.selectOne(
                 new LambdaQueryWrapper<AttCalendarRule>()

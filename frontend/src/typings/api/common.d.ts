@@ -215,6 +215,10 @@ declare namespace Api {
       employeeNo: string;
       /** 姓名 */
       name: string;
+      /** Mini app login password */
+      password?: string;
+      /** Mini app password returned by admin detail API */
+      miniAppPassword?: string;
       /** 人员头像照片 */
       avatar?: string;
       /** 身份证正面 */
@@ -314,6 +318,8 @@ declare namespace Api {
       employeeNo: string;
       /** 姓名 */
       name: string;
+      /** Mini app login password */
+      password?: string;
       /** 人员头像照片 */
       avatar?: string;
       /** 身份证正面 */

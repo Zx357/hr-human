@@ -37,7 +37,7 @@ public class ShiftController {
 
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
-        service.removeById(id);
+        service.deleteShift(id);
         return Result.success();
     }
 }

@@ -11,15 +11,15 @@ module.exports = {
     name: 'KAdmin',
     version: '1.0.0',
     logo: '/static/logo.png',
-    site_url: 'http://112.126.27.123',
+    site_url: 'https://renzi.zixu.ac.cn',
     agreements: [
       {
         title: '隐私政策',
-        url: 'http://112.126.27.123/protocol.html'
+        url: 'https://renzi.zixu.ac.cn/protocol.html'
       },
       {
         title: '用户服务协议',
-        url: 'http://112.126.27.123/protocol.html'
+        url: 'https://renzi.zixu.ac.cn/protocol.html'
       }
     ]
   }

@@ -193,6 +193,15 @@ function handleSearch() {
   loadLocations(false);
 }
 
+function handleLocationPageChange() {
+  loadLocations();
+}
+
+function handleLocationPageSizeChange() {
+  pageNum.value = 1;
+  loadLocations();
+}
+
 function handleAdd() {
   form.value = createEmptyForm();
   dialogVisible.value = true;
@@ -431,22 +440,22 @@ function handleBatchRemoveEmployees() {
           row-key="id"
           @row-click="selectLocation"
         >
-          <ElTableColumn prop="locationName" label="地点名称" min-width="120" />
-          <ElTableColumn prop="address" label="打卡地址" min-width="210" show-overflow-tooltip />
-          <ElTableColumn prop="clockRange" label="半径" width="82" align="center">
+          <ElTableColumn prop="locationName" label="地点名称" width="110" show-overflow-tooltip />
+          <ElTableColumn prop="address" label="打卡地址" min-width="180" show-overflow-tooltip />
+          <ElTableColumn prop="clockRange" label="半径" width="72" align="center">
             <template #default="{ row }">{{ row.clockRange }}米</template>
           </ElTableColumn>
-          <ElTableColumn prop="assignedCount" label="员工" width="76" align="center">
+          <ElTableColumn prop="assignedCount" label="员工" width="68" align="center">
             <template #default="{ row }">
               <ElTag type="success">{{ row.assignedCount || 0 }} 人</ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="status" label="状态" width="78" align="center">
+          <ElTableColumn prop="status" label="状态" width="72" align="center">
             <template #default="{ row }">
               <ElTag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '启用' : '停用' }}</ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn label="操作" width="112" align="center">
+          <ElTableColumn label="操作" width="116" align="center" fixed="right">
             <template #default="{ row }">
               <ElButton type="primary" link size="small" @click.stop="handleEdit(row)">编辑</ElButton>
               <ElButton type="danger" link size="small" @click.stop="handleDelete(row)">删除</ElButton>
@@ -461,8 +470,8 @@ function handleBatchRemoveEmployees() {
             :total="total"
             :page-sizes="[10, 20, 50]"
             layout="total, sizes, prev, pager, next"
-            @size-change="loadLocations"
-            @current-change="loadLocations"
+            @size-change="handleLocationPageSizeChange"
+            @current-change="handleLocationPageChange"
           />
         </div>
       </ElCard>
@@ -512,17 +521,17 @@ function handleBatchRemoveEmployees() {
           empty-text="暂无关联员工"
           @selection-change="handleEmployeeSelectionChange"
         >
-          <ElTableColumn type="selection" width="46" align="center" />
-          <ElTableColumn prop="employeeNo" label="工号" width="96" />
-          <ElTableColumn prop="name" label="姓名" width="100" />
-          <ElTableColumn prop="deptName" label="部门" min-width="120" show-overflow-tooltip />
-          <ElTableColumn prop="phone" label="手机号" min-width="124" show-overflow-tooltip />
-          <ElTableColumn prop="status" label="状态" width="76" align="center">
+          <ElTableColumn type="selection" width="44" align="center" />
+          <ElTableColumn prop="employeeNo" label="工号" width="86" />
+          <ElTableColumn prop="name" label="姓名" width="88" show-overflow-tooltip />
+          <ElTableColumn prop="deptName" label="部门" min-width="100" show-overflow-tooltip />
+          <ElTableColumn prop="phone" label="手机号" min-width="106" show-overflow-tooltip />
+          <ElTableColumn prop="status" label="状态" width="66" align="center">
             <template #default="{ row }">
               <ElTag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '在职' : '离职' }}</ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn label="操作" width="76" align="center">
+          <ElTableColumn label="操作" width="74" align="center" fixed="right">
             <template #default="{ row }">
               <ElButton type="danger" link size="small" @click="handleRemoveEmployee(row)">移除</ElButton>
             </template>

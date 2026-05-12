@@ -6,8 +6,13 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Mapper
 public interface OrgUnitMapper extends BaseMapper<OrgUnit> {
@@ -142,15 +147,29 @@ public interface OrgUnitMapper extends BaseMapper<OrgUnit> {
     @Select("SELECT id FROM org_unit")
     List<Long> selectAllOrgIds();
 
-    @Select("""
-            WITH RECURSIVE org_tree AS (
-                SELECT id FROM org_unit WHERE id = #{orgId}
-                UNION ALL
-                SELECT o.id
-                FROM org_unit o
-                INNER JOIN org_tree t ON o.parent_id = t.id
-            )
-            SELECT id FROM org_tree
-            """)
-    List<Long> selectOrgAndChildIds(@Param("orgId") Long orgId);
+    @Select("SELECT id FROM org_unit WHERE parent_id = #{parentId}")
+    List<Long> selectChildIds(@Param("parentId") Long parentId);
+
+    default List<Long> selectOrgAndChildIds(Long orgId) {
+        Set<Long> visited = new LinkedHashSet<>();
+        if (orgId == null) {
+            return new ArrayList<>(visited);
+        }
+
+        Deque<Long> pending = new ArrayDeque<>();
+        visited.add(orgId);
+        pending.add(orgId);
+
+        while (!pending.isEmpty()) {
+            Long parentId = pending.removeFirst();
+            List<Long> childIds = selectChildIds(parentId);
+            for (Long childId : childIds) {
+                if (childId != null && visited.add(childId)) {
+                    pending.add(childId);
+                }
+            }
+        }
+
+        return new ArrayList<>(visited);
+    }
 }

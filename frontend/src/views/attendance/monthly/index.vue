@@ -89,14 +89,14 @@ function handleMonthChange() {
         </ElFormItem>
         <ElFormItem label="公司">
           <ElSelect v-model="searchParams.companyId" placeholder="请选择公司" clearable style="width: 150px">
-            <ElOption v-for="c in companies" :key="c.id" :label="c.companyName" :value="c.id" />
+            <ElOption v-for="c in companies" :key="c.id" :label="c.unitName || c.companyName" :value="c.id" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem label="部门">
           <ElTreeSelect
             v-model="searchParams.deptId"
             :data="departments"
-            :props="{ label: 'deptName', value: 'id', children: 'children' }"
+            :props="{ label: 'unitName', value: 'id', children: 'children' }"
             placeholder="请选择部门"
             clearable
             check-strictly

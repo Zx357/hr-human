@@ -16,6 +16,9 @@
                 #{orgId}
             </foreach>
         </if>
+        <if test="employeeNo != null and employeeNo != ''">
+            AND e.employee_no LIKE CONCAT('%', #{employeeNo}, '%')
+        </if>
         <if test="employeeName != null and employeeName != ''">
             AND e.name LIKE CONCAT('%', #{employeeName}, '%')
         </if>

@@ -86,8 +86,16 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
      * 获取员工详情（包含教育经历、家庭成员、工作经历、证书）
      */
     public HrEmployee getEmployeeDetail(Long id) {
+        return getEmployeeDetail(id, false);
+    }
+
+    public HrEmployee getEmployeeDetail(Long id, boolean includeMiniAppPassword) {
         HrEmployee employee = getById(id);
         if (employee != null) {
+            if (includeMiniAppPassword) {
+                employee.setMiniAppPassword(employee.getPassword());
+            }
+
             // 加载教育经历
             employee.setEducationList(educationMapper.selectList(
                     new LambdaQueryWrapper<HrEducation>()
@@ -155,6 +163,8 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
             employee.setStatus(1); // 默认在职
         }
 
+        normalizePassword(employee);
+
         boolean result = save(employee);
 
         if (result) {
@@ -209,6 +219,8 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
      */
     @Transactional
     public boolean updateEmployee(HrEmployee employee) {
+        normalizePassword(employee);
+
         boolean result = updateById(employee);
 
         if (result) {
@@ -309,5 +321,11 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
             return prefix + String.format("%03d", seq);
         }
         return prefix + "001";
+    }
+
+    private void normalizePassword(HrEmployee employee) {
+        if (employee.getPassword() != null && employee.getPassword().trim().isEmpty()) {
+            employee.setPassword(null);
+        }
     }
 }

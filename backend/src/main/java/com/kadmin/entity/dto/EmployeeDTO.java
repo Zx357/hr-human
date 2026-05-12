@@ -27,6 +27,11 @@ public class EmployeeDTO {
     private String name;
 
     /**
+     * Mini app login password.
+     */
+    private String password;
+
+    /**
      * 人员头像照片
      */
     private String avatar;

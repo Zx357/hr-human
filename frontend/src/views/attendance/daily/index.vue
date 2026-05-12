@@ -135,7 +135,7 @@ function getCalculateButtonText() {
   const filters: string[] = [];
   if (searchParams.value.companyId) {
     const company = companies.value.find(c => c.id === searchParams.value.companyId);
-    if (company) filters.push(company.companyName);
+    if (company) filters.push(company.unitName || company.companyName);
   }
   if (searchParams.value.deptId) {
     filters.push('指定部门');
@@ -160,7 +160,7 @@ function getCalculateTooltip() {
   const filters: string[] = [];
   if (searchParams.value.companyId) {
     const company = companies.value.find(c => c.id === searchParams.value.companyId);
-    if (company) filters.push(`公司: ${company.companyName}`);
+    if (company) filters.push(`公司: ${company.unitName || company.companyName}`);
   }
   if (searchParams.value.deptId) {
     filters.push('指定部门');
@@ -248,14 +248,14 @@ async function handleLock(lock: boolean) {
         </ElFormItem>
         <ElFormItem label="公司">
           <ElSelect v-model="searchParams.companyId" placeholder="请选择公司" clearable style="width: 150px">
-            <ElOption v-for="c in companies" :key="c.id" :label="c.companyName" :value="c.id" />
+            <ElOption v-for="c in companies" :key="c.id" :label="c.unitName || c.companyName" :value="c.id" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem label="部门">
           <ElTreeSelect
             v-model="searchParams.deptId"
             :data="departments"
-            :props="{ label: 'deptName', value: 'id', children: 'children' }"
+            :props="{ label: 'unitName', value: 'id', children: 'children' }"
             placeholder="请选择部门"
             clearable
             check-strictly

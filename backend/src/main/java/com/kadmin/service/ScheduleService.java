@@ -25,7 +25,7 @@ public class ScheduleService extends ServiceImpl<AttScheduleMapper, AttSchedule>
      */
     public List<AttSchedule> getScheduleList(List<Long> orgIds, String employeeName, LocalDate startDate,
             LocalDate endDate) {
-        return baseMapper.selectScheduleList(orgIds, employeeName, startDate, endDate);
+        return baseMapper.selectScheduleList(orgIds, null, employeeName, startDate, endDate);
     }
 
     /**
@@ -56,8 +56,9 @@ public class ScheduleService extends ServiceImpl<AttScheduleMapper, AttSchedule>
         empWrapper.orderByAsc(HrEmployee::getId);
         List<HrEmployee> employees = employeeMapper.selectList(empWrapper);
 
-        // 获取排班数据
-        List<AttSchedule> schedules = baseMapper.selectScheduleList(orgIds, employeeName, startDate, endDate);
+        // 获取排班数据，必须使用展开后的组织范围，否则按公司筛选时员工有了但排班为空
+        List<AttSchedule> schedules = baseMapper.selectScheduleList(allOrgIds, employeeNo, employeeName, startDate,
+                endDate);
 
         // 按员工ID分组排班
         Map<Long, Map<LocalDate, AttSchedule>> scheduleMap = new HashMap<>();

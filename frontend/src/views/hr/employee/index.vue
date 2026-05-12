@@ -127,7 +127,7 @@ onMounted(async () => { await loadCompanyList(); await loadOrgTree(); await load
 
 async function handleAdd() {
   operateType.value = 'add';
-  editingData.value = { employeeNo: '', name: '', avatar: '', idCardFront: '', idCardBack: '', deptId: undefined, gender: '', phone: '', email: '', entryDate: '', status: 1 };
+  editingData.value = { employeeNo: '', name: '', password: '123456', avatar: '', idCardFront: '', idCardBack: '', deptId: undefined, gender: '', phone: '', email: '', entryDate: '', status: 1 };
   educationList.value = [{ schoolName: '', major: '', education: '', isFullTime: '', startDate: '', endDate: '', diplomaPhoto: '' }];
   familyMemberList.value = [{ name: '', relation: '', birthDate: '', politicalStatus: '', workUnit: '', occupation: '', phone: '' }];
   workList.value = [{ companyName: '', companyAddress: '', department: '', position: '', witness: '', witnessPhone: '', startDate: '', endDate: '' }];
@@ -156,7 +156,7 @@ async function handleEdit(row: Api.Hr.Employee) {
     const res = await fetchEmployeeById(row.id!);
     if (res.data) {
       const employee = res.data;
-      editingData.value = { ...employee };
+      editingData.value = { ...employee, password: employee.miniAppPassword || '' };
       educationList.value = employee.educationList && employee.educationList.length > 0 ? employee.educationList : [{ schoolName: '', major: '', education: '', isFullTime: '', startDate: '', endDate: '', diplomaPhoto: '' }];
       familyMemberList.value = employee.familyMemberList && employee.familyMemberList.length > 0 ? employee.familyMemberList : [{ name: '', relation: '', birthDate: '', politicalStatus: '', workUnit: '', occupation: '', phone: '' }];
       workList.value = employee.workExperienceList && employee.workExperienceList.length > 0 ? employee.workExperienceList : [{ companyName: '', companyAddress: '', department: '', position: '', witness: '', witnessPhone: '', startDate: '', endDate: '' }];
@@ -326,6 +326,13 @@ const statusMap: Record<number, { label: string; type: string }> = { 1: { label:
         <ElTabPane label="基本信息" name="basic">
           <ElForm label-width="100px" :model="editingData">
             <ElDivider content-position="left">人员基本信息</ElDivider>
+            <ElRow :gutter="20">
+              <ElCol :span="8">
+                <ElFormItem label="小程序密码">
+                  <ElInput v-model="editingData.password" placeholder="不填则保持原密码" />
+                </ElFormItem>
+              </ElCol>
+            </ElRow>
             <ElRow :gutter="20" class="mb-20px">
               <ElCol :span="8"><div class="text-center"><div class="mb-8px font-bold">头像</div><ElUpload class="avatar-uploader" :show-file-list="false" :before-upload="beforeUpload" :http-request="({ file }) => handleImageUpload(file as File, 'avatar')"><ElImage v-if="editingData.avatar" :src="getFileUrl(editingData.avatar)" fit="cover" class="w-100px h-100px rounded-full" /><div v-else class="w-100px h-100px rounded-full bg-gray-100 flex items-center justify-center border border-dashed border-gray-300 cursor-pointer hover:border-primary"><ElIcon :size="28" class="text-gray-400"><Plus /></ElIcon></div></ElUpload></div></ElCol>
               <ElCol :span="8"><div class="text-center"><div class="mb-8px font-bold">身份证正面</div><ElUpload class="id-card-uploader" :show-file-list="false" :before-upload="beforeUpload" :http-request="({ file }) => handleImageUpload(file as File, 'idCardFront')"><ElImage v-if="editingData.idCardFront" :src="getFileUrl(editingData.idCardFront)" fit="cover" class="w-160px h-100px rounded" /><div v-else class="w-160px h-100px rounded bg-gray-100 flex items-center justify-center border border-dashed border-gray-300 cursor-pointer hover:border-primary"><div class="text-center"><ElIcon :size="28" class="text-gray-400"><Plus /></ElIcon><div class="text-12px text-gray-400 mt-4px">身份证正面</div></div></div></ElUpload></div></ElCol>

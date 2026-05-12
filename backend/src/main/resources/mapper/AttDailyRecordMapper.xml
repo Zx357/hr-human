@@ -110,7 +110,17 @@
             SUM(COALESCE(r.late_minutes, 0)) as late_minutes,
             SUM(COALESCE(r.early_minutes, 0)) as early_minutes,
             SUM(COALESCE(r.work_hours, 0)) as work_hours,
-            MAX(r.status) as status,
+            CASE
+                WHEN SUM(CASE WHEN r.status = 4 THEN 1 ELSE 0 END) &gt; 0 THEN 4
+                WHEN SUM(CASE WHEN r.status = 5 THEN 1 ELSE 0 END) &gt; 0 THEN 5
+                WHEN SUM(CASE WHEN r.status = 6 THEN 1 ELSE 0 END) &gt; 0 THEN 6
+                WHEN SUM(CASE WHEN r.status IN (2, 7) THEN 1 ELSE 0 END) &gt; 0
+                    AND SUM(CASE WHEN r.status IN (3, 7) THEN 1 ELSE 0 END) &gt; 0 THEN 7
+                WHEN SUM(CASE WHEN r.status IN (2, 7) THEN 1 ELSE 0 END) &gt; 0 THEN 2
+                WHEN SUM(CASE WHEN r.status IN (3, 7) THEN 1 ELSE 0 END) &gt; 0 THEN 3
+                WHEN SUM(CASE WHEN r.status = 0 THEN 1 ELSE 0 END) &gt; 0 THEN 0
+                ELSE 1
+            END as status,
             MAX(COALESCE(r.locked, 0)) as locked,
             COALESCE(app.overtime_duration, 0) as overtime_duration,
             COALESCE(app.business_duration, 0) as business_duration,
@@ -163,9 +173,6 @@
     <if test="employeeName != null and employeeName != ''">
                 AND e.name LIKE CONCAT('%', #{employeeName}, '%')
     </if>
-    <if test="status != null">
-                AND r.status = #{status}
-    </if>
 </where>
         GROUP BY r.employee_id, r.att_date, e.name, e.employee_no,
             d.unit_type, d.unit_name, p1.unit_type, p1.unit_name,
@@ -175,6 +182,21 @@
             app.sick_leave_duration, app.marriage_leave_duration,
             app.maternity_leave_duration, app.paternity_leave_duration,
             app.bereavement_leave_duration
+        <trim prefix="HAVING" prefixOverrides="AND">
+            <if test="status != null">
+                AND CASE
+                    WHEN SUM(CASE WHEN r.status = 4 THEN 1 ELSE 0 END) &gt; 0 THEN 4
+                    WHEN SUM(CASE WHEN r.status = 5 THEN 1 ELSE 0 END) &gt; 0 THEN 5
+                    WHEN SUM(CASE WHEN r.status = 6 THEN 1 ELSE 0 END) &gt; 0 THEN 6
+                    WHEN SUM(CASE WHEN r.status IN (2, 7) THEN 1 ELSE 0 END) &gt; 0
+                        AND SUM(CASE WHEN r.status IN (3, 7) THEN 1 ELSE 0 END) &gt; 0 THEN 7
+                    WHEN SUM(CASE WHEN r.status IN (2, 7) THEN 1 ELSE 0 END) &gt; 0 THEN 2
+                    WHEN SUM(CASE WHEN r.status IN (3, 7) THEN 1 ELSE 0 END) &gt; 0 THEN 3
+                    WHEN SUM(CASE WHEN r.status = 0 THEN 1 ELSE 0 END) &gt; 0 THEN 0
+                    ELSE 1
+                END = #{status}
+            </if>
+        </trim>
         ORDER BY r.att_date DESC, e.employee_no
 </select>
 </mapper>

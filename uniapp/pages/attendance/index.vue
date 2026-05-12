@@ -74,7 +74,7 @@
               <view class="dot" :class="getDotClass(day, 'in')"></view>
               <view class="dot" :class="getDotClass(day, 'out')"></view>
             </view>
-            <view class="day-dots" v-else-if="day.isPast">
+            <view class="day-dots" v-else-if="day.isPast && day.scheduled">
               <view class="dot dot-absent"></view>
             </view>
           </template>
@@ -153,7 +153,7 @@ export default {
         const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`
         const record = this.monthData.find(r => r.attDate === dateStr)
         const dateObj = new Date(year, month - 1, d)
-        const isPast = dateObj < new Date(today.getFullYear(), today.getMonth(), today.getDate()) && dateObj.getDay() !== 0 && dateObj.getDay() !== 6
+        const isPast = dateObj < new Date(today.getFullYear(), today.getMonth(), today.getDate())
 
         days.push({
           day: d,
@@ -161,6 +161,7 @@ export default {
           currentMonth: true,
           isToday: dateStr === todayStr,
           isPast,
+          scheduled: record ? !!record.scheduled : false,
           hasRecord: !!record,
           clockIn: record ? record.clockIn : null,
           clockOut: record ? record.clockOut : null,

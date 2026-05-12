@@ -68,4 +68,11 @@ public class ShiftService extends ServiceImpl<AttShiftMapper, AttShift> {
         }
         return result;
     }
+
+    @Transactional
+    public boolean deleteShift(Long id) {
+        periodMapper.delete(new LambdaQueryWrapper<AttShiftPeriod>()
+                .eq(AttShiftPeriod::getShiftId, id));
+        return removeById(id);
+    }
 }

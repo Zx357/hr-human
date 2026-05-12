@@ -428,7 +428,7 @@ function handleReset() {
         </ElFormItem>
         <ElFormItem label="选择班次" required>
           <ElSelect v-model="batchForm.shiftId" placeholder="请选择班次" style="width: 100%">
-            <ElOption v-for="shift in shifts" :key="shift.id" :label="shift.shiftName" :value="shift.id" />
+            <ElOption v-for="shift in shifts" :key="shift.id" :label="shift.shiftName" :value="shift.id!" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem label="日期范围" required>

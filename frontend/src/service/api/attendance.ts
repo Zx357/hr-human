@@ -10,6 +10,22 @@ function normalizeOrgIds(orgIds?: OrgIdsParam) {
   return orgIds;
 }
 
+function resolveOrgIds(params: { orgIds?: OrgIdsParam; companyId?: number; deptId?: number }) {
+  if (Array.isArray(params.orgIds) && params.orgIds.length > 0) {
+    return params.orgIds;
+  }
+  if (typeof params.orgIds === 'string' && params.orgIds) {
+    return params.orgIds;
+  }
+  if (params.deptId) {
+    return [params.deptId];
+  }
+  if (params.companyId) {
+    return [params.companyId];
+  }
+  return undefined;
+}
+
 export interface AttClockRecord {
   id?: number;
   employeeId: number;
@@ -85,11 +101,12 @@ export function fetchClockRecordPage(params: {
   endDate?: string;
 }) {
   const { orgIds, ...rest } = params;
+  const queryOrgIds = resolveOrgIds({ ...params, orgIds });
 
   return request<{ records: AttClockRecord[]; total: number }>({
     url: '/attendance/clock/page',
     method: 'get',
-    params: { ...rest, orgIds: normalizeOrgIds(orgIds) }
+    params: { ...rest, orgIds: normalizeOrgIds(queryOrgIds) }
   });
 }
 
@@ -114,11 +131,12 @@ export function fetchDailyRecordPage(params: {
   status?: number;
 }) {
   const { orgIds, ...rest } = params;
+  const queryOrgIds = resolveOrgIds({ ...params, orgIds });
 
   return request<{ records: AttDailyRecord[]; total: number }>({
     url: '/attendance/daily/page',
     method: 'get',
-    params: { ...rest, orgIds: normalizeOrgIds(orgIds) }
+    params: { ...rest, orgIds: normalizeOrgIds(queryOrgIds) }
   });
 }
 
@@ -136,7 +154,13 @@ export function calculateDailyAttendance(data: {
   employeeName?: string;
   employeeIds?: number[];
 }) {
-  return request({ url: '/attendance/daily/calculate', method: 'post', data });
+  const { companyId, deptId, orgIds, ...rest } = data;
+
+  return request({
+    url: '/attendance/daily/calculate',
+    method: 'post',
+    data: { ...rest, orgIds: resolveOrgIds({ companyId, deptId, orgIds }) }
+  });
 }
 
 export function lockDailyRecords(data: { ids: number[]; lock: boolean }) {
@@ -172,11 +196,12 @@ export function fetchMonthlyAttendance(params: {
   employeeName?: string;
 }) {
   const { orgIds, ...rest } = params;
+  const queryOrgIds = resolveOrgIds({ ...params, orgIds });
 
   return request<MonthlyAttendance[]>({
     url: '/attendance/monthly',
     method: 'get',
-    params: { ...rest, orgIds: normalizeOrgIds(orgIds) }
+    params: { ...rest, orgIds: normalizeOrgIds(queryOrgIds) }
   });
 }
 
