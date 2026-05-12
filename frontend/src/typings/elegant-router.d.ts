@@ -62,6 +62,7 @@ declare module "@elegant-router/types" {
     "system_notice": "/system/notice";
     "system_role": "/system/role";
     "system_user": "/system/user";
+    "user-center": "/user-center";
   };
 
   /**
@@ -106,6 +107,7 @@ declare module "@elegant-router/types" {
     | "organization"
     | "report"
     | "system"
+    | "user-center"
   >;
 
   /**
@@ -160,6 +162,7 @@ declare module "@elegant-router/types" {
     | "system_notice"
     | "system_role"
     | "system_user"
+    | "user-center"
   >;
 
   /**

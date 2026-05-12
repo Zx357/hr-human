@@ -207,7 +207,8 @@ const routeMap: RouteMap = {
   "system_mobile-menu": "/system/mobile-menu",
   "system_notice": "/system/notice",
   "system_role": "/system/role",
-  "system_user": "/system/user"
+  "system_user": "/system/user",
+  "user-center": "/user-center"
 };
 
 /**

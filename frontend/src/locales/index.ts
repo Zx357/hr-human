@@ -5,7 +5,7 @@ import messages from './locale';
 
 const i18n = createI18n({
   locale: localStg.get('lang') || 'zh-CN',
-  fallbackLocale: 'en',
+  fallbackLocale: 'en-US',
   messages,
   legacy: false
 });
@@ -27,4 +27,29 @@ export function setLocale(locale: App.I18n.LangType) {
 
 export function getLocale(): App.I18n.LangType {
   return i18n.global.locale.value as App.I18n.LangType;
+}
+
+type LocalizedMeta = {
+  i18nKey?: App.I18n.I18nKey | null;
+  title?: unknown;
+  titleEn?: unknown;
+};
+
+function translateI18nKey(i18nKey?: App.I18n.I18nKey | null) {
+  if (!i18nKey) return '';
+
+  const translated = $t(i18nKey);
+
+  return translated === i18nKey ? '' : translated;
+}
+
+export function getLocalizedMetaTitle(meta: LocalizedMeta) {
+  const title = typeof meta.title === 'string' ? meta.title : '';
+  const titleEn = typeof meta.titleEn === 'string' ? meta.titleEn : '';
+
+  if (getLocale() === 'en-US') {
+    return titleEn || translateI18nKey(meta.i18nKey) || title;
+  }
+
+  return title || translateI18nKey(meta.i18nKey) || titleEn;
 }

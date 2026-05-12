@@ -505,5 +505,16 @@ export const generatedRoutes: GeneratedRoute[] = [
         }
       }
     ]
+  },
+  {
+    name: 'user-center',
+    path: '/user-center',
+    component: 'layout.base$view.user-center',
+    meta: {
+      title: '个人中心',
+      titleEn: 'User Center',
+      i18nKey: 'route.user-center',
+      hideInMenu: true
+    }
   }
 ];

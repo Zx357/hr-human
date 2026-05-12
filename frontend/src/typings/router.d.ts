@@ -8,6 +8,8 @@ declare module 'vue-router' {
      * It can be used in document title
      */
     title: string;
+    /** English title of the route */
+    titleEn?: string;
     /**
      * I18n key of the route
      *

@@ -260,6 +260,10 @@ declare namespace App {
       localIcon?: string;
       /** I18n key */
       i18nKey?: I18n.I18nKey | null;
+      /** Original route title */
+      title?: string;
+      /** English route title */
+      titleEn?: string;
     };
 
     /** Form rule */
@@ -414,7 +418,7 @@ declare namespace App {
           resetSuccessMsg: string;
         };
       };
-      route: Record<I18nRouteKey, string>;
+      route: Record<string, string>;
       page: {
         login: {
           common: {

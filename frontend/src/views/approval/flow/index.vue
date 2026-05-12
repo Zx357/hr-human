@@ -8,7 +8,7 @@ defineOptions({ name: 'ApprovalFlow' });
 
 const loading = ref(false);
 const data = ref<ApprovalFlow[]>([]);
-const roleOptions = ref<Api.SystemManage.Role[]>([]);
+const roleOptions = ref<Api.System.Role[]>([]);
 
 const dialogVisible = ref(false);
 const operateType = ref<'add' | 'edit'>('add');

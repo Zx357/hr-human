@@ -5,6 +5,7 @@ import { useAppStore } from './store/modules/app';
 import { useThemeStore } from './store/modules/theme';
 import { useAuthStore } from './store/modules/auth';
 import { UILocales } from './locales/ui';
+import { useHardCodedDomI18n } from './locales/dom';
 
 defineOptions({ name: 'App' });
 
@@ -14,6 +15,8 @@ const authStore = useAuthStore();
 const locale = computed(() => {
   return UILocales[appStore.locale];
 });
+
+useHardCodedDomI18n(computed(() => appStore.locale));
 
 const watermarkProps = computed<WatermarkProps>(() => {
   const content =

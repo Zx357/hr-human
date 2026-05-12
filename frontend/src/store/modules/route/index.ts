@@ -6,7 +6,7 @@ import type { CustomRoute, ElegantConstRoute, LastLevelRouteKey, RouteKey, Route
 import { router } from '@/router';
 import { fetchGetUserRoutes, fetchIsRouteExist } from '@/service/api';
 import { SetupStoreId } from '@/enum';
-import { createStaticRoutes, getAuthVueRoutes } from '@/router/routes';
+import { createStaticRoutes, getAuthVueRoutes, getLocalAuthRoutes } from '@/router/routes';
 import { ROOT_ROUTE } from '@/router/routes/builtin';
 import { getRouteName, getRoutePath } from '@/router/elegant/transform';
 import { useAuthStore } from '../auth';
@@ -205,7 +205,7 @@ export const useRouteStore = defineStore(SetupStoreId.Route, () => {
     if (!error) {
       const { routes, home } = data;
 
-      addAuthRoutes(routes);
+      addAuthRoutes([...routes, ...getLocalAuthRoutes()]);
 
       handleConstantAndAuthRoutes();
 

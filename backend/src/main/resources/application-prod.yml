@@ -35,3 +35,5 @@ knife4j:
 springdoc:
   api-docs:
     enabled: false
+
+

@@ -98,28 +98,12 @@ export function getGlobalMenusByAuthRoutes(routes: ElegantConstRoute[]) {
  */
 export function updateLocaleOfGlobalMenus(menus: App.Global.Menu[]) {
   const result: App.Global.Menu[] = [];
-  const locale = getLocale();
 
   menus.forEach(menu => {
     const { i18nKey, label, children, ...rest } = menu;
     const menuWithExtra = menu as App.Global.Menu & { title?: string; titleEn?: string };
 
-    // 根据当前语言选择标题
-    let newLabel = label;
-
-    // 如果是英文环境且有英文标题，使用英文标题
-    if (locale === 'en-US' && menuWithExtra.titleEn) {
-      newLabel = menuWithExtra.titleEn;
-    } else if (menuWithExtra.title) {
-      // 如果有中文标题，使用中文标题
-      newLabel = menuWithExtra.title;
-    } else if (i18nKey) {
-      // 如果有i18nKey，尝试翻译
-      const translated = $t(i18nKey as App.I18n.I18nKey);
-      if (translated !== i18nKey) {
-        newLabel = translated;
-      }
-    }
+    const newLabel = getMenuLabelByLocale(menuWithExtra.title || label, menuWithExtra.titleEn, i18nKey);
 
     const newMenu: App.Global.Menu = {
       ...rest,
@@ -151,27 +135,19 @@ export function updateLocaleOfGlobalMenus(menus: App.Global.Menu[]) {
 function getMenuLabelByLocale(title?: string, titleEn?: string, i18nKey?: App.I18n.I18nKey | null): string {
   const locale = getLocale();
 
-  // 如果是英文环境且有英文标题，使用英文标题
-  if (locale === 'en-US' && titleEn) {
-    return titleEn;
-  }
-
-  // 如果有中文标题，使用中文标题
-  if (title) {
-    return title;
-  }
-
-  // 如果有i18nKey，尝试翻译
   if (i18nKey) {
     const translated = $t(i18nKey);
-    // 如果翻译结果不是key本身，说明翻译成功
-    if (translated !== i18nKey) {
+
+    if (locale === 'en-US') {
+      return titleEn || (translated !== i18nKey ? translated : '') || title || '';
+    }
+
+    if (!title && translated !== i18nKey) {
       return translated;
     }
   }
 
-  // 最后返回title或空字符串
-  return title || '';
+  return locale === 'en-US' ? titleEn || title || '' : title || titleEn || '';
 }
 
 /**

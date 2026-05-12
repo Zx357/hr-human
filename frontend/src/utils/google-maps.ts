@@ -69,7 +69,7 @@ export function loadGoogleMapsApi(options: LoadGoogleMapsOptions) {
         timeoutId = null;
       }
 
-      const runtimeWindow = window as Window & Record<string, unknown>;
+      const runtimeWindow = window as unknown as Window & Record<string, unknown>;
       if (runtimeWindow[callbackName]) {
         delete runtimeWindow[callbackName];
       }
@@ -81,7 +81,7 @@ export function loadGoogleMapsApi(options: LoadGoogleMapsOptions) {
       reject(new Error('Failed to load Google Maps JavaScript API'));
     };
 
-    const runtimeWindow = window as Window & Record<string, unknown>;
+    const runtimeWindow = window as unknown as Window & Record<string, unknown>;
     runtimeWindow[callbackName] = () => {
       cleanup();
       const maps = (window as Window & { google?: any }).google?.maps;

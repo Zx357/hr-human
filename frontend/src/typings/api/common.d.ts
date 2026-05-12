@@ -497,6 +497,33 @@ declare namespace Api {
 
   /** 系统管理相关类型 */
   namespace System {
+    /** 用户 */
+    interface User {
+      id: number;
+      username: string;
+      nickname?: string;
+      email?: string;
+      phone?: string;
+      gender?: number;
+      status: number;
+      employeeId?: number;
+      createdTime?: string;
+      updatedTime?: string;
+    }
+
+    /** 角色 */
+    interface Role {
+      id: number;
+      roleCode: string;
+      roleName: string;
+      description?: string;
+      status: number;
+      sortOrder?: number;
+      dataScope?: number;
+      createdTime?: string;
+      updatedTime?: string;
+    }
+
     /** 菜单 */
     interface Menu {
       id: number;

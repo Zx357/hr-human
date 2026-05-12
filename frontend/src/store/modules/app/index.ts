@@ -5,7 +5,7 @@ import { useBoolean } from '@sa/hooks';
 import { router } from '@/router';
 import { localStg } from '@/utils/storage';
 import { SetupStoreId } from '@/enum';
-import { $t, setLocale } from '@/locales';
+import { getLocalizedMetaTitle, setLocale } from '@/locales';
 import { setDayjsLocale } from '@/locales/dayjs';
 import { useRouteStore } from '../route';
 import { useTabStore } from '../tab';
@@ -63,11 +63,7 @@ export const useAppStore = defineStore(SetupStoreId.App, () => {
 
   /** Update document title by locale */
   function updateDocumentTitleByLocale() {
-    const { i18nKey, title } = router.currentRoute.value.meta;
-
-    const documentTitle = i18nKey ? $t(i18nKey) : title;
-
-    useTitle(documentTitle);
+    useTitle(getLocalizedMetaTitle(router.currentRoute.value.meta));
   }
 
   function init() {
