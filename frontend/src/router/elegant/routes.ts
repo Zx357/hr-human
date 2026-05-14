@@ -444,6 +444,17 @@ export const generatedRoutes: GeneratedRoute[] = [
         }
       },
       {
+        name: 'system_feedback',
+        path: '/system/feedback',
+        component: 'view.system_feedback',
+        meta: {
+          title: 'system_feedback',
+          i18nKey: 'route.system_feedback',
+          order: 8,
+          icon: 'mdi:message-alert-outline'
+        }
+      },
+      {
         name: 'system_file-config',
         path: '/system/file-config',
         component: 'view.system_file-config',

@@ -1,0 +1,12 @@
+{
+  "name": "tn-water-fall",
+  "description": "瀑布流组件，用于展示一组等宽不等高的元素。",
+  "props": {
+    "data": "Array",
+    "mode": [
+      "calc"
+    ]
+  },
+  "events": [],
+  "example": "<template>\r\n  <TnWaterFall :data=\"imageData\">\r\n    <template #left=\"{ item }\">\r\n      <view class=\"image-data\">\r\n        <image class=\"image\" :src=\"item.url\" mode=\"widthFix\" />\r\n      </view>\r\n    </template>\r\n    <template #right=\"{ item }\">\r\n      <view class=\"image-data\">\r\n        <image class=\"image\" :src=\"item.url\" mode=\"widthFix\" />\r\n      </view>\r\n    </template>\r\n  </TnWaterFall>\r\n</template>\r\n\r\n<style lang=\"scss\">\r\n.image-data {\r\n  width: calc(100% - 20rpx);\r\n  margin: 10rpx;\r\n\r\n  .image {\r\n    width: 100%;\r\n    height: auto;\r\n  }\r\n}\r\n</style>"
+}

@@ -56,6 +56,7 @@ declare module "@elegant-router/types" {
     "report_employee": "/report/employee";
     "system": "/system";
     "system_dict": "/system/dict";
+    "system_feedback": "/system/feedback";
     "system_file-config": "/system/file-config";
     "system_menu": "/system/menu";
     "system_mobile-menu": "/system/mobile-menu";
@@ -156,6 +157,7 @@ declare module "@elegant-router/types" {
     | "report_attendance"
     | "report_employee"
     | "system_dict"
+    | "system_feedback"
     | "system_file-config"
     | "system_menu"
     | "system_mobile-menu"

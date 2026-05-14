@@ -1,0 +1,26 @@
+{
+  "name": "tn-bubble-box",
+  "description": "该组件一般用在有附加选项的内容，点击内容时弹出的气泡弹框，比如点击一个商品时，弹出的气泡弹框中有加入购物车、收藏、分享等选项。",
+  "props": {
+    "options": "BubbleBoxOption",
+    "position": [
+      "bottom",
+      "left",
+      "right"
+    ],
+    "width": "String",
+    "height": "String",
+    "bg-color": "String",
+    "text-color": "String",
+    "option-item-padding": "String",
+    "disabled": "boolean",
+    "auto-close": "boolean",
+    "z-index": "Number"
+  },
+  "events": [
+    "open",
+    "close",
+    "click"
+  ],
+  "example": "<script lang=\"ts\" setup>\nimport type { BubbleBoxOption } from '@tuniao/tnui-vue3-uniapp'\n\nconst bubbleOptions: BubbleBoxOption = [\n  { text: '收藏', icon: 'star-fill' },\n  { text: '分享', icon: 'share-triangle' },\n]\n</script>\n\n<template>\n  <TnBubbleBox :options=\"bubbleOptions\">\n    <view>点击弹出气泡框</view>\n  </TnBubbleBox>\n</template>"
+}

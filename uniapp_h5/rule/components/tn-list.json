@@ -1,0 +1,23 @@
+{
+  "name": "tn-list",
+  "description": "该组件用于展示列表数据",
+  "props": {
+    "width": "String",
+    "height": "String",
+    "font-size": "String",
+    "bg-color": "String",
+    "text-color": "String",
+    "right-icon": "String",
+    "right-icon-color": "String",
+    "radius": "boolean",
+    "bottom-border": "boolean",
+    "bottom-border-indent": "boolean",
+    "hover-class": "String",
+    "custom-style": "CSSProperties",
+    "custom-class": "String"
+  },
+  "events": [
+    "click"
+  ],
+  "example": "<template>\n  <TnListItem> 联系客服 </TnListItem>\n</template>"
+}

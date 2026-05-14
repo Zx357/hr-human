@@ -1,0 +1,16 @@
+{
+  "name": "tn-scroll-list",
+  "description": "该组件一般用于同时展示多个商品、分类的场景，也可以完成左右滑动的列表",
+  "props": {
+    "indicator": "boolean",
+    "indicator-width": "Number",
+    "indicator-block-width": "Number",
+    "indicator-color": "String",
+    "indicator-block-color": "String"
+  },
+  "events": [
+    "scroll-left",
+    "scroll-right"
+  ],
+  "example": "<template>\r\n  <TnScrollList>\r\n    <view class=\"item-container\">\r\n      <view\r\n        v-for=\"i in 20\"\r\n        :key=\"i\"\r\n        class=\"scroll-item tn-flex-center tn-flex-column\"\r\n      >\r\n        <view class=\"empty tn-grey-light_bg\" />\r\n        <view class=\"title\">图鸟UI</view>\r\n      </view>\r\n    </view>\r\n  </TnScrollList>\r\n</template>\r\n\r\n<style lang=\"scss\" scoped>\r\n.item-container {\r\n  position: relative;\r\n  width: fit-content;\r\n\r\n  display: flex;\r\n  flex-wrap: nowrap;\r\n\r\n  .scroll-item {\r\n    flex-grow: 1;\r\n    flex-shrink: 0;\r\n    margin: 0rpx 20rpx;\r\n\r\n    .empty {\r\n      width: 100rpx;\r\n      height: 100rpx;\r\n      border-radius: 15rpx;\r\n    }\r\n\r\n    .title {\r\n      margin-top: 10rpx;\r\n    }\r\n  }\r\n}\r\n</style>"
+}

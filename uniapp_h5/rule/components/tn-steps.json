@@ -1,0 +1,24 @@
+{
+  "name": "tn-steps",
+  "description": "该组件一般用于完成一个任务要分几个步骤，标识目前处于第几步的场景",
+  "props": {
+    "v-model/model-value": "String | Number",
+    "mode": [
+      "dot",
+      "number",
+      "dotIcon",
+      "icon"
+    ],
+    "color": "String",
+    "active-color": "String",
+    "disabled": "boolean",
+    "title": "String",
+    "icon": "String",
+    "active-icon": "String"
+  },
+  "events": [
+    "change",
+    "click"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\n\r\nconst currentStep = ref(-1)\r\n\r\n// 步进条数据\r\nconst stepsData = [\r\n  {\r\n    title: '第一步',\r\n    icon: 'floral',\r\n    activeIcon: 'floral-fill',\r\n  },\r\n  {\r\n    title: '第二步',\r\n    icon: 'success-circle',\r\n    activeIcon: 'success-circle-fill',\r\n  },\r\n  {\r\n    title: '第三步',\r\n    icon: 'floral',\r\n    activeIcon: 'floral-fill',\r\n  },\r\n  {\r\n    title: '第四步',\r\n    icon: 'floral',\r\n    activeIcon: 'floral-fill',\r\n  },\r\n]\r\n</script>\r\n\r\n<template>\r\n  <TnSteps v-model=\"currentStep\" mode=\"dot\">\r\n    <TnStepsItem\r\n      v-for=\"(item, index) in stepsData\"\r\n      :key=\"index\"\r\n      :title=\"item.title\"\r\n      :icon=\"item.icon\"\r\n      :active-icon=\"item.activeIcon\"\r\n    />\r\n  </TnSteps>\r\n</template>"
+}

@@ -1,0 +1,7 @@
+{
+  "name": "tn-graphic-card",
+  "description": "为了优化包的体积，把`TnGraphicCard`组件从内置移动到第三方组件，使用前请先安装",
+  "props": {},
+  "events": [],
+  "example": ""
+}

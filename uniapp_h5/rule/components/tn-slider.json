@@ -1,0 +1,25 @@
+{
+  "name": "tn-slider",
+  "description": "Slider 滑动条一般用于选择一个范围的值",
+  "props": {
+    "model-value/v-model": "Number | Number[]",
+    "size": [
+      "sm",
+      "lg"
+    ],
+    "slider-bar-size": "String | Number",
+    "slider-height": "String | Number",
+    "active-color": "String",
+    "inactive-color": "String",
+    "disabled": "boolean",
+    "step": "Number",
+    "min": "Number",
+    "max": "Number",
+    "validate-event": "boolean"
+  },
+  "events": [
+    "change",
+    "input"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\n\r\nconst sliderValue = ref<number>(0)\r\n</script>\r\n\r\n<template>\r\n  <TnSlider v-model=\"sliderValue\" />\r\n  <TnSlider v-model=\"sliderValue\" disabled />\r\n</template>"
+}

@@ -1,0 +1,34 @@
+{
+  "name": "tn-badge",
+  "description": "该组件一般用于图标右上角显示未读的消息数量，提示用户点击，有圆点和圆包含文字、图标两种形式。",
+  "props": {
+    "value": "String | Number",
+    "max": "String | Number",
+    "type": [
+      "primary",
+      "success",
+      "warning",
+      "danger",
+      "info"
+    ],
+    "bg-color": "String",
+    "text-color": "String",
+    "size": [
+      "lg",
+      "xl"
+    ],
+    "font-size": "String | Number",
+    "bold": "boolean",
+    "custom-style": "Object",
+    "custom-class": "String",
+    "dot": "boolean",
+    "absolute": "boolean",
+    "absolute-position": "BadgeAbsolutePositionConfig",
+    "absolute-center": "boolean",
+    "index": "String | Number"
+  },
+  "events": [
+    "click"
+  ],
+  "example": "<view style=\"position: relative;\">\n  <TnBadge value=\"99\" type=\"primary\" />\n</view>"
+}

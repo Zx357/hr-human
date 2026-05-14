@@ -1,0 +1,29 @@
+{
+  "name": "tn-loadmore",
+  "description": "此组件可用于提示用户接下来还有数据的场景，一般放在列表的底部",
+  "props": {
+    "status": [
+      "loading",
+      "nomore",
+      "empty"
+    ],
+    "size": [
+      "sm",
+      "lg",
+      "xl"
+    ],
+    "color": "String",
+    "text": "LoadmoreText",
+    "loading-icon": "boolean",
+    "loading-icon-mode": [
+      "circle",
+      "flower",
+      "semicircle"
+    ],
+    "loading-text": "boolean"
+  },
+  "events": [
+    "click"
+  ],
+  "example": "<script lang=\"ts\" setup>\nimport { ref } from 'vue'\nimport type { LoadmoreStatus } from '@tuniao/tnui-vue3-uniapp'\n\nconst loadmoreStatus = ref<LoadmoreStatus>('loadmore')\n</script>\n\n<template>\n  <TnLoadmore :status=\"loadmoreStatus\" />\n</template>"
+}

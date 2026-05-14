@@ -2,10 +2,13 @@ package com.kadmin.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.kadmin.common.Result;
+import com.kadmin.dto.MobileHomeMessageDTO;
 import com.kadmin.entity.AttClockRecord;
 import com.kadmin.entity.HrApplication;
+import com.kadmin.entity.SysNotice;
 import com.kadmin.mapper.AttClockRecordMapper;
 import com.kadmin.mapper.HrApplicationMapper;
+import com.kadmin.mapper.SysNoticeMapper;
 import com.kadmin.security.LoginUser;
 import com.kadmin.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +20,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,6 +36,7 @@ public class MobileHomeController {
 
     private final AttClockRecordMapper clockRecordMapper;
     private final HrApplicationMapper applicationMapper;
+    private final SysNoticeMapper noticeMapper;
 
     @GetMapping("/stats")
     public Result<Map<String, Object>> getStats() {
@@ -74,6 +81,141 @@ public class MobileHomeController {
         Long approvalCount = applicationMapper.selectMobilePendingCount(employeeId);
         stats.put("approvalCount", approvalCount != null ? approvalCount : 0);
 
+        Long noticeCount = noticeMapper.selectCount(new LambdaQueryWrapper<SysNotice>()
+                .eq(SysNotice::getStatus, 1));
+        stats.put("noticeCount", noticeCount != null ? noticeCount : 0);
+
         return Result.success(stats);
+    }
+
+    @GetMapping("/messages")
+    public Result<List<MobileHomeMessageDTO>> getMessages() {
+        Long employeeId = currentEmployeeId();
+        if (employeeId == null) {
+            return Result.error("请先登录");
+        }
+
+        List<MobileHomeMessageDTO> messages = new ArrayList<>();
+
+        Long approvalCount = applicationMapper.selectMobilePendingCount(employeeId);
+        if (approvalCount != null && approvalCount > 0) {
+            messages.add(MobileHomeMessageDTO.builder()
+                    .id("approval")
+                    .title("审批通知")
+                    .desc("你有 " + approvalCount + " 条待审批事项需要处理")
+                    .time("现在")
+                    .color("#4B98FE")
+                    .icon("menu-fill")
+                    .badge(formatBadge(approvalCount))
+                    .url("/homePages/approval")
+                    .type("approval")
+                    .build());
+        }
+
+        Long pendingCount = applicationMapper.selectCount(new LambdaQueryWrapper<HrApplication>()
+                .eq(HrApplication::getEmployeeId, employeeId)
+                .eq(HrApplication::getStatus, 0));
+        if (pendingCount != null && pendingCount > 0) {
+            messages.add(MobileHomeMessageDTO.builder()
+                    .id("pending")
+                    .title("待办提醒")
+                    .desc("你有 " + pendingCount + " 条申请正在处理中")
+                    .time("现在")
+                    .color("#00C8B0")
+                    .icon("flag-fill")
+                    .badge(formatBadge(pendingCount))
+                    .url("/homePages/pending")
+                    .type("pending")
+                    .build());
+        }
+
+        List<SysNotice> notices = noticeMapper.selectList(new LambdaQueryWrapper<SysNotice>()
+                .eq(SysNotice::getStatus, 1)
+                .orderByDesc(SysNotice::getPublishTime)
+                .orderByDesc(SysNotice::getCreatedTime)
+                .last("LIMIT 5"));
+        for (SysNotice notice : notices) {
+            boolean isNotify = notice.getNoticeType() != null && notice.getNoticeType() == 2;
+            messages.add(MobileHomeMessageDTO.builder()
+                    .id("notice-" + notice.getId())
+                    .title(notice.getNoticeTitle())
+                    .desc(stripHtml(notice.getNoticeContent()))
+                    .time(formatDate(notice.getPublishTime()))
+                    .color(isNotify ? "#4B98FE" : "#00C8B0")
+                    .icon(isNotify ? "notice-fill" : "image-text-fill")
+                    .url("/homePages/notice")
+                    .type("notice")
+                    .build());
+        }
+
+        List<HrApplication> applications = applicationMapper.selectList(new LambdaQueryWrapper<HrApplication>()
+                .eq(HrApplication::getEmployeeId, employeeId)
+                .in(HrApplication::getStatus, 1, 2)
+                .orderByDesc(HrApplication::getApproveTime)
+                .orderByDesc(HrApplication::getCreatedTime)
+                .last("LIMIT 3"));
+        for (HrApplication application : applications) {
+            messages.add(MobileHomeMessageDTO.builder()
+                    .id("application-" + application.getId())
+                    .title("申请结果")
+                    .desc((application.getTitle() != null ? application.getTitle() : "你的申请")
+                            + statusText(application.getStatus()))
+                    .time(formatTime(application.getApproveTime() != null
+                            ? application.getApproveTime()
+                            : application.getCreatedTime()))
+                    .color(application.getStatus() != null && application.getStatus() == 1 ? "#00C8B0" : "#FB6A67")
+                    .icon("ticket-fill")
+                    .url("/homePages/application")
+                    .type("application")
+                    .build());
+        }
+
+        return Result.success(messages);
+    }
+
+    private Long currentEmployeeId() {
+        LoginUser loginUser = SecurityUtils.getCurrentUser();
+        if (loginUser == null) {
+            return null;
+        }
+        return loginUser.getEmployeeId() != null ? loginUser.getEmployeeId() : loginUser.getUserId();
+    }
+
+    private String stripHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replaceAll("<[^>]+>", "").replace("&nbsp;", " ").trim();
+    }
+
+    private String formatBadge(Long value) {
+        if (value == null || value <= 0) {
+            return "";
+        }
+        return value > 99 ? "99+" : String.valueOf(value);
+    }
+
+    private String formatDate(LocalDate date) {
+        if (date == null) {
+            return "";
+        }
+        return date.format(DateTimeFormatter.ofPattern("MM-dd"));
+    }
+
+    private String formatTime(LocalDateTime time) {
+        if (time == null) {
+            return "";
+        }
+        return time.format(DateTimeFormatter.ofPattern("MM-dd HH:mm"));
+    }
+
+    private String statusText(Integer status) {
+        if (status != null && status == 1) {
+            return "已通过";
+        }
+        if (status != null && status == 2) {
+            return "已驳回";
+        }
+        return "状态已更新";
     }
 }

@@ -1,0 +1,42 @@
+{
+  "name": "tn-icon",
+  "description": "基于字体的图标集，图鸟将所有图标进行了统一化，重绘了大多数的常见图标。",
+  "props": {
+    "name": "String",
+    "type": [
+      "primary",
+      "success",
+      "warning",
+      "danger",
+      "info"
+    ],
+    "color": "String",
+    "size": "String | Number",
+    "bold": "boolean",
+    "transparent": "boolean",
+    "transparent-bg": "String",
+    "img-mode": [
+      "scaleToFill",
+      "aspectFit",
+      "aspectFill",
+      "widthFix",
+      "heightFix",
+      "top",
+      "bottom",
+      "center",
+      "left",
+      "right",
+      "top left",
+      "top right",
+      "bottom left",
+      "bottom right"
+    ],
+    "offset-top": "String | Number",
+    "custom-style": "Object",
+    "custom-class": "String"
+  },
+  "events": [
+    "click"
+  ],
+  "example": "<TnIcon name=\"logo-tuniao\" />"
+}

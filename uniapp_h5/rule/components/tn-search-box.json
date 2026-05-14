@@ -1,0 +1,43 @@
+{
+  "name": "tn-search-box",
+  "description": "该组件一般用于搜索输入的场景，提供了丰富的配置参数供用户自定义搜索框的样式",
+  "props": {
+    "v-model / model-value": "String",
+    "placeholder": "String",
+    "placeholder-icon": "String",
+    "shape": [
+      "round"
+    ],
+    "size": [
+      "sm",
+      "lg xl"
+    ],
+    "text-color": "String",
+    "placeholder-color": "String",
+    "text-align": [
+      "center",
+      "right"
+    ],
+    "border": "boolean",
+    "border-color": "String",
+    "focus": "boolean",
+    "disabled": "boolean",
+    "clearable": "boolean",
+    "search-button": "boolean",
+    "search-button-text": "String",
+    "search-button-text-color": "String",
+    "search-button-bg-color": "String",
+    "throllte": "boolean",
+    "throllte-time": "Number"
+  },
+  "events": [
+    "change",
+    "input",
+    "click",
+    "focus",
+    "blur",
+    "search",
+    "clear"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\n\r\nconst searchValue = ref('')\r\n\r\nconst searchInputEvent = (value: string) => {\r\n  // eslint-disable-next-line no-console\r\n  console.log('searchInputEvent', value)\r\n}\r\nconst searchBtnClickEvent = (value: string) => {\r\n  // eslint-disable-next-line no-console\r\n  console.log('searchBtnClickEvent', value)\r\n}\r\n</script>\r\n\r\n<template>\r\n  <TnSearchBox\r\n    v-model=\"searchValue\"\r\n    @input=\"searchInputEvent\"\r\n    @search=\"searchBtnClickEvent\"\r\n  />\r\n</template>"
+}

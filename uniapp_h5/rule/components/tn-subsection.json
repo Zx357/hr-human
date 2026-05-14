@@ -1,0 +1,24 @@
+{
+  "name": "tn-subsection",
+  "description": "该组件一般用于从多个选项中选择一个选项",
+  "props": {
+    "v-model / model-value": "Number",
+    "mode": [
+      "button"
+    ],
+    "size": [
+      "sm",
+      "lg",
+      "xl"
+    ],
+    "radius": "String",
+    "disabled": "boolean",
+    "active-color": "String",
+    "title": "String"
+  },
+  "events": [
+    "change",
+    "click"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\n\r\nconst subsectionValue = ref<number>(0)\r\n</script>\r\n\r\n<template>\r\n  <TnSubsection v-model=\"subsectionValue\">\r\n    <TnSubsectionItem title=\"全部\" />\r\n    <TnSubsectionItem title=\"待发货\" />\r\n    <TnSubsectionItem title=\"待收货\" />\r\n    <TnSubsectionItem title=\"待评价\" />\r\n    <TnSubsectionItem title=\"已完成\" />\r\n  </TnSubsection>\r\n</template>"
+}

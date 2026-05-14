@@ -1,0 +1,32 @@
+{
+  "name": "tn-picker",
+  "description": "Picker 选择器一般用于选择一项或者多项数据。",
+  "props": {
+    "model-value/v-model": "Array | String | Number",
+    "open/v-model:open": "boolean",
+    "data": "Array\\<string | number\\> | Array<Array<string | number>> | Array\\<object\\>",
+    "immediate-change": "boolean",
+    "allow-confirm-before-scroll-end": "boolean",
+    "indicator-height": "Number",
+    "label-key": "String",
+    "value-key": "String",
+    "children-key": "String",
+    "show-cancel": "boolean",
+    "cancel-text": "String",
+    "cancel-color": "String",
+    "show-confirm": "boolean",
+    "confirm-text": "String",
+    "confirm-color": "String",
+    "mask": "boolean",
+    "z-index": "Number"
+  },
+  "events": [
+    "change",
+    "confirm",
+    "cancel",
+    "close",
+    "pickstart",
+    "pickend"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\n\r\nconst openPicker = ref(false)\r\nconst pickerValue = ref('数值2')\r\n\r\nconst pickerData = ['数值1', '数值2', '数值3', '数值4', '数值5']\r\n</script>\r\n\r\n<template>\r\n  <TnPicker\r\n    v-model=\"pickerValue\"\r\n    v-model:open=\"openPicker\"\r\n    :data=\"pickerData\"\r\n  />\r\n</template>"
+}

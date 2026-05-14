@@ -1,0 +1,54 @@
+{
+  "name": "tn-avatar",
+  "description": "本组件用于展示头像和头像组的地方，如个人中心，访问用户列表等。",
+  "props": {
+    "url": "String",
+    "icon": "String",
+    "icon-config": "AvatarIconProps",
+    "size": "",
+    "shape": [
+      "circle",
+      "square"
+    ],
+    "type": "",
+    "img-mode": [
+      "scaleToFill",
+      "aspectFit",
+      "aspectFill",
+      "widthFix",
+      "heightFix",
+      "top",
+      "bottom",
+      "center",
+      "left",
+      "right",
+      "top left",
+      "top right",
+      "bottom left",
+      "bottom right"
+    ],
+    "bg-color": "",
+    "border": "boolean",
+    "border-bold": "boolean",
+    "border-color": "String",
+    "shadow": "boolean",
+    "shadow-color": "String",
+    "badge": "String | Number",
+    "badge-config": "AvatarBadgeProps",
+    "gap": "String | Number",
+    "color": "",
+    "bold": "",
+    "max": "",
+    "text-color": "",
+    "font-size": "",
+    "dot": "",
+    "absolute": "",
+    "absolute-position": "",
+    "absolute-center": ""
+  },
+  "events": [
+    "click",
+    "click"
+  ],
+  "example": "<TnAvatar url=\"https://tnuiimage.tnkjapp.com/logo/tuniao.png\" />"
+}

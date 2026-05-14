@@ -1,0 +1,30 @@
+{
+  "name": "tn-number-box",
+  "description": "该组件一般用于商城购物选择物品数量、购物车数量控制的场景",
+  "props": {
+    "model-value/v-model": "Number",
+    "size": [
+      "sm",
+      "lg"
+    ],
+    "width": "String | Number",
+    "height": "String | Number",
+    "font-size": "String | Number",
+    "bg-color": "String",
+    "text-color": "String",
+    "min": "Number",
+    "max": "Number",
+    "step": "Number",
+    "disabled": "boolean",
+    "input-disabled": "boolean",
+    "input-spacing": "Number",
+    "long-press": "boolean",
+    "long-press-interval": "Number",
+    "validate-event": "boolean"
+  },
+  "events": [
+    "change",
+    "input"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\nconst numberValue = ref<number>(0)\r\n</script>\r\n\r\n<template>\r\n  <TnNumberBox v-model=\"numberValue\" />\r\n  <!-- 禁止操作 -->\r\n  <TnNumberBox v-model=\"numberValue\" disabled />\r\n  <!-- 禁止输入框输入 -->\r\n  <TnNumberBox v-model=\"numberValue\" input-disabled />\r\n</template>"
+}

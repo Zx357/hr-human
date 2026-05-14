@@ -1,0 +1,16 @@
+{
+  "name": "tn-swipe-action",
+  "description": "该组件一般用于左滑呼出菜单，一般用于左滑显示删除按钮等场景。",
+  "props": {
+    "exclusive": "boolean",
+    "auto-close": "boolean",
+    "options": "SwipeActionItemOption",
+    "disabled": "boolean",
+    "threshold": "Number"
+  },
+  "events": [
+    "open",
+    "select"
+  ],
+  "example": "<template>\r\n  <TnSwipeAction>\r\n    <TnSwipeActionItem :options=\"options\" disabled>\r\n      <view class=\"swipe-action-item-demo tn-flex-center\"> 图鸟UI </view>\r\n    </TnSwipeActionItem>\r\n  </TnSwipeAction>\r\n</template>"
+}

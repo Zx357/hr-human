@@ -1,0 +1,26 @@
+{
+  "name": "tn-loading",
+  "description": "此组件是一个加载动画的图标",
+  "props": {
+    "show": "boolean",
+    "animation": "boolean",
+    "mode": [
+      "circle",
+      "flower",
+      "semicircle"
+    ],
+    "type": [
+      "primary",
+      "success",
+      "warning",
+      "danger",
+      "info"
+    ],
+    "color": "String",
+    "size": "String | Number",
+    "duration": "String | Number",
+    "time-function": "String"
+  },
+  "events": [],
+  "example": "<TnLoading show type=\"primary\" />\n<TnLoading show type=\"success\" />\n<TnLoading show type=\"warning\" />\n<TnLoading show type=\"danger\" />\n<TnLoading show type=\"info\" />"
+}

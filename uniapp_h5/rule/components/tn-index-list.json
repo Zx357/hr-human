@@ -1,0 +1,21 @@
+{
+  "name": "tn-index-list",
+  "description": "索引列表用于展示带有索引的列表信息，例如用户列表等",
+  "props": {
+    "data": "IndexListData",
+    "height": "Number",
+    "sticky-offset-top": "Number",
+    "title-bg-color": "String",
+    "title-color": "String",
+    "title-size": [
+      "sm",
+      "lg",
+      "xl"
+    ],
+    "show-keys-list": "boolean"
+  },
+  "events": [
+    "click"
+  ],
+  "example": "<template>\n  <TnIndexList :data=\"listData\" :height=\"500\">\n    <template #default=\"{ data }\">\n      <view class=\"list-data\">\n        <image class=\"image\" :src=\"data.avatar\" mode=\"aspectFill\" />\n        <view class=\"info\">\n          <view class=\"username\">{{ data.username }}</view>\n          <view class=\"office tn-gray_text\">{{ data.office }}</view>\n        </view>\n      </view>\n    </template>\n  </TnIndexList>\n</template>"
+}

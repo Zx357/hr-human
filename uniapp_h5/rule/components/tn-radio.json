@@ -1,0 +1,25 @@
+{
+  "name": "tn-radio",
+  "description": "单选框一般用于在多个备选项中进行单选，如性别选择等。",
+  "props": {
+    "model-value/v-model": "boolean",
+    "label": "boolean",
+    "size": [
+      "sm",
+      "lg"
+    ],
+    "disabled": "boolean",
+    "label-disabled": "boolean",
+    "border": "boolean",
+    "active-color": "String",
+    "custom-style": "CSSProperties",
+    "custom-class": "String",
+    "wrap": "boolean",
+    "validate-event": "boolean"
+  },
+  "events": [
+    "change",
+    "change"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\nconst selectValue = ref('')\r\n</script>\r\n\r\n<template>\r\n  <TnRadio v-model=\"selectValue\" label=\"男\">男</TnRadio>\r\n</template>"
+}

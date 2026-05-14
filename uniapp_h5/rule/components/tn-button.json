@@ -1,0 +1,70 @@
+{
+  "name": "tn-button",
+  "description": "该组件内部实现以 uni-app 的`button`组件为基础，对其进行了扩展，使其能够在 uni-app 的各个平台上表现一致。",
+  "props": {
+    "width": "String | Number",
+    "height": "String | Number",
+    "size": [
+      "sm",
+      "lg",
+      "xl"
+    ],
+    "shape": [
+      "circle",
+      "round"
+    ],
+    "type": [
+      "primary",
+      "success",
+      "warning",
+      "danger",
+      "info"
+    ],
+    "text": "boolean",
+    "plain": "boolean",
+    "icon": "String",
+    "bold": "boolean",
+    "font-size": "String",
+    "bg-color": "String",
+    "text-color": "String",
+    "border-bold": "boolean",
+    "border-color": "String",
+    "shadow": "boolean",
+    "shadow-color": "String",
+    "hover-class": "String",
+    "custom-style": "CSSProperties",
+    "custom-class": "String",
+    "disabled": "boolean",
+    "loading": "boolean",
+    "only-button": "boolean",
+    "debounce": "boolean",
+    "click-modifiers": [
+      "stop"
+    ],
+    "form-type": [
+      "submit",
+      "reset"
+    ],
+    "open-type": "String",
+    "app-parameter": "String",
+    "session-from": "String",
+    "send-message-title": "String",
+    "send-message-path": "String",
+    "send-message-img": "String",
+    "show-message-card": "boolean",
+    "phone-number-no-quota-toast": "boolean"
+  },
+  "events": [
+    "click",
+    "getphonenumber",
+    "getrealtimephonenumber",
+    "opensetting",
+    "getuserinfo",
+    "chooseavatar",
+    "agreeprivacyauthorization",
+    "launchapp",
+    "contact",
+    "error"
+  ],
+  "example": "<TnButton>按钮</TnButton>"
+}

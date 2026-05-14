@@ -1,0 +1,14 @@
+{
+  "name": "tn-overlay",
+  "description": "Overlay遮罩层一般用于强调某个元素或者组件，或者用于遮罩整个页面，一般用于弹窗场景。",
+  "props": {
+    "show/v-model:show": "boolean",
+    "duration": "Number",
+    "opacity": "Number",
+    "z-index": "Number"
+  },
+  "events": [
+    "click"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\n\r\nconst showOverlay = ref<boolean>(false)\r\n</script>\r\n\r\n<template>\r\n  <TnOverlay v-model:show=\"showOverlay\" />\r\n  <TnOverlay :show=\"showOverlay\" />\r\n</template>"
+}

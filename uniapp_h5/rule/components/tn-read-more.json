@@ -1,0 +1,20 @@
+{
+  "name": "tn-read-more",
+  "description": "阅读更多组件一般用于收起长文本，点击展开全文。",
+  "props": {
+    "expand": "boolean",
+    "height": "Number",
+    "show-fold": "boolean",
+    "expand-text": "String",
+    "expand-icon": "String",
+    "fold-text": "String",
+    "fold-icon": "String",
+    "tip-color": "String",
+    "before-expand": "boolean"
+  },
+  "events": [
+    "expand",
+    "fold"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nconst content = `噫吁嚱，危乎高哉！\r\n  蜀道之难，难于上青天！\r\n  蚕丛及鱼凫，开国何茫然！\r\n  尔来四万八千岁，不与秦塞通人烟。\r\n  西当太白有鸟道，可以横绝峨眉巅。\r\n  地崩山摧壮士死，然后天梯石栈相钩连。\r\n  上有六龙回日之高标，下有冲波逆折之回川。\r\n  黄鹤之飞尚不得过，猿猱欲度愁攀援。\r\n  青泥何盘盘，百步九折萦岩峦。\r\n  扪参历井仰胁息，以手抚膺坐长叹。\r\n\r\n  问君西游何时还？畏途巉岩不可攀。\r\n  但见悲鸟号古木，雄飞雌从绕林间。\r\n  又闻子规啼夜月，愁空山。\r\n  蜀道之难，难于上青天，使人听此凋朱颜！\r\n  连峰去天不盈尺，枯松倒挂倚绝壁。\r\n  飞湍瀑流争喧豗，砯崖转石万壑雷。\r\n  其险也如此，嗟尔远道之人胡为乎来哉！(也如此 一作：也若此)\r\n\r\n  剑阁峥嵘而崔嵬，一夫当关，万夫莫开。\r\n  所守或匪亲，化为狼与豺。\r\n  朝避猛虎，夕避长蛇，磨牙吮血，杀人如麻。\r\n  锦城虽云乐，不如早还家。\r\n  蜀道之难，难于上青天，侧身西望长咨嗟！`\r\n</script>\r\n\r\n<template>\r\n  <TnReadMore>\r\n    <rich-text :nodes=\"content\" />\r\n  </TnReadMore>\r\n</template>"
+}

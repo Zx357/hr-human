@@ -1,0 +1,14 @@
+{
+  "name": "tn-count-scroll",
+  "description": "该组件一般用于数字的变化，比如用户的积分、余额等，通过数字的变化，给用户明确的数值感受，提示用户进行某一个行为操作",
+  "props": {
+    "value": "String | Number",
+    "text-color": "String",
+    "font-size": "String",
+    "decimal-separator": "String",
+    "thousands-separator": "String",
+    "duration": "Number"
+  },
+  "events": [],
+  "example": "<template>\n  <TnCountScroll value=\"7865.23\" />\n</template>"
+}

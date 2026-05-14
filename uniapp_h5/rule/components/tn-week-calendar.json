@@ -1,0 +1,19 @@
+{
+  "name": "tn-week-calendar",
+  "description": "此组件用于选择一个星期日期，一般用于标识该用户当天是否已经签到。",
+  "props": {
+    "model-value/v-model": "Number",
+    "min-date": "String ｜ Number",
+    "max-date": "String ｜ Number",
+    "active-bg-color": "String",
+    "actice-text-color": "String",
+    "year": "String | Number",
+    "month": "String | Number",
+    "custom-data": "`Array<WeekCalendarCustomData>`"
+  },
+  "events": [
+    "change",
+    "week-year"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\n\r\nconst selectDate = ref<number>(12)\r\n</script>\r\n\r\n<template>\r\n  <TnWeekCalendar v-model=\"selectDate\" />\r\n</template>"
+}

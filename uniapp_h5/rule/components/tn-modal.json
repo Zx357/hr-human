@@ -1,0 +1,9 @@
+{
+  "name": "tn-modal",
+  "description": "Modal 模态框一般用于弹出提示信息，让用户确认下一步的操作或者提示用户操作结果。",
+  "props": {
+    "z-index": "Number"
+  },
+  "events": [],
+  "example": ""
+}

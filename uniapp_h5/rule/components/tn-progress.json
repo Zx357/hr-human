@@ -1,0 +1,18 @@
+{
+  "name": "tn-progress",
+  "description": "Progress 进度条一般用于展示数据的场景。",
+  "props": {
+    "percent": "Number",
+    "active-color": "String",
+    "inactive-color": "String",
+    "show-percent": "boolean",
+    "duration": "Number",
+    "height": "String | Number",
+    "stripe": "boolean",
+    "stripe-animated": "boolean",
+    "radius": "Number",
+    "ring-width": "Number"
+  },
+  "events": [],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\n\r\nconst progressPercent = ref(30)\r\n</script>\r\n\r\n<template>\r\n  <TnLineProgress :percent=\"progressPercent\" />\r\n</template>"
+}

@@ -1,0 +1,31 @@
+{
+  "name": "tn-notice-bar",
+  "description": "该组件一般用于展示通知信息。",
+  "props": {
+    "show": "boolean",
+    "data": "String[]",
+    "bg-color": "String",
+    "text-color": "String",
+    "font-size": "String",
+    "left-icon": "String",
+    "left-icon-color": "String",
+    "left-icon-size": "String",
+    "right-icon": "String",
+    "right-icon-color": "String",
+    "right-icon-size": "String",
+    "pause": "boolean",
+    "auto-play": "boolean",
+    "direction": [
+      "vertical"
+    ],
+    "loop": "boolean",
+    "speed": "Number",
+    "auto-hide": "boolean"
+  },
+  "events": [
+    "click",
+    "left-icon-click",
+    "right-icon-click"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nconst noticeData = [\r\n  'TuniaoUI For Vue3 UNIAPP版本全新发布 2023-05-17',\r\n  '新版本提供了cli的方式进行初始化项目',\r\n  '新版本能更好的与VSCode进行结合',\r\n  '图鸟承接小程序、web、UI设计等业务, 欢迎咨询',\r\n]\r\n</script>\r\n\r\n<template>\r\n  <TnNoticeBar :data=\"noticeData\" />\r\n</template>"
+}

@@ -89,7 +89,8 @@ public class AuthService {
         }
 
         // 检查员工状态（1-在职）
-        if (employee.getStatus() != 1) {
+        Integer employeeStatus = employee.getStatus();
+        if (employeeStatus != null && employeeStatus != 1) {
             throw new BusinessException("该员工已离职，无法登录");
         }
 

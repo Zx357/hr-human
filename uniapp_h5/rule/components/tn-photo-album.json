@@ -1,0 +1,31 @@
+{
+  "name": "tn-photo-album",
+  "description": "该组件一般用户展示图片列表",
+  "props": {
+    "data": "Array\\<string\\>",
+    "max": "Number",
+    "column": "Number",
+    "img-mode": [
+      "scaleToFill",
+      "aspectFit",
+      "aspectFit",
+      "widthFix",
+      "heightFix",
+      "top",
+      "bottom",
+      "center",
+      "left",
+      "right",
+      "top left",
+      "top right",
+      "bottom left",
+      "bottom right"
+    ],
+    "lazy-load": "boolean",
+    "preview": "boolean"
+  },
+  "events": [
+    "click"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nconst imageData = [\r\n  'https://tnuiimage.tnkjapp.com/swiper/ad1.jpg',\r\n  'https://tnuiimage.tnkjapp.com/swiper/ad2.jpg',\r\n  'https://tnuiimage.tnkjapp.com/swiper/ad3.jpg',\r\n  'https://tnuiimage.tnkjapp.com/swiper/ad4.jpg',\r\n  'https://tnuiimage.tnkjapp.com/swiper/ad5.jpg',\r\n]\r\n</script>\r\n\r\n<template>\r\n  <TnPhotoAlbum :data=\"imageData\" />\r\n</template>"
+}

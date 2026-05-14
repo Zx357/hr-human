@@ -1,0 +1,23 @@
+{
+  "name": "tn-region-picker",
+  "description": "RegionPicker 地区选择器一般用于选择选择地区的情况。",
+  "props": {
+    "model-value/v-model": "String[]",
+    "open/v-model:open": "boolean",
+    "show-cancel": "boolean",
+    "cancel-text": "String",
+    "cancel-color": "String",
+    "show-confirm": "boolean",
+    "confirm-text": "String",
+    "confirm-color": "String",
+    "mask": "boolean",
+    "z-index": "Number"
+  },
+  "events": [
+    "change",
+    "confirm",
+    "cancel",
+    "close"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\n\r\nconst openRegionPicker = ref(false)\r\nconst regionValue = ref<string[]>([])\r\n</script>\r\n\r\n<template>\r\n  <TnRegionPicker v-model=\"regionValue\" v-model:open=\"openRegionPicker\" />\r\n</template>"
+}

@@ -1,0 +1,35 @@
+{
+  "name": "tn-date-time-picker",
+  "description": "DateTimePicker 日期时间选择器一般用于选择选择日期时间的情况。",
+  "props": {
+    "model-value/v-model": "String",
+    "open/v-model:open": "boolean",
+    "mode": [
+      "year",
+      "yearmonth",
+      "datetime",
+      "time",
+      "datetimeNoSecond",
+      "timeNoSecond"
+    ],
+    "min-time": "String",
+    "max-time": "String",
+    "init-current-date-time": "boolean",
+    "format": "String",
+    "show-cancel": "boolean",
+    "cancel-text": "String",
+    "cancel-color": "String",
+    "show-confirm": "boolean",
+    "confirm-text": "String",
+    "confirm-color": "String",
+    "mask": "boolean",
+    "z-index": "Number"
+  },
+  "events": [
+    "change",
+    "confirm",
+    "cancel",
+    "close"
+  ],
+  "example": "<script lang=\"ts\" setup>\nimport { ref } from 'vue'\n\nconst openDateTimePicker = ref(false)\nconst dateTimeValue = ref('')\n</script>\n\n<template>\n  <TnDateTimePicker v-model=\"dateTimeValue\" v-model:open=\"openDateTimePicker\" />\n</template>"
+}

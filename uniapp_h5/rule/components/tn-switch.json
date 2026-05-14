@@ -1,0 +1,33 @@
+{
+  "name": "tn-switch",
+  "description": "Switch 开关一般用于状态的打开和关闭之间进行切换",
+  "props": {
+    "model-value/v-model": "boolean",
+    "shape": [
+      "square"
+    ],
+    "size": [
+      "sm",
+      "lg"
+    ],
+    "width": "String | Number",
+    "disabled": "boolean",
+    "loading": "boolean",
+    "inactive-color": "String",
+    "active-color": "String",
+    "inactive-text": "String",
+    "active-text": "String",
+    "inactive-icon": "String",
+    "active-icon": "String",
+    "inactive-value": "boolean",
+    "active-value": "boolean",
+    "custom-style": "CSSProperties",
+    "custom-class": "String",
+    "validate-event": "boolean",
+    "before-change": "boolean"
+  },
+  "events": [
+    "change"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\n\r\nconst selectValue = ref<boolean>(false)\r\n</script>\r\n\r\n<template>\r\n  <TnSwitch v-model=\"selectValue\" />\r\n  <TnSwitch v-model=\"selectValue\" disabled />\r\n  <TnSwitch v-model=\"selectValue\" loading />\r\n</template>"
+}

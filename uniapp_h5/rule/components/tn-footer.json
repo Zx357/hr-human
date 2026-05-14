@@ -1,0 +1,22 @@
+{
+  "name": "tn-footer",
+  "description": "改组件一般用于放在页面或者内容的最底部，用于展示版权信息等",
+  "props": {
+    "content": "String",
+    "navigator": "FooterNavigatorData",
+    "size": "String",
+    "text-color": "String",
+    "navigator-text-color": "String",
+    "offset-bottom": "String",
+    "fixed": "boolean",
+    "fixed-mode": [
+      "page"
+    ],
+    "safe-area-inset-bottom": "boolean"
+  },
+  "events": [
+    "click",
+    "navigator-click"
+  ],
+  "example": "<script lang=\"ts\" setup>\nimport type { FooterNavigatorData } from '@tuniao/tnui-vue3-uniapp'\n\nconst footerNavigator: FooterNavigatorData = [\n  { title: '回到首页', url: '/pages/index/index' },\n  { title: '关于图鸟', url: '/pages/about/index' },\n]\n</script>\n\n<template>\n  <TnFooter content=\"Copyright © 2023 图鸟科技\" :navigator=\"footerNavigator\" />\n</template>"
+}

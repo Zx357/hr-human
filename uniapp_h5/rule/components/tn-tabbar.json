@@ -1,0 +1,39 @@
+{
+  "name": "tn-tabbar",
+  "description": "该组件一般用于自定义底部导航栏",
+  "props": {
+    "v-model/model-value": "String | Number",
+    "height": "String",
+    "bulge-max-size": "Number",
+    "bulge-size-percent": "Number",
+    "bg-color": "String",
+    "frosted": "boolean",
+    "inactive-color": "String",
+    "active-color": "String",
+    "icon-size": "String",
+    "font-size": "String",
+    "top-shadow": "boolean",
+    "switch-animation": "boolean",
+    "fixed": "boolean",
+    "safe-area-inset-bottom": "boolean",
+    "placeholder": "boolean",
+    "before-switch": "boolean",
+    "z-index": "Number",
+    "hidden-fixed-tabbar": "boolean",
+    "name": "String | Number",
+    "icon": "String",
+    "active-icon": "String",
+    "text": "String",
+    "bulge": "boolean",
+    "bulge-bg-color": "String",
+    "bulge-text-color": "String",
+    "badge": "String | Number",
+    "badge-config": "TabbarItemBadgeConfig",
+    "disabled": "boolean"
+  },
+  "events": [
+    "change",
+    "click"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\n\r\nconst currentTabbar = ref(0)\r\n\r\n// 导航栏数据\r\nconst tabbarData = [\r\n  {\r\n    name: '首页',\r\n    icon: 'home',\r\n    activeIcon: 'home-fill',\r\n  },\r\n  {\r\n    name: '爱好',\r\n    icon: 'like',\r\n    activeIcon: 'like-fill',\r\n  },\r\n  {\r\n    name: '积分',\r\n    icon: 'shop',\r\n    activeIcon: 'shop-fill',\r\n  },\r\n  {\r\n    name: '热谤',\r\n    icon: 'fire',\r\n    activeIcon: 'fire-fill',\r\n  },\r\n  {\r\n    name: '我的',\r\n    icon: 'my-circle',\r\n    activeIcon: 'my-circle-fill',\r\n  },\r\n]\r\n</script>\r\n\r\n<template>\r\n  <TnTabbar v-model=\"currentTabbar\" fixed>\r\n    <TnTabbarItem\r\n      v-for=\"(item, index) in tabbarData\"\r\n      :key=\"index\"\r\n      :icon=\"item.icon\"\r\n      :active-icon=\"item.activeIcon\"\r\n      :text=\"item.name\"\r\n    />\r\n  </TnTabbar>\r\n</template>"
+}

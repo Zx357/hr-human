@@ -1,0 +1,32 @@
+{
+  "name": "tn-swiper",
+  "description": "该组件用于展示轮播信息",
+  "props": {
+    "v-model/model-value": "Number",
+    "data": "Array\\<any\\>",
+    "blank-count": "Number",
+    "width": "String",
+    "height": "String",
+    "autoplay": "boolean",
+    "interval": "Number",
+    "duration": "Number",
+    "loop": "boolean",
+    "previous-margin": "String",
+    "next-margin": "String",
+    "indicator": "boolean",
+    "indicator-position": [
+      "left-top | center-top | right-top | left-bottom | center-bottom | right-bottom"
+    ],
+    "indicator-type": [
+      "line"
+    ],
+    "indicator-bg-color": "String",
+    "indicator-active-bg-color": "String",
+    "indicator-text-color": "String"
+  },
+  "events": [
+    "change",
+    "item-click"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\n\r\nconst currentSwiperIndex = ref(0)\r\n\r\n// 轮播图数据\r\nconst swiperData = [\r\n  'https://resource.tuniaokj.com/images/xiongjie/x14.jpg',\r\n  'https://resource.tuniaokj.com/images/xiongjie/xiong-3d-2.jpg',\r\n  'https://resource.tuniaokj.com/images/xiongjie/xiong-3d-new.jpg',\r\n  'https://resource.tuniaokj.com/images/xiongjie/xiong-3d-new1.png',\r\n  'https://resource.tuniaokj.com/images/xiongjie/xiong-3d.jpg',\r\n]\r\n</script>\r\n\r\n<template>\r\n  <TnSwiper\r\n    v-model=\"currentSwiperIndex\"\r\n    :data=\"swiperData\"\r\n    width=\"100%\"\r\n    height=\"420\"\r\n  >\r\n    <template #default=\"{ data }\">\r\n      <view class=\"swiper-data\">\r\n        <image class=\"image\" :src=\"data\" mode=\"aspectFill\" />\r\n      </view>\r\n    </template>\r\n  </TnSwiper>\r\n</template>\r\n\r\n<style lang=\"scss\">\r\n.swiper-container {\r\n  width: 100%;\r\n  height: 420rpx;\r\n\r\n  .swiper-data {\r\n    width: 100%;\r\n    height: 100%;\r\n    border-radius: 30rpx;\r\n\r\n    .image {\r\n      width: 100%;\r\n      height: 100%;\r\n      border-radius: inherit;\r\n    }\r\n  }\r\n}\r\n</style>"
+}

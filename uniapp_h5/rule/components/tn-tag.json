@@ -1,0 +1,38 @@
+{
+  "name": "tn-tag",
+  "description": "tag 组件一般用于标记和选择",
+  "props": {
+    "width": "String | Number",
+    "height": "String | Number",
+    "size": [
+      "sm",
+      "lg",
+      "xl"
+    ],
+    "shape": [
+      "circle",
+      "round",
+      "text"
+    ],
+    "type": [
+      "primary",
+      "success",
+      "warning",
+      "danger",
+      "info"
+    ],
+    "bold": "boolean",
+    "font-size": "String",
+    "bg-color": "String",
+    "text-color": "String",
+    "border": "boolean",
+    "border-bold": "boolean",
+    "border-color": "String",
+    "custom-style": "CSSProperties",
+    "custom-class": "String"
+  },
+  "events": [
+    "click"
+  ],
+  "example": "<TnTag>标签</TnTag>"
+}

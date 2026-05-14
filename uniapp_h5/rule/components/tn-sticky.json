@@ -1,0 +1,13 @@
+{
+  "name": "tn-sticky",
+  "description": "该组件与`CSS`中`position: sticky`属性实现的效果一致，当组件达到预设的到顶部距离时， 就会固定在指定位置，组件位置大于预设的顶部距离时，会重新按照正常的布局排列。",
+  "props": {
+    "enabled": "boolean",
+    "offset-top": "Number",
+    "z-index": "Number"
+  },
+  "events": [
+    "change"
+  ],
+  "example": "<template>\r\n  <view>\r\n    <!-- 建议放的位置 -->\r\n    <TnSticky> ... </TnSticky>\r\n    <view class=\"inner\">\r\n      <!-- 不建议存放的位置 -->\r\n      <TnSticky> ... </TnSticky>\r\n    </view>\r\n  </view>\r\n</template>"
+}

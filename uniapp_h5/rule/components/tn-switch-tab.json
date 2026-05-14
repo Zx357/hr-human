@@ -1,0 +1,17 @@
+{
+  "name": "tn-switch-tab",
+  "description": "该组件用于点击选项之后切换显示不同的内容",
+  "props": {
+    "v-model/model-value": "Number",
+    "tabs": "String[]",
+    "disabled": "boolean",
+    "inactive-bg-color": "String",
+    "active-bg-color": "String",
+    "inactive-text-color": "String",
+    "active-text-color": "String"
+  },
+  "events": [
+    "change"
+  ],
+  "example": "<setup lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\n\r\n// 当前选中的标签索引\r\nconst currentTabIndex = ref(0)\r\n\r\nconst tabs = ['标签1', '标签2']\r\n</setup>\r\n\r\n<template>\r\n  <TnSwitchTab v-model=\"currentTabIndex\" :tabs=\"tabs\">\r\n    <view v-if=\"currentTabIndex === 0\" class=\"tn-p\">content1</view>\r\n    <view v-if=\"currentTabIndex === 1\" class=\"tn-p\">content2</view>\r\n    <view v-if=\"currentTabIndex === 2\" class=\"tn-p\">content3</view>\r\n  </TnSwitchTab>\r\n</template>"
+}

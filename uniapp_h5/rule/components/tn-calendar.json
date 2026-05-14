@@ -1,0 +1,28 @@
+{
+  "name": "tn-calendar",
+  "description": "此组件用于选择日期，可以选择单个日期、多个日期、日期区间。可以配合`TnPopup`组件一起使用实现从底部弹出的日历选择器。",
+  "props": {
+    "model-value/v-model": "String | Array\\<String\\>",
+    "mode": [
+      "multi",
+      "range"
+    ],
+    "min-date": "String",
+    "max-date": "String",
+    "active-bg-color": "String",
+    "active-text-color": "String",
+    "range-bg-color": "String",
+    "range-text-color": "String",
+    "allow-change-year": "boolean",
+    "allow-change-month": "boolean",
+    "show-lunar": "boolean",
+    "range-start-desc": "String",
+    "range-end-desc": "String"
+  },
+  "events": [
+    "change",
+    "change-year",
+    "change-month"
+  ],
+  "example": "<script lang=\"ts\" setup>\nimport { ref } from 'vue'\n\nconst selectDate = ref('')\n</script>\n\n<template>\n  <TnCalendar v-model=\"selectDate\" />\n</template>"
+}

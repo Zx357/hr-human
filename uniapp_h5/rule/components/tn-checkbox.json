@@ -1,0 +1,33 @@
+{
+  "name": "tn-checkbox",
+  "description": "复选框一般用于表示多个选项中的一个或多个状态。例如，一个任务清单的每一项都可以是未完成的，也可以是已完成的。",
+  "props": {
+    "model-value/v-model": "Array<String |Number>",
+    "label": "String |Number",
+    "indeterminate": "boolean",
+    "active-value": "boolean",
+    "inactive-value": "boolean",
+    "size": [
+      "sm",
+      "lg"
+    ],
+    "checked-shape": [
+      "circle"
+    ],
+    "disabled": "boolean",
+    "label-disabled": "boolean",
+    "border": "boolean",
+    "active-color": "String",
+    "custom-style": "CSSProperties",
+    "custom-class": "String",
+    "validate-event": "boolean",
+    "min": "Number",
+    "max": "Number",
+    "wrap": "boolean"
+  },
+  "events": [
+    "change",
+    "change"
+  ],
+  "example": "<script lang=\"ts\" setup>\nimport { ref } from 'vue'\nconst agent = ref(false)\n</script>\n\n<template>\n  <TnCheckbox v-model=\"agent\">同意协议</TnCheckbox>\n</template>"
+}

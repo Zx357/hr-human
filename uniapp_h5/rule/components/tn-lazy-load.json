@@ -1,0 +1,32 @@
+{
+  "name": "tn-lazy-load",
+  "description": "懒加载可以将页面上的图片延迟加载，减少页面的加载时间，提升用户体验",
+  "props": {
+    "src": "String",
+    "height": "String",
+    "width": "String",
+    "mode": [
+      "scaleToFill",
+      "aspectFit",
+      "aspectFit",
+      "widthFix",
+      "heightFix",
+      "top",
+      "bottom",
+      "center",
+      "left",
+      "right",
+      "top left",
+      "top right",
+      "bottom left",
+      "bottom right"
+    ],
+    "threshold": "Number",
+    "transition": "boolean"
+  },
+  "events": [
+    "loaded",
+    "error"
+  ],
+  "example": "<template>\n  <view class=\"demo-container\">\n    <view v-for=\"i in 30\" :key=\"i\" class=\"demo-image-container\">\n      <TnLazyLoad\n        src=\"https://tnuiimage.tnkjapp.com/uniapp_market/circle/3-image.jpg\"\n      />\n    </view>\n  </view>\n</template>"
+}

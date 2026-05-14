@@ -1,0 +1,27 @@
+{
+  "name": "tn-rate",
+  "description": "评分组件一般用户设置评分，如评价等。",
+  "props": {
+    "model-value/v-model": "Number",
+    "min": "Number",
+    "max": "Number",
+    "allow-half": "boolean",
+    "readonly": "boolean",
+    "size": [
+      "sm",
+      "lg",
+      "xl"
+    ],
+    "inactive-icon": "String",
+    "active-icon": "String",
+    "inactive-color": "String",
+    "active-color": "String",
+    "gutter": "String",
+    "custom-data": "RateCustomDataMap",
+    "validate-event": "boolean"
+  },
+  "events": [
+    "change"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\nconst rateValue = ref(0)\r\n</script>\r\n\r\n<template>\r\n  <TnRate v-model=\"rateValue\" />\r\n</template>"
+}

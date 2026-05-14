@@ -1,0 +1,24 @@
+{
+  "name": "tn-notify",
+  "description": "Notify 消息通知一般用于让用户知道操作结果。",
+  "props": {
+    "z-index": "Number",
+    "offset-top": "Number",
+    "msg": "String",
+    "type": [
+      "success",
+      "warning",
+      "danger",
+      "info"
+    ],
+    "position": [
+      "center",
+      "bottom"
+    ],
+    "bgColor": "String",
+    "textColor": "String",
+    "duration": "Number"
+  },
+  "events": [],
+  "example": "<template>\r\n  <TnNotify ref=\"notifyRef\" :offset-top=\"80\" />\r\n</template>"
+}

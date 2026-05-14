@@ -1,0 +1,522 @@
+{
+  "easycom": {
+  		"custom": {
+  			"^tn-(.*)-(item|group)$": "@/uni_modules/tuniaoui-vue3/components/$1/src/$1-$2.vue",
+  			"^tn-(.*)": "@/uni_modules/tuniaoui-vue3/components/$1/src/$1.vue"
+  		}
+  	},
+	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+		{
+		  "path": "pages/login",
+		  "style": {
+		    "navigationStyle": "custom",
+		    "navigationBarTitleText": "登录",
+		    "enablePullDownRefresh": false,
+		    "mp-weixin": {
+		      "disableScroll": true
+		    },
+		    "app-plus": {
+		      "bounce": "none"
+		    }
+		  }
+		},
+		{
+		  "path": "pages/index",
+		  "style": {
+		    "mp-weixin": {
+		      "disableScroll": true
+		    },
+		    "app-plus": {
+		      "bounce": "none"
+		    },
+		    "mp-alipay": {
+		      "allowsBounceVertical": "NO"
+		    },
+		    "mp-baidu": {
+		      "disableScroll": true
+		    }
+		  }
+		}
+	],
+	"subPackages": [{
+	  "root":"homePages",
+	  "pages": [{
+	      "path": "search",
+	      "style": {
+	      "navigationBarTitleText": "全局搜索",
+	      "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "about",
+	      "style": {
+	        "navigationBarTitleText": "图鸟品牌",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "chat",
+	      "style": {
+	        "navigationBarTitleText": "沟通交流",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "pending",
+	      "style": {
+	        "navigationBarTitleText": "待办事项",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "notice",
+	      "style": {
+	        "navigationBarTitleText": "系统公告",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "approval",
+	      "style": {
+	        "navigationBarTitleText": "审批进程",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "approval-details",
+	      "style": {
+	        "navigationBarTitleText": "审批详情",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "article",
+	      "style": {
+	        "navigationBarTitleText": "行业资讯",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "application",
+	      "style": {
+	        "navigationBarTitleText": "应用消息",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "certification",
+	      "style": {
+	        "navigationBarTitleText": "企业认证",
+	        "enablePullDownRefresh": false
+	      }
+	    }]
+	}, {
+	  "root":"momentPages",
+	  "pages": [{
+	      "path": "message",
+	      "style": {
+	        "navigationBarTitleText": "互动消息",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "edit",
+	      "style": {
+	        "navigationBarTitleText": "发布内容",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "blogger",
+	      "style": {
+	        "navigationBarTitleText": "个人主页",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "blogger_other",
+	      "style": {
+	        "navigationBarTitleText": "Ta的主页",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "details",
+	      "style": {
+	        "navigationBarTitleText": "发布详情",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "advertise",
+	      "style": {
+	        "navigationBarTitleText": "积分兑换",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "institute",
+	      "style": {
+	        "navigationBarTitleText": "商研学院",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "dictionary",
+	      "style": {
+	        "navigationBarTitleText": "每日词条",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "catalog",
+	      "style": {
+	        "navigationBarTitleText": "词条目录",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "blend",
+	      "style": {
+	        "navigationBarTitleText": "新人融入",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "ocean",
+	      "style": {
+	        "navigationBarTitleText": "学海无涯",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "gift",
+	      "style": {
+	        "navigationBarTitleText": "积分兑换",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "convert",
+	      "style": {
+	        "navigationBarTitleText": "兑换结果",
+	        "enablePullDownRefresh": false
+	      }
+	    }]
+	}, {
+	  "root":"workPages",
+	  "pages": [{
+	      "path": "culture",
+	      "style": {
+	        "navigationBarTitleText": "企业文化",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "history",
+	      "style": {
+	        "navigationBarTitleText": "发展历程",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "photo",
+	      "style": {
+	        "navigationBarTitleText": "集体相册",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "video",
+	      "style": {
+	        "navigationBarTitleText": "宣传短片",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "honor",
+	      "style": {
+	        "navigationBarTitleText": "荣誉证书",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "map",
+	      "style": {
+	        "navigationBarTitleText": "公司地址",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "charts",
+	      "style": {
+	        "navigationBarTitleText": "统计图表",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "leave",
+	      "style": {
+	        "navigationBarTitleText": "请假申请",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "leave-record",
+	      "style": {
+	        "navigationBarTitleText": "请假记录",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "report",
+	      "style": {
+	        "navigationBarTitleText": "日月周报",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "time",
+	      "style": {
+	        "navigationBarTitleText": "考勤打卡",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "cost",
+	      "style": {
+	        "navigationBarTitleText": "费用报销",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "travel",
+	      "style": {
+	        "navigationBarTitleText": "出差申请",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "device",
+	      "style": {
+	        "navigationBarTitleText": "设备申请",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "overtime",
+	      "style": {
+	        "navigationBarTitleText": "加班申请",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "replace",
+	      "style": {
+	        "navigationBarTitleText": "补卡申请",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "resign",
+	      "style": {
+	        "navigationBarTitleText": "离职申请",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "exchange",
+	      "style": {
+	        "navigationBarTitleText": "换休申请",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "prompt",
+	      "style": {
+	        "navigationBarTitleText": "提交结果",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "details",
+	      "style": {
+	        "navigationBarTitleText": "工单详情",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "client",
+	      "style": {
+	        "navigationBarTitleText": "客户列表",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "portrait",
+	      "style": {
+	        "navigationBarTitleText": "客户画像",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "machine",
+	      "style": {
+	        "navigationBarTitleText": "仪器维护",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "questionnaire",
+	      "style": {
+	        "navigationBarTitleText": "问卷调查",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "question",
+	      "style": {
+	        "navigationBarTitleText": "问卷详情",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "apparatus",
+	      "style": {
+	        "navigationBarTitleText": "硬件管理",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "operate",
+	      "style": {
+	        "navigationBarTitleText": "硬件操作",
+	        "enablePullDownRefresh": false
+	      }
+	    }]
+	}, {
+	  "root":"partnerPages",
+	  "pages": [{
+	      "path": "group",
+	      "style": {
+	        "navigationBarTitleText": "我的群聊",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "user",
+	      "style": {
+	        "navigationBarTitleText": "用户信息",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "add",
+	      "style": {
+	        "navigationBarTitleText": "添加同事",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "create",
+	      "style": {
+	        "navigationBarTitleText": "发起群聊",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "apply",
+	      "style": {
+	        "navigationBarTitleText": "好友申请",
+	        "enablePullDownRefresh": false
+	      }
+	    }]
+	}, {
+	  "root":"minePages",
+	  "pages": [{
+	      "path": "file",
+	      "style": {
+	        "navigationBarTitleText": "文件助手",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "upload",
+	      "style": {
+	        "navigationBarTitleText": "文件上传",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "nav",
+	      "style": {
+	        "navigationBarTitleText": "快捷导航",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "public",
+	      "style": {
+	        "navigationBarTitleText": "系统公告",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "feedback",
+	      "style": {
+	        "navigationBarTitleText": "意见反馈",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "set",
+	      "style": {
+	        "navigationBarTitleText": "设置",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "help",
+	      "style": {
+	      "navigationBarTitleText": "帮助中心",
+	      "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "start",
+	      "style": {
+	        "navigationBarTitleText": "退出登录",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "login",
+	      "style": {
+	        "navigationBarTitleText": "登录注册",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "content",
+	      "style": {
+	      "navigationBarTitleText": "富文本",
+	      "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "navigation",
+	      "style": {
+	      "navigationBarTitleText": "所有页面",
+	      "enablePullDownRefresh": false
+	      }
+	    }
+	    ]
+	}],
+	"globalStyle": {
+	  "navigationStyle": "custom",
+	  "navigationBarTextStyle": "black",
+	  "navigationBarTitleText": "OA办公",
+	  "navigationBarBackgroundColor": "#F8F8F8",
+	  "backgroundColor": "#F8F8F8"
+	}
+}

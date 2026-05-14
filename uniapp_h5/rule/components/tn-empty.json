@@ -1,0 +1,18 @@
+{
+  "name": "tn-empty",
+  "description": "此组件一般用于数据为空的时候，展示空白页",
+  "props": {
+    "mode": [
+      "看上方说明"
+    ],
+    "color": "String",
+    "size": [
+      "sm",
+      "lg",
+      "xl"
+    ],
+    "show-tips": "boolean"
+  },
+  "events": [],
+  "example": "<template>\n  <TnEmpty mode=\"data\" />\n</template>"
+}

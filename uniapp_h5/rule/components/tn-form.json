@@ -1,0 +1,36 @@
+{
+  "name": "tn-form",
+  "description": "此组件一般用于表单场景，可以配置 Input 输入框、Radio 单选框、Checkbox 多选框等，进行表单验证等。",
+  "props": {
+    "model": "Object",
+    "rules": "Object | Array",
+    "size": [
+      "sm",
+      "lg"
+    ],
+    "disabled": "boolean",
+    "label-position": [
+      "right",
+      "left",
+      "top"
+    ],
+    "require-asterisk-position": [
+      "right"
+    ],
+    "hide-required-asterisk": "boolean",
+    "label-width": "String | Number",
+    "label-suffix": "String",
+    "status-icon": "boolean",
+    "show-message": "boolean",
+    "validate-on-rule-change": "boolean",
+    "label": "String",
+    "prop": "String | Array\\<String\\>",
+    "required": "boolean",
+    "error": "String",
+    "validate-status": "FormItemValidateStates"
+  },
+  "events": [
+    "validate"
+  ],
+  "example": "<TnForm label-position=\"top\">\n  <TnFormItem label=\"用户名\" label-position=\"left\">\n    <TnInput v-model=\"formData.username\" />\n  </TnFormItem>\n  <TnFormItem label=\"邮箱\">\n    <TnInput v-model=\"formData.email\" />\n  </TnFormItem>\n</TnForm>"
+}

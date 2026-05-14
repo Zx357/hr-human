@@ -1,0 +1,28 @@
+{
+  "name": "tn-navbar",
+  "description": "该组件一般用于特殊需要自定义顶部导航栏的情况。",
+  "props": {
+    "height": "String",
+    "bg-color": "String",
+    "text-color": "String",
+    "frosted": "boolean",
+    "opacity": "Number",
+    "back-icon": "String",
+    "back-text": "String",
+    "home-icon": "String",
+    "bottom-shadow": "boolean",
+    "safe-area-inset-right": "boolean",
+    "center": "boolean",
+    "right-operation-width": "String",
+    "before-back": "boolean",
+    "before-home": "boolean",
+    "index-url": "String",
+    "fixed": "boolean",
+    "placeholder": "boolean",
+    "z-index": "Number"
+  },
+  "events": [
+    "init-finish"
+  ],
+  "example": "<template>\n  <!-- 固定在顶部 -->\n  <TnNavbar fixed> TuniaoUI </TnNavbar>\n</template>"
+}

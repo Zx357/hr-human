@@ -1,0 +1,37 @@
+{
+  "name": "tn-image-upload",
+  "description": "图片上传组件用于上传图片场景。",
+  "props": {
+    "model-value/v-model": "Array\\<string\\>",
+    "disabled": "boolean",
+    "action": "String",
+    "name": "String",
+    "header": "Object",
+    "form-data": "Object",
+    "limit": "Number",
+    "multiple": "boolean",
+    "auto-upload": "boolean",
+    "show-remove": "boolean",
+    "show-error-tips": "boolean",
+    "show-upload-progress": "boolean",
+    "size-type": "Array\\<ImageUploadSizeType\\>",
+    "source-type": "Array\\<ImageUploadSource\\>",
+    "max-size": "Number",
+    "extensions": "Array\\<string\\>",
+    "auto-remove-faild-file": "boolean",
+    "custom-upload-handler": "`ImageUploadCustomFunction`",
+    "customupload-callback": "`ImageUploadCustomCallbackFunction`",
+    "before-upload": "`ImageBeforeUploadFunction`",
+    "before-remove": "`ImageBeforeRemoveFunction`",
+    "validate-event": "boolean"
+  },
+  "events": [
+    "change",
+    "oversize-or-no-support",
+    "success",
+    "fail",
+    "remove",
+    "preview"
+  ],
+  "example": "<script lang=\"ts\" setup>\nimport { ref } from 'vue'\n\nconst imageList = ref<string[]>([\n  'http://192.168.3.23:8090/uploads/images/1683602434042.jpeg',\n])\n\nconst actionUrl = 'http://192.168.3.23:8090/upload/image'\n</script>\n\n<template>\n  <TnImageUpload v-model=\"imageList\" :action=\"actionUrl\" />\n</template>"
+}

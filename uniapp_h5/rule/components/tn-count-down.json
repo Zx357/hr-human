@@ -1,0 +1,30 @@
+{
+  "name": "tn-count-down",
+  "description": "该组件一般使用于某个活动的截止时间上，通过数字的变化，给用户明确的时间感受，提示用户进行某一个行为操作",
+  "props": {
+    "time": "Number",
+    "auto-start": "boolean",
+    "size": [
+      "sm",
+      "lg",
+      "xl"
+    ],
+    "text-color": "String",
+    "show-day": "boolean",
+    "show-hour": "boolean",
+    "show-minute": "boolean",
+    "show-second": "boolean",
+    "auto-hide-day": "boolean",
+    "separator-mode": [
+      "cn"
+    ],
+    "separator-color": "String",
+    "border": "boolean",
+    "border-color": "String"
+  },
+  "events": [
+    "start",
+    "end"
+  ],
+  "example": "<template>\n  <TnCountDown :time=\"300\" />\n</template>"
+}

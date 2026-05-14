@@ -1,0 +1,30 @@
+{
+  "name": "tn-keyboard",
+  "description": "软键盘一般用于需要输入指定内容，例如：密码、手机号、验证码、身份证、车牌号码等",
+  "props": {
+    "v-model / model-value": "String",
+    "v-model:show / show": "boolean",
+    "static": "boolean",
+    "disabled": "boolean",
+    "mode": [
+      "digit",
+      "idcard",
+      "random",
+      "car"
+    ],
+    "car-lang": [
+      "en"
+    ],
+    "vibrate": "boolean",
+    "long-press-delete": "boolean",
+    "overlay-closeable": "boolean",
+    "z-index": "Number"
+  },
+  "events": [
+    "change",
+    "close",
+    "backspace",
+    "confirm"
+  ],
+  "example": "<script lang=\"ts\" setup>\nimport { ref } from 'vue'\n\nconst keyboardValue = ref('')\nconst showKeyboard = ref(false)\n\nconst openKeyboard = () => {\n  showKeyboard.value = true\n}\n</script>\n\n<template>\n  <TnButton type=\"primary\" @click=\"openKeyboard\">打开键盘</TnButton>\n\n  <TnKeyboard v-model=\"keyboardValue\" v-model:show=\"showKeyboard\" />\n</template>"
+}

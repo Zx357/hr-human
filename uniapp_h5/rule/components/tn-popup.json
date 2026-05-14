@@ -1,0 +1,35 @@
+{
+  "name": "tn-popup",
+  "description": "Popup 弹出框一般用于展示弹窗、信息提示等内容，支持上、下、左、右和中部弹出。组件只提供容器，内部内容由用户自定义。",
+  "props": {
+    "model-value/v-model": "boolean",
+    "open-direction": [
+      "top",
+      "bottom",
+      "left",
+      "right"
+    ],
+    "width": "String | Number",
+    "height": "String | Number",
+    "bg-color": "String",
+    "radius": "String | Number",
+    "overlay": "boolean",
+    "overlay-opacity": "Number",
+    "overlay-closeable": "boolean",
+    "close-btn": "boolean",
+    "close-btn-position": [
+      "left-top",
+      "left-bottom",
+      "right-bottom"
+    ],
+    "safe-area-inset-bottom": "boolean",
+    "z-index": "Number",
+    "top": "String | Number"
+  },
+  "events": [
+    "open",
+    "close",
+    "overlay-click"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\n\r\nconst showPopup = ref(false)\r\n</script>\r\n\r\n<template>\r\n  <TnPopup v-model=\"showPopup\">\r\n    <view class=\"tn-p-lg\"> 弹框内容 </view>\r\n  </TnPopup>\r\n</template>"
+}

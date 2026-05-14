@@ -1,0 +1,30 @@
+{
+  "name": "tn-tabs",
+  "description": "该组件，是一个 tabs 标签栏组件，在标签多的时候，可以配置为左右滑动，标签少的时候，可以禁止滑动",
+  "props": {
+    "v-model/model-value": "String | Number",
+    "height": "String",
+    "bar-width": "String",
+    "bg-color": "String",
+    "bar-color": "String",
+    "color": "String",
+    "active-color": "String",
+    "font-size": "String",
+    "active-font-size": "String",
+    "bottom-shadow": "boolean",
+    "scroll": "boolean",
+    "bar": "boolean",
+    "active-bold": "boolean",
+    "offset-top": "Number",
+    "before-switch": "boolean",
+    "name": "String | Number",
+    "title": "String",
+    "badge-config": "TabsItemBadgeConfig",
+    "disabled": "boolean"
+  },
+  "events": [
+    "change",
+    "click"
+  ],
+  "example": "<script lang=\"ts\" setup>\r\nimport { ref } from 'vue'\r\n\r\nconst currentTabIndex = ref(0)\r\nconst tabsData = [\r\n  {\r\n    text: '关注',\r\n  },\r\n  {\r\n    text: '推荐',\r\n  },\r\n  {\r\n    text: '热榜',\r\n  },\r\n  {\r\n    text: '搞笑',\r\n  },\r\n  {\r\n    text: '视频',\r\n  },\r\n  {\r\n    text: '汽车科技',\r\n  },\r\n  {\r\n    text: '手机科技',\r\n  },\r\n  {\r\n    text: '音乐',\r\n  },\r\n  {\r\n    text: '电影',\r\n  },\r\n  {\r\n    text: '游戏',\r\n  },\r\n]\r\n</script>\r\n\r\n<template>\r\n  <TnTabs v-model=\"currentTabIndex\">\r\n    <TnTabsItem\r\n      v-for=\"(item, index) in tabsData\"\r\n      :key=\"index\"\r\n      :title=\"item.text\"\r\n    />\r\n  </TnTabs>\r\n</template>"
+}

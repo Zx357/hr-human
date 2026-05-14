@@ -1,0 +1,30 @@
+{
+  "name": "tn-title",
+  "description": "该组件可以在页面中显示标题，支持自定义标题内容，支持自定义标题栏样式。",
+  "props": {
+    "title": "String",
+    "sub-title": "String",
+    "mode": [
+      "vLine",
+      "dot",
+      "hLine",
+      "subTitle",
+      "transparent"
+    ],
+    "size": [
+      "sm",
+      "lg",
+      "xl"
+    ],
+    "align": [
+      "center",
+      "right"
+    ],
+    "color": "String",
+    "assist-color": "String"
+  },
+  "events": [
+    "click"
+  ],
+  "example": "<template>\r\n  <TnTitle title=\"图鸟UI\" />\r\n</template>"
+}

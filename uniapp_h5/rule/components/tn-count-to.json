@@ -1,0 +1,18 @@
+{
+  "name": "tn-count-to",
+  "description": "该组件一般用于数字的变化，比如用户的积分、余额等，通过数字的变化，给用户明确的数值感受，提示用户进行某一个行为操作",
+  "props": {
+    "start": "String | Number",
+    "end": "String | Number",
+    "text-color": "String",
+    "font-size": "String",
+    "decimals": "Number",
+    "decimal-separator": "String",
+    "thousands-separator": "String",
+    "duration": "Number"
+  },
+  "events": [
+    "end"
+  ],
+  "example": "<template>\n  <TnCountTo start=\"0\" end=\"100\" />\n</template>"
+}

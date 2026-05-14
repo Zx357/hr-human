@@ -1,0 +1,63 @@
+{
+  "name": "tn-input",
+  "description": "此组件用于输入文字，支持单行和多行文本输入",
+  "props": {
+    "model-value/v-model": "String | Number",
+    "type": [
+      "number",
+      "idcard",
+      "digit",
+      "textarea",
+      "password",
+      "select"
+    ],
+    "disabled": "boolean",
+    "size": [
+      "sm",
+      "lg"
+    ],
+    "height": "String | Number",
+    "text-align": [
+      "right"
+    ],
+    "placeholder": "String",
+    "placeholder-style": "Object",
+    "border": "boolean",
+    "border-color": "String",
+    "underline": "boolean",
+    "maxlength": "Number",
+    "auto-height": "boolean",
+    "confirm-type": [
+      " ",
+      "send",
+      "search",
+      "next",
+      "go",
+      "return"
+    ],
+    "focus": "boolean",
+    "clearable": "boolean",
+    "show-password": "boolean",
+    "cursor-spacing": "Number",
+    "selection-start": "Number",
+    "selection-end": "Number",
+    "show-confirm-bar": "boolean",
+    "right-icon": "String",
+    "trim": "boolean",
+    "show-word-limit": "boolean",
+    "word-limit-color": "String",
+    "validate-event": "boolean",
+    "custom-style": "Object",
+    "custom-class": "String"
+  },
+  "events": [
+    "input",
+    "change",
+    "click",
+    "focus",
+    "blur",
+    "clear",
+    "confirm"
+  ],
+  "example": "<script lang=\"ts\" setup>\nimport { ref } from 'vue'\n\nconst inputValue = ref('')\n</script>\n\n<template>\n  <TnInput v-model=\"inputValue\" placeholder=\"请输入用户名\" />\n</template>"
+}
