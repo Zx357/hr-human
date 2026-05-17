@@ -265,6 +265,8 @@ const local: App.I18n.Schema = {
     report: '报表管理',
     report_employee: '员工报表',
     report_attendance: '考勤报表',
+    notification: '通知管理',
+    mobile: '移动管理',
     system: '系统管理',
     system_user: '用户管理',
     system_role: '角色管理',

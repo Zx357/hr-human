@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 数据初始化器
@@ -38,6 +39,8 @@ public class DataInitializer implements CommandLineRunner {
         ensureMobileMomentTables();
         ensureMobileContactTables();
         ensureFeedbackMenu();
+        ensureNotificationManagementMenu();
+        ensureMobileManagementMenu();
         ensureDefaultSystemNotice();
         ensureDefaultMomentPosts();
         ensureDefaultMobileGroup();
@@ -130,6 +133,201 @@ public class DataInitializer implements CommandLineRunner {
         assignMenuToAdminRoles(feedbackMenu.getId());
     }
 
+    private void ensureNotificationManagementMenu() {
+        SysMenu notificationRoot = menuMapper.selectOne(new LambdaQueryWrapper<SysMenu>()
+                .eq(SysMenu::getMenuCode, "notification")
+                .last("LIMIT 1"));
+        if (notificationRoot == null) {
+            notificationRoot = new SysMenu();
+            notificationRoot.setParentId(0L);
+            notificationRoot.setMenuType(1);
+            notificationRoot.setMenuCode("notification");
+            notificationRoot.setMenuName("通知管理");
+            notificationRoot.setMenuNameEn("Notification Management");
+            notificationRoot.setPath("/notification");
+            notificationRoot.setComponent("layout.base");
+            notificationRoot.setIcon("mdi:bell-cog");
+            notificationRoot.setSortOrder(9);
+            notificationRoot.setVisible(1);
+            notificationRoot.setStatus(1);
+            menuMapper.insert(notificationRoot);
+        } else {
+            boolean changed = false;
+            changed |= setMenuField(notificationRoot, "通知管理", notificationRoot.getMenuName(),
+                    notificationRoot::setMenuName);
+            changed |= setMenuField(notificationRoot, "Notification Management", notificationRoot.getMenuNameEn(),
+                    notificationRoot::setMenuNameEn);
+            changed |= setMenuField(notificationRoot, "/notification", notificationRoot.getPath(),
+                    notificationRoot::setPath);
+            changed |= setMenuField(notificationRoot, "layout.base", notificationRoot.getComponent(),
+                    notificationRoot::setComponent);
+            changed |= setMenuField(notificationRoot, "mdi:bell-cog", notificationRoot.getIcon(),
+                    notificationRoot::setIcon);
+            changed |= setMenuField(notificationRoot, 0L, notificationRoot.getParentId(),
+                    notificationRoot::setParentId);
+            changed |= setMenuField(notificationRoot, 1, notificationRoot.getMenuType(),
+                    notificationRoot::setMenuType);
+            changed |= setMenuField(notificationRoot, 9, notificationRoot.getSortOrder(),
+                    notificationRoot::setSortOrder);
+            changed |= setMenuField(notificationRoot, 1, notificationRoot.getVisible(),
+                    notificationRoot::setVisible);
+            changed |= setMenuField(notificationRoot, 1, notificationRoot.getStatus(), notificationRoot::setStatus);
+            if (changed) {
+                menuMapper.updateById(notificationRoot);
+            }
+        }
+
+        SysMenu noticeMenu = ensureNotificationChildMenu(notificationRoot.getId(),
+                "system_notice",
+                "公告管理",
+                "Notice Management",
+                "/system/notice",
+                "view.system_notice",
+                "system:notice:list",
+                "mdi:bullhorn",
+                1);
+
+        SysMenu feedbackMenu = ensureNotificationChildMenu(notificationRoot.getId(),
+                "system_feedback",
+                "意见反馈",
+                "Feedback",
+                "/system/feedback",
+                "view.system_feedback",
+                "system:feedback:list",
+                "mdi:message-alert-outline",
+                2);
+
+        assignMenuToAdminRoles(notificationRoot.getId());
+        assignMenuToAdminRoles(noticeMenu.getId());
+        assignMenuToAdminRoles(feedbackMenu.getId());
+    }
+
+    private SysMenu ensureNotificationChildMenu(Long parentId, String menuCode, String menuName, String menuNameEn,
+            String path, String component, String permission, String icon, int sortOrder) {
+        SysMenu menu = menuMapper.selectOne(new LambdaQueryWrapper<SysMenu>()
+                .eq(SysMenu::getMenuCode, menuCode)
+                .last("LIMIT 1"));
+        if (menu == null) {
+            menu = new SysMenu();
+            menu.setParentId(parentId);
+            menu.setMenuType(2);
+            menu.setMenuCode(menuCode);
+            menu.setMenuName(menuName);
+            menu.setMenuNameEn(menuNameEn);
+            menu.setPath(path);
+            menu.setComponent(component);
+            menu.setPermission(permission);
+            menu.setIcon(icon);
+            menu.setSortOrder(sortOrder);
+            menu.setVisible(1);
+            menu.setStatus(1);
+            menuMapper.insert(menu);
+            return menu;
+        }
+
+        boolean changed = false;
+        changed |= setMenuField(menu, parentId, menu.getParentId(), menu::setParentId);
+        changed |= setMenuField(menu, 2, menu.getMenuType(), menu::setMenuType);
+        changed |= setMenuField(menu, menuName, menu.getMenuName(), menu::setMenuName);
+        changed |= setMenuField(menu, menuNameEn, menu.getMenuNameEn(), menu::setMenuNameEn);
+        changed |= setMenuField(menu, path, menu.getPath(), menu::setPath);
+        changed |= setMenuField(menu, component, menu.getComponent(), menu::setComponent);
+        changed |= setMenuField(menu, permission, menu.getPermission(), menu::setPermission);
+        changed |= setMenuField(menu, icon, menu.getIcon(), menu::setIcon);
+        changed |= setMenuField(menu, sortOrder, menu.getSortOrder(), menu::setSortOrder);
+        changed |= setMenuField(menu, 1, menu.getVisible(), menu::setVisible);
+        changed |= setMenuField(menu, 1, menu.getStatus(), menu::setStatus);
+        if (changed) {
+            menuMapper.updateById(menu);
+        }
+        return menu;
+    }
+
+    private void ensureMobileManagementMenu() {
+        SysMenu mobileRoot = menuMapper.selectOne(new LambdaQueryWrapper<SysMenu>()
+                .eq(SysMenu::getMenuCode, "mobile")
+                .last("LIMIT 1"));
+        if (mobileRoot == null) {
+            mobileRoot = new SysMenu();
+            mobileRoot.setParentId(0L);
+            mobileRoot.setMenuType(1);
+            mobileRoot.setMenuCode("mobile");
+            mobileRoot.setMenuName("移动管理");
+            mobileRoot.setMenuNameEn("Mobile Management");
+            mobileRoot.setPath("/mobile");
+            mobileRoot.setComponent("layout.base");
+            mobileRoot.setIcon("mdi:cellphone-cog");
+            mobileRoot.setSortOrder(10);
+            mobileRoot.setVisible(1);
+            mobileRoot.setStatus(1);
+            menuMapper.insert(mobileRoot);
+        } else {
+            boolean changed = false;
+            changed |= setMenuField(mobileRoot, "移动管理", mobileRoot.getMenuName(), mobileRoot::setMenuName);
+            changed |= setMenuField(mobileRoot, "Mobile Management", mobileRoot.getMenuNameEn(), mobileRoot::setMenuNameEn);
+            changed |= setMenuField(mobileRoot, "/mobile", mobileRoot.getPath(), mobileRoot::setPath);
+            changed |= setMenuField(mobileRoot, "layout.base", mobileRoot.getComponent(), mobileRoot::setComponent);
+            changed |= setMenuField(mobileRoot, "mdi:cellphone-cog", mobileRoot.getIcon(), mobileRoot::setIcon);
+            changed |= setMenuField(mobileRoot, 0L, mobileRoot.getParentId(), mobileRoot::setParentId);
+            changed |= setMenuField(mobileRoot, 1, mobileRoot.getMenuType(), mobileRoot::setMenuType);
+            changed |= setMenuField(mobileRoot, 10, mobileRoot.getSortOrder(), mobileRoot::setSortOrder);
+            changed |= setMenuField(mobileRoot, 1, mobileRoot.getVisible(), mobileRoot::setVisible);
+            changed |= setMenuField(mobileRoot, 1, mobileRoot.getStatus(), mobileRoot::setStatus);
+            if (changed) {
+                menuMapper.updateById(mobileRoot);
+            }
+        }
+
+        SysMenu mobileMenu = menuMapper.selectOne(new LambdaQueryWrapper<SysMenu>()
+                .eq(SysMenu::getMenuCode, "system_mobile-menu")
+                .last("LIMIT 1"));
+        if (mobileMenu == null) {
+            mobileMenu = new SysMenu();
+            mobileMenu.setParentId(mobileRoot.getId());
+            mobileMenu.setMenuType(2);
+            mobileMenu.setMenuCode("system_mobile-menu");
+            mobileMenu.setMenuName("移动端菜单");
+            mobileMenu.setMenuNameEn("Mobile Menu");
+            mobileMenu.setPath("/system/mobile-menu");
+            mobileMenu.setComponent("view.system_mobile-menu");
+            mobileMenu.setPermission("system:mobile-menu:list");
+            mobileMenu.setIcon("mdi:cellphone-text");
+            mobileMenu.setSortOrder(1);
+            mobileMenu.setVisible(1);
+            mobileMenu.setStatus(1);
+            menuMapper.insert(mobileMenu);
+        } else {
+            boolean changed = false;
+            changed |= setMenuField(mobileMenu, mobileRoot.getId(), mobileMenu.getParentId(), mobileMenu::setParentId);
+            changed |= setMenuField(mobileMenu, 2, mobileMenu.getMenuType(), mobileMenu::setMenuType);
+            changed |= setMenuField(mobileMenu, "移动端菜单", mobileMenu.getMenuName(), mobileMenu::setMenuName);
+            changed |= setMenuField(mobileMenu, "Mobile Menu", mobileMenu.getMenuNameEn(), mobileMenu::setMenuNameEn);
+            changed |= setMenuField(mobileMenu, "/system/mobile-menu", mobileMenu.getPath(), mobileMenu::setPath);
+            changed |= setMenuField(mobileMenu, "view.system_mobile-menu", mobileMenu.getComponent(), mobileMenu::setComponent);
+            changed |= setMenuField(mobileMenu, "system:mobile-menu:list", mobileMenu.getPermission(), mobileMenu::setPermission);
+            changed |= setMenuField(mobileMenu, "mdi:cellphone-text", mobileMenu.getIcon(), mobileMenu::setIcon);
+            changed |= setMenuField(mobileMenu, 1, mobileMenu.getSortOrder(), mobileMenu::setSortOrder);
+            changed |= setMenuField(mobileMenu, 1, mobileMenu.getVisible(), mobileMenu::setVisible);
+            changed |= setMenuField(mobileMenu, 1, mobileMenu.getStatus(), mobileMenu::setStatus);
+            if (changed) {
+                menuMapper.updateById(mobileMenu);
+            }
+        }
+
+        SysMenu addButton = ensureMenuButton(mobileMenu.getId(), "system_mobile-menu_add", "新增移动菜单",
+                "system:mobile-menu:add", 1);
+        SysMenu editButton = ensureMenuButton(mobileMenu.getId(), "system_mobile-menu_edit", "编辑移动菜单",
+                "system:mobile-menu:edit", 2);
+        SysMenu deleteButton = ensureMenuButton(mobileMenu.getId(), "system_mobile-menu_delete", "删除移动菜单",
+                "system:mobile-menu:delete", 3);
+
+        assignMenuToAdminRoles(mobileRoot.getId());
+        assignMenuToAdminRoles(mobileMenu.getId());
+        assignMenuToAdminRoles(addButton.getId());
+        assignMenuToAdminRoles(editButton.getId());
+        assignMenuToAdminRoles(deleteButton.getId());
+    }
+
     private void ensureFeedbackButton(Long parentId, String menuCode, String menuName, String permission, int sortOrder) {
         Long count = menuMapper.selectCount(new LambdaQueryWrapper<SysMenu>().eq(SysMenu::getMenuCode, menuCode));
         if (count != null && count > 0) {
@@ -147,6 +345,48 @@ public class DataInitializer implements CommandLineRunner {
         button.setVisible(1);
         button.setStatus(1);
         menuMapper.insert(button);
+    }
+
+    private SysMenu ensureMenuButton(Long parentId, String menuCode, String menuName, String permission, int sortOrder) {
+        SysMenu button = menuMapper.selectOne(new LambdaQueryWrapper<SysMenu>()
+                .eq(SysMenu::getMenuCode, menuCode)
+                .last("LIMIT 1"));
+        if (button == null) {
+            button = new SysMenu();
+            button.setParentId(parentId);
+            button.setMenuType(3);
+            button.setMenuCode(menuCode);
+            button.setMenuName(menuName);
+            button.setMenuNameEn(menuName);
+            button.setPermission(permission);
+            button.setSortOrder(sortOrder);
+            button.setVisible(1);
+            button.setStatus(1);
+            menuMapper.insert(button);
+            return button;
+        }
+
+        boolean changed = false;
+        changed |= setMenuField(button, parentId, button.getParentId(), button::setParentId);
+        changed |= setMenuField(button, 3, button.getMenuType(), button::setMenuType);
+        changed |= setMenuField(button, menuName, button.getMenuName(), button::setMenuName);
+        changed |= setMenuField(button, menuName, button.getMenuNameEn(), button::setMenuNameEn);
+        changed |= setMenuField(button, permission, button.getPermission(), button::setPermission);
+        changed |= setMenuField(button, sortOrder, button.getSortOrder(), button::setSortOrder);
+        changed |= setMenuField(button, 1, button.getVisible(), button::setVisible);
+        changed |= setMenuField(button, 1, button.getStatus(), button::setStatus);
+        if (changed) {
+            menuMapper.updateById(button);
+        }
+        return button;
+    }
+
+    private <T> boolean setMenuField(SysMenu menu, T expected, T actual, java.util.function.Consumer<T> setter) {
+        if (Objects.equals(expected, actual)) {
+            return false;
+        }
+        setter.accept(expected);
+        return true;
     }
 
     private void assignMenuToAdminRoles(Long menuId) {

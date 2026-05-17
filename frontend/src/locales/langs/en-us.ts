@@ -265,6 +265,8 @@ const local: App.I18n.Schema = {
     report: 'Reports',
     report_employee: 'Employee Report',
     report_attendance: 'Attendance Report',
+    notification: 'Notification Management',
+    mobile: 'Mobile Management',
     system: 'System',
     system_user: 'User Management',
     system_role: 'Role Management',
