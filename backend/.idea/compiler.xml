@@ -7,13 +7,28 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="kadmin-backend" />
+        <module name="kadmin-organization" />
+        <module name="kadmin-admin" />
+        <module name="kadmin-attendance" />
+        <module name="kadmin-hr" />
+        <module name="kadmin-framework" />
+        <module name="kadmin-common" />
+        <module name="kadmin-system" />
+        <module name="kadmin-mobile" />
       </profile>
     </annotationProcessing>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
-      <module name="kadmin-backend" options="-parameters" />
+      <module name="kadmin-admin" options="-parameters" />
+      <module name="kadmin-attendance" options="-parameters" />
+      <module name="kadmin-backend" options="" />
+      <module name="kadmin-common" options="-parameters" />
+      <module name="kadmin-framework" options="-parameters" />
+      <module name="kadmin-hr" options="-parameters" />
+      <module name="kadmin-mobile" options="-parameters" />
+      <module name="kadmin-organization" options="-parameters" />
+      <module name="kadmin-system" options="-parameters" />
     </option>
   </component>
 </project>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kadmin.attendance.mapper.AttScheduleMapper">
+    
+    <select id="selectScheduleList" resultType="com.kadmin.attendance.domain.AttSchedule">
+        SELECT s.*, e.name as employee_name, e.employee_no, d.unit_name as dept_name,
+               sh.shift_name, sh.shift_code
+        FROM att_schedule s
+        LEFT JOIN hr_employee e ON s.employee_id = e.id
+        LEFT JOIN org_unit d ON e.dept_id = d.id
+        LEFT JOIN att_shift sh ON s.shift_id = sh.id
+        WHERE 1 = 1
+        <if test="orgIds != null and orgIds.size() > 0">
+            AND e.dept_id IN
+            <foreach collection="orgIds" item="orgId" open="(" separator="," close=")">
+                #{orgId}
+            </foreach>
+        </if>
+        <if test="employeeNo != null and employeeNo != ''">
+            AND e.employee_no LIKE CONCAT('%', #{employeeNo}, '%')
+        </if>
+        <if test="employeeName != null and employeeName != ''">
+            AND e.name LIKE CONCAT('%', #{employeeName}, '%')
+        </if>
+        <if test="startDate != null">
+            AND s.schedule_date &gt;= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND s.schedule_date &lt;= #{endDate}
+        </if>
+        ORDER BY e.id, s.schedule_date
+    </select>
+</mapper>

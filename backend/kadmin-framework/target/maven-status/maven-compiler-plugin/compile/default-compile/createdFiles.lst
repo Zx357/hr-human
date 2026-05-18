@@ -1,0 +1,12 @@
+com\kadmin\framework\config\WebMvcConfig.class
+com\kadmin\framework\security\JwtAuthenticationFilter.class
+com\kadmin\framework\config\DataInitializer.class
+com\kadmin\framework\config\RedisConfig.class
+com\kadmin\framework\security\JwtUtils.class
+com\kadmin\framework\config\MybatisPlusConfig$1.class
+com\kadmin\framework\exception\GlobalExceptionHandler.class
+com\kadmin\framework\config\MybatisPlusConfig.class
+com\kadmin\framework\service\AuthService.class
+com\kadmin\framework\aspectj\PermissionAspect.class
+com\kadmin\framework\security\TokenService.class
+com\kadmin\framework\config\SecurityConfig.class

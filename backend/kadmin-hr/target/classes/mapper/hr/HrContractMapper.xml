@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kadmin.hr.mapper.HrContractMapper">
+
+    <select id="selectPageWithEmployee" resultType="com.kadmin.hr.domain.HrContract">
+        SELECT c.id, c.contract_no, c.employee_id, c.contract_type, c.start_date, c.end_date,
+               c.sign_date, c.probation_months, c.salary, c.remark, c.contract_images, c.contract_count,
+               c.created_time, c.updated_time, c.created_by, c.updated_by,
+               e.name as employee_name, e.employee_no,
+               CASE 
+                   WHEN d.unit_type = 2 THEN d.unit_name
+                   WHEN p1.unit_type = 2 THEN p1.unit_name
+                   WHEN p2.unit_type = 2 THEN p2.unit_name
+                   WHEN p3.unit_type = 2 THEN p3.unit_name
+                   ELSE NULL
+               END as company_name,
+               CASE
+                   WHEN c.status = 4 THEN 4
+                   WHEN c.end_date IS NULL THEN 1
+                   WHEN c.end_date &lt; CURDATE() THEN 3
+                   WHEN c.end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 2
+                   ELSE 1
+               END as status
+        FROM hr_contract c
+        LEFT JOIN hr_employee e ON c.employee_id = e.id
+        LEFT JOIN org_unit d ON e.dept_id = d.id
+        LEFT JOIN org_unit p1 ON d.parent_id = p1.id
+        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id
+        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id
+        WHERE 1 = 1
+        <if test="contractNo != null and contractNo != ''">
+            AND c.contract_no LIKE CONCAT('%', #{contractNo}, '%')
+        </if>
+        <if test="employeeName != null and employeeName != ''">
+            AND e.name LIKE CONCAT('%', #{employeeName}, '%')
+        </if>
+        <if test="employeeNo != null and employeeNo != ''">
+            AND e.employee_no LIKE CONCAT('%', #{employeeNo}, '%')
+        </if>
+        <if test="contractType != null and contractType != ''">
+            AND c.contract_type = #{contractType}
+        </if>
+        <if test="status != null">
+            AND (CASE
+                WHEN c.status = 4 THEN 4
+                WHEN c.end_date IS NULL THEN 1
+                WHEN c.end_date &lt; CURDATE() THEN 3
+                WHEN c.end_date &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 2
+                ELSE 1
+            END) = #{status}
+        </if>
+        <if test="employeeId != null">
+            AND c.employee_id = #{employeeId}
+        </if>
+        ORDER BY c.created_time DESC
+    </select>
+
+</mapper>

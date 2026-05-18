@@ -1,0 +1,9 @@
+com\kadmin\common\Result.class
+com\kadmin\common\ResultCode.class
+com\kadmin\common\security\LoginUser.class
+com\kadmin\common\PageRequest.class
+com\kadmin\common\BaseEntity.class
+com\kadmin\common\annotation\RequiresPermission.class
+com\kadmin\common\annotation\RequiresPermission$Logical.class
+com\kadmin\common\utils\SecurityUtils.class
+com\kadmin\common\exception\BusinessException.class
