@@ -60,7 +60,7 @@ mybatis-plus:
 
 # JWT 配置（密钥请通过环境变量覆盖）
 jwt:
-  secret: ${JWT_SECRET:kadmin-hr-management-system-jwt-secret-key-2024}
+  secret: ${JWT_SECRET:change-me-in-production-with-a-long-random-string}
   expiration: 86400000 # 24 小时
   refresh-expiration: 604800000 # 7 天
   header: Authorization

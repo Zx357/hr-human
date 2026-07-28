@@ -30,9 +30,9 @@ Thumbs.db
 # ========================
 # Java / Maven 后端
 # ========================
-backend/target/
-backend/*.jar
-backend/*.war
+target/
+*.jar
+*.war
 backend/logs/
 backend/uploads/
 backend/.mvn/
@@ -63,6 +63,7 @@ yarn.lock
 # ========================
 # UniApp
 # ========================
+unpackage/
 uniapp/unpackage/
 uniapp/node_modules/
 
@@ -72,7 +73,13 @@ uniapp/node_modules/
 .env
 .env.local
 .env.*.local
+!.env.example
 application-local.yml
+
+# ========================================
+# 大体积模板压缩包
+# ========================================
+uniapp_h5/tuniao-oa-vue3.zip
 
 # ========================
 # 系统文件

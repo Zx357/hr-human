@@ -2,7 +2,7 @@ export default {
   envName: 'server',
   baseUrl: '/api',
   googleMaps: {
-    apiKey: 'AIzaSyCn3NI3N3xbhH9a4Z8DhL75B7BA9zRMMcM',
+    apiKey: 'YOUR_GOOGLE_MAPS_API_KEY',
     language: 'zh-CN',
     region: 'CN'
   },
