@@ -2,11 +2,11 @@
 
 # KAdmin 人资管理系统
 
-基于 Spring Boot 3 + Vue 3 + UniApp 的企业人力资源管理系统
+**一站式企业人力资源与移动办公平台**
 
-**一套系统,两端覆盖:PC 后台管理 + 移动端(H5 / 微信小程序)**
+基于 Spring Boot 3 + Vue 3 + UniApp 打造,PC 后台管理 + 移动端(H5 / 微信小程序)双端覆盖
 
-组织架构 · 人事管理 · 考勤打卡 · 审批流程 · 即时聊天
+`组织架构` `人事档案` `GPS 考勤` `审批流` `时光动态` `即时聊天`
 
 </div>
 
@@ -30,37 +30,21 @@
 
 ### 移动端(H5 / 微信小程序)
 
-| 登录 | 首页 |
-| --- | --- |
-| ![登录](docs/screenshots/login.png) | ![首页](docs/screenshots/home.png) |
+| 登录 | 首页 | 时光动态 | 工作台 |
+| --- | --- | --- | --- |
+| <img src="docs/screenshots/login.png" width="200" /> | <img src="docs/screenshots/home.png" width="200" /> | <img src="docs/screenshots/moment.png" width="200" /> | <img src="docs/screenshots/work.png" width="200" /> |
 
-| 时光动态 | 工作台 |
-| --- | --- |
-| ![时光](docs/screenshots/moment.png) | ![工作台](docs/screenshots/work.png) |
+| 通讯录 | 组织架构 | 即时聊天 | 同事详情 |
+| --- | --- | --- | --- |
+| <img src="docs/screenshots/contact.png" width="200" /> | <img src="docs/screenshots/contact-org.png" width="200" /> | <img src="docs/screenshots/chat-group.png" width="200" /> | <img src="docs/screenshots/user-detail.png" width="200" /> |
 
-| 通讯录 | 组织架构 |
-| --- | --- |
-| ![通讯录](docs/screenshots/contact.png) | ![组织架构](docs/screenshots/contact-org.png) |
+| 考勤打卡 | 考勤日历 | 请假申请 | 我的申请 |
+| --- | --- | --- | --- |
+| <img src="docs/screenshots/clock.png" width="200" /> | <img src="docs/screenshots/calendar.png" width="200" /> | <img src="docs/screenshots/leave.png" width="200" /> | <img src="docs/screenshots/approval.png" width="200" /> |
 
-| 即时聊天(群聊/单聊) | 同事详情 |
-| --- | --- |
-| ![聊天](docs/screenshots/chat-group.png) | ![同事详情](docs/screenshots/user-detail.png) |
-
-| 考勤打卡 | 考勤日历 |
-| --- | --- |
-| ![考勤打卡](docs/screenshots/clock.png) | ![考勤日历](docs/screenshots/calendar.png) |
-
-| 请假申请 | 我的申请 |
-| --- | --- |
-| ![请假申请](docs/screenshots/leave.png) | ![我的申请](docs/screenshots/approval.png) |
-
-| 待办审批 | 系统公告 |
-| --- | --- |
-| ![待办审批](docs/screenshots/pending.png) | ![系统公告](docs/screenshots/notice.png) |
-
-| 个人中心 |  |
-| --- | --- |
-| ![个人中心](docs/screenshots/mine.png) |  |
+| 待办审批 | 系统公告 | 个人中心 |
+| --- | --- | --- |
+| <img src="docs/screenshots/pending.png" width="200" /> | <img src="docs/screenshots/notice.png" width="200" /> | <img src="docs/screenshots/mine.png" width="200" /> |
 
 ---
 
