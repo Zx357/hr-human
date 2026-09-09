@@ -2,11 +2,11 @@
   <view class="oa-content tn-safe-area-inset-bottom tn-bg-black">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed :placeholder="false" bg-color="#ffffff00" customBack>
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon name='left' class='icon'></tn-icon>
         <tn-icon name='home-capsule-fill' class='icon'></tn-icon>
-      </view>
+      </view></template>
     </tn-navbar>
     
     <view>
@@ -156,7 +156,7 @@ const swiperList0 = ref([{
 function cardSwiper(e) {
   cardCur.value = e.detail.current
   for (let i = 0; i < swiperList0.value.length; i++) {
-    const videoContext = uni.createVideoContext(`video-${swiperList0.value[i]['id']}`, this)
+    const videoContext = uni.createVideoContext(`video-${swiperList0.value[i]['id']}`)
     if (i === cardCur.value) {
       // #ifdef H5
       videoContext.play()
@@ -182,7 +182,9 @@ function stopAllVideo() {
 
 // 跳转
 function tn(e) {
+  // #ifdef MP-WEIXIN
   wx.vibrateLong();
+  // #endif
 	uni.navigateTo({
 		url: e,
 	});

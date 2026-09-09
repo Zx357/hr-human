@@ -346,6 +346,13 @@
 	      }
 	    },
 	    {
+	      "path": "calendar",
+	      "style": {
+	        "navigationBarTitleText": "考勤日历",
+	        "enablePullDownRefresh": true
+	      }
+	    },
+	    {
 	      "path": "client",
 	      "style": {
 	        "navigationBarTitleText": "客户列表",
@@ -428,6 +435,20 @@
 	      "path": "apply",
 	      "style": {
 	        "navigationBarTitleText": "好友申请",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "dept-members",
+	      "style": {
+	        "navigationBarTitleText": "部门成员",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "chat",
+	      "style": {
+	        "navigationBarTitleText": "聊天",
 	        "enablePullDownRefresh": false
 	      }
 	    }]

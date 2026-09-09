@@ -6,7 +6,6 @@
         <view class="custom-nav tn-flex tn-flex-col-center tn-flex-row-left">
           <view class="custom-nav__back">
             <tn-icon name="search-menu" @click="tn('/homePages/search')"></tn-icon>
-            <tn-icon name="discover" class="tn-padding-left" @click="tn('/minePages/navigation')"></tn-icon>
           </view>
         </view>
       </template>
@@ -75,9 +74,12 @@
             <view v-if="item.badge" class="message-dot tn-margin-top-xs">{{ item.badge }}</view>
           </view>
         </view>
-        
+
       </view>
-  
+      <view v-if="!messageList.length" class="tn-padding-xl">
+        <view class="tn-text-center tn-color-gray--disabled tn-text-lg">暂无消息</view>
+      </view>
+
     </view>
     
     <view class="tn-tabbar-height"></view>
@@ -90,6 +92,7 @@
   import { onShow } from '@dcloudio/uni-app'
   import { useStore } from 'vuex'
   import { getHomeStats, getHomeMessages } from '@/api/home'
+  import { getMomentMessages } from '@/api/moment'
   import { getNoticeList } from '@/api/system/notice'
   
   const store = useStore()
@@ -103,46 +106,12 @@
   })
   const notices = ref([])
   const backendMessages = ref([])
-
-  const fallbackMessages = [
-    {
-      id: 'article',
-      title: '行业资讯',
-      desc: '熟读《2023年劳动合同法》',
-      time: '12:06',
-      color: '#FFAC00',
-      icon: 'image-text-fill',
-      badge: 2,
-      url: '/homePages/article'
-    },
-    {
-      id: 'approval',
-      title: '审批通知',
-      desc: '你的设备费用报销已通过审批',
-      time: '08:06',
-      color: '#00C8B0',
-      icon: 'ticket-fill',
-      badge: 2,
-      url: '/homePages/approval'
-    },
-    {
-      id: 'chat',
-      title: '蔡东东',
-      desc: '麻烦帮我处理一下这个申请',
-      time: '10:38',
-      color: '#4B98FE',
-      icon: 'my-simple-fill',
-      url: '/homePages/chat'
-    },
-    {
-      id: 'daily',
-      title: '团队提醒',
-      desc: '今日请记得完成日报和下班打卡',
-      time: '5月20日',
-      avatar: 'https://resource.tuniaokj.com/images/simple/image2.jpg',
-      url: '/homePages/chat'
-    }
-  ]
+  const momentSummary = ref({
+    unreadCount: 0,
+    likeCount: 0,
+    commentCount: 0,
+    mentionCount: 0
+  })
 
   const formatBadge = (value) => {
     const count = Number(value || 0)
@@ -150,11 +119,17 @@
     return count > 99 ? '99+' : count
   }
 
+  const momentBadgeCount = computed(() => {
+    const summary = momentSummary.value
+    return Number(summary.likeCount || 0) + Number(summary.commentCount || 0) +
+      Number(summary.mentionCount || 0) + Number(summary.unreadCount || 0)
+  })
+
   const shortcutList = computed(() => [
     {
       title: '互动',
       icon: 'topics-fill',
-      badge: formatBadge(3),
+      badge: formatBadge(momentBadgeCount.value),
       url: '/momentPages/message'
     },
     {
@@ -190,7 +165,7 @@
       avatar: item.avatar
     }))
     if (apiMessages.length) {
-      return [...apiMessages, ...fallbackMessages].slice(0, 12)
+      return apiMessages
     }
 
     const noticeMessages = notices.value.slice(0, 3).map((item, index) => ({
@@ -216,8 +191,7 @@
         badge: formatBadge(stats.value.approvalCount),
         url: '/homePages/application'
       },
-      ...noticeMessages,
-      ...fallbackMessages
+      ...noticeMessages
     ].slice(0, 12)
   })
 
@@ -238,10 +212,11 @@
 
   const loadHomeData = async () => {
     try {
-      const [statsResult, messageResult, noticeResult] = await Promise.allSettled([
+      const [statsResult, messageResult, noticeResult, momentResult] = await Promise.allSettled([
         getHomeStats(),
         getHomeMessages(),
-        getNoticeList({ status: 1 })
+        getNoticeList({ status: 1 }),
+        getMomentMessages()
       ])
       if (statsResult.status === 'fulfilled') {
         stats.value = {
@@ -254,6 +229,9 @@
       }
       if (messageResult.status === 'fulfilled') {
         backendMessages.value = normalizeList(messageResult.value.data)
+      }
+      if (momentResult.status === 'fulfilled') {
+        momentSummary.value = { ...momentSummary.value, ...(momentResult.value.data || {}) }
       }
     } catch (error) {
       console.log('加载首页数据失败', error)

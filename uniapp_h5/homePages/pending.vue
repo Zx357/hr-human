@@ -128,7 +128,9 @@ const typeMap = {
   regularization: { name: '转正申请', color: '#00B9FE', bg: 'rgba(0, 185, 254, 0.12)' },
   transfer: { name: '调动申请', color: '#FE871B', bg: 'rgba(254, 135, 27, 0.12)' },
   reward: { name: '奖惩申请', color: '#FFAC00', bg: 'rgba(255, 172, 0, 0.14)' },
-  punish: { name: '奖惩申请', color: '#FB6A67', bg: 'rgba(251, 106, 103, 0.12)' }
+  punish: { name: '奖惩申请', color: '#FB6A67', bg: 'rgba(251, 106, 103, 0.12)' },
+  expense: { name: '费用报销', color: '#00D05E', bg: 'rgba(0, 208, 94, 0.12)' },
+  device: { name: '设备申请', color: '#00B9FE', bg: 'rgba(0, 185, 254, 0.12)' }
 }
 
 const currentTab = ref(0)

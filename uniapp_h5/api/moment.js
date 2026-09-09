@@ -15,6 +15,13 @@ export function getMomentMessages() {
   })
 }
 
+export function getMomentPostDetail(id) {
+  return request({
+    url: `/mobile/moments/posts/${id}`,
+    method: 'get'
+  })
+}
+
 export function createMomentPost(data) {
   return request({
     url: '/mobile/moments/posts',

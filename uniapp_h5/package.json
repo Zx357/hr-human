@@ -1,5 +1,22 @@
 {
+  "name": "uniapp_h5",
+  "version": "1.0.0",
+  "scripts": {
+    "dev:h5": "cross-env UNI_INPUT_DIR=. uni",
+    "build:h5": "cross-env UNI_INPUT_DIR=. uni build"
+  },
   "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-alpha-5020520260829001",
+    "@dcloudio/uni-components": "3.0.0-alpha-5020520260829001",
+    "@dcloudio/uni-h5": "3.0.0-alpha-5020520260829001",
+    "vue": "3.4.21",
     "vuex": "^4.1.0"
+  },
+  "devDependencies": {
+    "@dcloudio/uni-mp-weixin": "3.0.0-alpha-5020520260829001",
+    "@dcloudio/vite-plugin-uni": "3.0.0-alpha-5020520260829001",
+    "cross-env": "^7.0.3",
+    "sass": "^1.77.8",
+    "vite": "5.2.8"
   }
 }

@@ -2,10 +2,10 @@
   <view class="oa-content">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed home-icon="" :placeholder="false" :bottom-shadow="false" bg-color="#FFFFFF">
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon name="left-arrow" class="icon"></tn-icon>
-      </view>
+      </view></template>
       <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
         <text class="tn-text-bold tn-text-xl tn-color-black">仪器维护</text>
       </view>
@@ -109,42 +109,46 @@ const show = ref(false)
 const machineList = ref([{
     title: '仪器名称-设备一',
     map: '广东省广州市番禺区祈福新村126号',
-    url: '/homePages/xxxx'
+    url: ''
   },
   {
     title: '仪器名称-设备二',
     map: '广东省广州市番禺区祈福新村127号',
-    url: '/homePages/xxxx'
+    url: ''
   },
   {
     title: '仪器名称-设备三',
     map: '广东省广州市番禺区祈福新村128号',
-    url: '/homePages/xxxx'
+    url: ''
   },
   {
     title: '仪器名称-设备四',
     map: '广东省广州市番禺区祈福新村129号',
-    url: '/homePages/xxxx'
+    url: ''
   },
   {
     title: '仪器名称-设备五',
     map: '广东省广州市番禺区祈福新村129号',
-    url: '/homePages/xxxx'
+    url: ''
   },
   {
     title: '仪器名称-设备六',
     map: '广东省广州市番禺区祈福新村130号',
-    url: '/homePages/xxxx'
+    url: ''
   },
   {
     title: '仪器名称-设备七',
     map: '广东省广州市番禺区祈福新村131号',
-    url: '/homePages/xxxx'
+    url: ''
   }
 ])
 
 // 跳转
 function tn(e) {
+  if (!e) {
+    uni.showToast({ icon: 'none', title: '详情功能暂未开放' })
+    return
+  }
   uni.navigateTo({
     url: e,
   });

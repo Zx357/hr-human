@@ -51,34 +51,6 @@
             </view>
           </view>
         </view>
-        <view
-          class="tn-info__item tn-flex tn-flex-direction-row tn-flex-col-center tn-flex-row-between"
-          style="background-color: #f4f5f9"
-          @click="tn('/partnerPages/apply')"
-        >
-          <view
-            class="tn-info__item__left tn-flex tn-flex-direction-row tn-flex-col-center tn-flex-row-left"
-          >
-            <!-- <view class="tn-info__item__left--icon tn-flex tn-flex-col-center tn-flex-row-center" :class="[`tn-bg-${item.color}--light tn-color-${item.color}`]">
-              <view :class="[`tn-icon-${item.icon}`]"></view>
-            </view> -->
-            <view class="tn-info__item__left__content">
-              <view
-                class="tn-info__item__left__content--title tn-text-bold tn-text-lg"
-                >好友申请</view
-              >
-              <view
-                class="tn-info__item__left__content--data tn-padding-top-xs tn-color-gray"
-                >{{ applyCount }} 人待通过</view
-              >
-            </view>
-          </view>
-          <view class="tn-info__item__right">
-            <view class="tn-info__item__right--icon tn-bg-indigo--disabled">
-              <view class="tn-icon-my-add tn-color-white"></view>
-            </view>
-          </view>
-        </view>
       </view>
     </view>
 
@@ -144,6 +116,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
+import { onShow } from "@dcloudio/uni-app";
 import PopupModal from "@/components/popup/popup.vue";
 import config from "@/config";
 import { getEmployeeList } from "@/api/employee";
@@ -167,47 +140,11 @@ const height = ref(500);
 const defaultAvatar = "/static/author.jpg";
 const employees = ref([]);
 const organizations = ref([]);
-const applyCount = ref(0);
 const groupSummaryCount = ref(0);
 
-const fallbackContacts = [
-  {
-    id: 0,
-    avatar: "https://tnuiimage.tnkjapp.com/avatar/normal/1.png",
-    username: "图鸟UI-总监",
-    office: "高级设计总监",
-  },
-  {
-    id: 1,
-    avatar: "https://tnuiimage.tnkjapp.com/avatar/normal/2.png",
-    username: "图鸟UI-产品",
-    office: "产品研发部",
-  },
-  {
-    id: 2,
-    avatar: "https://tnuiimage.tnkjapp.com/avatar/normal/3.png",
-    username: "图鸟UI-前端",
-    office: "前端工程师",
-  },
-  {
-    id: 3,
-    avatar: "https://tnuiimage.tnkjapp.com/avatar/normal/4.png",
-    username: "图鸟UI-运营",
-    office: "运营中心",
-  },
-];
-
-const fallbackOrganizations = [
-  { id: "org-dev", name: "图鸟研发部", count: 12 },
-  { id: "org-product", name: "产品设计部", count: 8 },
-  { id: "org-hr", name: "人事行政部", count: 6 },
-  { id: "org-market", name: "市场运营部", count: 10 },
-];
-
-const groupCount = computed(() => groupSummaryCount.value || orgList.value.length || fallbackOrganizations.length);
+const groupCount = computed(() => groupSummaryCount.value || orgList.value.length);
 
 const contactList = computed(() => {
-  if (!employees.value.length) return fallbackContacts;
   return employees.value.map((item) => ({
     id: item.id,
     avatar: formatAvatar(item.avatar),
@@ -219,10 +156,7 @@ const contactList = computed(() => {
 
 const listData = computed(() => groupContacts(contactList.value));
 
-const orgList = computed(() => {
-  const flattened = flattenOrganizations(organizations.value);
-  return flattened.length ? flattened : fallbackOrganizations;
-});
+const orgList = computed(() => flattenOrganizations(organizations.value));
 
 // 跳转
 const tn = (e) => {
@@ -239,13 +173,13 @@ const openUser = (data) => {
     });
     return;
   }
-  tn("/partnerPages/user");
 };
 
+// 查看部门成员
 const openOrg = (item) => {
-  uni.showToast({
-    title: `${item.name}：${item.count}人`,
-    icon: "none",
+  if (!item?.id) return;
+  uni.navigateTo({
+    url: `/partnerPages/dept-members?id=${item.id}&name=${encodeURIComponent((item.name || '').trim())}`,
   });
 };
 
@@ -378,7 +312,6 @@ const loadContactSummary = async () => {
   try {
     const res = await getContactSummary();
     groupSummaryCount.value = Number(res.data?.groupCount || 0);
-    applyCount.value = Number(res.data?.pendingRequestCount || 0);
   } catch (error) {
     console.log("加载通讯录摘要失败", error);
   }
@@ -386,6 +319,10 @@ const loadContactSummary = async () => {
 
 onMounted(() => {
   getSystemHeight();
+});
+
+// tab 页常驻内存,每次切到通讯录都刷新,保证群数/成员/组织架构是最新的
+onShow(() => {
   loadContactSummary();
   loadContacts();
   loadOrganizations();

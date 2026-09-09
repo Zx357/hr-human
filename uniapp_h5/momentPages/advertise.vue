@@ -2,10 +2,10 @@
   <view class="template-advertise">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed bg-color="#ffffff00" :placeholder="false" customBack>
-      <view slot="back" class='tn-custom-nav-bar__back tn-navbg'
+      <template #back><view class='tn-custom-nav-bar__back tn-navbg'
         @click="goBack">
         <tn-icon name="home-smile-fill" class='icon'></tn-icon>
-      </view>
+      </view></template>
     </tn-navbar>
     
     <!-- <view :style="{paddingTop: `${topInfo.height}px`}"></view> -->
@@ -204,7 +204,7 @@ const cardSwiper = (e) => {
 
 // 预览作者图片
 const previewQRCodeImage = () => {
-  wx.previewImage({
+  uni.previewImage({
     urls: ['https://resource.tuniaokj.com/images/advertise/qrcode.jpg']
   })
 }

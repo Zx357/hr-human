@@ -146,7 +146,7 @@
     cardCur.value = e.detail.current
   }
   function previewQRCodeImage() {
-    wx.previewImage({ urls: ['https://resource.tuniaokj.com/images/advertise/qrcode.jpg'] })
+    uni.previewImage({ urls: ['https://resource.tuniaokj.com/images/advertise/qrcode.jpg'] })
   }
   function showModal(event) {
     openModal()

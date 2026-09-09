@@ -2,10 +2,10 @@
   <view class="oa-content">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed home-icon="" :placeholder="false" :bottom-shadow="false" bg-color="#FFFFFF">
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon name="left-arrow" class='icon'></tn-icon>
-      </view>
+      </view></template>
       <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
         <text class="tn-text-bold tn-text-xl tn-color-black">问卷详情</text>
       </view>

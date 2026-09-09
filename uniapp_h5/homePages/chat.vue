@@ -2,10 +2,10 @@
   <view class="oa-content">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed  home-icon="" :bottom-shadow="false" bg-color="#F8F7F8" :placeholder="false">
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon name="left-arrow" class='icon'></tn-icon>
-      </view>
+      </view></template>
       <view class="tn-flex tn-flex-col-center tn-flex-row-center tn-padding-left" @click="tn('/partnerPages/user')">
         <text class="tn-text-bold tn-text-xl tn-color-black">付衣衣</text>
         <tn-icon name="rocket" class="tn-text-xl tn-padding-left-sm tn-color-gray"></tn-icon>

@@ -2,10 +2,10 @@
   <view class="oa-content">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed home-icon="" :bottom-shadow="false" bg-color="#FFFFFF" :placeholder="false">
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon name='left-arrow' class='icon'></tn-icon>
-      </view>
+      </view></template>
       <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
         <text class="tn-text-bold tn-text-xl tn-color-black">文件上传</text>
       </view>
@@ -47,10 +47,9 @@
       <view class="tn-padding-left tn-padding-top-xs tn-padding-bottom-xs tn-strip-bottom-min">
         <tn-image-upload
           ref="imageUpload"
-          :action="action"
+          :custom-upload-handler="uploadImageHandler"
           :width="236"
           :height="236"
-          :formData="formData"
           :fileList="fileList"
           :disabled="disabled"
           :autoUpload="autoUpload"
@@ -116,6 +115,7 @@
 
 <script setup>
   import { ref } from 'vue'
+  import { uploadImageToServer } from '@/utils/upload'
   import { useCustomBarHeight, useGoBack } from '@/libs/composables'
   // 使用 composable 获取自定义导航栏高度
   const { vuex_custom_bar_height } = useCustomBarHeight()
@@ -124,14 +124,9 @@
   const index = ref(99)
   const array = ref(['日报', '周报', '月报', '单纯想汇报'])
   
-  const action = ref('https://www.hualigs.cn/api/upload')
-  // action: '',
-  const formData = ref({
-    apiType: 'this,ali',
-    token: 'dffc1e06e636cff0fdf7d877b6ae6a2e',
-    image: null
-  })
-  const fileList = ref([{url: 'https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1694103619950-assets/web-upload/31e51c70-c0d4-4814-91d6-c740d45b014d.jpeg'},{url: 'https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1694103627372-assets/web-upload/4dbd5977-14d8-4720-9ec4-752ced51c39a.jpeg'}])
+  // 图片上传走后端
+  const uploadImageHandler = (file) => uploadImageToServer(file?.path || file)
+  const fileList = ref([])
   const showUploadList = ref(true)
   const customBtn = ref(false)
   const autoUpload = ref(true)
@@ -153,13 +148,11 @@
   
   // 手动上传文件
   function upload() {
-    // 需要使用 ref 获取组件引用
-    // this.$refs.imageUpload.upload()
+    imageUpload.value?.upload()
   }
   // 手动清空列表
   function clear() {
-    // 需要使用 ref 获取组件引用
-    // this.$refs.imageUpload.clear()
+    imageUpload.value?.clear()
   }
   // 图片拖拽重新排序
   function onSortList(list) {

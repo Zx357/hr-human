@@ -2,10 +2,10 @@
   <view class="oa-content">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed home-icon="" :placeholder="false" :bottom-shadow="false" bg-color="#FFFFFF">
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon name="left-arrow" class="icon"></tn-icon>
-      </view>
+      </view></template>
       <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
         <text class="tn-text-bold tn-text-xl tn-color-black">费用报销</text>
       </view>
@@ -60,7 +60,7 @@
             费用金额 <text class="tn-color-red tn-padding-left-xs">*</text>
           </view>
           <view class="tn-color-gray tn-padding-top-xs tn-color-black">
-            <input placeholder="请输入" name="input" placeholder-style="color:#AAAAAA" value=""></input>
+            <input v-model="amount" type="digit" placeholder="请输入金额" name="input" placeholder-style="color:#AAAAAA" value=""></input>
           </view>
         </view>
         <view class="justify-content-item tn-text-xl tn-color-grey tn-margin-left">
@@ -81,7 +81,7 @@
         </view>
       </view>
       <view class="tn-bg-gray--light tn-padding tn-text-justify" style="border-radius: 10rpx;margin: 0 30rpx 30rpx 30rpx;">
-        <textarea maxlength="500" placeholder="请简单写一下报销事由" placeholder-style="color:#AAAAAA" style="height: 160rpx;width: 100%;"></textarea>
+        <textarea v-model="reason" maxlength="500" placeholder="请简单写一下报销事由" placeholder-style="color:#AAAAAA" style="height: 160rpx;width: 100%;"></textarea>
       </view>
       
       <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-padding tn-strip-top">
@@ -98,10 +98,9 @@
       <view class="tn-padding-left tn-padding-top-xs tn-padding-bottom-xs tn-strip-bottom-min">
         <tn-image-upload
           ref="imageUpload"
-          :action="action"
+          :custom-upload-handler="uploadImageHandler"
           :width="236"
           :height="236"
-          :formData="formData"
           :fileList="fileList"
           :disabled="disabled"
           :autoUpload="autoUpload"
@@ -181,9 +180,9 @@
             :fontSize="28"
             text-color="#FFFFFF"
             shape="round"
-            @click="tn('/workPages/prompt')"
+            @click="submitApply"
           >
-            <text class="">提交申请</text>
+            <text class="">{{ submitting ? '提交中...' : '提交申请' }}</text>
           </tn-button>
       </view>
       
@@ -195,6 +194,9 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useStore } from 'vuex'
+import { submitApplication } from '@/api/application'
+import { uploadImageToServer } from '@/utils/upload'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 // 使用 composable 获取自定义导航栏高度
 const { vuex_custom_bar_height } = useCustomBarHeight()
@@ -259,16 +261,13 @@ const endYear = ref<number>(2100)
 const index = ref<number>(99)
 const array = ref<string[]>(['餐饮费', '礼品费', '活动费', '物料费', '补助费', '交通费', '招待费', '医疗费', '出差费','其他乱糟糟的费'])
 
-const action = ref<string>('https://www.hualigs.cn/api/upload')
-const formData = ref<FormData>({
-  apiType: 'this,ali',
-  token: 'dffc1e06e636cff0fdf7d877b6ae6a2e',
-  image: null
-})
-const fileList = ref<FileItem[]>([
-  {url: 'https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1694103619950-assets/web-upload/31e51c70-c0d4-4814-91d6-c740d45b014d.jpeg'},
-  {url: 'https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1694103627372-assets/web-upload/4dbd5977-14d8-4720-9ec4-752ced51c39a.jpeg'}
-])
+// 图片上传走后端
+const uploadImageHandler = (file: any): Promise<string> => uploadImageToServer(file?.path || file)
+
+const amount = ref<string>('')
+const reason = ref<string>('')
+const submitting = ref<boolean>(false)
+const fileList = ref<FileItem[]>([])
 const showUploadList = ref<boolean>(true)
 const customBtn = ref<boolean>(false)
 const autoUpload = ref<boolean>(true)
@@ -317,6 +316,58 @@ function upload(): void {
 // 图片拖拽重新排序
 function onSortList(list: any): void {
   console.log(list);
+}
+
+// 提交报销申请
+async function submitApply(): Promise<void> {
+  if (index.value === 99) {
+    uni.showToast({ title: '请选择报销类型', icon: 'none' })
+    return
+  }
+  if (!result.value) {
+    uni.showToast({ title: '请选择发生时间', icon: 'none' })
+    return
+  }
+  if (!amount.value || Number(amount.value) <= 0) {
+    uni.showToast({ title: '请填写费用金额', icon: 'none' })
+    return
+  }
+  if (!reason.value.trim()) {
+    uni.showToast({ title: '请填写费用说明', icon: 'none' })
+    return
+  }
+  const store = useStore()
+  const employeeInfo = store.getters.employeeInfo || uni.getStorageSync('userInfo') || {}
+  const employeeId = store.getters.id || employeeInfo.id
+  if (!employeeId) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    return
+  }
+  const attachments = fileList.value.map((item: FileItem) => item.url).filter(Boolean)
+  submitting.value = true
+  uni.showLoading({ title: '提交中...' })
+  try {
+    await submitApplication({
+      employeeId,
+      status: 0,
+      appType: 'expense',
+      title: `${array.value[index.value]}报销`,
+      startTime: result.value,
+      amount: Number(amount.value),
+      reason: reason.value.trim(),
+      remark: attachments.length ? `附件: ${attachments.join(',')}` : ''
+    })
+    uni.hideLoading()
+    uni.showToast({ title: '提交成功', icon: 'success' })
+    setTimeout(() => {
+      uni.redirectTo({ url: '/workPages/prompt' })
+    }, 600)
+  } catch (error) {
+    uni.hideLoading()
+    console.log('提交报销申请失败', error)
+  } finally {
+    submitting.value = false
+  }
 }
 
 // 视频选择

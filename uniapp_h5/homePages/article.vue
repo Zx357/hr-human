@@ -2,10 +2,10 @@
   <view class="oa-content">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed bg-color="#ffffff00" home-icon="" :placeholder="false">
-      <view slot="back" class='tn-custom-nav-bar__back' @click="goBack">
+      <template #back><view class='tn-custom-nav-bar__back' @click="goBack">
         <tn-icon name="left" class='icon'></tn-icon>
         <tn-icon name="home-capsule-fill" class='icon'></tn-icon>
-      </view>
+      </view></template>
       <!-- <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
         <text class="tn-text-bold tn-text-xl tn-color-black">行业资讯</text>
       </view> -->
@@ -34,7 +34,7 @@
       <!-- 不建议写时间，因为写了时间，你就要经常更新文章了鸭-->
       <view class="">
         <block v-for="(item, index) in news" :key="index">
-          <view class="article-shadow tn-margin tn-bg-white" @click="tn('/newsPages/article')">
+          <view class="article-shadow tn-margin tn-bg-white" @click="tn('/homePages/notice')">
             <view class="tn-flex">
               
               <view class="tn-margin-sm tn-padding-top-xs" style="width: 100%;">
@@ -74,7 +74,7 @@
       <!-- 三图图文 -->
       <view class="">
         <block v-for="(item,index) in news3" :key="index">
-          <view class="article-shadow tn-margin" @click="tn('/newsPages/article')">
+          <view class="article-shadow tn-margin" @click="tn('/homePages/notice')">
             <view class="" style="padding: 15rpx 10rpx 0 10rpx;">
               <app-grid  hoverClass="none" :col="3">
                 <block v-for="(image_item,image_index) in item.mainImage" :key="image_index">
@@ -125,7 +125,7 @@
       <view class="">
         
         <block v-for="(item,index) in news2" :key="index">
-          <view class="article-shadow tn-margin tn-padding-sm" @click="tn('/newsPages/article')">
+          <view class="article-shadow tn-margin tn-padding-sm" @click="tn('/homePages/notice')">
             <view class="image-pic" :style="'background-image:url(' + item.userAvatar + ')'">
               <view class="image-design">
               </view>
@@ -160,7 +160,7 @@
       <!-- 不建议写时间，因为写了时间，你就要经常更新文章了鸭-->
       <view class="">
         <block v-for="(item, index) in news4" :key="index">
-          <view class="article-shadow tn-margin" @click="tn('/newsPages/article')">
+          <view class="article-shadow tn-margin" @click="tn('/homePages/notice')">
             <view class="tn-flex">
               
               <view class="tn-margin-sm tn-padding-top-xs" style="width: 100%;">

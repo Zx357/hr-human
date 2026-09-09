@@ -2,10 +2,10 @@
   <view class="oa-content">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed home-icon="" :bottom-shadow="false" bg-color="#FFFFFF" :placeholder="false">
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon class='icon' name='left-arrow'></tn-icon>
-      </view>
+      </view></template>
       <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
         <text class="tn-text-bold tn-text-xl tn-color-black">每日词条</text>
       </view>
@@ -15,7 +15,7 @@
     <view class="">
       
       <!-- 卡片轮播，图片均为凶姐本人照片，请勿将图片用于奇奇怪怪的地方，谢谢大佬们-->
-      <view class="swiper" style="height:90vh;margin: 0 60rpx;" :style="{paddingTop: vuex_custom_bar_height + 50 +'px'}" @click="tn('/momentPages/king')">
+      <view class="swiper" style="height:90vh;margin: 0 60rpx;" :style="{paddingTop: vuex_custom_bar_height + 50 +'px'}" @click="tn('/pages/index?index=1')">
         <swiper style="height: 85%;" :vertical="true" :indicator-dots="true" :autoplay="true" :interval="3000" :duration="500" :circular="true">
           <swiper-item v-for="(item, index) in list" :key="index">
             <image :src="item.image" mode="aspectFill" style="width: 100%; height: 100%; border-radius: 24rpx;"></image>

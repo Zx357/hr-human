@@ -2,10 +2,10 @@
   <view class="oa-content">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed home-icon="" :bottom-shadow="false" bg-color="#FFFFFF00" :placeholder="false">
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon name="left-arrow" class="icon"></tn-icon>
-      </view>
+      </view></template>
     </tn-navbar>
     
     
@@ -92,7 +92,9 @@ const tnindex = (e) => {
 
 // 复制开源地址
 const copySource = () => {
+  // #ifdef MP-WEIXIN
   wx.vibrateShort();
+  // #endif
   uni.setClipboardData({
     data: "https://ext.dcloud.net.cn/publisher?id=356088",
   })

@@ -46,6 +46,7 @@ dist/
 dist-ssr/
 coverage/
 *.local
+!uniapp_h5/config.local.js
 .eslintcache
 .stylelintcache
 

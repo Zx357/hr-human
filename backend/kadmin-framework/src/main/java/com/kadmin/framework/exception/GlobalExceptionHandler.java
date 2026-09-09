@@ -120,6 +120,15 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 处理非法参数异常（业务校验不通过）
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public Result<Void> handleIllegalArgumentException(IllegalArgumentException e, HttpServletRequest request) {
+        log.warn("业务校验失败: {} - {}", request.getRequestURI(), e.getMessage());
+        return Result.error(e.getMessage());
+    }
+
+    /**
      * 处理其他异常
      */
     @ExceptionHandler(Exception.class)

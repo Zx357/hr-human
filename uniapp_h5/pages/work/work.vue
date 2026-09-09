@@ -2,22 +2,6 @@
   <scroll-view class="template-work tn-safe-area-inset-bottom" scroll-y="true" @scroll="handleScroll" :style="{height: '100vh'}">
    
     
-    <!-- 顶部自定义导航 -->
-    <tn-navbar v-if="false" fixed :placeholder="false" :bottomShadow="false" bg-color="#FFFFFF00" back-icon="" home-icon="">
-      <template #back>
-          <view class="logo-pic tn-shadow-blur" style="background-image:url('/static/logo.png')">
-            <view class="logo-image">
-            </view>
-          </view> 
-      </template>
-      <view  class="tn-flex tn-flex-col-center tn-flex-row-left" @click="tn('')">
-        <!-- 公司名称 -->
-        <view class="tn-flex tn-flex-col-center" style="margin-left: 16rpx;width: 60vw;">
-          <text class="tn-text-xl tn-color-white">{{ companyName }}</text>
-          <text class="tn-icon-down-triangle tn-color-white tn-padding-left-xs" style="opacity: 0.3;"></text>
-        </view>
-      </view>
-    </tn-navbar>
 
     <view class="top-backgroup">
       <image src='/static/aa7.jpg' mode='widthFix' class='backgroud-image'></image>
@@ -40,9 +24,9 @@
             </view>
           </view>
         </view>
-        <view class="work-clock-bell tn-flex tn-flex-row-center tn-flex-col-center" @click="tn('')">
+        <view class="work-clock-bell tn-flex tn-flex-row-center tn-flex-col-center" @click="tn('/homePages/application')">
           <tn-icon name="notice-fill"></tn-icon>
-          <view class="work-clock-bell-dot"></view>
+          <view v-if="pendingCount > 0" class="work-clock-bell-dot"></view>
         </view>
       </view>
 
@@ -104,85 +88,17 @@
     </view>
 
     
-    <view class="tn-strip-bottom"></view>
     
-    <!-- 标题-->
-    <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-margin-top-sm" @click="tn('')">
-      <view class="justify-content-item tn-margin tn-text-bold tn-text-xl blue-title">
-        协同办公
-      </view>
-      <view class="justify-content-item tn-margin-right tn-text-df tn-color-gray">
-        <text class="tn-padding-xs">更多</text>
-        <text class="tn-icon-right"></text>
-      </view>
-    </view>
-    
-    <!-- 方式12 start-->
-    <view class="tn-flex tn-flex-wrap tn-padding-top-sm tn-padding-bottom-sm tn-bg-white">
-      <view v-for="(item, index) in synergy" :key="index" style="width: 25%;">
-        <view class="tn-margin-bottom tn-margin-top-sm" @click="tn(item.url)">
-          <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-            <!-- 当然，如果你有图片，可以换成图片模式 -->
-            <!-- <view class="icon13__item--icon tn-flex tn-flex-row-center tn-flex-col-center" :style="'background-image:url('+ item.img +');background-size:100% 100%;background-size: cover;'">
-            </view> -->
-            <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-color-white" :style="'background-color:'+ item.color +';'" >
-               <tn-badge type="danger" value="12">
-                  <tn-icon :name="item.icon" style="text-shadow: 5rpx 8rpx 10rpx rgba(0,0,0,0.16);"></tn-icon>
-              </tn-badge>
-            </view>
-            <view class="tn-color-gray--dark tn-text-center tn-text-df">
-              <text class="tn-text-ellipsis">{{ item.title }}</text>
-            </view>
-          </view>
-        </view>
-     </view>
-    </view>
-    <!-- 方式12 end-->
     
     <view class="tn-strip-bottom"></view>
     
     <!-- 标题-->
-    <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-margin-top-sm" @click="tn('')">
-      <view class="justify-content-item tn-margin tn-text-bold tn-text-xl blue-title">
-        仪器设备
-      </view>
-      <view class="justify-content-item tn-margin-right tn-text-df tn-color-gray">
-        <text class="tn-padding-xs">更多</text>
-        <text class="tn-icon-right"></text>
-      </view>
-    </view>
-    
-    <!-- 方式12 start-->
-    <view class="tn-flex tn-flex-wrap tn-padding-top-sm tn-padding-bottom-sm tn-bg-white">
-      <view v-for="(item, index) in device" :key="index" style="width: 25%;">
-        <view class="tn-margin-bottom tn-margin-top-sm" @click="tn(item.url)">
-          <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-            <!-- 当然，如果你有图片，可以换成图片模式 -->
-            <!-- <view class="icon13__item--icon tn-flex tn-flex-row-center tn-flex-col-center" :style="'background-image:url('+ item.img +');background-size:100% 100%;background-size: cover;'">
-            </view> -->
-            <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-color-white" :style="'background-color:'+ item.color +';'" >
-              <tn-icon :name="item.icon" style="text-shadow: 5rpx 8rpx 10rpx rgba(0,0,0,0.16);">
-               
-              </tn-icon>
-            </view>
-            <view class="tn-color-gray--dark tn-text-center tn-text-df">
-              <text class="tn-text-ellipsis">{{ item.title }}</text>
-            </view>
-          </view>
-        </view>
-     </view>
-    </view>
-    <!-- 方式12 end-->
-    
-    <view class="tn-strip-bottom"></view>
-    
-    <!-- 标题-->
-    <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-margin-top-sm" @click="tn('')">
+    <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-margin-top-sm">
       <view class="justify-content-item tn-margin tn-text-bold tn-text-xl blue-title">
         考勤统计
       </view>
-      <view class="justify-content-item tn-margin-right tn-text-df tn-color-gray">
-        <text class="tn-padding-xs">更多</text>
+      <view class="justify-content-item tn-margin-right tn-text-df tn-color-gray" @click="tn('/workPages/calendar')">
+        <text class="tn-padding-xs">考勤日历</text>
         <text class="tn-icon-right"></text>
       </view>
     </view>
@@ -211,302 +127,27 @@
     <!-- 方式12 end-->
     
     
-    <view class="tn-strip-bottom"></view>
-    
-    <!-- 标题-->
-    <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-margin-top-sm" @click="tn('')">
-      <view class="justify-content-item tn-margin tn-text-bold tn-text-xl blue-title">
-        费用报销
-      </view>
-      <view class="justify-content-item tn-margin-right tn-text-df tn-color-gray">
-        <text class="tn-padding-xs">更多</text>
-        <text class="tn-icon-right"></text>
-      </view>
-    </view>
-    
-    <!-- 方式12 start-->
-    <view class="tn-flex tn-flex-wrap tn-padding-top-sm tn-padding-bottom-sm tn-bg-white">
-      <view v-for="(item, index) in cost" :key="index" style="width: 25%;">
-        <view class="tn-margin-bottom tn-margin-top-sm" @click="tn(item.url)">
-          <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-            <!-- <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center" :style="'background-image:url('+ item.icon +');background-size:100% 100%;background-size: cover;'">
-            </view> -->
-            <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-color-white" :style="'background-color:'+ item.color +';'" >
-               <tn-icon :name="item.icon" style="text-shadow: 5rpx 8rpx 10rpx rgba(0,0,0,0.16);">
-               
-              </tn-icon>
-            </view>
-            <view class="tn-color-gray--dark tn-text-center tn-text-df">
-              <text class="tn-text-ellipsis">{{ item.title }}</text>
-            </view>
-          </view>
-        </view>
-     </view>
-    </view>
-    <!-- 方式12 end-->
-    
-    <view class="tn-strip-bottom"></view>
     
     
-    <!-- 标题-->
-    <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-margin-top-sm" @click="tn('')">
-      <view class="justify-content-item tn-margin tn-text-bold tn-text-xl blue-title">
-        智能看板
-      </view>
-      <view class="justify-content-item tn-margin-right tn-text-df tn-color-gray">
-        <text class="tn-padding-xs">更多</text>
-        <text class="tn-icon-right"></text>
-      </view>
-    </view>
-    
-    <!-- 方式12 start-->
-    <view class="tn-flex tn-flex-wrap tn-padding-top-sm tn-padding-bottom-sm tn-bg-white">
-      <view v-for="(item, index) in data" :key="index" style="width: 25%;">
-        <view class="tn-margin-bottom tn-margin-top-sm" @click="tn(item.url)">
-          <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-            <!-- <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center" :style="'background-image:url('+ item.icon +');background-size:100% 100%;background-size: cover;'">
-            </view> -->
-            <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-color-white" :style="'background-color:'+ item.color +';'" >
-              <tn-icon :name="item.icon" style="text-shadow: 5rpx 8rpx 10rpx rgba(0,0,0,0.16);">
-               
-              </tn-icon>
-            </view>
-            <view class="tn-color-gray--dark tn-text-center tn-text-df">
-              <text class="tn-text-ellipsis">{{ item.title }}</text>
-            </view>
-          </view>
-        </view>
-     </view>
-    </view>
-    <!-- 方式12 end-->
-    
-    <view class="tn-strip-bottom"></view>
-    
-    <!-- 标题-->
-    <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-margin-top-sm" @click="tn('')">
-      <view class="justify-content-item tn-margin tn-text-bold tn-text-xl blue-title">
-        便捷工具
-      </view>
-      <view class="justify-content-item tn-margin-right tn-text-df tn-color-gray">
-        <text class="tn-padding-xs">更多</text>
-        <text class="tn-icon-right"></text>
-      </view>
-    </view>
-    
-    <!-- 方式12 start-->
-    <view class="tn-flex tn-flex-wrap tn-padding-top-sm tn-padding-bottom-sm tn-bg-white">
-      <view v-for="(item, index) in tool" :key="index" style="width: 25%;">
-        <view class="tn-margin-bottom tn-margin-top-sm" @click="tn(item.url)">
-          <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-            <!-- <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center" :style="'background-image:url('+ item.icon +');background-size:100% 100%;background-size: cover;'">
-            </view> -->
-            <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-color-white" :style="'background-color:'+ item.color +';'" >
-               <tn-icon :name="item.icon" style="text-shadow: 5rpx 8rpx 10rpx rgba(0,0,0,0.16);">
-               
-              </tn-icon>
-            </view>
-            <view class="tn-color-gray--dark tn-text-center tn-text-df">
-              <text class="tn-text-ellipsis">{{ item.title }}</text>
-            </view>
-          </view>
-        </view>
-     </view>
-    </view>
-    <!-- 方式12 end-->
-    
-    <view class="tn-strip-bottom"></view>
     
     
-    <!-- 标题-->
-    <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-margin-top-sm" @click="tn('')">
-      <view class="justify-content-item tn-margin tn-text-bold tn-text-xl blue-title">
-        企业文化
-      </view>
-      <view class="justify-content-item tn-margin-right tn-text-df tn-color-gray">
-        <text class="tn-padding-xs">更多</text>
-        <text class="tn-icon-right"></text>
-      </view>
-    </view>
-    
-    <!-- 功能入口-->
-    <view class="tn-info__container tn-flex tn-flex-wrap tn-flex-col-center tn-flex-row-between tn-margin-top tn-margin-left tn-margin-right">
-      <block v-for="(item, index) in tuniaoData" :key="index">
-        <view class="tn-info__item tn-flex tn-flex-direction-row tn-flex-col-center tn-flex-row-between tn-color-white" :class="['tn-main-gradient-' + item.color + '--light']" @click="tn(item.url)">
-          <view class="tn-info__item__left tn-flex tn-flex-direction-row tn-flex-col-center tn-flex-row-left">
-            <!-- <view class="tn-info__item__left--icon tn-flex tn-flex-col-center tn-flex-row-center">
-              <view :class="[`tn-icon-${item.icon}`]"></view>
-            </view> -->
-            <view class="tn-info__item__left__content">
-              <view class="tn-info__item__left__content--title tn-text-bold" style="font-size: 32rpx;color: #080808;">{{ item.title }}</view>
-              <view class="tn-info__item__left__content--data tn-padding-top-xs tn-color-grey">
-                {{ item.value }}
-                <text class="tn-icon-right tn-padding-left-xs"></text>
-              </view>
-            </view>
-          </view>
-          <view class="tn-info__item__right">
-            <view class="tn-info__item__right--icon" :class="['tn-color-' + item.color]">
-               <tn-icon :name="item.icon" style="text-shadow: 5rpx 8rpx 10rpx rgba(0,0,0,0.16);">
-              </tn-icon>
-            </view>
-          </view>
-          <view class="tn-info__item__bottom">
-            <view class='name tn-text-sm tn-color-gray' style="margin-left: -10rpx;">
-              <text class="tn-icon-code tn-padding-right-xs" style="opacity: 0;"></text>
-            </view>
-          </view>
-        </view>
-      </block>
-    </view>
-    
-    <view class="tn-strip-bottom"></view>
-    
-    <view class="tn-padding">
-      <view class="button-number tn-flex tn-flex-row-between tn-flex-col-center" style="background: linear-gradient(-120deg, #99E3FE, #C9ECFF, #C9ECFF);">
-        
-        <view class="tn-margin-left">
-          <view class="tn-flex tn-flex-col-center" >
-            <text class="tn-text-bold tn-text-xl" style="color: #0D80E8;">KAdmin</text>
-          </view>
-          <view class='tn-text-sm tn-margin-top-sm' style="color: #0D80E8;">旧系统功能逐步迁移中</view>
-        </view>
-        <view class="tn-margin-right button-shake">
-          <tn-button shape="round" backgroundColor="#3668FC" fontColor="#FFFFFF" padding="10rpx 0" width="160rpx" shadow @click="tn('')">
-            <text class="tn-text-bold">待接入</text>
-            <text class="tn-icon-right-fill tn-padding-left-xs tn-text-lg"></text>
-          </tn-button>
-        </view>
-        
-        <view class="tnwave waveAnimation">
-          <view class="waveWrapperInner bgTop">
-            <view class="wave waveTop" style="background-image: url('https://resource.tuniaokj.com/images/wave/wave-2.png')"></view>
-          </view>
-          <view class="waveWrapperInner bgMiddle">
-            <view class="wave waveMiddle" style="background-image: url('https://resource.tuniaokj.com/images/wave/wave-2.png')"></view>
-          </view>
-          <view class="waveWrapperInner bgBottom">
-            <view class="wave waveBottom" style="background-image: url('https://resource.tuniaokj.com/images/wave/wave-1.png')"></view>
-          </view>
-        </view>
-        
-      </view>
-    </view>
-    
-    <view class="">
-      <tn-popup borderRadius="30" mode="top" v-model="show" :marginTop="vuex_custom_bar_height" :customStyle="customStyle">
-        <view class="">
-          <scroll-view scroll-y="true" style="max-height: 45vh;max-width: 640px;margin: 0 auto;">
-            <view>
-              <view class="tn-flex tn-flex-col-center" style="margin: 50rpx 30rpx;" v-for="(item,index) in 2" :key="index">
-                <!-- <view class="">
-                  <view class="icon15__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-bg-blue--light tn-color-blue">
-                    <tn-icon name="company-fill"></tn-icon>
-                  </view>
-                </view> -->
-                <view class="">
-                  <view class="company-pic" style="background-image:url('https://resource.tuniaokj.com/images/oa/OAlogo.png');">
-                    <view class="company-image">
-                    </view>
-                  </view>
-                </view>
-                <view class="tn-padding-left-sm" style="width: 100%;">
-                  <view class="tn-flex tn-flex-row-between tn-flex-col-between">
-                    <view class="justify-content-item">
-                      <text class="oa-black tn-text-lg">广州火箭文化科技有限公司</text>
-                    </view>
-                    
-                  </view>
-                  <view class="tn-padding-top-xs tn-text-ellipsis">
-                    <text class="tn-color-gray tn-text-sm tn-icon-trusty-fill"></text>
-                    <text class="tn-color-gray tn-text-sm" style="padding-left: 4rpx;">高级认证</text>
-                  </view>
-                </view>
-                <!-- <view class="">
-                  <text class="oa-blue tn-text-lg tn-icon-check"></text>
-                </view> -->
-              </view>
-              
-              <view class="tn-flex tn-flex-col-center" style="margin: 50rpx 30rpx;">
-                <!-- <view class="">
-                  <view class="icon15__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-bg-blue--light tn-color-blue">
-                    <tn-icon name="company-fill"></tn-icon>
-                  </view>
-                </view> -->
-                <view class="">
-                  <view class="company-pic" style="background-image:url('https://resource.tuniaokj.com/images/logo/logo2.png');">
-                    <view class="company-image">
-                    </view>
-                  </view>
-                </view>
-                <view class="tn-padding-left-sm" style="width: 100%;">
-                  <view class="tn-flex tn-flex-row-between tn-flex-col-between">
-                    <view class="justify-content-item">
-                      <text class="oa-black tn-text-lg">抓住那只猪科技有限公司</text>
-                    </view>
-                    
-                  </view>
-                  <view class="tn-padding-top-xs tn-text-ellipsis">
-                    <text class="oa-green tn-text-sm tn-icon-trusty-fill"></text>
-                    <text class="tn-color-gray tn-text-sm" style="padding-left: 4rpx;">高级认证</text>
-                  </view>
-                </view>
-                <view class="">
-                  <text class="oa-blue tn-text-lg tn-icon-check"></text>
-                </view>
-              </view>
-              
-              <view class="tn-flex tn-flex-col-center" style="margin: 50rpx 30rpx;" v-for="(item,index) in 12" :key="index">
-                <!-- <view class="">
-                  <view class="icon15__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-bg-blue--light tn-color-blue">
-                    <tn-icon name="company-fill"></tn-icon>
-                  </view>
-                </view> -->
-                <view class="">
-                  <view class="company-pic" style="background-image:url('https://resource.tuniaokj.com/images/oa/OAlogo.png');">
-                    <view class="company-image">
-                    </view>
-                  </view>
-                </view>
-                <view class="tn-padding-left-sm" style="width: 100%;">
-                  <view class="tn-flex tn-flex-row-between tn-flex-col-between">
-                    <view class="justify-content-item">
-                      <text class="oa-black tn-text-lg">广州火箭文化科技有限公司</text>
-                    </view>
-                    
-                  </view>
-                  <view class="tn-padding-top-xs tn-text-ellipsis">
-                    <text class="oa-green tn-text-sm tn-icon-trusty-fill"></text>
-                    <text class="tn-color-gray tn-text-sm" style="padding-left: 4rpx;">高级认证</text>
-                  </view>
-                </view>
-                <!-- <view class="">
-                  <text class="oa-blue tn-text-lg tn-icon-check"></text>
-                </view> -->
-              </view>
-            </view>
-          </scroll-view>
-          <!-- <view class="tn-text-center">
-            <tn-button @click="show = false;">点击蒙层也可以关闭</tn-button>
-          </view> -->
-        </view>
-      </tn-popup>
-    </view>
-    
-    <view class="tn-tabbar-height"></view>
+<view class="tn-tabbar-height"></view>
 
   </scroll-view>
 </template>
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useStore } from 'vuex'
-import { getClockInfo } from '@/api/attendance'
+import { getClockInfo, getHomeStats } from '@/api/attendance'
 import { getMobileMenus } from '@/api/menu'
 
 const store = useStore()
 const vuex_custom_bar_height = store.state.vuex_custom_bar_height
 
 const navOpacity = ref(0)
+const pendingCount = ref(0)
 const weekAttendance = ref({})
 const currentTime = ref('--:--')
 const currentSeconds = ref('--')
@@ -522,10 +163,6 @@ const topMenuColorMap = {
 }
 let clockTimer = null
 
-const companyName = computed(() => {
-  const info = store.state.user?.employeeInfo || {}
-  return info.companyName || info.company || 'KAdmin 人事管理'
-})
 const userName = computed(() => store.state.user?.name || '同事')
 const userAvatar = computed(() => store.state.user?.avatar || '/static/author.jpg')
 const greetingText = computed(() => {
@@ -563,77 +200,14 @@ const handleScroll = (e) => {
   }
 }
 
-// popup自定义样式
-const customStyle = ref({
-  maxWidth: '640px',
-  margin: '0 auto'
-})
-
-// 是否显示popup
-const show = ref(false)
-
 // 卡片轮播当前索引
 const cardCur = ref(0)
 
-// 金刚区图标
-const icons = ref([
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666764808285-assets/web-upload/b83d1b36-7355-4f36-bc02-9f06b8c0867c.png',
-    title: '考勤打卡',
-    icon: 'location-fill',
-    color: '#4B98FE',
-    url: '/workPages/time'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666765211148-assets/web-upload/bc9ff0e7-36a5-4d99-8698-cd589b00dc99.png',
-    title: '缺卡补卡',
-    icon: 'time-fill',
-    color: '#FFAC00',
-    url: '/workPages/replace'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666765049011-assets/web-upload/e49243fa-5182-4fbb-a850-33e927316a90.png',
-    title: '费用报销',
-    icon: 'money-fill',
-    color: '#00D05E',
-    url: '/workPages/cost'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666764788499-assets/web-upload/4cf1bbab-efb8-401c-9a2d-21689d024491.png',
-    title: '日周月报',
-    icon: 'order-fill',
-    color: '#FE871B',
-    url: '/workPages/report'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666764932311-assets/web-upload/c9380d70-1291-467e-89dd-40d2b799b986.png',
-    title: '加班申请',
-    icon: 'moon-fill',
-    color: '#00C8B0',
-    url: '/workPages/overtime'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666764788528-assets/web-upload/955b13dd-7715-4627-b8cc-04ae3d85051a.png',
-    title: '设备申请',
-    icon: 'mouse-fill',
-    color: '#00B9FE',
-    url: '/workPages/device'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666765211145-assets/web-upload/98a55f9a-6188-4c95-a947-4d2db29bc08a.png',
-    title: '出差申请',
-    icon: 'suitcase-fill',
-    color: '#FB6A67',
-    url: '/workPages/travel'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666764932305-assets/web-upload/8d5ff7dd-c2b0-4455-acf9-df6ba3a064b1.png',
-    title: '请假申请',
-    icon: 'calendar-fill',
-    color: '#957BFE',
-    url: '/workPages/leave'
-  }
-])
+// 金刚区图标(优先使用后端移动端菜单)
+const icons = ref(getFallbackMenus())
+
+// 考勤统计四宫格(由本周考勤数据构建)
+const attendance = ref([])
 
 const iconPages = computed(() => {
   const pageSize = 8
@@ -644,243 +218,23 @@ const iconPages = computed(() => {
   return pages.length ? pages : [[]]
 })
 
-// 协同办公
-const synergy = ref([
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666765211148-assets/web-upload/bc9ff0e7-36a5-4d99-8698-cd589b00dc99.png',
-    title: '文档资料',
-    icon: 'folder-fill',
-    color: '#00D05E',
-    url: '/homePages/nav'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666764808285-assets/web-upload/b83d1b36-7355-4f36-bc02-9f06b8c0867c.png',
-    title: '项目立项',
-    icon: 'block-fill',
-    color: '#CC52E2',
-    url: '/homePages/nav'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666765211148-assets/web-upload/bc9ff0e7-36a5-4d99-8698-cd589b00dc99.png',
-    title: '客户管理',
-    icon: 'stack',
-    color: '#00B9FE',
-    url: '/workPages/client'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666765211148-assets/web-upload/bc9ff0e7-36a5-4d99-8698-cd589b00dc99.png',
-    title: '智能运营',
-    icon: 'ai-fill',
-    color: '#4B98FE',
-    url: '/homePages/nav'
-  }
-])
 
-// 设备
-const device = ref([
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666764808285-assets/web-upload/b83d1b36-7355-4f36-bc02-9f06b8c0867c.png',
-    title: '硬件管理',
-    icon: 'hardware-fill',
-    color: '#FFAC00',
-    url: '/workPages/apparatus'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666765211148-assets/web-upload/bc9ff0e7-36a5-4d99-8698-cd589b00dc99.png',
-    title: '办公物料',
-    icon: 'assign-fill',
-    color: '#4B98FE',
-    url: '/workPages/machine'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666764808285-assets/web-upload/b83d1b36-7355-4f36-bc02-9f06b8c0867c.png',
-    title: '资源模组',
-    icon: 'module-fill',
-    color: '#CC52E2',
-    url: '/homePages/nav'
-  }
-])
 
-// 考勤
-const attendance = ref([
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666764808285-assets/web-upload/b83d1b36-7355-4f36-bc02-9f06b8c0867c.png',
-    title: '正常出勤',
-    icon: 'reload-planet-fill',
-    color: '#4B98FE',
-    url: '/workPages/charts'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666765211148-assets/web-upload/bc9ff0e7-36a5-4d99-8698-cd589b00dc99.png',
-    title: '缺勤漏卡',
-    icon: 'rocket-fill',
-    color: '#FB6A67',
-    url: '/workPages/charts'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666765049011-assets/web-upload/e49243fa-5182-4fbb-a850-33e927316a90.png',
-    title: '休息请假',
-    icon: 'meteor-fill',
-    color: '#FFAC00',
-    url: '/workPages/charts'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666764788499-assets/web-upload/4cf1bbab-efb8-401c-9a2d-21689d024491.png',
-    title: '奋斗加班',
-    icon: 'alien',
-    color: '#957BFE',
-    url: '/workPages/charts'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666764932311-assets/web-upload/c9380d70-1291-467e-89dd-40d2b799b986.png',
-    title: '摆烂旷工',
-    icon: 'skull-fill',
-    color: '#CC52E2',
-    url: '/workPages/charts'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666764788528-assets/web-upload/955b13dd-7715-4627-b8cc-04ae3d85051a.png',
-    title: '居家办公',
-    icon: 'notebook-fill',
-    color: '#00B9FE',
-    url: '/workPages/charts'
-  }
-])
 
-// 费用
-const cost = ref([
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666764808285-assets/web-upload/b83d1b36-7355-4f36-bc02-9f06b8c0867c.png',
-    title: '餐费报销',
-    icon: 'food-fill',
-    color: '#FFAC00',
-    url: '/workPages/cost'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666765211148-assets/web-upload/bc9ff0e7-36a5-4d99-8698-cd589b00dc99.png',
-    title: '医疗报销',
-    icon: 'covid-19-fill',
-    color: '#00D05E',
-    url: '/workPages/cost'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666765049011-assets/web-upload/e49243fa-5182-4fbb-a850-33e927316a90.png',
-    title: '物料报销',
-    icon: 'iot-fill',
-    color: '#CC52E2',
-    url: '/workPages/cost'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666764788499-assets/web-upload/4cf1bbab-efb8-401c-9a2d-21689d024491.png',
-    title: '出差报销',
-    icon: 'norm-fill',
-    color: '#4B98FE',
-    url: '/workPages/cost'
-  }
-])
 
-// 数据看板
-const data = ref([
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666764808285-assets/web-upload/b83d1b36-7355-4f36-bc02-9f06b8c0867c.png',
-    title: '营销看板',
-    icon: 'data-fill',
-    color: '#4B98FE',
-    url: '/workPages/charts'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666765211148-assets/web-upload/bc9ff0e7-36a5-4d99-8698-cd589b00dc99.png',
-    title: '库存看板',
-    icon: 'statistics-fill',
-    color: '#00B9FE',
-    url: '/workPages/charts'
-  }
-])
 
-// 工具
-const tool = ref([
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666765049011-assets/web-upload/e49243fa-5182-4fbb-a850-33e927316a90.png',
-    title: '任务列表',
-    icon: 'bookmark-fill',
-    color: '#00D05E',
-    url: '/homePages/nav'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666765211148-assets/web-upload/bc9ff0e7-36a5-4d99-8698-cd589b00dc99.png',
-    title: '问卷调查',
-    icon: 'order-fill',
-    color: '#00B9FE',
-    url: '/workPages/questionnaire'
-  },
-  {
-    img: 'https://cdn.nlark.com/yuque/0/2022/png/280373/1666764808285-assets/web-upload/b83d1b36-7355-4f36-bc02-9f06b8c0867c.png',
-    title: '活动参与',
-    icon: 'flag-fill',
-    color: '#4B98FE',
-    url: '/homePages/nav'
-  }
-])
 
-// 企业文化数据
-const tuniaoData = ref([
-  {
-    title: '文化使命',
-    icon: 'image-text-fill',
-    color: 'aquablue',
-    value: '查看详情',
-    url: '/workPages/culture'
-  },
-  {
-    title: '发展历程',
-    icon: 'signpost-fill',
-    color: 'blue',
-    value: '查看详情',
-    url: '/workPages/history'
-  },
-  {
-    title: '集体相册',
-    icon: 'image-fill',
-    color: 'indigo',
-    value: '查看详情',
-    url: '/workPages/photo'
-  },
-  {
-    title: '宣传短片',
-    icon: 'live-stream-fill',
-    color: 'cyan',
-    value: '查看详情',
-    url: '/workPages/video'
-  },
-  {
-    title: '荣誉证书',
-    icon: 'trophy-fill',
-    color: 'teal',
-    value: '查看详情',
-    url: '/workPages/honor'
-  },
-  {
-    title: '公司地址',
-    icon: 'map-fill',
-    color: 'green',
-    value: '查看详情',
-    url: '/workPages/map'
-  }
-])
 
-icons.value = getFallbackMenus()
 attendance.value = buildAttendanceItems()
-synergy.value = []
-device.value = []
-cost.value = []
-data.value = []
-tool.value = []
-tuniaoData.value = []
 
 onMounted(() => {
-  loadWorkbench()
   updateClock()
   clockTimer = setInterval(updateClock, 1000)
+})
+
+// tab 页常驻内存,每次切到工作台都刷新
+onShow(() => {
+  loadWorkbench()
 })
 
 onUnmounted(() => {
@@ -893,6 +247,18 @@ onUnmounted(() => {
 function loadWorkbench() {
   loadMenus()
   loadWeekAttendance()
+  loadPendingCount()
+}
+
+async function loadPendingCount() {
+  try {
+    const res = await getHomeStats()
+    if (res.code === 200 && res.data) {
+      pendingCount.value = Number(res.data.approvalCount || 0)
+    }
+  } catch (error) {
+    console.log('加载待办数量失败', error)
+  }
 }
 
 async function loadMenus() {
@@ -1015,10 +381,10 @@ function normalizeMenuUrl(url, title) {
 function buildAttendanceItems() {
   const summary = getWeekSummary()
   return [
-    { title: `正常${summary.normal}天`, icon: 'reload-planet-fill', color: '#4B98FE', url: '' },
-    { title: `迟到${summary.late}次`, icon: 'rocket-fill', color: '#FB6A67', url: '' },
-    { title: `缺勤${summary.absent}次`, icon: 'warning-fill', color: '#FFAC00', url: '' },
-    { title: `待确认${summary.unknown}天`, icon: 'notebook-fill', color: '#00B9FE', url: '' }
+    { title: `正常${summary.normal}天`, icon: 'reload-planet-fill', color: '#4B98FE', url: '/workPages/calendar' },
+    { title: `迟到${summary.late}次`, icon: 'rocket-fill', color: '#FB6A67', url: '/workPages/calendar' },
+    { title: `缺勤${summary.absent}次`, icon: 'warning-fill', color: '#FFAC00', url: '/workPages/leave-record' },
+    { title: `待确认${summary.unknown}天`, icon: 'notebook-fill', color: '#00B9FE', url: '/workPages/calendar' }
   ]
 }
 

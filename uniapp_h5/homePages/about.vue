@@ -2,11 +2,11 @@
   <view class="template-about">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed bg-color="#ffffff00" :placeholder="false" customBack>
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon name="left" class="icon"></tn-icon>
         <tn-icon name="home-capsule-fill" class="icon"></tn-icon>
-      </view>
+      </view></template>
     </tn-navbar>
     
     <canvas canvas-id="bubble" id="bubble" class="bubble" :style="{width: `${windowWidth}px`, height: `${windowHeight}px`}"></canvas>

@@ -52,6 +52,19 @@
                 <text class="step-name">{{ step.name }}</text>
               </view>
             </view>
+
+            <view v-if="canCancel(item)" class="card-actions">
+              <tn-button
+                size="sm"
+                shape="round"
+                bg-color="rgba(251, 106, 103, 0.1)"
+                text-color="#FB6A67"
+                :custom-style="{ padding: '10rpx 36rpx' }"
+                @click.stop="cancelItem(item)"
+              >
+                撤销申请
+              </tn-button>
+            </view>
           </view>
         </view>
 
@@ -76,7 +89,7 @@ import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useStore } from 'vuex'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
-import { getMyApplications } from '@/api/application'
+import { getMyApplications, cancelApplication } from '@/api/application'
 
 const store = useStore()
 const { vuex_custom_bar_height } = useCustomBarHeight()
@@ -102,7 +115,9 @@ const typeMap = {
   regularization: '转正申请',
   transfer: '调动申请',
   reward: '奖励申请',
-  punish: '惩罚申请'
+  punish: '惩罚申请',
+  expense: '费用报销',
+  device: '设备申请'
 }
 
 const statusMap = {
@@ -225,6 +240,28 @@ function steps(status) {
 
 function goDetail(item) {
   uni.navigateTo({ url: `/homePages/approval-details?id=${item.id}` })
+}
+
+function canCancel(item) {
+  return Number(item.status) === 0
+}
+
+function cancelItem(item) {
+  uni.showModal({
+    title: '撤销申请',
+    content: '确定要撤销这条申请吗？撤销后不可恢复',
+    confirmColor: '#FB6A67',
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await cancelApplication(item.id)
+        uni.showToast({ title: '已撤销', icon: 'success' })
+        refresh()
+      } catch (e) {
+        console.log('撤销申请失败', e)
+      }
+    }
+  })
 }
 </script>
 
@@ -390,6 +427,12 @@ function goDetail(item) {
 .load-more {
   padding: 22rpx 0;
   text-align: center;
+}
+
+.card-actions {
+  margin-top: 20rpx;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .clamp-1 {

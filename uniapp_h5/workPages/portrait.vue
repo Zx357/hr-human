@@ -2,19 +2,19 @@
   <view class="oa-content bg-gray">
     <!-- 顶部自定义导航 -->
     <!-- <tn-navbar fixed home-icon="" :bottom-shadow="false" backgroundColor="#FFFFFF00">
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon class='icon' name='left-arrow'></tn-icon>
-      </view>
+      </view></template>
       <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
         <text class="tn-text-xl tn-color-black">用户画像</text>
       </view>
     </tn-navbar> -->
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed home-icon="" :placeholder="false" :bottom-shadow="false" :bg-color="navBarBackgroundColor" id="navbar">
-      <view slot="back" class='tn-custom-nav-bar__back' @click="goBack" :style="[navBarStyle]">
+      <template #back><view class='tn-custom-nav-bar__back' @click="goBack" :style="[navBarStyle]">
         <tn-icon class='icon' name='left-arrow'></tn-icon>
-      </view>
+      </view></template>
       <view class="tn-flex tn-flex-col-center tn-flex-row-center" :style="[navBarStyle2]">
         <view class="tn-text-bold tn-text-xl">付衣衣</view>
       </view>

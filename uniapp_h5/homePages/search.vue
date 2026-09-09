@@ -11,7 +11,7 @@
         <view class="justify-content-item align-content-item" style="width: 100vw;">
           <view class="tn-flex tn-flex-col-center" style="border: 1rpx solid #3668fc;border-radius: 100rpx;padding: 10rpx 20rpx 10rpx 20rpx;width: 90%;">
             <tn-icon name="search" class="justify-content-item tn-padding-right-xs tn-color-gray tn-text-lg"></tn-icon>
-            <input class="justify-content-item" placeholder="想搜点什么咧" name="input" placeholder-style="color:#AAAAAA" style="width: 90%;"></input>
+            <input v-model="inputValue" class="justify-content-item" placeholder="搜索同事姓名" name="input" placeholder-style="color:#AAAAAA" style="width: 90%;" confirm-type="search" @confirm="doSearch"></input>
           </view>
         </view>
         
@@ -27,7 +27,7 @@
               :fontSize="24"
               text-color="#ffffff"
               shape="round"
-              @click="tn('')"
+              @click="doSearch"
             >
               <text class="">搜 索</text>
             </tn-button>
@@ -67,17 +67,23 @@
     </view>
     
     
-    <!-- 不建议写时间，因为写了时间，你就要经常更新文章了鸭-->
+    <view v-if="searching" class="tn-text-center tn-color-gray tn-padding-xl">搜索中...</view>
+    <view v-else-if="!content.length" class="tn-text-center tn-color-gray--disabled tn-padding-xl">
+      {{ inputValue ? '未找到相关同事' : '输入姓名搜索同事' }}
+    </view>
     <view class="">
       <block v-for="(item, index) in content" :key="index">
-        <view class="article-shadow tn-margin" @click="tn('/pageB/article/article')">
+        <view class="article-shadow tn-margin" @click="openContact(item)">
           <view class="tn-flex">
-            
+            <view class="image-pic tn-margin-sm" :style="'background-image:url(' + item.userAvatar + ')'">
+              <view class="image-article">
+              </view>
+            </view>
             <view class="tn-margin-sm tn-padding-top-xs" style="width: 100%;">
               <view class="tn-text-lg tn-text-bold clamp-text-1 tn-text-justify">
                 <text class="">{{ item.title }}</text>
               </view>
-              <view class="tn-padding-top-xs" style="min-height: 90rpx;">
+              <view class="tn-padding-top-xs">
                 <text class="tn-text-df tn-color-gray clamp-text-2 tn-text-justify">
                   {{ item.desc }}
                 </text>
@@ -87,30 +93,21 @@
                   class="justify-content-item tn-tag-content__item tn-margin-right tn-text-sm tn-text-bold">
                   <text class="tn-tag-content__item--prefix">#</text> {{ label_item }}
                 </view>
-                <view class="justify-content-item tn-color-gray tn-text-center tn-color-gray" style="padding-top: 5rpx;">
-                  <tn-icon name="rocket" class="tn-padding-right-xs tn-text-lg"></tn-icon>
-                  <text class="tn-padding-right tn-text-df">{{ item.collectionCount }}</text>
-                  <tn-icon name="like-lack" class="tn-padding-right-xs tn-text-lg"></tn-icon>
-                  <text class="tn-text-df">{{ item.likeCount }}</text>
-                </view>
-              </view>
-            </view>
-            <view class="image-pic tn-margin-sm" :style="'background-image:url(' + item.userAvatar + ')'">
-              <view class="image-article">
               </view>
             </view>
           </view>
         </view>
       </block>
     </view>
-    
-    
-  </view>
+
+      </view>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
+import config from '@/config'
+import { searchContacts } from '@/api/contact'
 // 使用 composable 获取自定义导航栏高度
 const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
@@ -118,217 +115,47 @@ const { goBack } = useGoBack()
 // 输入值
 const inputValue = ref('')
 
-// 标签列表
-const tagList = ref([
-  {
-    color: 'red',
-    title: "补卡",
-  },
-  {
-    color: 'cyan',
-    title: "OA办公",
-  },
-  {
-    color: 'blue',
-    title: "费用报销",
-  },
-  {
-    color: 'green',
-    title: "酷炫",
-  },
-  {
-    color: 'orange',
-    title: "UI设计",
-  },
-  {
-    color: 'purple',
-    title: "图鸟",
-  },
-  {
-    color: 'brown',
-    title: "商务",
-  }
-])
+// 搜索结果
+const content = ref([])
+const searching = ref(false)
 
-// 内容列表
-const content = ref([
-  {
-    userAvatar: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg',
-    userName: '可我会像',
-    date: '2021年12月20日',
-    color: 'red',
-    label: ['小程序'],
-    title: '小程序官网源码，已上线',
-    desc: '小程序前端源码，欢迎白嫖嗷嗷，可以的话，插件市场三连支持一下',
-    mainImage: 'https://resource.tuniaokj.com/images/shop/prototype2.jpg',
-    viewUser: {
-      latestUserAvatar: [
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg' },
-      ],
-      viewUserCount: 567
-    },
-    collectionCount: 543,
-    commentCount: 543,
-    likeCount: 206
-  },
-  {
-    userAvatar: 'https://resource.tuniaokj.com/images/blogger/blogger_beibei.jpg',
-    userName: '可我会像',
-    date: '2021年12月20日',
-    color: 'cyan',
-    label: ['模型'],
-    title: '一个拥有大量3D模型的网站',
-    desc: '3D模型了解一下？',
-    mainImage: 'https://resource.tuniaokj.com/images/shop/prototype1.jpg',
-    viewUser: {
-      latestUserAvatar: [
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg' },
-      ],
-      viewUserCount: 987
-    },
-    collectionCount: 567,
-    commentCount: 69,
-    likeCount: 65
-  },
-  {
-    userAvatar: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg',
-    userName: '可我会像',
-    date: '2021年12月20日',
-    color: 'blue',
-    label: ['UI设计'],
-    title: '为什么资讯不显示时间？',
-    desc: '你确定你经常更新文章吗？',
-    mainImage: 'https://resource.tuniaokj.com/images/shop/computer2.jpg',
-    viewUser: {
-      latestUserAvatar: [
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg' },
-      ],
-      viewUserCount: 321
-    },
-    collectionCount: 654,
-    commentCount: 232,
-    likeCount: 543
-  },
-  {
-    userAvatar: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg',
-    userName: '可我会像',
-    date: '2021年12月20日',
-    color: 'green',
-    label: ['创意'],
-    title: '创意一点点',
-    desc: '创意灵感从这里开始',
-    mainImage: 'https://resource.tuniaokj.com/images/shop/phonecase1.jpg',
-    viewUser: {
-      latestUserAvatar: [
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg' },
-      ],
-      viewUserCount: 230
-    },
-    collectionCount: 987,
-    commentCount: 236,
-    likeCount: 342
-  },
-  {
-    userAvatar: 'https://resource.tuniaokj.com/images/shop/phonecase2.jpg',
-    userName: '可我会像',
-    date: '2021年12月20日',
-    color: 'orange',
-    label: ['空间设计'],
-    title: '图鸟UI素材已上传语雀',
-    desc: '语雀素材地址资源',
-    mainImage: 'https://resource.tuniaokj.com/images/shop/phonecase2.jpg',
-    viewUser: {
-      latestUserAvatar: [
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg' },
-      ],
-      viewUserCount: 106
-    },
-    collectionCount: 765,
-    commentCount: 32,
-    likeCount: 91
-  },
-  {
-    userAvatar: 'https://resource.tuniaokj.com/images/shop/watch1.jpg',
-    userName: '可我会像',
-    date: '2021年12月20日',
-    color: 'purplered',
-    label: ['神器'],
-    title: '最强的视频转GIF工具',
-    desc: '神器推荐',
-    mainImage: 'https://resource.tuniaokj.com/images/shop/watch1.jpg',
-    viewUser: {
-      latestUserAvatar: [
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg' },
-      ],
-      viewUserCount: 232
-    },
-    collectionCount: 776,
-    commentCount: 48,
-    likeCount: 86
-  },
-  {
-    userAvatar: 'https://resource.tuniaokj.com/images/shop/sticker.jpg',
-    userName: '可我会像',
-    date: '2021年12月20日',
-    color: 'purple',
-    label: ['粒子'],
-    title: '酷炫的小程序粒子效果一览',
-    desc: '小程序粒子效果',
-    mainImage: 'https://resource.tuniaokj.com/images/shop/sticker.jpg',
-    viewUser: {
-      latestUserAvatar: [
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg' },
-      ],
-      viewUserCount: 456
-    },
-    collectionCount: 342,
-    commentCount: 42,
-    likeCount: 76
-  },
-  {
-    userAvatar: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg',
-    userName: '可我会像',
-    date: '2021年12月20日',
-    color: 'brown',
-    label: ['工具'],
-    title: '小程序任意页面生成二维码',
-    desc: '二维码生成器',
-    mainImage: 'https://resource.tuniaokj.com/images/shop/card.jpg',
-    viewUser: {
-      latestUserAvatar: [
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_2.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_3.jpeg' },
-        { src: 'https://resource.tuniaokj.com/images/blogger/avatar_4.jpeg' },
-      ],
-      viewUserCount: 129
-    },
-    collectionCount: 265,
-    commentCount: 22,
-    likeCount: 62
+// 执行搜索(后端联系人搜索)
+const doSearch = async () => {
+  const keyword = inputValue.value.trim()
+  if (!keyword) {
+    uni.showToast({ title: '请输入搜索关键词', icon: 'none' })
+    return
   }
-])
+  searching.value = true
+  try {
+    const res = await searchContacts({ name: keyword })
+    const list = Array.isArray(res.data) ? res.data : res.data?.records || []
+    content.value = list.map((item) => ({
+      id: item.id,
+      title: item.name || item.employeeName || '未命名员工',
+      desc: item.deptName || item.companyName || '暂无部门信息',
+      label: [item.position || item.post || '同事'].filter(Boolean),
+      userAvatar: formatAvatar(item.avatar),
+      raw: item
+    }))
+  } catch (error) {
+    console.log('搜索失败', error)
+  } finally {
+    searching.value = false
+  }
+}
+
+// 打开同事详情
+const openContact = (item) => {
+  if (!item?.id) return
+  uni.navigateTo({ url: `/partnerPages/user?id=${item.id}` })
+}
+
+const formatAvatar = (avatar) => {
+  if (!avatar) return '/static/author.jpg'
+  if (/^https?:\/\//.test(avatar) || avatar.startsWith('/static')) return avatar
+  return config.baseUrl + avatar
+}
 
 // 跳转
 const tn = (e) => {

@@ -118,7 +118,9 @@ const typeMap = {
   regularization: '转正申请',
   transfer: '调动申请',
   reward: '奖励申请',
-  punish: '惩罚申请'
+  punish: '惩罚申请',
+  expense: '费用报销',
+  device: '设备申请'
 }
 
 const typeColors = {

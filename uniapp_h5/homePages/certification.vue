@@ -2,10 +2,10 @@
   <view class="oa-content">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed home-icon="" :bottom-shadow="false" bg-color="#F8F7F8" :placeholder="false">
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon name="left-arrow" class="icon"></tn-icon>
-      </view>
+      </view></template>
       <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
         <text class="tn-text-bold tn-text-xl tn-color-black">企业认证</text>
       </view>
@@ -69,10 +69,9 @@
         <view class="" style="padding: 20rpx 0rpx 0rpx 0rpx;">
           <tn-image-upload
             ref="imageUpload"
-            :action="action"
+            :custom-upload-handler="uploadImageHandler"
             :width="210"
             :height="210"
-            :formData="formData"
             :fileList="fileList"
             :disabled="disabled"
             :autoUpload="autoUpload"
@@ -348,6 +347,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { uploadImageToServer, chooseAndUpload } from '@/utils/upload'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 // 使用 composable 获取自定义导航栏高度
 const { vuex_custom_bar_height } = useCustomBarHeight()
@@ -358,21 +358,16 @@ const index = ref(99)
 const date = ref('')
 const array = ref(['电子普票', '专用发票'])
 // 上传文件地址
-const uploadAction = ref('https://www.hualigs.cn/api/upload')
+// 图片上传走后端
+const imageUpload = ref(null)
+const uploadImageHandler = (file) => uploadImageToServer(file?.path || file)
 // 身份证人像面
 const idCardPeopleImage = ref('')
 // 身份证国徽面
 const idCardEmblemImage = ref('')
 
 /* 营业执照*/
-const action = ref('https://www.hualigs.cn/api/upload')
-// action: '',
-const formData = ref({
-  apiType: 'this,ali',
-  token: 'dffc1e06e636cff0fdf7d877b6ae6a2e',
-  image: null
-})
-const fileList = ref([{url: 'https://resource.tuniaokj.com/images/album/xiong6.jpg'},{url: 'https://resource.tuniaokj.com/images/album/xiong5.jpg'}])
+const fileList = ref([])
 const showUploadList = ref(true)
 const customBtn = ref(false)
 const autoUpload = ref(true)
@@ -407,54 +402,7 @@ const uploadIdCardEmblemImage = () => {
 
 // 点击上传图片
 const chooseImageAndUpload = () => {
-  // 只选择图片的时候使用 chooseImage 来实现
-  const chooseFile = new Promise((resolve, reject) => {
-    uni.chooseImage({
-      count: 1,
-      success: resolve,
-      fail: reject
-    })
-  })
-  
-  return new Promise((resolve, reject) => {
-    chooseFile.then((res) => {
-      const tempFile = res.tempFilePaths[0]
-      uni.showLoading({
-        mask:true
-      })
-      uni.uploadFile({
-        url: uploadAction.value,
-        success: (res) => {
-          // 判断啊是否为json字符串，将其转换为json格式
-          let data = $t.test.jsonString(res.data) ? JSON.parse(res.data) : res.data
-          if (![200, 201, 204].includes(res.statusCode)) {
-            
-          } else {
-            resolve(tempFile)
-          }
-        },
-        fail: (err) => {
-          uni.showModal({
-            title: '提示',
-            content: '上传文件失败',
-            showCancel: false
-          })
-        },
-        complete: (res) => {
-          uni.hideLoading()
-        }
-      })
-    }).catch((err) => {
-      console.log(err);
-      uni.hideLoading()
-      uni.showModal({
-        title: '提示',
-        content: '选择图片失败',
-        showCancel: false
-      })
-      reject(err)
-    })
-  })
+  return chooseAndUpload(1)
 }
 
 // 跳转
@@ -464,19 +412,26 @@ const tn = (e) => {
   });
 }
 
-// 获取验证码
+// 获取验证码(本地倒计时)
+let codeTimer = null
 const getCode = () => {
-  if ($refs.code.canGetCode) {
-    $t.message.loading('正在获取验证码')
-    setTimeout(() => {
-      $t.message.closeLoading()
-      $t.message.toast('验证码已经发送')
-      // 通知组件开始计时
-      $refs.code.start()
-    }, 2000)
-  } else {
-    $t.message.toast($refs.code.secNum + '秒后再重试')
+  if (codeTimer) {
+    uni.showToast({ title: `${tips.value}后再重试`, icon: 'none' })
+    return
   }
+  uni.showToast({ title: '验证码已发送', icon: 'none' })
+  let seconds = 60
+  tips.value = `${seconds}s后重新获取`
+  codeTimer = setInterval(() => {
+    seconds -= 1
+    if (seconds <= 0) {
+      clearInterval(codeTimer)
+      codeTimer = null
+      tips.value = '获取验证码'
+    } else {
+      tips.value = `${seconds}s后重新获取`
+    }
+  }, 1000)
 }
 
 // 获取验证码倒计时被修改
@@ -486,7 +441,7 @@ const codeChange = (event) => {
 
 // 手动上传文件
 const upload = () => {
-  $refs.imageUpload.upload()
+  imageUpload.value?.upload()
 }
 
 // 图片拖拽重新排序

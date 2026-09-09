@@ -2,10 +2,10 @@
   <view class="oa-content">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed home-icon="" :bottom-shadow="false" bg-color="#FFFFFF" :placeholder="false">
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon name="left-arrow" class="icon"></tn-icon>
-      </view>
+      </view></template>
       <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
         <text class="tn-text-bold tn-text-xl tn-color-black">我的群聊</text>
       </view>
@@ -13,7 +13,8 @@
     
     
     <view class="" :style="{paddingTop: vuex_custom_bar_height + 10 + 'px'}">
-      <view class="tn-flex tn-flex-col-center" style="margin: 50rpx 0rpx 50rpx 30rpx;" v-for="item in groupList" :key="item.id">
+      <view v-if="!groupList.length" class="tn-text-center tn-color-gray--disabled tn-padding-xl">暂未加入任何群聊,可在"发起群聊"中创建</view>
+      <view class="tn-flex tn-flex-col-center" style="margin: 50rpx 0rpx 50rpx 30rpx;" v-for="item in groupList" :key="item.id" @click="openChat(item)">
         <!-- <view class="icon15__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-bg-blue--light tn-color-blue">
           <tn-icon name="organizatio-fill"></tn-icon>
         </view> -->
@@ -55,20 +56,10 @@
   const { goBack } = useGoBack()
 
   const groups = ref([])
-  const fallbackGroups = [
-    {
-      id: 'default',
-      groupName: '默认工作群',
-      memberCount: 0,
-      lastMessage: '欢迎加入默认工作群',
-      avatar: 'https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1692940242409-assets/web-upload/fcc4eab6-b2ce-44eb-9165-c49b51f5f830.jpeg'
-    }
-  ]
-
-  const groupList = computed(() => groups.value.length ? groups.value : fallbackGroups)
+  const groupList = computed(() => groups.value)
 
   const formatAvatar = (avatar) => {
-    if (!avatar) return fallbackGroups[0].avatar
+    if (!avatar) return '/static/author.jpg'
     if (/^https?:\/\//.test(avatar) || avatar.startsWith('/static')) return avatar
     return config.baseUrl + avatar
   }
@@ -93,6 +84,14 @@
     uni.navigateTo({
       url: e,
     });
+  }
+
+  // 进入群聊会话
+  const openChat = (item) => {
+    if (!item?.id) return
+    uni.navigateTo({
+      url: `/partnerPages/chat?type=group&targetId=${item.id}&name=${encodeURIComponent(item.groupName || '群聊')}`,
+    })
   }
 
   onMounted(() => {

@@ -2,10 +2,10 @@
   <view class="oa-content">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed home-icon="" :bottom-shadow="false" bg-color="#FFFFFF00" :placeholder="false">
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon name='home-in-fill' class='icon'></tn-icon>
-      </view>
+      </view></template>
       <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
         <text class="tn-text-bold tn-text-xl tn-color-black">商研学院</text>
       </view>
@@ -191,7 +191,7 @@ const swiperList = ref([
     name: '企业共建',
     text: '开启你的发现之旅',
     url: 'https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1692940242318-assets/web-upload/6d5b712d-5996-4a80-bb02-4ddc23e01acf.jpeg',
-    pathurl: "/momentPages/nav"
+    pathurl: "/minePages/nav"
   }, {
     id: 1,
     type: 'image',
@@ -205,7 +205,7 @@ const swiperList = ref([
     name: '职位晋升',
     text: '开启你的提升之旅',
     url: 'https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1692940242318-assets/web-upload/6d5b712d-5996-4a80-bb02-4ddc23e01acf.jpeg',
-    pathurl: "/momentPages/nav"
+    pathurl: "/minePages/nav"
   }, {
     id: 3,
     type: 'image',

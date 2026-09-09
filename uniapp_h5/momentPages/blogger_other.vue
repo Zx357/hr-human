@@ -2,11 +2,11 @@
   <view class="oa-content">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed bg-color="#ffffff00" :placeholder="false" customBack>
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon class='icon' name='left'></tn-icon>
         <tn-icon class='icon' name='home-capsule-fill'></tn-icon>
-      </view>
+      </view></template>
     </tn-navbar>
     
     <!-- 立体头像-->

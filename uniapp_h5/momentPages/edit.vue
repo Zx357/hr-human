@@ -2,11 +2,11 @@
 	<view class="oa-content tn-safe-area-inset-bottom">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed bg-color="#ffffff00" :placeholder="false" customBack>
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon class='icon' name='left'></tn-icon>
         <tn-icon class='icon' name='home-capsule-fill'></tn-icon>
-      </view>
+      </view></template>
     </tn-navbar>
 		
     <view class="tn-safe-area-inset-bottom" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
@@ -47,10 +47,9 @@
       <view class="tn-margin-left tn-padding-top-xs">
         <tn-image-upload
           ref="imageUpload"
-          :action="action"
+          :custom-upload-handler="uploadImageHandler"
           :width="236"
           :height="236"
-          :formData="formData"
           :fileList="fileList"
           :disabled="disabled"
           :autoUpload="autoUpload"
@@ -115,6 +114,7 @@
 import { ref } from 'vue'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 import { createMomentPost } from '@/api/moment'
+import { uploadImageToServer } from '@/utils/upload'
 // 使用 composable 获取自定义导航栏高度
 const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
@@ -194,13 +194,8 @@ const tags = ref([
   }
 ])
 
-// 图片上传相关
-const action = ref('https://www.hualigs.cn/api/upload')
-const formData = ref({
-  apiType: 'this,ali',
-  token: 'dffc1e06e636cff0fdf7d877b6ae6a2e',
-  image: null
-})
+// 图片上传相关(上传走后端)
+const uploadImageHandler = (file) => uploadImageToServer(file?.path || file)
 const fileList = ref([])
 const showUploadList = ref(true)
 const customBtn = ref(false)

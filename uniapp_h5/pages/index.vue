@@ -70,8 +70,6 @@ const tabbarList = ref([
     title: '时光',
     activeIcon: 'discover-fill',
     inactiveIcon: 'discover-fill',
-    count: '3',
-    badge:3,
     iconSize: '50rpx'
   },
   {

@@ -2498,3 +2498,24 @@ INSERT INTO `wf_process_node` VALUES (3, 1, 'HR审批', 2, 3, 2, NULL, 1, '2025-
 INSERT INTO `wf_process_node` VALUES (4, 1, '结束', 4, 4, NULL, NULL, NULL, '2025-12-22 21:19:11', '2025-12-22 21:19:11');
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- ----------------------------
+-- Table structure for mobile_chat_message
+-- ----------------------------
+DROP TABLE IF EXISTS `mobile_chat_message`;
+CREATE TABLE `mobile_chat_message`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `chat_type` tinyint NOT NULL DEFAULT 1 COMMENT '会话类型：1-群聊 2-单聊',
+  `group_id` bigint NULL DEFAULT NULL COMMENT '群聊ID',
+  `peer_employee_id` bigint NULL DEFAULT NULL COMMENT '对方员工ID（单聊）',
+  `from_employee_id` bigint NOT NULL COMMENT '发送人员工ID',
+  `content` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '消息内容',
+  `status` tinyint NULL DEFAULT 1,
+  `created_time` datetime NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_by` bigint NULL DEFAULT NULL,
+  `updated_by` bigint NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_mobile_chat_msg_group`(`group_id` ASC, `created_time` ASC) USING BTREE,
+  INDEX `idx_mobile_chat_msg_single`(`from_employee_id` ASC, `peer_employee_id` ASC, `created_time` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '移动端聊天消息' ROW_FORMAT = Dynamic;

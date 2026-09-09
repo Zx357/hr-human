@@ -72,7 +72,9 @@ const longitude = ref(113.330067);
 }]*/
 
 function openLocation() {
+  // #ifdef MP-WEIXIN
   wx.vibrateShort();
+  // #endif
   uni.openLocation({
     longitude: 113.3298396012573,
     latitude: 22.961803525530176,

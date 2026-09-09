@@ -2,10 +2,10 @@
   <view class="oa-content">
     <!-- 顶部自定义导航 -->
       <tn-navbar :placeholder="false" fixed :bottom-shadow="false" bg-color="#FFFFFF00">
-        <view slot="back" class='tn-custom-nav-bar__back'
+        <template #back><view class='tn-custom-nav-bar__back'
           @click="goBack">
           <tn-icon name="left-arrow" class='icon'></tn-icon>
-        </view>
+        </view></template>
         <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
           <text class="tn-text-bold tn-text-xl tn-color-white">客户管理</text>
         </view>
@@ -140,7 +140,9 @@ function bindPickerChange(e) {
 
 //拨打固定电话
 function callPhoneNumber() {
+  // #ifdef MP-WEIXIN
   wx.vibrateShort();
+  // #endif
   uni.makePhoneCall({
     phoneNumber: "18219128888",
   });

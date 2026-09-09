@@ -79,7 +79,7 @@
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
-import { getNoticeList } from '@/api/system/notice'
+import { getNoticeList, getNoticeDetail } from '@/api/system/notice'
 
 const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
@@ -146,8 +146,18 @@ function hasHtml(value) {
   return /<[^>]+>/.test(String(value || ''))
 }
 
-function openDetail(item) {
+async function openDetail(item) {
   activeNotice.value = item
+  // 拉取完整详情，避免列表数据被截断
+  if (!item?.id) return
+  try {
+    const res = await getNoticeDetail(item.id)
+    if (res.data && activeNotice.value?.id === item.id) {
+      activeNotice.value = { ...item, ...res.data }
+    }
+  } catch (e) {
+    console.log('加载通知详情失败', e)
+  }
 }
 
 function closeDetail() {

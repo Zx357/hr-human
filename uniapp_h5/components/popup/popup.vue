@@ -21,16 +21,6 @@
         <view class="bubble">
         </view>
         <view class="bubble-content" @tap.stop="closeModal">
-          <view class="tn-flex tn-flex-col-center tn-color-white tn-strip-bottom-min" style="padding: 20rpx 30rpx;" @click="scanCode">
-            <view class="tn-icon-discern" style="font-size: 50rpx;">
-            </view>
-            <view class="tn-text-lg tn-padding-left">扫码识别</view>
-          </view>
-          <view class="tn-flex tn-flex-col-center tn-color-white tn-strip-bottom-min" style="padding: 20rpx 30rpx;" @click="tn('/partnerPages/add')">
-            <view class="tn-icon-coworker" style="font-size: 50rpx;">
-            </view>
-            <view class="tn-text-lg tn-padding-left">添加同事</view>
-          </view>
           <view class="tn-flex tn-flex-col-center tn-color-white" style="padding: 20rpx 30rpx;" @click="tn('/partnerPages/create')">
             <view class="tn-icon-chat" style="font-size: 50rpx;">
             </view>

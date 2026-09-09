@@ -2,10 +2,10 @@
   <view class="oa-content">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed home-icon="" :bottom-shadow="false" bg-color="#FFFFFF00" :placeholder="false">
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon name="left-arrow" class="icon"></tn-icon>
-      </view>
+      </view></template>
       <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
         <text class="tn-text-bold tn-text-xl tn-color-black">用户信息</text>
       </view>
@@ -160,7 +160,7 @@
             :fontSize="28"
             text-color="#FFFFFF"
             shape="round"
-            @click="tn('/homePages/chat')"
+            @click="startChat"
           >
             <text class="">发消息</text>
           </tn-button>
@@ -207,6 +207,7 @@
   import { computed, ref } from 'vue'
   import { onLoad } from '@dcloudio/uni-app'
   import { useCustomBarHeight, useGoBack } from '@/libs/composables'
+  import { useStore } from 'vuex'
   import config from '@/config'
   import { getEmployeeDetail } from '@/api/employee'
   // 使用 composable 获取自定义导航栏高度
@@ -265,6 +266,27 @@
     }
   }
   
+  // 发消息:进入单聊会话
+  const startChat = () => {
+    const info = user.value || {}
+    const id = info.id
+    if (!id) {
+      uni.showToast({ icon: 'none', title: '暂无法发起会话' })
+      return
+    }
+    const store = useStore()
+    const mine = store.getters.employeeInfo || uni.getStorageSync('userInfo') || {}
+    const myId = store.getters.id || mine.id
+    if (myId && String(myId) === String(id)) {
+      uni.showToast({ icon: 'none', title: '不能给自己发消息' })
+      return
+    }
+    const name = info.name || info.employeeName || '同事'
+    uni.navigateTo({
+      url: `/partnerPages/chat?type=single&targetId=${id}&name=${encodeURIComponent(name)}`,
+    })
+  }
+
   // 跳转
   const tn = (e) => {
     uni.navigateTo({

@@ -2,10 +2,10 @@
   <view class="oa-content">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed home-icon="" :placeholder="false" :bottom-shadow="false" bg-color="#FFFFFF">
-      <view slot="back" class='tn-custom-nav-bar__back'
+      <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
         <tn-icon class='icon' name='left-arrow'></tn-icon>
-      </view>
+      </view></template>
       <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
         <text class="tn-text-bold tn-text-xl tn-color-black">设备申请</text>
       </view>
@@ -39,7 +39,7 @@
             设备名称 <text class="tn-color-red tn-padding-left-xs">*</text>
           </view>
           <view class="tn-color-gray tn-padding-top-xs tn-color-black">
-            <input placeholder="请输入" name="input" placeholder-style="color:#AAAAAA" value=""></input>
+            <input v-model="deviceName" placeholder="请输入设备名称" name="input" placeholder-style="color:#AAAAAA" value=""></input>
           </view>
         </view>
         <view class="justify-content-item tn-text-xl tn-color-grey tn-margin-left">
@@ -53,7 +53,7 @@
             设备数量 <text class="tn-color-red tn-padding-left-xs">*</text>
           </view>
           <view class="tn-color-gray tn-padding-top-xs tn-color-black">
-            <input placeholder="请输入" name="input" placeholder-style="color:#AAAAAA" value=""></input>
+            <input v-model="deviceCount" type="number" placeholder="请输入数量" name="input" placeholder-style="color:#AAAAAA" value=""></input>
           </view>
         </view>
         <view class="justify-content-item tn-text-xl tn-color-grey tn-margin-left">
@@ -74,7 +74,7 @@
         </view>
       </view>
       <view class="tn-bg-gray--light tn-padding tn-text-justify" style="border-radius: 10rpx;margin: 0 30rpx 30rpx 30rpx;">
-        <textarea maxlength="500" placeholder="请简单写一下设备事由" placeholder-style="color:#AAAAAA" style="height: 160rpx;width: 100%;"></textarea>
+        <textarea v-model="reason" maxlength="500" placeholder="请简单写一下设备事由" placeholder-style="color:#AAAAAA" style="height: 160rpx;width: 100%;"></textarea>
       </view>
       
       <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-padding tn-strip-top">
@@ -91,10 +91,9 @@
       <view class="tn-padding-left tn-padding-top-xs tn-padding-bottom-xs tn-strip-bottom-min">
         <tn-image-upload
           ref="imageUpload"
-          :action="action"
+          :custom-upload-handler="uploadImageHandler"
           :width="236"
           :height="236"
-          :formData="formData"
           :fileList="fileList"
           :disabled="disabled"
           :autoUpload="autoUpload"
@@ -116,23 +115,6 @@
         </view>
         <view class="justify-content-item tn-text-xl tn-color-grey">
           <tn-icon name='add-circle'></tn-icon>
-        </view>
-      </view>
-      
-      <view class="tn-margin-left tn-margin-right tn-margin-bottom" style="background-color: #00C8B008;color: #00C8B0;border-radius: 10rpx;" v-for="(item, index) in 1" :key="index" @click="tn('')">
-        <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-padding">
-          <view class="justify-content-item tn-text-bold tn-text-left" style="width: 80%;">
-            <view class="">
-              <text class="">设备损坏情况.pdf</text>
-            </view>
-            <view class="tn-padding-top-xs tn-text-sm">
-              <tn-icon name='folder-fill'></tn-icon>
-              <text class="tn-padding-left-xs">12 MB</text>
-            </view>
-          </view>
-          <view class="justify-content-item">
-            <tn-icon name='close-fill'></tn-icon>
-          </view>
         </view>
       </view>
       
@@ -174,9 +156,9 @@
             :fontSize="28"
             text-color="#FFFFFF"
             shape="round"
-            @click="tn('/workPages/prompt')"
+            @click="submitApply"
           >
-            <text class="">提交申请</text>
+            <text class="">{{ submitting ? '提交中...' : '提交申请' }}</text>
           </tn-button>
       </view>
       
@@ -188,6 +170,9 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useStore } from 'vuex'
+import { submitApplication } from '@/api/application'
+import { uploadImageToServer } from '@/utils/upload'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 
 // 使用 composable 获取自定义导航栏高度
@@ -200,17 +185,14 @@ const imageUpload = ref<any>(null)
 const index = ref<number>(99)
 const array = ref<string[]>(['个人设备', '部门设备', '公司设备', '其他用途'])
 
-const action = ref<string>('https://www.hualigs.cn/api/upload')
-const formData = ref<{
-  apiType: string
-  token: string
-  image: any
-}>({
-  apiType: 'this,ali',
-  token: 'dffc1e06e636cff0fdf7d877b6ae6a2e',
-  image: null
-})
-const fileList = ref<{url: string}[]>([{url: 'https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1693830798032-assets/web-upload/aa49b472-f60a-45cc-83cb-d56255e21a96.jpeg'},{url: 'https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1692940242436-assets/web-upload/05220af3-0aa1-4bdc-8e8b-d3d562870398.jpeg'}])
+// 图片上传走后端
+const uploadImageHandler = (file: any): Promise<string> => uploadImageToServer(file?.path || file)
+
+const deviceName = ref<string>('')
+const deviceCount = ref<string>('')
+const reason = ref<string>('')
+const submitting = ref<boolean>(false)
+const fileList = ref<{url: string}[]>([])
 const showUploadList = ref<boolean>(true)
 const customBtn = ref<boolean>(false)
 const autoUpload = ref<boolean>(true)
@@ -241,6 +223,56 @@ function upload() {
 // 图片拖拽重新排序
 function onSortList(list: any) {
   console.log(list);
+}
+
+// 提交设备申请
+async function submitApply() {
+  if (index.value === 99) {
+    uni.showToast({ title: '请选择设备类型', icon: 'none' })
+    return
+  }
+  if (!deviceName.value.trim()) {
+    uni.showToast({ title: '请填写设备名称', icon: 'none' })
+    return
+  }
+  if (!deviceCount.value || Number(deviceCount.value) <= 0) {
+    uni.showToast({ title: '请填写设备数量', icon: 'none' })
+    return
+  }
+  if (!reason.value.trim()) {
+    uni.showToast({ title: '请填写设备用途', icon: 'none' })
+    return
+  }
+  const store = useStore()
+  const employeeInfo = store.getters.employeeInfo || uni.getStorageSync('userInfo') || {}
+  const employeeId = store.getters.id || employeeInfo.id
+  if (!employeeId) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    return
+  }
+  const attachments = fileList.value.map((item: {url: string}) => item.url).filter(Boolean)
+  submitting.value = true
+  uni.showLoading({ title: '提交中...' })
+  try {
+    await submitApplication({
+      employeeId,
+      status: 0,
+      appType: 'device',
+      title: `${array.value[index.value]}申请`,
+      reason: reason.value.trim(),
+      remark: `设备数量: ${deviceCount.value}${attachments.length ? `; 附件: ${attachments.join(',')}` : ''}`
+    })
+    uni.hideLoading()
+    uni.showToast({ title: '提交成功', icon: 'success' })
+    setTimeout(() => {
+      uni.redirectTo({ url: '/workPages/prompt' })
+    }, 600)
+  } catch (error) {
+    uni.hideLoading()
+    console.log('提交设备申请失败', error)
+  } finally {
+    submitting.value = false
+  }
 }
 
 // 视频选择

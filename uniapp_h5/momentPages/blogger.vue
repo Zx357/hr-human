@@ -3,14 +3,14 @@
     <!-- 顶部自定义导航 -->
     <view class="navbar-fixed">
       <tn-navbar :bottom-shadow="false" fixed bg-color="#ffffff00" :placeholder="false">
-      <view slot="back" class="tn-custom-nav-bar__back">
+      <template #back><view class="tn-custom-nav-bar__back">
         <tn-icon class="icon" name="left" @click="goBack"></tn-icon>
         <tn-icon
           class="icon"
           name="message-fill"
           @click="tn('/momentPages/message')"
         ></tn-icon>
-      </view>
+      </view></template>
     </tn-navbar>
     </view>
 
