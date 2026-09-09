@@ -27,8 +27,7 @@
         class="tn-info__container tn-flex tn-flex-wrap tn-flex-col-center tn-flex-row-between tn-margin-left tn-margin-right tn-margin-top tn-margin-bottom-sm"
       >
         <view
-          class="tn-info__item tn-flex tn-flex-direction-row tn-flex-col-center tn-flex-row-between"
-          style="background-color: #f4f5f9"
+          class="tn-info__item group-card tn-flex tn-flex-direction-row tn-flex-col-center tn-flex-row-between"
           @click="tn('/partnerPages/group')"
         >
           <view
@@ -36,12 +35,13 @@
           >
             <view class="tn-info__item__left__content">
               <view
-                class="tn-info__item__left__content--title tn-text-bold tn-text-lg"
+                class="tn-info__item__left__content--title tn-text-bold tn-text-lg tn-color-white"
                 >我的群聊</view
               >
               <view
-                class="tn-info__item__left__content--data tn-padding-top-xs tn-color-gray"
-                >{{ groupCount }} 个群聊</view
+                class="tn-info__item__left__content--data tn-padding-top-xs tn-color-white"
+                style="opacity: .85"
+                >{{ groupCount }} 个群聊,点击进入</view
               >
             </view>
           </view>
@@ -517,6 +517,21 @@ onShow(() => {
     }
   }
 }
+/* 群聊卡片 */
+.group-card {
+  width: 100%;
+  background: linear-gradient(135deg, #4B98FE 0%, #3668FC 100%);
+  border-radius: 18rpx;
+}
+
+.group-card::after {
+  display: none;
+}
+
+.group-card .tn-info__item__right--icon {
+  color: #ffffff !important;
+}
+
 /* 信息展示 end */
 
 /* 图标容器15 start */

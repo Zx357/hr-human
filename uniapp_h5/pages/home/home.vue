@@ -1,40 +1,47 @@
 <template>
 	<view class="template-home tn-safe-area-inset-bottom">
-    <!-- 顶部自定义导航 -->
-    <tn-navbar fixed :bottomShadow="false" bg-color="#FFFFFF00" backText="" backIcon="" homeIcon="" >
-      <template v-slot:back>
-        <view class="custom-nav tn-flex tn-flex-col-center tn-flex-row-left">
-          <view class="custom-nav__back">
-            <tn-icon name="search-menu" @click="tn('/homePages/search')"></tn-icon>
+    <!-- 顶部渐变欢迎区 -->
+    <view class="home-banner">
+      <tn-navbar fixed :bottomShadow="false" bg-color="#FFFFFF00" backText="" backIcon="" homeIcon="" >
+        <template v-slot:back>
+          <view class="custom-nav tn-flex tn-flex-col-center tn-flex-row-right">
+            <view class="custom-nav__back">
+              <tn-icon name="search-menu" class="tn-color-white" @click="tn('/homePages/search')"></tn-icon>
+            </view>
           </view>
-        </view>
-      </template>
-    </tn-navbar>
-    
-    <!-- 方式1 start-->
-    <view class="tn-flex home-fixed" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
-      <view
-        v-for="item in shortcutList"
-        :key="item.title"
-        class="home-shortcut tn-padding-sm tn-margin-xs tn-radius"
-        @click="tn(item.url)"
-      >
-        <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-          <view class="icon1__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-bg-white tn-color-black">
-            <tn-badge v-if="item.badge" :value="item.badge" type="danger">
-              <tn-icon :name="item.icon"></tn-icon>
-            </tn-badge>
-            <tn-icon v-else :name="item.icon"></tn-icon>
-          </view>  
-          <view class="tn-color-gray--dark tn-text-center">
-            <text class="tn-text-ellipsis">{{ item.title }}</text>
-          </view>
-        </view>
+        </template>
+      </tn-navbar>
+      <view class="home-banner__greeting" :style="{ paddingTop: (vuex_custom_bar_height - 44) + 'px' }">
+        <view class="tn-text-xl tn-text-bold tn-color-white">{{ greetingText }},{{ userName }}</view>
+        <view class="tn-color-white tn-padding-top-xs home-banner__date">{{ todayText }}</view>
+      </view>
+      <view class="home-search" @click="tn('/homePages/search')">
+        <tn-icon name="search" class="tn-color-gray"></tn-icon>
+        <text class="tn-color-gray tn-padding-left-xs">搜索同事、公告、功能</text>
       </view>
     </view>
-    <!-- 方式1 end-->
-    
-    <view class="tn-margin-top-sm" :style="{paddingTop: vuex_custom_bar_height +'px'}" style="max-width: 640px; margin: 0 auto;">
+
+    <!-- 快捷入口 -->
+    <view class="home-shortcuts tn-radius tn-bg-white">
+      <view
+        v-for="(item, index) in shortcutList"
+        :key="item.title"
+        class="home-shortcut"
+        @click="tn(item.url)"
+      >
+        <view class="home-shortcut__icon" :style="{ backgroundColor: shortcutColors[index % shortcutColors.length] }">
+          <tn-badge v-if="item.badge" :value="item.badge" type="danger">
+            <tn-icon :name="item.icon" class="tn-color-white"></tn-icon>
+          </tn-badge>
+          <tn-icon v-else :name="item.icon" class="tn-color-white"></tn-icon>
+        </view>
+        <text class="home-shortcut__title tn-color-gray--dark">{{ item.title }}</text>
+      </view>
+    </view>
+
+    <!-- 消息列表 -->
+    <view class="home-messages tn-radius tn-bg-white">
+      <view class="home-messages__head tn-text-bold">消息动态</view>
       <view class="">
         <view
           v-for="item in messageList"
@@ -81,7 +88,7 @@
       </view>
 
     </view>
-    
+
     <view class="tn-tabbar-height"></view>
     
 	</view>
@@ -98,6 +105,23 @@
   const store = useStore()
   // 使用 computed 保持响应式
   const vuex_custom_bar_height = computed(() => store.state.vuex_custom_bar_height)
+
+  const userName = computed(() => store.state.user?.name || '同事')
+  const greetingText = computed(() => {
+    const hour = new Date().getHours()
+    if (hour < 6) return '夜深了'
+    if (hour < 9) return '早上好'
+    if (hour < 12) return '上午好'
+    if (hour < 14) return '中午好'
+    if (hour < 18) return '下午好'
+    return '晚上好'
+  })
+  const todayText = computed(() => {
+    const now = new Date()
+    const weeks = ['日', '一', '二', '三', '四', '五', '六']
+    return `${now.getMonth() + 1}月${now.getDate()}日 星期${weeks[now.getDay()]}`
+  })
+  const shortcutColors = ['#4B98FE', '#00C8B0', '#FFAC00', '#957BFE']
 
   const stats = ref({
     pendingCount: 0,
@@ -269,9 +293,16 @@
     
     &__back {
       margin: auto 5rpx;
-      font-size: 45rpx;
+      font-size: 40rpx;
       margin-right: 10rpx;
       margin-left: 30rpx;
+      width: 64rpx;
+      height: 64rpx;
+      border-radius: 50%;
+      background-color: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
   }
   /* 自定义导航栏内容 end */
@@ -313,29 +344,77 @@
   }
   
   
-  // 四个角渐变底色
-  .home-fixed{
+  // 顶部渐变欢迎区
+  .home-banner{
     max-width: 640px;
-    position: fixed;
-    background: linear-gradient(90deg, #DBF2FE, #FFE1E1);
-    top: 0;
-    width: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    justify-content: space-around;
-    box-sizing: border-box;
-    transition: all 0.25s ease-out;
-    z-index: 100;
+    margin: 0 auto;
+    background: linear-gradient(135deg, #4B98FE 0%, #3668FC 100%);
+    border-radius: 0 0 36rpx 36rpx;
+    padding-bottom: 70rpx;
   }
-  .home-shortcut {
-    flex: 0 0 20%;
-    max-width: 128px;
-    box-sizing: border-box;
+  .home-banner__greeting{
+    padding: 10rpx 36rpx 0;
+  }
+  .home-banner__date{
+    font-size: 24rpx;
+  }
+  .home-search{
+    margin: 30rpx 36rpx 0;
+    height: 76rpx;
+    background-color: #FFFFFF;
+    border-radius: 100rpx;
+    display: flex;
+    align-items: center;
+    padding: 0 30rpx;
+    font-size: 26rpx;
+    box-shadow: 0 8rpx 24rpx rgba(29, 37, 65, 0.08);
+  }
+  // 快捷入口卡片
+  .home-shortcuts{
+    max-width: 600px;
+    margin: -50rpx auto 0;
+    position: relative;
+    z-index: 2;
+    display: flex;
+    padding: 30rpx 10rpx 24rpx;
+    box-shadow: 0 10rpx 30rpx rgba(29, 37, 65, 0.06);
+  }
+  .home-shortcut{
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .home-shortcut__icon{
+    width: 92rpx;
+    height: 92rpx;
+    border-radius: 32rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 44rpx;
+    margin-bottom: 12rpx;
+  }
+  .home-shortcut__title{
+    font-size: 26rpx;
+  }
+  // 消息卡片
+  .home-messages{
+    max-width: 600px;
+    margin: 24rpx auto 30rpx;
+    padding: 26rpx 0 10rpx;
+    box-shadow: 0 10rpx 30rpx rgba(29, 37, 65, 0.06);
+  }
+  .home-messages__head{
+    padding: 0 30rpx 10rpx;
+    font-size: 30rpx;
+    color: #1D2541;
   }
 
   .home-message-item {
     height: 110rpx;
-    margin: 24rpx 30rpx;
+    margin: 0 30rpx;
+    border-bottom: 1rpx solid #F3F2F7;
     overflow: hidden;
   }
 
@@ -378,19 +457,6 @@
     flex-flow: column;
     align-items: flex-end;
   }
-  .home-fixed:before{
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    z-index: -1;
-    mask-image: linear-gradient(to bottom, transparent, black);
-    background: linear-gradient(90deg, #FFFFFF, #FFFFFF);	
-
-  }
-  
   /* OA黑色*/
   .color-tnoa{
     color: #1D2541;
