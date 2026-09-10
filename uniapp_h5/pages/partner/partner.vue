@@ -35,12 +35,12 @@
           >
             <view class="tn-info__item__left__content">
               <view
-                class="tn-info__item__left__content--title tn-text-bold tn-text-lg tn-color-white"
+                class="tn-info__item__left__content--title tn-text-bold tn-text-lg"
                 >我的群聊</view
               >
               <view
-                class="tn-info__item__left__content--data tn-padding-top-xs tn-color-white"
-                style="opacity: .85"
+                class="tn-info__item__left__content--data tn-padding-top-xs"
+                style="color: #8a94a6"
                 >{{ groupCount }} 个群聊,点击进入</view
               >
             </view>
@@ -520,8 +520,18 @@ onShow(() => {
 /* 群聊卡片 */
 .group-card {
   width: 100%;
-  background: linear-gradient(135deg, #4B98FE 0%, #3668FC 100%);
-  border-radius: 18rpx;
+  background: #ffffff;
+  border-radius: 16rpx;
+  border: 1rpx solid #EEF0F4;
+}
+
+.group-card .tn-info__item__left__content--title {
+  color: #1d2541;
+}
+
+.group-card .tn-info__item__left__content--data {
+  color: #8a94a6;
+  opacity: 1;
 }
 
 .group-card::after {

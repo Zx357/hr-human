@@ -1,7 +1,7 @@
 <template>
   <view class="mine-page tn-safe-area-inset-bottom">
     <view class="page-inner" :style="{ paddingTop: vuex_custom_bar_height + 18 + 'px' }">
-      <view class="profile-panel" @click="go('/minePages/set')">
+      <view class="profile-panel">
         <view class="avatar-wrap">
           <image v-if="avatarUrl" :src="avatarUrl" mode="aspectFill" class="avatar-image"></image>
           <view v-else class="avatar-fallback">{{ firstChar(displayName) }}</view>
@@ -14,7 +14,22 @@
             <text v-if="employee.entryDate" class="tag">入职 {{ formatDate(employee.entryDate) }}</text>
           </view>
         </view>
-        <tn-icon name="right" class="profile-arrow"></tn-icon>
+
+      </view>
+
+      <view class="stats-card">
+        <view class="stats-item" @click="go('/workPages/calendar')">
+          <view class="stats-num">{{ monthStats.normalIn }}</view>
+          <view class="stats-label">本月出勤(天)</view>
+        </view>
+        <view class="stats-item" @click="go('/homePages/approval')">
+          <view class="stats-num orange">{{ applyStats.pending }}</view>
+          <view class="stats-label">待审批(条)</view>
+        </view>
+        <view class="stats-item" @click="go('/homePages/approval')">
+          <view class="stats-num green">{{ applyStats.approved }}</view>
+          <view class="stats-label">已通过(条)</view>
+        </view>
       </view>
 
       <view class="quick-grid">
@@ -49,11 +64,22 @@
           <view class="row-value">提交问题或建议</view>
           <tn-icon name="right" class="row-arrow"></tn-icon>
         </view>
-        <view class="info-row" @click="go('/minePages/public')">
-          <view class="row-icon orange"><tn-icon name="bookmark-fill"></tn-icon></view>
-          <view class="row-title">系统公告</view>
+      </view>
+
+      <view class="notice-card" @click="go('/homePages/notice')">
+        <view class="notice-head">
+          <view class="row-icon orange"><tn-icon name="notice-fill"></tn-icon></view>
+          <view class="notice-head-title">最新公告</view>
           <tn-icon name="right" class="row-arrow"></tn-icon>
         </view>
+        <view v-if="latestNotices.length" class="notice-list">
+          <view v-for="n in latestNotices" :key="n.id" class="notice-item">
+            <text class="notice-dot"></text>
+            <text class="notice-title clamp-1">{{ n.noticeTitle }}</text>
+            <text class="notice-date">{{ n.date }}</text>
+          </view>
+        </view>
+        <view v-else class="notice-empty">暂无公告</view>
       </view>
 
       <view class="logout-wrap">
@@ -76,11 +102,51 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useStore } from 'vuex'
 import { onShow } from '@dcloudio/uni-app'
+import { getMonthAttendance } from '@/api/attendance'
+import { getMyApplications } from '@/api/application'
+import { getNoticeList } from '@/api/system/notice'
 
 const store = useStore()
+
+const monthStats = ref({ normalIn: 0 })
+const applyStats = ref({ pending: 0, approved: 0 })
+const latestNotices = ref([])
+
+async function loadMyStats() {
+  const info = employee.value || {}
+  const myId = store.getters.id || info.id
+  if (!myId) return
+  const now = new Date()
+  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const [att, pending, approved, notices] = await Promise.allSettled([
+    getMonthAttendance(month),
+    getMyApplications({ pageNum: 1, pageSize: 1, status: 0, employeeId: myId }),
+    getMyApplications({ pageNum: 1, pageSize: 1, status: 1, employeeId: myId }),
+    getNoticeList({ status: 1 })
+  ])
+  if (att.status === 'fulfilled' && att.value.data?.stats) {
+    monthStats.value = { normalIn: Number(att.value.data.stats.normalIn || 0) }
+  }
+  const total = (r) => {
+    if (r.status !== 'fulfilled') return 0
+    const d = r.value.data
+    if (Array.isArray(d)) return d.length
+    return Number(d?.total || 0)
+  }
+  applyStats.value = { pending: total(pending), approved: total(approved) }
+  if (notices.status === 'fulfilled') {
+    const d = notices.value.data
+    const list = Array.isArray(d) ? d : (d?.records || d?.list || [])
+    latestNotices.value = list.slice(0, 2).map((n) => ({
+      id: n.id,
+      noticeTitle: n.noticeTitle || '系统通知',
+      date: String(n.publishTime || n.createdTime || '').replace('T', ' ').slice(0, 10)
+    }))
+  }
+}
 const vuex_custom_bar_height = computed(() => store.state.vuex_custom_bar_height)
 
 const employee = computed(() => store.state.user.employeeInfo || uni.getStorageSync('userInfo') || {})
@@ -94,6 +160,7 @@ const displaySubtitle = computed(() => {
 
 onShow(() => {
   store.dispatch('GetInfo')
+  loadMyStats()
 })
 
 function pick(...values) {
@@ -158,8 +225,8 @@ function handleLogout() {
 .quick-grid,
 .info-card {
   background: #fff;
-  border-radius: 20rpx;
-  box-shadow: 0 10rpx 30rpx rgba(29, 37, 65, 0.06);
+  border-radius: 16rpx;
+  border: 1rpx solid #EEF0F4;
 }
 
 .profile-panel {
@@ -233,6 +300,40 @@ function handleLogout() {
 .row-arrow {
   color: #8ca0b3;
   font-size: 34rpx;
+}
+
+.stats-card {
+  margin-top: 24rpx;
+  padding: 30rpx 12rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  box-shadow: 0 10rpx 30rpx rgba(29, 37, 65, 0.06);
+}
+
+.stats-item {
+  text-align: center;
+}
+
+.stats-num {
+  color: #1d2541;
+  font-size: 36rpx;
+  font-weight: 600;
+}
+
+.stats-num.orange {
+  color: #FFAC00;
+}
+
+.stats-num.green {
+  color: #00C8B0;
+}
+
+.stats-label {
+  margin-top: 8rpx;
+  color: #9aa4b2;
+  font-size: 22rpx;
 }
 
 .quick-grid {
@@ -322,6 +423,67 @@ function handleLogout() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.notice-card {
+  margin-top: 24rpx;
+  padding: 26rpx 28rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  border: 1rpx solid #EEF0F4;
+}
+
+.notice-head {
+  display: flex;
+  align-items: center;
+}
+
+.notice-head-title {
+  flex: 1;
+  margin-left: 18rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1d2541;
+}
+
+.notice-list {
+  margin-top: 18rpx;
+}
+
+.notice-item {
+  display: flex;
+  align-items: center;
+  min-height: 64rpx;
+}
+
+.notice-dot {
+  flex: 0 0 10rpx;
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: #4B98FE;
+  margin-right: 14rpx;
+}
+
+.notice-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 26rpx;
+  color: #657189;
+}
+
+.notice-date {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  font-size: 22rpx;
+  color: #9aa4b2;
+}
+
+.notice-empty {
+  margin-top: 12rpx;
+  text-align: center;
+  color: #9aa4b2;
+  font-size: 24rpx;
 }
 
 .logout-wrap {

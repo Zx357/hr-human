@@ -502,7 +502,7 @@ const getDate = (type) => {
   .oa-content{
     max-width: 640px;
     margin: 0 auto;
-    background-color: #E7EDF7;
+    background-color: #F8F7F8;
     min-height: 100vh;
     padding-bottom: 60rpx;
     padding-bottom: calc(80rpx + env(safe-area-inset-bottom) / 2);

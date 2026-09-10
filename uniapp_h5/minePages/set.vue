@@ -153,7 +153,7 @@ function handleLogout() {
   max-width: 640px;
   min-height: 100vh;
   margin: 0 auto;
-  background: #f7f8fb;
+  background: #F8F7F8;
 }
 
 .nav-back {

@@ -1,106 +1,55 @@
 <template>
-  <view class="oa-content tn-safe-area-inset-bottom">
+  <view class="search-page tn-safe-area-inset-bottom">
     <!-- 顶部自定义导航 -->
-    <tn-navbar fixed bg-color="rgba(0,0,0,0)" home-icon="" :bottom-shadow="false" :placeholder="false">
-     
+    <tn-navbar fixed bg-color="#FFFFFF" home-icon="" :bottom-shadow="false" :placeholder="false">
+      <view slot="back" class='tn-custom-nav-bar__back' @click="goBack">
+        <tn-icon class='icon' name="left-arrow"></tn-icon>
+      </view>
+      <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
+        <text class="tn-text-bold tn-text-xl tn-color-black">全局搜索</text>
+      </view>
     </tn-navbar>
-    
-    <view class="tn-search-fixed" style="background: linear-gradient(180deg, #D8E5FF, #FFFFFF);">
-      <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-margin" :style="{paddingTop: '100px'}">
-        
-        <view class="justify-content-item align-content-item" style="width: 100vw;">
-          <view class="tn-flex tn-flex-col-center" style="border: 1rpx solid #3668fc;border-radius: 100rpx;padding: 10rpx 20rpx 10rpx 20rpx;width: 90%;">
-            <tn-icon name="search" class="justify-content-item tn-padding-right-xs tn-color-gray tn-text-lg"></tn-icon>
-            <input v-model="inputValue" class="justify-content-item" placeholder="搜索同事姓名" name="input" placeholder-style="color:#AAAAAA" style="width: 90%;" confirm-type="search" @confirm="doSearch"></input>
-          </view>
+
+    <!-- 搜索栏 -->
+    <view class="search-bar-wrap tn-bg-white" :style="{ paddingTop: vuex_custom_bar_height + 'px' }">
+      <view class="search-bar tn-flex tn-flex-col-center">
+        <view class="search-input-wrap tn-flex tn-flex-col-center">
+          <tn-icon name="search" class="tn-color-gray tn-padding-right-xs"></tn-icon>
+          <input v-model="inputValue" class="search-input" placeholder="搜索同事姓名" placeholder-style="color:#AAAAAA" confirm-type="search" @confirm="doSearch" />
         </view>
-        
-        <view class="align-content-item">
-          <view class="justify-content-item tn-text-center">
-            <!-- <tn-button backgroundColor="#3668fc" shape="round" padding="20rpx 20rpx" width="150rpx" @tap="">
-              <text class="tn-color-white">搜 索</text>
-            </tn-button> -->
-             <tn-button
-              bg-color="#3668fc"
-              :custom-style="{padding:'20rpx 40rpx'}"
-              width="150rpx"
-              :fontSize="24"
-              text-color="#ffffff"
-              shape="round"
-              @click="doSearch"
-            >
-              <text class="">搜 索</text>
-            </tn-button>
-          </view>
-        </view>
+        <tn-button
+          bg-color="#3668FC"
+          :custom-style="{ padding: '14rpx 36rpx' }"
+          :fontSize="26"
+          text-color="#ffffff"
+          shape="round"
+          @click="doSearch"
+        >
+          搜索
+        </tn-button>
       </view>
-    </view>
-    
-    <view class=""  :style="{paddingTop:'100px'}">
-      <view class="tn-flex tn-flex-row-between tn-margin" >
-        <view class="justify-content-item tn-text-bold">
-          <text class="tn-text-df tn-color-black">最近搜索</text>
-        </view>
-        <view class="justify-content-item tn-text-df tn-color-grey">
-          <text class="tn-padding-xs">删除</text>
-          <tn-icon name="delete"></tn-icon>
-        </view>
-      </view>
-    </view>
-    
-    <view class="">
-      <view class="tn-tag-search tn-margin tn-text-justify">
-        <view v-for="(item, index) in tagList" :key="index" class="tn-tag-search__item tn-margin-right tn-round tn-text-sm tn-bg-gray--light tn-color-gray">
-          <text class="tn-tag-search__item--prefix">#</text> {{ item.title }}
-        </view>
-      </view>
-    </view>
-    
-    <view class="tn-flex tn-flex-row-between tn-padding-top-xl tn-margin tn-padding-bottom">
-      <view class="justify-content-item tn-text-bold">
-        <text class="tn-text-df tn-color-black">搜索结果</text>
-      </view>
-      <view class="justify-content-item tn-text-df tn-color-grey">
-        <text class="tn-padding-xs">筛选</text>
-        <tn-icon name="filter"></tn-icon>
-      </view>
-    </view>
-    
-    
-    <view v-if="searching" class="tn-text-center tn-color-gray tn-padding-xl">搜索中...</view>
-    <view v-else-if="!content.length" class="tn-text-center tn-color-gray--disabled tn-padding-xl">
-      {{ inputValue ? '未找到相关同事' : '输入姓名搜索同事' }}
-    </view>
-    <view class="">
-      <block v-for="(item, index) in content" :key="index">
-        <view class="article-shadow tn-margin" @click="openContact(item)">
-          <view class="tn-flex">
-            <view class="image-pic tn-margin-sm" :style="'background-image:url(' + item.userAvatar + ')'">
-              <view class="image-article">
-              </view>
-            </view>
-            <view class="tn-margin-sm tn-padding-top-xs" style="width: 100%;">
-              <view class="tn-text-lg tn-text-bold clamp-text-1 tn-text-justify">
-                <text class="">{{ item.title }}</text>
-              </view>
-              <view class="tn-padding-top-xs">
-                <text class="tn-text-df tn-color-gray clamp-text-2 tn-text-justify">
-                  {{ item.desc }}
-                </text>
-              </view>
-              <view class="tn-flex tn-flex-row-between tn-flex-col-between tn-margin-top-xs">
-                <view v-for="(label_item,label_index) in item.label" :key="label_index"
-                  class="justify-content-item tn-tag-content__item tn-margin-right tn-text-sm tn-text-bold">
-                  <text class="tn-tag-content__item--prefix">#</text> {{ label_item }}
-                </view>
-              </view>
-            </view>
-          </view>
-        </view>
-      </block>
     </view>
 
+    <!-- 搜索结果 -->
+    <view class="search-result">
+      <view v-if="searching" class="tn-text-center tn-color-gray tn-padding-xl">搜索中...</view>
+      <view v-else-if="!content.length" class="tn-text-center tn-color-gray--disabled tn-padding-xl">
+        {{ inputValue ? '未找到相关同事' : '输入姓名搜索同事' }}
       </view>
+      <view v-else class="result-card">
+        <view v-for="(item, index) in content" :key="index" class="result-item tn-flex tn-flex-col-center" @click="openContact(item)">
+          <image class="result-avatar" :src="item.userAvatar" mode="aspectFill" />
+          <view class="result-info">
+            <view class="tn-text-lg tn-text-bold">{{ item.title }}</view>
+            <view class="tn-color-gray tn-text-sm tn-padding-top-xs">{{ item.desc }}</view>
+          </view>
+          <tn-icon class="tn-color-gray" name="right"></tn-icon>
+        </view>
+      </view>
+    </view>
+
+    <view class='tn-tabbar-height'></view>
+  </view>
 </template>
 
 <script setup>
@@ -167,167 +116,107 @@ const tn = (e) => {
 </script>
 
 <style lang="scss" scoped>
-  /* 胶囊*/
-  .tn-custom-nav-bar__back {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    display: flex;
-    justify-content: space-evenly;
-    align-items: center;
-    box-sizing: border-box;
-    background-color: rgba(0, 0, 0, 0.15);
-    border-radius: 1000rpx;
-    border: 1rpx solid rgba(255, 255, 255, 0.5);
-    color: #FFFFFF;
-    font-size: 18px;
-    
-    .icon {
-      display: block;
-      flex: 1;
-      margin: auto;
-      text-align: center;
-    }
-    
-    &:before {
-      content: " ";
-      width: 1rpx;
-      height: 110%;
-      position: absolute;
-      top: 22.5%;
-      left: 0;
-      right: 0;
-      margin: auto;
-      transform: scale(0.5);
-      transform-origin: 0 0;
-      pointer-events: none;
-      box-sizing: border-box;
-      opacity: 0.7;
-      background-color: #FFFFFF;
-    }
-  }
-  
-  .oa-content{
-    max-width: 640px;
-    margin: 0 auto;
-    // background-color: #F8F7F8;
-    min-height: 100vh;
-    padding-bottom: 60rpx;
-    padding-bottom: calc(80rpx + env(safe-area-inset-bottom) / 2);
-    padding-bottom: calc(80rpx + constant(safe-area-inset-bottom));
-  }
-  
-  .tn-search-fixed{
-    position: fixed;
-    top: 0rpx;
-    width: 100%;
-    max-width: 640px;
-    margin: 0 auto;
-    transition: all 0.25s ease-out;
-    z-index: 1;
-  }
+.search-page {
+  min-height: 100vh;
+  background-color: #f8f7f8;
+}
 
-  
-  /* 搜索标签 start*/
-  .tn-tag-search {
-    &__item {
-      display: inline-block;
-      line-height: 45rpx;
-      padding: 10rpx 30rpx;
-      margin: 20rpx 20rpx 5rpx 0rpx;
-      
-      &--prefix {
-        padding-right: 10rpx;
-      }  
-    }
+/* 胶囊*/
+.tn-custom-nav-bar__back {
+  width: 60%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  box-sizing: border-box;
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 1000rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.5);
+  color: #ffffff;
+  font-size: 18px;
+
+  .icon {
+    display: block;
+    flex: 1;
+    margin: auto;
+    text-align: center;
   }
-  /* 标签内容 end*/
-  
-  /* 标题 start */
-  .nav_title {
-    -webkit-background-clip: text;
-    color: transparent;
-    
-    &--wrap {
-      position: relative;
-      display: flex;
-      height: 120rpx;
-      font-size: 42rpx;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      background-image: url(https://resource.tuniaokj.com/images/title_bg/title00.png);
-      background-size: cover;
-    }
-  }
-  /* 标题 end */
-  
-  /* 富文本图示意 start */
-  .news-img {
-    z-index: -1;
-    padding-bottom: 40rpx;
-  
-    image {
-      width: 100%;
-      margin: 20rpx 0;
-      // height: 3373rpx;
-      // z-index: -1;
-    }
-  }
-  
-  /* 资讯主图 start*/
-  .image-article {
-    border-radius: 8rpx;
-    border: 1rpx solid #F8F7F8;
-    width: 200rpx;
-    height: 200rpx;
-    position: relative;
-  }
-  
-  .image-pic {
-    background-size: cover;
-    background-repeat: no-repeat;
-    // background-attachment:fixed;
-    background-position: top;
-    border-radius: 10rpx;
-  }
-  
-  .article-shadow {
-    border-radius: 15rpx;
-    box-shadow: 0rpx 0rpx 50rpx 0rpx rgba(0, 0, 0, 0.07);
-  }
-  
-  /* 文字截取*/
-  .clamp-text-1 {
-    -webkit-line-clamp: 1;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    text-overflow: ellipsis;
-    overflow: hidden;
-  }
-  
-  .clamp-text-2 {
-    -webkit-line-clamp: 2;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    text-overflow: ellipsis;
-    overflow: hidden;
-  }
-  
-  /* 标签内容 start*/
-  .tn-tag-content {
-    &__item {
-      display: inline-block;
-      line-height: 35rpx;
-      color: #1D2541;
-      background-color: #F3F2F7;
-      border-radius: 10rpx;
-      font-size: 22rpx;
-      padding: 5rpx 15rpx;
-  
-      &--prefix {
-        padding-right: 10rpx;
-      }
-    }
-  }
+}
+
+.search-bar-wrap {
+  padding-bottom: 20rpx;
+}
+
+.search-bar {
+  padding: 10rpx 24rpx;
+}
+
+.search-input-wrap {
+  flex: 1;
+  height: 68rpx;
+  margin-right: 20rpx;
+  padding: 0 24rpx;
+  background: #f4f5f9;
+  border-radius: 100rpx;
+}
+
+.search-input {
+  width: 100%;
+  font-size: 26rpx;
+}
+
+.search-result {
+  padding: 0 24rpx;
+}
+
+.result-card {
+  background: #ffffff;
+  border-radius: 20rpx;
+  overflow: hidden;
+  box-shadow: 0 10rpx 30rpx rgba(29, 37, 65, 0.06);
+}
+
+.result-item {
+  padding: 26rpx;
+  border-bottom: 1rpx solid #f3f2f7;
+}
+
+.result-item:last-child {
+  border-bottom: none;
+}
+
+.result-avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 16rpx;
+  background-color: #f4f5f9;
+  flex-shrink: 0;
+}
+
+.result-info {
+  flex: 1;
+  min-width: 0;
+  margin-left: 20rpx;
+}
+
+.clamp-text-1 {
+  -webkit-line-clamp: 1;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.clamp-text-2 {
+  -webkit-line-clamp: 2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.tn-tabbar-height {
+  min-height: 60rpx;
+}
 </style>

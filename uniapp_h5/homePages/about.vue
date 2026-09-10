@@ -246,7 +246,7 @@ onUnload(() => {
     width: 100%;
     height: 100vh;
     color: #fff;
-    background: linear-gradient(-120deg, #F15BB5, #9A5CE5, #01BEFF, #00F5D4);
+    background: #F8F7F8;
     /* background: linear-gradient(-120deg,  #9A5CE5, #01BEFF, #00F5D4, #43e97b); */
     /* background: linear-gradient(-120deg,#c471f5, #ec008c, #ff4e50,#f9d423); */
     /* background: linear-gradient(-120deg, #0976ea, #c471f5, #f956b6, #ea7e0a); */

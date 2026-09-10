@@ -113,6 +113,28 @@ export default {
 @import "@/css/main.scss";
 @import '@/uni_modules/tuniaoui-vue3/index.css';
 
+/* ===== 全局统一风格:浅灰底 + 白卡片 + 品牌色 ===== */
+page, uni-page-body, body {
+  background-color: #F8F7F8;
+}
+
+.uni-card {
+  background: #ffffff;
+  border-radius: 20rpx;
+  box-shadow: 0 10rpx 30rpx rgba(29, 37, 65, 0.06);
+}
+
+.uni-card-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1d2541;
+}
+
+.uni-text-primary { color: #3668FC; }
+.uni-text-success { color: #00C8B0; }
+.uni-text-warning { color: #FFAC00; }
+.uni-text-danger { color: #FB6A67; }
+
 
 .message-dot{
   width: 30rpx;

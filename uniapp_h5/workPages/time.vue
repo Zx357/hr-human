@@ -1071,7 +1071,7 @@ export default {
   max-width: 640px;
   min-height: 100vh;
   margin: 0 auto;
-  background: #F4F6FA;
+  background: #F8F7F8;
   color: #121A2B;
 }
 

@@ -28,10 +28,12 @@
     >
       <view class="list-wrap">
         <view v-for="item in list" :key="item.id" class="process-card" @click="goDetail(item)">
-          <view class="status-line" :style="{ backgroundColor: statusMeta(item.status).color }"></view>
           <view class="card-main">
             <view class="card-head">
               <view class="title-wrap">
+                <view class="type-chip" :style="{ backgroundColor: statusMeta(item.status).bg, color: statusMeta(item.status).color }">
+                  <tn-icon :name="typeIcon(item.appType)"></tn-icon>
+                </view>
                 <text class="type-name">{{ typeName(item.appType) }}</text>
                 <view class="status-pill" :style="{ color: statusMeta(item.status).color, backgroundColor: statusMeta(item.status).bg }">
                   {{ statusMeta(item.status).name }}
@@ -46,7 +48,7 @@
 
             <view class="step-box">
               <view v-for="step in steps(item.status)" :key="step.name" class="step-item" :class="{ active: step.active }">
-                <view class="step-dot" :style="{ backgroundColor: step.active ? statusMeta(item.status).color : '#D6DBE5' }">
+                <view class="step-dot" :style="stepDotStyle(step, item.status)">
                   <tn-icon :name="step.icon"></tn-icon>
                 </view>
                 <text class="step-name">{{ step.name }}</text>
@@ -206,6 +208,34 @@ function typeName(appType) {
   return typeMap[appType] || appType || '申请'
 }
 
+const typeIconMap = {
+  leave: 'calendar-fill',
+  overtime: 'time-fill',
+  makeup: 'edit-form',
+  business: 'suitcase-fill',
+  exchange: 'menu-grille-fill',
+  resignation: 'reduce-circle-fill',
+  regularization: 'my-job-fill',
+  transfer: 'transfer-fill',
+  reward: 'medal-fill',
+  punish: 'warning-fill',
+  expense: 'money-fill',
+  device: 'mouse-fill'
+}
+
+function typeIcon(appType) {
+  return typeIconMap[appType] || 'menu-fill'
+}
+
+// 步骤圆点:激活态用状态色浅底 + 彩色图标,未激活灰底灰图标
+function stepDotStyle(step, status) {
+  const color = statusMeta(status).color
+  if (step.active) {
+    return { backgroundColor: statusMeta(status).bg, color }
+  }
+  return { backgroundColor: '#EFF1F5', color: '#C3CAD6' }
+}
+
 function statusMeta(status) {
   return statusMap[Number(status)] || { name: '未知', color: '#9AA4B2', bg: 'rgba(154, 164, 178, 0.14)' }
 }
@@ -270,7 +300,7 @@ function cancelItem(item) {
   max-width: 640px;
   min-height: 100vh;
   margin: 0 auto;
-  background: #f7f8fb;
+  background: #F8F7F8;
 }
 
 .nav-back {
@@ -308,22 +338,28 @@ function cancelItem(item) {
 
 .process-card {
   position: relative;
-  display: flex;
   margin-bottom: 22rpx;
   overflow: hidden;
   background: #fff;
-  border-radius: 18rpx;
+  border-radius: 20rpx;
   box-shadow: 0 10rpx 30rpx rgba(29, 37, 65, 0.06);
-}
-
-.status-line {
-  width: 12rpx;
 }
 
 .card-main {
   flex: 1;
   min-width: 0;
   padding: 26rpx 24rpx;
+}
+
+.type-chip {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38rpx;
+  flex-shrink: 0;
 }
 
 .card-head,
@@ -384,11 +420,10 @@ function cancelItem(item) {
 }
 
 .step-dot {
-  width: 54rpx;
-  height: 54rpx;
+  width: 56rpx;
+  height: 56rpx;
   margin: 0 auto 8rpx;
   border-radius: 50%;
-  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;

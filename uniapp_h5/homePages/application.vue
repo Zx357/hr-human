@@ -22,37 +22,19 @@
         <view class="tn-color-gray--disabled tn-text-lg">暂无消息</view>
       </view>
 
-      <view class="" v-for="item in messageList" :key="item.id" @click="openMessage(item)">
-        <view class="image-pic" :style="item.avatar ? 'background-image:url(' + item.avatar + ')' : ''">
-          <view class="image-design">
-            <view v-if="item.badge" class="tn-text-center" style="width: 120rpx;height: 50rpx;position: absolute;top: 0;right:0;border-radius: 0 12rpx 0 12rpx;font-size: 22rpx;background-color: #00000050;">
-              <view class="tn-margin-xs tn-color-white">{{ item.badge }}条未读</view>
-            </view>
-            <view class="" style="width: 100%;min-height: 120rpx;background: linear-gradient(0deg, rgba(0,0,0,0.6), rgba(0,0,0,0.2), rgba(0,0,0,0));position: absolute;bottom: 0;">
-              <view class="tn-text-lg tn-padding-top-xl tn-padding-left tn-padding-right tn-color-white tn-text-bold clamp-text-1">
-                {{ item.title }}
-              </view>
-            </view>
-          </view>
+      <view class="msg-card" v-for="item in messageList" :key="item.id" @click="openMessage(item)">
+        <view class="msg-icon" :style="{ color: item.color || '#4B98FE', backgroundColor: hexToBg(item.color || '#4B98FE') }">
+          <tn-icon :name="item.icon || 'notice-fill'"></tn-icon>
         </view>
-        <view class="content-bg tn-padding">
-          <view class="tn-text-justify clamp-text-2 tn-padding-bottom tn-color-gray--dark" v-if="item.desc">
-            {{ item.desc }}
+        <view class="msg-main">
+          <view class="msg-head">
+            <text class="msg-title clamp-1">{{ item.title }}</text>
+            <text class="msg-date">{{ item.time }}</text>
           </view>
-          <view class="tn-flex tn-flex-direction-row tn-flex-col-center tn-flex-row-between">
-            <view class="tn-flex">
-              <view class="tn-flex user-pic">
-                <view class="tn-flex tn-flex-row-center tn-flex-col-center tn-color-white" :style="{ backgroundColor: item.color || '#4B98FE', width: '35rpx', height: '35rpx', borderRadius: '50%' }">
-                  <tn-icon :name="item.icon || 'notice-fill'" style="font-size: 20rpx;"></tn-icon>
-                </view>
-              </view>
-              <view class="tn-flex tn-margin-left-xs" style="width: 300rpx;">
-                <text class="clamp-text-1 tn-color-gray--dark">{{ item.title || '系统消息' }}</text>
-              </view>
-            </view>
-            <view class="tn-color-gray">
-              {{ item.time }}
-            </view>
+          <text class="msg-desc clamp-2">{{ item.desc || '暂无内容' }}</text>
+          <view class="msg-footer">
+            <text class="msg-tag" :style="{ color: item.color || '#4B98FE', backgroundColor: hexToBg(item.color || '#4B98FE') }">应用消息</text>
+            <text class="msg-more">查看详情</text>
           </view>
         </view>
       </view>
@@ -99,6 +81,15 @@ const loadMessages = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const hexToBg = (hex) => {
+  const v = String(hex || '#4B98FE').replace('#', '')
+  if (v.length < 6) return 'rgba(75, 152, 254, 0.1)'
+  const r = parseInt(v.slice(0, 2), 16)
+  const g = parseInt(v.slice(2, 4), 16)
+  const b = parseInt(v.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, 0.1)`
 }
 
 const openMessage = (item) => {
@@ -167,6 +158,79 @@ onShow(() => {
     border-radius:  0 0 15rpx 15rpx;
     background-color: #FFFFFF;
   }
+  .msg-card {
+    display: flex;
+    margin: 0 30rpx 22rpx;
+    padding: 26rpx;
+    background: #ffffff;
+    border-radius: 18rpx;
+    box-shadow: 0 10rpx 30rpx rgba(29, 37, 65, 0.06);
+  }
+
+  .msg-icon {
+    flex-shrink: 0;
+    width: 86rpx;
+    height: 86rpx;
+    border-radius: 50%;
+    font-size: 42rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .msg-main {
+    flex: 1;
+    min-width: 0;
+    margin-left: 20rpx;
+  }
+
+  .msg-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .msg-title {
+    flex: 1;
+    color: #1d2541;
+    font-size: 31rpx;
+    font-weight: 800;
+  }
+
+  .msg-date {
+    flex-shrink: 0;
+    margin-left: 16rpx;
+    color: #9aa4b2;
+    font-size: 24rpx;
+  }
+
+  .msg-desc {
+    display: block;
+    margin-top: 12rpx;
+    color: #657189;
+    font-size: 26rpx;
+    line-height: 1.55;
+  }
+
+  .msg-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 16rpx;
+  }
+
+  .msg-tag {
+    padding: 6rpx 16rpx;
+    border-radius: 999rpx;
+    font-size: 22rpx;
+    font-weight: 700;
+  }
+
+  .msg-more {
+    color: #9aa4b2;
+    font-size: 24rpx;
+  }
+
   .image-design{
     padding: 150rpx 0rpx;
     position: relative;

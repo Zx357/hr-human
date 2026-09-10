@@ -146,7 +146,7 @@ onLoad((options = {}) => {
 <style lang="scss" scoped>
 .start-index {
   min-height: 100vh;
-  background-color: #FFFFFF;
+  background-color: #F8F7F8;
 }
 
 .tabbar-page-wrap {

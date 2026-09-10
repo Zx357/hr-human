@@ -1,137 +1,67 @@
 <template>
-  <scroll-view class="template-work tn-safe-area-inset-bottom" scroll-y="true" @scroll="handleScroll" :style="{height: '100vh'}">
-   
-    
+  <scroll-view class="template-work tn-safe-area-inset-bottom" scroll-y="true" :style="{height: '100vh'}">
 
-    <view class="top-backgroup">
-      <image src='/static/aa7.jpg' mode='widthFix' class='backgroud-image'></image>
-    </view>
-    
-    <view class="work-clock-panel">
-      <view class="work-clock-user tn-flex tn-flex-row-between tn-flex-col-center">
-        <view class="tn-flex tn-flex-col-center">
-          <view class="work-clock-avatar">
-            <image :src="userAvatar" mode="aspectFill"></image>
-            <view class="work-clock-online"></view>
-          </view>
-          <view class="work-clock-userinfo">
-            <view class="work-clock-greeting">
-              {{ greetingText }}，<text>{{ userName }}</text>
-            </view>
-            <view class="work-clock-date">
-              <text>{{ todayDateText }}</text>
-              <text class="work-clock-entry">{{ entryDaysLabel }}</text>
-            </view>
-          </view>
+    <!-- 问候卡片 -->
+    <view class="work-card work-greet-card">
+      <view class="work-greet-left">
+        <view class="work-avatar-wrap">
+          <image :src="userAvatar" mode="aspectFill"></image>
+          <view class="work-online"></view>
         </view>
-        <view class="work-clock-bell tn-flex tn-flex-row-center tn-flex-col-center" @click="tn('/homePages/application')">
-          <tn-icon name="notice-fill"></tn-icon>
-          <view v-if="pendingCount > 0" class="work-clock-bell-dot"></view>
+        <view class="work-greet-info">
+          <view class="work-greet-title">{{ greetingText }},<text>{{ userName }}</text></view>
+          <view class="work-greet-sub">
+            <text>{{ todayDateText }}</text>
+            <text class="work-greet-entry">{{ entryDaysLabel }}</text>
+          </view>
         </view>
       </view>
-
-      <view class="work-clock-card tn-flex tn-flex-row-between tn-flex-col-center" @click="goToClock">
-        <view>
-          <view class="work-clock-time">
-            <text>{{ currentTime }}</text>
-            <text class="work-clock-seconds">{{ currentSeconds }}</text>
-          </view>
-          <view class="work-clock-weekday">{{ weekdayText }}</view>
-        </view>
-        <view class="work-clock-action">
-          <view class="work-clock-location tn-flex tn-flex-row-center tn-flex-col-center">
-            <view class="work-clock-ring"></view>
-            <view class="work-clock-ring work-clock-ring--delay"></view>
-            <view class="work-clock-location-inner tn-flex tn-flex-row-center tn-flex-col-center">
-              <tn-icon name="location-fill"></tn-icon>
-            </view>
-          </view>
-          <view class="work-clock-action-text">去打卡</view>
-        </view>
-      </view>
-    </view>
-   
-    
-    
-    <view class="top-menu-section">
-      <swiper class="card-swiper" :circular="iconPages.length > 1"
-        :autoplay="false" duration="500" interval="5000" @change="cardSwiper"> 
-        <swiper-item v-for="(page, pageIndex) in iconPages" :key="pageIndex" :class="cardCur==pageIndex?'cur':''">
-          <!-- 方式5 start-->
-          <view class="top-menu-grid">
-           <block v-for="(item, index) in page" :key="index">
-            <view class="top-menu-item" @click="tn(item.url)">
-              <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-                <!-- 当然，如果你有图片，可以换成图片模式 -->
-                <!-- <view class="icon13__item--icon tn-flex tn-flex-row-center tn-flex-col-center" :style="'background-image:url('+ item.img +');background-size:100% 100%;background-size: cover;'">
-                </view> -->
-                <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-color-white" :style="'background-color:'+ item.color +';'" >
-                  <tn-icon :name="item.icon" style="text-shadow: 5rpx 8rpx 10rpx rgba(0,0,0,0.16);">
-                  
-                  </tn-icon>
-                </view>
-                <view class="top-menu-label tn-color-gray--dark tn-text-center">
-                  <text class="tn-text-ellipsis">{{ item.title }}</text>
-                </view>
-              </view>
-            </view>
-           </block>
-          </view>
-          <!-- 方式5 end-->
-        </swiper-item>
-      </swiper>
-      <view class="indication" v-if="iconPages.length > 1">
-          <block v-for="(item,index) in iconPages" :key="index">
-              <view class="spot" :class="cardCur==index?'active':''"></view>
-          </block>
+      <view class="work-bell" @click="tn('/homePages/application')">
+        <tn-icon name="notice-fill"></tn-icon>
+        <view v-if="pendingCount > 0" class="work-bell-dot"></view>
       </view>
     </view>
 
-    
-    
-    
-    <view class="tn-strip-bottom"></view>
-    
-    <!-- 标题-->
-    <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-margin-top-sm">
-      <view class="justify-content-item tn-margin tn-text-bold tn-text-xl blue-title">
-        考勤统计
-      </view>
-      <view class="justify-content-item tn-margin-right tn-text-df tn-color-gray" @click="tn('/workPages/calendar')">
-        <text class="tn-padding-xs">考勤日历</text>
-        <text class="tn-icon-right"></text>
-      </view>
-    </view>
-    
-    <!-- 方式12 start-->
-    <view class="tn-flex tn-flex-wrap tn-padding-top-sm tn-padding-bottom-sm tn-bg-white">
-      <view v-for="(item, index) in attendance" :key="index" style="width: 25%;">
-        <view class="tn-margin-bottom tn-margin-top-sm" @click="tn(item.url)">
-          <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-            <!-- 当然，如果你有图片，可以换成图片模式 -->
-            <!-- <view class="icon13__item--icon tn-flex tn-flex-row-center tn-flex-col-center" :style="'background-image:url('+ item.img +');background-size:100% 100%;background-size: cover;'">
-            </view> -->
-            <view class="icon12__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-color-white" :style="'background-color:'+ item.color +';'" >
-              <tn-icon :name="item.icon" style="text-shadow: 5rpx 8rpx 10rpx rgba(0,0,0,0.16);">
-               
-              </tn-icon>
-             
-            </view>
-            <view class="tn-color-gray--dark tn-text-center tn-text-df">
-              <text class="tn-text-ellipsis">{{ item.title }}</text>
-            </view>
-          </view>
+    <!-- 打卡卡片 -->
+    <view class="work-card work-clock-card" @click="goToClock">
+      <view>
+        <view class="work-clock-time">
+          <text>{{ currentTime }}</text>
+          <text class="work-clock-seconds">{{ currentSeconds }}</text>
         </view>
-     </view>
+        <view class="work-clock-weekday">{{ weekdayText }}</view>
+      </view>
+      <view class="work-clock-go">
+        <tn-icon name="location-fill" class="tn-color-white" style="font-size: 32rpx;"></tn-icon>
+        <text class="work-clock-go-text">打卡</text>
+      </view>
     </view>
-    <!-- 方式12 end-->
-    
-    
-    
-    
-    
-    
-<view class="tn-tabbar-height"></view>
+
+    <!-- 申请菜单 -->
+    <view class="work-card work-menu-card">
+      <view class="work-menu-grid">
+        <view v-for="(item, index) in icons" :key="index" class="work-menu-item" @click="tn(item.url)">
+          <view class="work-menu-icon" :style="{ backgroundColor: softColor(item.color) }">
+            <tn-icon :name="item.icon" :style="{ color: item.color, fontSize: '40rpx' }"></tn-icon>
+          </view>
+          <text class="work-menu-label tn-color-gray--dark">{{ item.title }}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 考勤统计 -->
+    <view class="work-card">
+      <view class="work-card-head">
+        <text class="work-card-title">考勤统计</text>
+      </view>
+      <view class="work-stats-grid">
+        <view v-for="(item, index) in attendance" :key="index" class="work-stats-item" @click="tn(item.url)">
+          <text class="work-stats-num" :style="{ color: item.color }">{{ item.title }}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="tn-tabbar-height"></view>
 
   </scroll-view>
 </template>
@@ -426,6 +356,16 @@ const cardSwiper = (e) => {
   cardCur.value = e.detail.current
 }
 
+// hex 转浅色底(rgba)
+function softColor(hex) {
+  const v = String(hex || '').replace('#', '')
+  if (v.length < 6) return 'rgba(75, 152, 254, 0.12)'
+  const r = parseInt(v.slice(0, 2), 16)
+  const g = parseInt(v.slice(2, 4), 16)
+  const b = parseInt(v.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, 0.12)`
+}
+
 function goToClock() {
   uni.navigateTo({
     url: '/workPages/time',
@@ -452,939 +392,209 @@ const tn = (e) => {
 
 <style lang="scss" scoped>
   .template-work {
-    max-height: 100vh;
+    background-color: #F7F8FA;
     max-width: 640px;
     margin: 0 auto;
-    }
-    
-  /* 自定义导航栏内容 start */
-  .custom-nav {
-    position: fixed;
-    top:0;
-    left: 0;
-    right: 0;
-    height: 200rpx;
-    z-index:99999;
-    &__back {
-      margin: auto 5rpx;
-      font-size: 40rpx;
-      margin-right: 10rpx;
-      margin-left: 30rpx;
-    }
   }
-  
-  /* 新增OA色系，自行调用，或者拿色值去用，多种方式*/
-  .oa-black{
-    color: #1D2541;
+
+  .work-card {
+    background: #ffffff;
+    border-radius: 16rpx;
+    margin: 20rpx 24rpx 0;
+    padding: 28rpx;
+    border: 1rpx solid rgba(17, 31, 46, 0.06);
   }
-  .oa-blue{
-    color: #4B98FE;
+
+  /* 问候卡片 */
+  .work-greet-card {
+    margin-top: 20rpx;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
-  .oa-orangeyellow{
-    color: #FFAC00;
+
+  .work-greet-left {
+    display: flex;
+    align-items: center;
+    min-width: 0;
   }
-  .oa-green{
-    color: #00D05E;
-  }
-  .oa-orange{
-    color: #FE871B;
-  }
-  .oa-cyan{
-    color: #00C8B0;
-  }
-  .oa-indigo{
-    color: #00B9FE;
-  }
-  .oa-orangered{
-    color: #FB6A67;
-  }
-  .oa-purple{
-    color: #957BFE;
-  }
-  
-  // 四个角渐变底色
-  .work-fixed{
-    max-width: 640px; 
-    position: fixed;
-    top: 0;
-    width: 100%;
-  }
-  /* 底部安全边距 start*/
-  .tn-tabbar-height {
-  	min-height: 120rpx;
-  	height: calc(140rpx + env(safe-area-inset-bottom) / 2);
-    height: calc(140rpx + constant(safe-area-inset-bottom));
-  }
-  
-  /* 间隔线 start*/
-  .tn-strip-bottom {
-   width: 100%;
-   border-bottom: 20rpx solid #F8F7F8;
-  }
-  /* 间隔线 start*/
-  .tn-strip-bottom-min {
-   width: 100%;
-   border-bottom: 1rpx solid #F8F7F8;
-  }
-  
-  /* 图标容器15 start */
-  .icon15 {
-    &__item {
-      width: 30%;
-      background-color: #FFFFFF;
-      padding: 30rpx;
-      margin: 20rpx 10rpx;
-      transform: scale(1);
-      transition: transform 0.3s linear;
-      transform-origin: center center;
-      
-      &--icon {
-        width: 90rpx;
-        height: 90rpx;
-        font-size: 60rpx;
-        border-radius: 20rpx;
-        position: relative;
-        z-index: 1;
-        
-        &::after {
-          content: " ";
-          position: absolute;
-          z-index: -1;
-          width: 100%;
-          height: 100%;
-          left: 0;
-          bottom: 0;
-          border-radius: inherit;
-          opacity: 1;
-          transform: scale(1, 1);
-          background-size: 100% 100%;
-  
-        }
-      }
-    }
-  }
-  
-            
-  /* 企业列表头像 start */
-  .company-image {
-    width: 80rpx;
-    height: 80rpx;
+
+  .work-avatar-wrap {
     position: relative;
+    flex-shrink: 0;
+
+    image {
+      width: 88rpx;
+      height: 88rpx;
+      border-radius: 16rpx;
+      background-color: #eef0f4;
+    }
   }
-  
-  .company-pic {
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-position: center;
+
+  .work-online {
+    position: absolute;
+    right: -2rpx;
+    bottom: -2rpx;
+    width: 18rpx;
+    height: 18rpx;
+    border-radius: 50%;
+    background: #00B578;
+    border: 3rpx solid #ffffff;
+  }
+
+  .work-greet-info {
+    margin-left: 20rpx;
+    min-width: 0;
+  }
+
+  .work-greet-title {
+    font-size: 30rpx;
+    font-weight: 600;
+    color: #1d2541;
+  }
+
+  .work-greet-sub {
+    margin-top: 6rpx;
+    font-size: 22rpx;
+    color: #8a94a6;
+
+    .work-greet-entry {
+      margin-left: 16rpx;
+      color: #3668FC;
+    }
+  }
+
+  .work-bell {
+    position: relative;
+    flex-shrink: 0;
+    width: 64rpx;
+    height: 64rpx;
+    border-radius: 16rpx;
+    background: #f4f5f9;
+    color: #425066;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32rpx;
+  }
+
+  .work-bell-dot {
+    position: absolute;
+    top: 10rpx;
+    right: 12rpx;
+    width: 14rpx;
+    height: 14rpx;
+    border-radius: 50%;
+    background: #FF4D4F;
+  }
+
+  /* 打卡卡片 */
+  .work-clock-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .work-clock-time {
+    color: #1d2541;
+    font-size: 60rpx;
+    font-weight: 700;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+
+    .work-clock-seconds {
+      font-size: 26rpx;
+      font-weight: 500;
+      color: #8a94a6;
+      margin-left: 8rpx;
+    }
+  }
+
+  .work-clock-weekday {
+    margin-top: 4rpx;
+    color: #8a94a6;
+    font-size: 24rpx;
+  }
+
+  .work-clock-go {
+    display: flex;
+    align-items: center;
+    padding: 20rpx 36rpx;
+    border-radius: 16rpx;
+    background: #3668FC;
+    color: #ffffff;
+  }
+
+  .work-clock-go-text {
+    margin-left: 10rpx;
+    font-size: 28rpx;
+    font-weight: 500;
+  }
+
+  /* 申请菜单宫格 */
+  .work-menu-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    row-gap: 32rpx;
+  }
+
+  .work-menu-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .work-menu-icon {
+    width: 84rpx;
+    height: 84rpx;
     border-radius: 20rpx;
-    overflow: hidden;
-    border: 1rpx solid #F8F7F8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-
-  /* 头像*/
-   .logo-image{
-     width: 65rpx;
-     height: 65rpx;
-     position: relative;
-   }
-   .logo-pic{
-     width: 65rpx;
-     height: 65rpx;
-      border-radius: 50%;
-     background-size: cover;
-     background-repeat:no-repeat;
-     // background-attachment:fixed;
-     background-position:top;
-   }
-   /* 自定义导航栏内容 end */
-   
-  /* 搜索栏 start */
-   .tn-classify {
-     
-     &__search {
-       &--wrap {
-       }
-       
-       &__box {
-         flex: 1;
-         text-align: center;
-         padding: 20rpx 30rpx;
-         margin: 0 30rpx;
-         border-radius: 60rpx;
-         font-size: 30rpx;
-       }
-       
-       &__icon {
-         padding-right: 10rpx;
-       }
-       &__text {
-         padding-right: 10rpx;
-       }
-     }
-     /* 搜索栏 end */
-   }
-   
-   /* 顶部背景图 start */
-   .top-backgroup {
-     height: 424rpx;
-     max-height: 500rpx;
-     overflow: hidden;
-     z-index: -1;
-   
-     .backgroud-image {
-       width: 100%;
-       height: 424rpx;
-       z-index: -1;
-     }
-   }
-   /* 顶部背景图 end */
-   
-   /* 旧版打卡模块 start */
-   .work-clock-panel {
-     position: relative;
-     z-index: 2;
-     min-height: 424rpx;
-     margin-top: -424rpx;
-     padding: 54rpx 24rpx 28rpx;
-     box-sizing: border-box;
-     background: linear-gradient(135deg, #ECF4FF 0%, #D9E8F8 52%, #C7D7EE 100%);
-     overflow: hidden;
-   }
-
-   .work-clock-panel::before {
-     content: "";
-     position: absolute;
-     right: -110rpx;
-     top: -90rpx;
-     width: 360rpx;
-     height: 360rpx;
-     border-radius: 50%;
-     background: rgba(255, 255, 255, 0.36);
-   }
-
-   .work-clock-user,
-   .work-clock-card {
-     position: relative;
-     z-index: 1;
-   }
-
-   .work-clock-avatar {
-     position: relative;
-     width: 92rpx;
-     height: 92rpx;
-     flex-shrink: 0;
-     border: 4rpx solid rgba(255, 255, 255, 0.9);
-     border-radius: 50%;
-     overflow: visible;
-     box-shadow: 0 12rpx 30rpx rgba(64, 91, 132, 0.16);
-   }
-
-   .work-clock-avatar image {
-     width: 100%;
-     height: 100%;
-     border-radius: 50%;
-   }
-
-   .work-clock-online {
-     position: absolute;
-     right: 2rpx;
-     bottom: 0;
-     width: 18rpx;
-     height: 18rpx;
-     border: 3rpx solid #DCE9F7;
-     border-radius: 50%;
-     background: #20d780;
-   }
-
-   .work-clock-userinfo {
-     margin-left: 20rpx;
-   }
-
-   .work-clock-greeting {
-     color: #5F7898;
-     font-size: 28rpx;
-     line-height: 1.35;
-   }
-
-   .work-clock-greeting text {
-     color: #223554;
-     font-size: 36rpx;
-     font-weight: 900;
-   }
-
-   .work-clock-date {
-     display: flex;
-     align-items: center;
-     flex-wrap: wrap;
-     gap: 12rpx;
-     margin-top: 6rpx;
-     color: #6E83A0;
-     font-size: 24rpx;
-   }
-
-   .work-clock-entry {
-     padding: 4rpx 16rpx;
-     border-radius: 999rpx;
-     background: rgba(244, 249, 255, 0.62);
-     color: #5A7395;
-   }
-
-   .work-clock-bell {
-     position: relative;
-     width: 76rpx;
-     height: 76rpx;
-     border-radius: 50%;
-     color: #55719A;
-     font-size: 42rpx;
-     background: rgba(239, 246, 255, 0.62);
-     box-shadow: 0 12rpx 28rpx rgba(76, 105, 150, 0.14);
-     backdrop-filter: blur(10px);
-   }
-
-   .work-clock-bell-dot {
-     position: absolute;
-     right: 18rpx;
-     top: 16rpx;
-     width: 12rpx;
-     height: 12rpx;
-     border-radius: 50%;
-     background: #ff4d6d;
-   }
-
-   .work-clock-card {
-     margin-top: 36rpx;
-     padding: 34rpx 34rpx 28rpx;
-     border-radius: 24rpx;
-     background: rgba(255, 255, 255, 0.96);
-     box-shadow: 0 24rpx 70rpx rgba(67, 95, 138, 0.16);
-   }
-
-   .work-clock-time {
-     display: flex;
-     align-items: baseline;
-     color: #172642;
-     font-variant-numeric: tabular-nums;
-   }
-
-   .work-clock-time > text:first-child {
-     font-size: 66rpx;
-     font-weight: 900;
-     letter-spacing: 1rpx;
-   }
-
-   .work-clock-seconds {
-     margin-left: 12rpx;
-     color: #7890B0;
-     font-size: 28rpx;
-     font-weight: 800;
-   }
-
-   .work-clock-weekday {
-     margin-top: 8rpx;
-     color: #607894;
-     font-size: 28rpx;
-   }
-
-   .work-clock-action {
-     display: flex;
-     flex-direction: column;
-     align-items: center;
-     min-width: 116rpx;
-   }
-
-   .work-clock-location {
-     position: relative;
-     width: 96rpx;
-     height: 96rpx;
-   }
-
-   .work-clock-ring {
-     position: absolute;
-     inset: 6rpx;
-     border: 2rpx solid rgba(79, 111, 164, 0.2);
-     border-radius: 50%;
-     animation: workClockPulse 2.4s ease-out infinite;
-   }
-
-   .work-clock-ring--delay {
-     animation-delay: 1.2s;
-   }
-
-   .work-clock-location-inner {
-     position: relative;
-     z-index: 1;
-     width: 70rpx;
-     height: 70rpx;
-     border-radius: 50%;
-     color: #ffffff;
-     font-size: 42rpx;
-     background: linear-gradient(135deg, #7FA0D2, #526FA6);
-     box-shadow: 0 12rpx 28rpx rgba(82, 111, 166, 0.24);
-   }
-
-   .work-clock-action-text {
-     margin-top: 6rpx;
-     color: #526FA6;
-     font-size: 26rpx;
-     font-weight: 800;
-   }
-
-   @keyframes workClockPulse {
-     0% {
-       opacity: 1;
-       transform: scale(0.78);
-     }
-     100% {
-       opacity: 0;
-       transform: scale(1.35);
-     }
-   }
-   /* 旧版打卡模块 end */
-   
-   /* 轮播视觉差 start */
-   .capsule-swiper {
-     height: 260rpx !important;
-     max-width: 640px;
-   }
-     
-   .capsule-swiper swiper-item {
-     width: 750rpx !important;
-     left: 0rpx;
-     box-sizing: border-box;
-     overflow: initial;
-     max-width: 640px;
-   }
-   
-   @media screen and (max-width:400px) {
-  	.capsule-swiper swiper-item {
-  	  padding: 30rpx 10rpx 30rpx 10rpx;
-  	}
-   }
-   
-   @media screen and (min-width:400px) {
-     .capsule-swiper {
-       margin: 40rpx 0 0 0;
-     }
-   }
-     
-   .capsule-swiper swiper-item .swiper-item {
-     width: 100%;
-     display: block;
-     height: 100%;
-     border-radius: 10rpx;
-     transform: scale(0.8);
-     transition: all 0.6s ease-in 0s;
-     will-change: transform;
-     // overflow: hidden;
-   }
-     
-   .capsule-swiper swiper-item.cur .swiper-item {
-     transform: none;
-     transition: all 0.6s ease-in 0s;
-     will-change: transform;
-   }
-     
-   .capsule-swiper swiper-item .swiper-item-text {
-     margin-top: -220rpx;
-     text-align: center;
-     width: 100%;
-     display: block;
-     height: 50%;
-     border-radius: 10rpx;
-     transform: translate(100rpx, 0rpx) scale(0.9, 0.9);
-     transition: all 0.6s ease 0s;
-     will-change: transform;
-     overflow: hidden;
-   }
-     
-   .capsule-swiper swiper-item.cur .swiper-item-text {
-     margin-top: -220rpx;
-     width: 100%;
-     transform: translate(0rpx, 0rpx) scale(0.9, 0.9);
-     transition: all 0.6s ease 0s;
-     will-change: transform;
-   }
-   
-   
-   /* 轮播指示点 start*/
-   .indication3{
-     max-width: 640px;
-     z-index: 9999;
-     width: 100%;
-     height: 36rpx;
-     position: absolute;
-     display:flex;
-     flex-direction:row;
-     align-items:center;
-     justify-content:center;
-   }
-   
-   .spot3{
-     background-color: #000000;
-     opacity: 0.1;
-     width: 10rpx;
-     height: 10rpx;
-     border-radius: 20rpx;
-     top: -40rpx;
-     margin: 0 8rpx !important;
-     position: relative;
-   }
-   
-   .spot3.active{
-     opacity: 1;
-     width: 30rpx;
-     background-color: #000000;
-     opacity: 0.1;
-   }
-   
-  
-   /* 金刚区轮播 start */
-   .top-menu-section {
-     background: #FFFFFF;
-     padding: 18rpx 0 8rpx;
-   }
-
-   .top-menu-grid {
-     display: flex;
-     flex-wrap: wrap;
-     padding-bottom: 18rpx;
-   }
-
-   .top-menu-item {
-     width: 25%;
-     padding: 12rpx 0 18rpx;
-     box-sizing: border-box;
-   }
-
-   .top-menu-section .icon12__item--icon {
-     width: 86rpx;
-     height: 86rpx;
-     margin-bottom: 12rpx;
-     font-size: 46rpx;
-   }
-
-   .top-menu-label {
-     width: 100%;
-     padding: 0 4rpx;
-     box-sizing: border-box;
-     font-size: 25rpx;
-     line-height: 1.25;
-   }
-
-   .card-swiper {
-     height: 350rpx !important;
-     max-width: 640px;
-   }
-     
-   .card-swiper swiper-item {
-     width: 100% !important;
-     left: 0rpx;
-     box-sizing: border-box;
-     // padding: 0rpx 30rpx 90rpx 30rpx;
-     overflow: initial;
-   }
-     
-   .card-swiper swiper-item .swiper-item {
-     width: 100%;
-     display: block;
-     height: 100%;
-     transform: scale(1);
-     transition: all 0.2s ease-in 0s;
-     will-change: transform;
-     overflow: hidden;
-   }
-     
-   .card-swiper swiper-item.cur .swiper-item {
-     transform: none;
-     transition: all 0.2s ease-in 0s;
-     will-change: transform;
-   }
-     
-   .card-swiper swiper-item .swiper-item-text {
-     margin-top: -300rpx;
-     text-align: center;
-     width: 100%;
-     display: block;
-     height: 50%;
-     border-radius: 10rpx;
-     transform: translate(100rpx, 0rpx) scale(0.9, 0.9);
-     transition: all 0.6s ease 0s;
-     will-change: transform;
-     overflow: hidden;
-   }
-     
-   .card-swiper swiper-item.cur .swiper-item-text {
-     margin-top: -300rpx;
-     width: 100%;
-     transform: translate(0rpx, 0rpx) scale(0.9, 0.9);
-     transition: all 0.6s ease 0s;
-     will-change: transform;
-   }
-   
-   .image-banner{
-     display: flex;
-     align-items: center;
-     justify-content: center;
-   }
-   .image-banner image{
-     width: 100%;
-     height: 100%;
-   }
-   
-   /* 轮播指示点 start*/
-   .indication{
-     max-width: 640px;
-     z-index: 9999;
-     width: 100%;
-     height: 36rpx;
-     position: absolute;
-     display:flex;
-     flex-direction:row;
-     align-items:center;
-     justify-content:center;
-   }
-   
-   .spot{
-     background-color: #000000;
-     opacity: 0.1;
-     width: 10rpx;
-     height: 10rpx;
-     border-radius: 20rpx;
-     top: -70rpx;
-     margin: 0 8rpx !important;
-     position: relative;
-   }
-   
-   .spot.active{
-     opacity: 0.15;
-     width: 30rpx;
-     background-color: #000000;
-   }
-   
-   .image-pic{
-     // border: 1rpx solid #F8F7F8;
-     background-size: cover;
-     background-repeat:no-repeat;
-     // background-attachment:fixed;
-     background-position:top;
-     border-radius: 10rpx;
-   }
-   
-   /* 文字截取*/
-   .clamp-text-1 {
-     -webkit-line-clamp: 1;
-     display: -webkit-box;
-     -webkit-box-orient: vertical;
-     text-overflow: ellipsis;
-     overflow: hidden;
-   }
-   
-   .clamp-text-2 {
-     -webkit-line-clamp: 2;
-     display: -webkit-box;
-     -webkit-box-orient: vertical;
-     text-overflow: ellipsis;
-     overflow: hidden;
-   }
-   
-   .blue-title::before {
-     content: "";
-     position: absolute;
-     display: block;
-     width: 80rpx;
-     height: 26rpx;
-     background: #269EFC;
-     margin-top: 20rpx;
-     margin-left: 70rpx;
-     opacity: 0.09;
-     z-index: -1;
-     border-radius: 4rpx;
-   }
-   
-   
-  .icon12 {
-    &__item {
-      transform: scale(1);
-      transition: transform 0.3s linear;
-      transform-origin: center center;
-      
-      &--icon {
-        width: 100rpx;
-        height: 100rpx;
-        font-size: 56rpx;
-        border-radius: 50%;
-        margin-bottom: 18rpx;
-        position: relative;
-        z-index: 1;
-        
-        &::after {
-          content: " ";
-          position: absolute;
-          z-index: -1;
-          width: 100%;
-          height: 100%;
-          left: 0;
-          bottom: 0;
-          border-radius: inherit;
-          opacity: 1;
-          transform: scale(1, 1) rotate(19deg);
-          background-size: 100% 100%;
-          background-image: url(https://resource.tuniaokj.com/images/cool_bg_image/icon_bg4.png);
-        }
-      }
-      
-    }
+  .work-menu-label {
+    margin-top: 12rpx;
+    font-size: 24rpx;
+    color: #425066;
   }
-  
-  .icon13 {
-    &__item {
-      transform: scale(1);
-      transition: transform 0.3s linear;
-      transform-origin: center center;
-      
-      &--icon {
-        width: 100rpx;
-        height: 100rpx;
-        font-size: 56rpx;
-        margin-bottom: 18rpx;
-        position: relative;
-        z-index: 1;
-        
-        &::after {
-          content: " ";
-          position: absolute;
-          z-index: -1;
-          width: 100%;
-          height: 100%;
-          left: 0;
-          bottom: 0;
-          border-radius: inherit;
-          opacity: 1;
-          transform: scale(1, 1);
-          background-size: 100% 100%;
-          background-image: url(https://resource.tuniaokj.com/images/cool_bg_image/icon_bg4.png);
-            
-        }
-       
-      }
-      
-    }
+
+  /* 考勤统计 */
+  .work-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20rpx;
   }
-  
-   
-   /* 工作区展示 start */
-   .tn-info {
-     
-     &__container {
-       margin-top: 10rpx;
-       margin-bottom: 30rpx;
-     }
-     
-     &__item {
-       width: 47.7%;
-       margin: 15rpx 0rpx 15rpx 0rpx;
-       padding: 40rpx 30rpx;
-       border-radius: 10rpx;
-       
-   
-         position: relative;
-         z-index: 1;
-         
-         &::after {
-           content: " ";
-           position: absolute;
-           z-index: -1;
-           width: 100%;
-           height: 100%;
-           left: 0;
-           bottom: 0;
-           border-radius: inherit;
-           opacity: 1;
-           transform: scale(1, 1);
-           background-size: 100% 100%;
-           background-image: url(https://resource.tuniaokj.com/images/cool_bg_image/2.png);
-         }
-       
-       &__left {
-         
-         &--icon {
-           width: 80rpx;
-           height: 80rpx;
-           border-radius: 50%;
-           font-size: 40rpx;
-           margin-right: 20rpx;
-           position: relative;
-           z-index: 1;
-           
-           &::after {
-             content: " ";
-             position: absolute;
-             z-index: -1;
-             width: 100%;
-             height: 100%;
-             left: 0;
-             bottom: 0;
-             border-radius: inherit;
-             opacity: 1;
-             transform: scale(1, 1);
-             background-size: 100% 100%;
-             background-image: url(https://resource.tuniaokj.com/images/cool_bg_image/icon_bg5.png);
-           }
-         }
-         
-         &__content {
-           font-size: 25rpx;          
-           
-           &--data {
-             color: rgba(255,255,255,0.5);
-             margin-top: 5rpx;
-             // font-weight: bold;
-           }
-         }
-       }
-       
-       &__right {
-         &--icon {
-           position: absolute;
-           right: 0rpx;
-           top: 50rpx;
-           font-size: 80rpx;
-           width: 108rpx;
-           height: 108rpx;
-           text-align: center;
-           line-height: 60rpx;
-           opacity: 0.6;  
-         }
-       }
-       // &__bottom {
-       //   box-shadow: 0rpx 0rpx 30rpx 0rpx rgba(0, 0, 0, 0.12);
-       //   border-radius: 0 0 10rpx 10rpx;
-       //   position: absolute;
-       //   width: 85%;
-       //   line-height: 15rpx;
-       //   left: 50%;
-       //   bottom: -15rpx;
-       //   transform: translateX(-50%);
-       //   z-index: -1;
-       //   text-align: center;
-       // }
-     }
-   }
-   /* 工作区展示 end */
-   
-   
-   /* 广告*/
-   
-   .button-shake {
-     animation: shake 4s infinite;
-   }
-   
-   @keyframes shake {
-     5%, 50% {
-       transform: scale(1);
-     }
-     10% {
-       transform: scale(0.9);
-     }
-     15% {
-       transform: scale(1.15);
-     }
-     20% {
-       transform: scale(1.15) rotate(-5deg);
-     }
-     25% {
-       transform: scale(1.15) rotate(5deg);
-     }
-     30% {
-       transform: scale(1.15) rotate(-3deg);
-     }
-     35% {
-       transform: scale(1.15) rotate(2deg);
-     }
-     40% {
-       transform: scale(1.15) rotate(0);
-     }
-   }
-   
-   
-   
-   /* 背景波浪高度 */
-     .button-number {
-       width: 100%;
-       height: 150rpx;
-       border-radius: 15rpx;
-       position: relative;
-       z-index: 1;
-     }
-   
-   /* 动态背景波浪*/
-   @keyframes move_wave {
-       0% {
-           transform: translateX(0) translateZ(0) scaleY(1)
-       }
-       50% {
-           transform: translateX(-25%) translateZ(0) scaleY(1)
-       }
-       100% {
-           transform: translateX(-50%) translateZ(0) scaleY(1)
-       }
-   }
-   .tnwave {
-       overflow: hidden;
-       position: absolute;
-       left: 0;
-       right: 0;
-       bottom: 0;
-       top: 0;
-       margin: auto;
-       z-index: -1;
-       border-radius: 15rpx;
-   }
-   .waveWrapperInner {
-       position: absolute;
-       width: 100%;
-       overflow: hidden;
-       height: 100%;
-   }
-   .wave {
-       position: absolute;
-       left: 0;
-       width: 200%;
-       height: 100%;
-       background-repeat: repeat no-repeat;
-       background-position: 0 bottom;
-       transform-origin: center bottom;
-   }
-   
-   .bgTop {
-       opacity: 0.1;
-   }
-   .waveTop {
-       background-size: 50% 45px;
-   }
-   .waveAnimation .waveTop {
-     animation: move_wave 4s linear infinite;
-   }
-   
-   .bgMiddle {
-       opacity: 0.2;
-   }
-   .waveMiddle {
-       background-size: 50% 40px;
-   }
-   .waveAnimation .waveMiddle {
-       animation: move_wave 3.5s linear infinite;
-   }
-   
-   .bgBottom {
-       opacity: 0.3;
-   }
-   .waveBottom {
-       background-size: 50% 35px;
-   }
-   .waveAnimation .waveBottom {
-       animation: move_wave 2s linear infinite;
-   }
-    
+
+  .work-card-title {
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #1d2541;
+  }
+
+  .work-card-more {
+    color: #8a94a6;
+    font-size: 24rpx;
+  }
+
+  .work-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .work-stats-item {
+    text-align: center;
+    padding: 8rpx 0;
+  }
+
+  .work-stats-num {
+    font-size: 26rpx;
+    font-weight: 600;
+  }
+
+  .tn-tabbar-height {
+    min-height: 100rpx;
+    height: calc(120rpx + env(safe-area-inset-bottom) / 2);
+  }
 </style>

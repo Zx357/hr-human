@@ -175,7 +175,7 @@ function statusText(status) {
   max-width: 640px;
   min-height: 100vh;
   margin: 0 auto;
-  background: #f4f7fb;
+  background: #F8F7F8;
 }
 
 .nav-back {
@@ -207,34 +207,37 @@ function statusText(status) {
 .hero-card {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 24rpx;
   padding: 32rpx;
-  color: #ffffff;
-  background: linear-gradient(135deg, #5a7ec8, #8eb0d8);
+  color: #1d2541;
 }
 
 .hero-title {
   font-size: 36rpx;
   font-weight: 800;
+  color: #1d2541;
 }
 
 .hero-desc {
   margin-top: 12rpx;
+  color: #657189;
   color: rgba(255, 255, 255, 0.84);
   font-size: 24rpx;
   line-height: 1.55;
 }
 
 .hero-icon {
-  width: 92rpx;
-  height: 92rpx;
+  flex-shrink: 0;
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 28rpx;
+  background: rgba(54, 104, 252, 0.12);
+  color: #3668FC;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: none;
-  border-radius: 28rpx;
-  font-size: 46rpx;
-  background: rgba(255, 255, 255, 0.18);
+  font-size: 44rpx;
 }
 
 .form-card {

@@ -6,9 +6,9 @@
         @click="goBack">
         <tn-icon class='icon' name='left-arrow'></tn-icon>
       </view></template>
-      <!-- <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
+      <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
         <text class="tn-text-bold tn-text-xl tn-color-black">提交结果</text>
-      </view> -->
+      </view>
     </tn-navbar>
     
     
@@ -19,8 +19,7 @@
         <view class="tn-text-lg tn-margin-bottom tn-text-bold" style="color: #00C8B0;">提交成功</view>
         <!-- <view class="tn-text-lg tn-margin-bottom tn-text-bold" style="color: #FB6A67;">提交失败</view> -->
         <view class="tn-color-gray">你已完成提交</view>
-        <!-- <view class="tn-color-gray">请重新前往提交</view> -->
-        <view class="tn-color-gray">谢谢你对图鸟的支持！</view>
+        <view class="tn-color-gray">可在"我的申请"中查看审批进度</view>
       </view>
     </view>
     

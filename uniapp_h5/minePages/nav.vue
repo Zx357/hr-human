@@ -138,7 +138,7 @@ function openItem(item) {
   max-width: 640px;
   min-height: 100vh;
   margin: 0 auto;
-  background: #f4f7fb;
+  background: #F8F7F8;
 }
 
 .nav-back {
