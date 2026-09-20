@@ -51,6 +51,15 @@
     </view>
 
     <view class="clock-content">
+      <!-- 考勤信息加载失败:提示 + 重试入口 -->
+      <view v-if="clockInfoFailed" class="clock-error-bar" @click="retryLoadClockInfo">
+        <text class="clock-error-text">考勤信息加载失败</text>
+        <view class="clock-error-retry">
+          <tn-icon name="refresh"></tn-icon>
+          <text>重试</text>
+        </view>
+      </view>
+
       <view class="time-card">
         <view class="time-text">{{ currentTimeText }}</view>
         <view class="date-text">{{ currentDateText }}</view>
@@ -196,7 +205,11 @@ const scheduledOut = ref(null)
 const clocking = ref(false)
 const currentTimeText = ref('--:--:--')
 const currentDateText = ref('')
+// 考勤信息加载失败标记(展示重试入口)
+const clockInfoFailed = ref(false)
 let timer = null
+// 首次 onShow 标记:onLoad 已做过全量刷新,首次显示不重复定位
+let pageShownOnce = false
 
 const hasLocation = computed(() => latitude.value !== null && longitude.value !== null)
 const hasCompanyLocation = computed(() => companyLat.value !== null && companyLng.value !== null)
@@ -278,6 +291,11 @@ onLoad(() => {
 
 onShow(() => {
   loadClockInfo()
+  // 返回页面(如从系统设置开启定位后)时刷新定位;首次显示由 onLoad 的 refreshPage 负责,避免重复定位
+  if (pageShownOnce) {
+    getLocation(false)
+  }
+  pageShownOnce = true
 })
 
 onPullDownRefresh(() => {
@@ -525,7 +543,11 @@ function promptEnableLocation() {
 async function loadClockInfo() {
   try {
     const res = await getClockInfo()
-    if (res.code !== 200 || !res.data) return
+    if (res.code !== 200 || !res.data) {
+      clockInfoFailed.value = true
+      return
+    }
+    clockInfoFailed.value = false
     const data = res.data
 
     todayRecords.value = Array.isArray(data.todayRecords) ? data.todayRecords : []
@@ -565,7 +587,16 @@ async function loadClockInfo() {
     calcDistance()
     refreshMapData()
   } catch (error) {
+    // 加载失败给出提示与重试入口,不再静默
+    clockInfoFailed.value = true
+    uni.showToast({ icon: 'none', title: '考勤信息加载失败，请重试' })
   }
+}
+
+// 重试拉取考勤信息
+async function retryLoadClockInfo() {
+  clockInfoFailed.value = false
+  await loadClockInfo()
 }
 
 function parseNumber(value) {
@@ -1023,6 +1054,35 @@ export default {
 
 .clock-content {
   padding: 84rpx 26rpx 46rpx;
+}
+
+/* 考勤信息加载失败提示条 */
+.clock-error-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+  padding: 18rpx 24rpx;
+  border-radius: 18rpx;
+  background: #FFECEC;
+  color: #C75B5B;
+}
+
+.clock-error-text {
+  font-size: 25rpx;
+  font-weight: 600;
+}
+
+.clock-error-retry {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 8rpx 22rpx;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #526FA6;
+  background: #EEF5FF;
 }
 
 .time-card,

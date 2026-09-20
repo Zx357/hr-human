@@ -15,7 +15,7 @@
     <view class="" :style="{paddingTop: vuex_custom_bar_height + 10 +'px'}">
       
       
-     <view class="tn-padding tn-flex tn-flex-col-between tn-strip-bottom-min" @click="tn('')">
+     <view class="tn-padding tn-flex tn-flex-col-between tn-strip-bottom-min" @click="showFaceToFaceTip">
         <view class="icon15__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-color-white" style="background-color: #00C8B0;">
           <tn-icon name="menu-match"></tn-icon>
         </view>
@@ -25,8 +25,19 @@
           </view>
         </view>
       </view>
-      
-      <tn-index-list :data="listData">
+
+      <!-- 加载中 -->
+      <view v-if="loadingEmployees" class="tn-text-center tn-color-gray tn-padding-xl">加载中...</view>
+
+      <!-- 空态:无可邀请的同事 -->
+      <view v-else-if="!listData || !Object.keys(listData).length" class="tn-text-center tn-padding-xl">
+        <view class="tn-text-center" style="font-size: 160rpx;padding-top: 60rpx;">
+          <text class="tn-icon-clip tn-color-gray--light"></text>
+        </view>
+        <view class="tn-color-gray--disabled tn-text-lg">暂无可邀请的同事</view>
+      </view>
+
+      <tn-index-list v-else :data="listData">
         <template #default="{ data }">
           <view class="list-data" @click="toggleSelect(data)">
             <!-- 未选择 -->
@@ -77,127 +88,28 @@
   import config from '@/config'
   import { getEmployeeList } from '@/api/employee'
   import { createContactGroup } from '@/api/contact'
-  
+  import { groupContacts } from '@/utils/surname'
+
   // 使用 composable 获取自定义导航栏高度
   const { vuex_custom_bar_height } = useCustomBarHeight()
   const { goBack } = useGoBack()
-  
-  // 索引列表数据
-  const fallbackListData = ref({
-    a: {
-      title: 'A',
-      data: [
-        {
-          id: 0,
-          avatar: 'https://tnuiimage.tnkjapp.com/avatar/normal/1.png',
-          username: '图鸟UI-总监',
-          office: '高级设计总监',
-          star: true,
-        },
-        {
-          id: 1,
-          avatar: 'https://tnuiimage.tnkjapp.com/avatar/normal/2.png',
-          username: '图鸟UI-总监',
-          office: '高级设计总监',
-        },
-        {
-          id: 2,
-          avatar: 'https://tnuiimage.tnkjapp.com/avatar/normal/3.png',
-          username: '图鸟UI-总监',
-          office: '高级设计总监',
-        },
-      ],
-    },
-    c: {
-      title: 'C',
-      data: [
-        {
-          id: 3,
-          avatar: 'https://tnuiimage.tnkjapp.com/avatar/normal/4.png',
-          username: '图鸟UI-总监',
-          office: '高级设计总监',
-        },
-        {
-          id: 4,
-          avatar: 'https://tnuiimage.tnkjapp.com/avatar/normal/5.png',
-          username: '图鸟UI-总监',
-          office: '高级设计总监',
-        },
-        {
-          id: 5,
-          avatar: 'https://tnuiimage.tnkjapp.com/avatar/normal/6.png',
-          username: '图鸟UI-总监',
-          office: '高级设计总监',
-        },
-      ],
-    },
-    '#': {
-      title: '#',
-      data: [
-        {
-          id: 6,
-          avatar: 'https://tnuiimage.tnkjapp.com/avatar/normal/7.png',
-          username: '图鸟UI-打杂',
-          office: '高级打杂',
-        },
-        {
-          id: 7,
-          avatar: 'https://tnuiimage.tnkjapp.com/avatar/normal/8.png',
-          username: '图鸟UI-打杂',
-          office: '高级打杂',
-        },
-        {
-          id: 8,
-          avatar: 'https://tnuiimage.tnkjapp.com/avatar/normal/9.png',
-          username: '图鸟UI-打杂',
-          office: '高级打杂',
-        },
-      ],
-    },
-  })
+
+  // 员工列表数据(加载失败或为空时展示空态,不再使用假数据兜底)
   const employees = ref([])
+  const loadingEmployees = ref(true)
   const selectedIds = ref([])
 
-  const listData = computed(() => {
-    if (!employees.value.length) return fallbackListData.value
-    return groupContacts(employees.value.map((item) => ({
-      id: item.id,
-      avatar: item.avatar,
-      username: item.name || item.employeeName || item.employeeNo || '未命名员工',
-      office: item.deptName || item.companyName || item.position || item.post || '未设置部门'
-    })))
-  })
+  const listData = computed(() => groupContacts(employees.value.map((item) => ({
+    id: item.id,
+    avatar: item.avatar,
+    username: item.name || item.employeeName || item.employeeNo || '未命名员工',
+    office: item.deptName || item.companyName || item.position || item.post || '未设置部门'
+  }))))
 
   const formatAvatar = (avatar) => {
     if (!avatar) return '/static/author.jpg'
     if (/^https?:\/\//.test(avatar) || avatar.startsWith('/static')) return avatar
     return config.baseUrl + avatar
-  }
-
-  const getFirstLetter = (name = '') => {
-    const first = String(name).trim().charAt(0)
-    if (!first) return '#'
-    if (/[a-zA-Z]/.test(first)) return first.toUpperCase()
-    return '#'
-  }
-
-  const groupContacts = (list) => {
-    const groups = {}
-    list.forEach((item) => {
-      const key = getFirstLetter(item.username)
-      if (!groups[key]) groups[key] = { title: key, data: [] }
-      groups[key].data.push(item)
-    })
-    return Object.keys(groups)
-      .sort((a, b) => {
-        if (a === '#') return 1
-        if (b === '#') return -1
-        return a.localeCompare(b)
-      })
-      .reduce((result, key) => {
-        result[key.toLowerCase()] = groups[key]
-        return result
-      }, {})
   }
 
   const isSelected = (id) => selectedIds.value.includes(id)
@@ -216,6 +128,9 @@
       const res = await getEmployeeList({ status: 1 })
       employees.value = Array.isArray(res.data) ? res.data : []
     } catch (error) {
+      uni.showToast({ icon: 'none', title: '加载同事列表失败' })
+    } finally {
+      loadingEmployees.value = false
     }
   }
 
@@ -243,6 +158,14 @@
     }
   }
   
+  // 面对面建群:功能尚未实现,给出提示而不是死链接
+  const showFaceToFaceTip = () => {
+    uni.showToast({
+      title: '功能开发中，敬请期待',
+      icon: 'none'
+    })
+  }
+
   // 跳转
   const tn = (e) => {
     if (!e) return

@@ -59,6 +59,8 @@
                 width="100%"
                 :fontSize="30"
                 text-color="#FFFFFF"
+                :loading="loading"
+                :disabled="loading"
                 @click="handleLogin"
               >
                 <text class="">{{ loading ? '登录中...' : '登 录' }}</text>
@@ -114,9 +116,15 @@ function showForgotTip() {
 }
 
 async function handleLogin() {
+  // 防重入:登录进行中直接忽略重复点击
+  if (loading.value) return
   const employeeNo = loginForm.value.employeeNo.trim()
   if (!employeeNo) {
     uni.showToast({ icon: 'none', title: '请输入工号' })
+    return
+  }
+  if (!loginForm.value.password) {
+    uni.showToast({ icon: 'none', title: '请输入密码' })
     return
   }
 

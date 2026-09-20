@@ -20,9 +20,6 @@ import { getLoginUrl, isLoginPage, isWhitePage, WORKBENCH_PAGE } from '@/utils/a
 
       uni.reLaunch({ url: getLoginUrl(url) })
       return false
-    },
-    fail(err) {
-      console.log(err)
     }
   })
 })

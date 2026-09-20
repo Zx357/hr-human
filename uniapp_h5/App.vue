@@ -2,7 +2,7 @@
 import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
 import { useStore } from 'vuex'
 import updateCustomBarInfo from './libs/updateCustomBarInfo.js'
-import { getToken } from '@/utils/auth'
+import { getToken, setToken } from '@/utils/auth'
 import { requireLoginFromLaunch } from '@/utils/auth-guard'
 
 const store = useStore()
@@ -38,7 +38,6 @@ onLaunch((options) => {
 
   // 获取设备的状态栏信息和自定义顶栏信息
   updateCustomBarInfo().then((res) => {
-    console.log(res)
     store.commit('$tStore', {
       name: 'vuex_status_bar_height',
       value: res.statusBarHeight
@@ -47,7 +46,7 @@ onLaunch((options) => {
       name: 'vuex_custom_bar_height',
       value: res.customBarHeight
     })
-  })
+  }).catch(() => {})
 
   // #ifdef MP-WEIXIN
   // 更新检测
@@ -62,7 +61,10 @@ onLaunch((options) => {
               content: '新版本已经准备就绪，是否需要重新启动应用？',
               success: (res) => {
                 if (res.confirm) {
+                  // 更新前保留登录态:先暂存 token,清理后恢复,避免更新后强制重新登录
+                  const token = getToken()
                   uni.clearStorageSync() // 更新完成后刷新storage的数据
+                  if (token) setToken(token)
                   updateManager.applyUpdate()
                 }
               }

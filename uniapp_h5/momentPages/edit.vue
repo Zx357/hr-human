@@ -96,9 +96,11 @@
             :fontSize="28"
             text-color="#FFFFFF"
             shape="round"
+            :loading="submitting"
+            :disabled="submitting"
             @tap="upload"
           >
-            <text class="">发 布 时 刻</text>
+            <text class="">{{ submitting ? '发 布 中' : '发 布 时 刻' }}</text>
           </tn-button>
         </view>
       </view>
@@ -204,6 +206,8 @@ const showProgress = ref(false)
 const deleteable = ref(true)
 const maxCount = ref(9)
 const disabled = ref(false)
+// 发布防重复提交
+const submitting = ref(false)
 
 const imageUpload = ref(null)
 
@@ -221,6 +225,8 @@ const tn = (e) => {
 
 // 发布动态
 const upload = async () => {
+  // 防重入:发布进行中直接忽略重复点击
+  if (submitting.value) return
   const labels = tags.value.filter((item) => item.select).map((item) => item.title)
   const images = fileList.value.map((item) => item.url).filter(Boolean)
   if (!postContent.value.trim() && !images.length) {
@@ -230,6 +236,7 @@ const upload = async () => {
     })
     return
   }
+  submitting.value = true
   try {
     await createMomentPost({
       content: postContent.value.trim(),
@@ -244,6 +251,8 @@ const upload = async () => {
       uni.navigateBack()
     }, 500)
   } catch (error) {
+  } finally {
+    submitting.value = false
   }
 }
 

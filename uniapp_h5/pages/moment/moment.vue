@@ -48,8 +48,14 @@
                 <view class="tn-flex tn-flex-row-center">
                   <view class="tn-flex tn-flex-row-center tn-flex-col-center">
                     <view class="logo-pic">
-                      <view class="logo-image" :style="'background-image:url(' + item.userAvatar + ');width: 70rpx;height: 70rpx;background-size: cover;'">
-                      </view>
+                      <!-- 头像改为 image 组件:支持懒加载与加载失败兜底 -->
+                      <image
+                        class="logo-image"
+                        :src="item.userAvatar"
+                        mode="aspectFill"
+                        lazy-load
+                        @error="onAvatarError(item)"
+                      ></image>
                     </view>
                     
                     <view class="tn-padding-right tn-text-ellipsis">
@@ -82,7 +88,7 @@
               
               <block v-if="item.mainImage">
                 <view v-if="[1,2,4].indexOf(item.mainImage.length) != -1" class="tn-padding-top-xs" @click="goDetail(item)">
-                  <image v-for="(image_item,image_index) in item.mainImage" :key="image_index" 
+                  <image v-for="(image_item,image_index) in item.mainImage" :key="image_index"
                     class="blogger__main-image"
                     :class="{
                       'blogger__main-image--1 tn-margin-bottom-sm': item.mainImage.length === 1,
@@ -90,6 +96,8 @@
                     }"
                     :src="image_item"
                     mode="aspectFill"
+                    lazy-load
+                    @error="onGridImageError(item, image_index)"
                   ></image>
                 </view>
                 <view v-else class="tn-padding-top-xs" style="" @click="goDetail(item)">
@@ -99,6 +107,8 @@
                         class="blogger__main-image blogger__main-image--3"
                         :src="image_item"
                         mode="aspectFill"
+                        lazy-load
+                        @error="onGridImageError(item, image_index)"
                       ></image>
                     </block>
                   </view>
@@ -263,6 +273,20 @@ const formatAvatar = (avatar) => {
   return config.baseUrl + avatar
 }
 
+// 头像加载失败兜底
+const onAvatarError = (item) => {
+  if (item && item.userAvatar !== '/static/author.jpg') {
+    item.userAvatar = '/static/author.jpg'
+  }
+}
+
+// 九宫格图加载失败兜底
+const onGridImageError = (item, index) => {
+  if (item && item.mainImage && item.mainImage[index]) {
+    item.mainImage[index] = '/static/logo.png'
+  }
+}
+
 const formatDate = (value) => {
   if (!value) return ''
   const date = String(value).replace('T', ' ')
@@ -366,7 +390,12 @@ const tabChange = (index) => {
   loadMoments()
 }
 
+// 点赞防抖:请求进行中忽略重复点击,保留乐观更新与失败回滚
+const likePending = ref(false)
+
 const toggleLike = async (item) => {
+  if (likePending.value) return
+  likePending.value = true
   const oldLiked = !!item.liked
   const oldLikeCount = Number(item.likeCount || 0)
   item.liked = !oldLiked
@@ -381,6 +410,8 @@ const toggleLike = async (item) => {
   } catch (error) {
     item.liked = oldLiked
     item.likeCount = oldLikeCount
+  } finally {
+    likePending.value = false
   }
 }
 
@@ -727,9 +758,11 @@ defineExpose({
     
     /* 用户头像 start */
     .logo-image {
+      display: block;
       width: 70rpx;
       height: 70rpx;
       position: relative;
+      background-color: #eef0f4;
     }
     
     .logo-pic {

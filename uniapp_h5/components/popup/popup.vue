@@ -136,7 +136,7 @@
         top: 0;
         width: 100%;
         height: 100%;
-        // background-color: rgba(0, 0, 0, 0.5);
+        background-color: rgba(0, 0, 0, 0.5);
         opacity: 0;
         animation: showMask 0.25s ease 0.1s forwards;
       }

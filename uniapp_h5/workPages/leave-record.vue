@@ -14,6 +14,14 @@
     <view class="tn-padding-bottom-xl" :style="{paddingTop: vuex_custom_bar_height + 10 +'px'}">
       <view v-if="loading && !recordList.length" class="tn-text-center tn-color-gray tn-padding-xl">加载中...</view>
 
+      <view v-else-if="loadFailed && !recordList.length" class="tn-text-center tn-padding-xl">
+        <view class="tn-text-center" style="font-size: 160rpx;padding-top: 60rpx;">
+          <text class="tn-icon-clip tn-color-gray--light"></text>
+        </view>
+        <view class="tn-color-gray--disabled tn-text-lg">记录加载失败</view>
+        <view class="record-retry" @click="refreshRecords">点击重试</view>
+      </view>
+
       <view v-else-if="!recordList.length" class="tn-text-center tn-padding-xl">
         <view class="tn-text-center" style="font-size: 160rpx;padding-top: 60rpx;">
           <text class="tn-icon-clip tn-color-gray--light"></text>
@@ -59,6 +67,13 @@
 
         </view>
       </view>
+
+      <!-- 加载更多状态 -->
+      <view v-if="recordList.length" class="tn-text-center tn-padding tn-color-gray tn-text-sm">
+        <text v-if="loadingMore">加载中...</text>
+        <text v-else-if="finished">没有更多了</text>
+        <text v-else>上拉加载更多</text>
+      </view>
     </view>
 
   </view>
@@ -66,7 +81,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app'
 import { useStore } from 'vuex'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 import { getMyApplications } from '@/api/application'
@@ -79,7 +94,15 @@ const store = useStore()
 const employeeInfo = ref(store.state.user.employeeInfo || uni.getStorageSync('userInfo') || {})
 
 const loading = ref(false)
+const loadingMore = ref(false)
 const recordList = ref([])
+const loadFailed = ref(false)
+// 分页状态(后端 /hr/application/page 支持 pageNum/pageSize)
+const pageNum = ref(1)
+const pageSize = 10
+const finished = ref(false)
+// 请求序号:刷新时丢弃旧的加载更多响应,避免竞态
+let requestSeq = 0
 
 const statusMap = {
   0: { name: '审批中', color: 'orangeyellow' },
@@ -107,42 +130,104 @@ const formatTime = (value) => {
   return String(value).replace('T', ' ').slice(0, 16)
 }
 
-const loadRecords = async () => {
-  if (!employeeInfo.value.id) {
-    recordList.value = []
-    return
-  }
-  loading.value = true
-  try {
-    const res = await getMyApplications({
-      pageNum: 1,
-      pageSize: 50,
-      appType: 'leave',
-      employeeId: employeeInfo.value.id
-    })
-    const data = res.data
-    const records = Array.isArray(data) ? data : data?.records || data?.rows || []
-    recordList.value = records.map((item) => {
-      const meta = statusMap[Number(item.status)] || statusMap[0]
-      return {
-        id: item.id,
-        type: typeName(item.appType) + '申请',
-        state: meta.name,
-        color: meta.color,
-        title: item.reason || item.remark || '未填写事由',
-        startTime: formatTime(item.startTime),
-        endTime: formatTime(item.endTime),
-        date: formatTime(item.createdTime)
-      }
-    })
-  } catch (error) {
-  } finally {
-    loading.value = false
+const normalizeRecord = (item) => {
+  const meta = statusMap[Number(item.status)] || statusMap[0]
+  return {
+    id: item.id,
+    type: typeName(item.appType) + '申请',
+    state: meta.name,
+    color: meta.color,
+    title: item.reason || item.remark || '未填写事由',
+    startTime: formatTime(item.startTime),
+    endTime: formatTime(item.endTime),
+    date: formatTime(item.createdTime)
   }
 }
 
+const normalizeRecords = (data) => {
+  if (Array.isArray(data)) return data
+  return data?.records || data?.rows || data?.list || []
+}
+
+// 拉取一页记录(reset=true 为刷新/第一页)
+const loadRecords = async (reset = false) => {
+  if (!employeeInfo.value.id) {
+    recordList.value = []
+    finished.value = true
+    loadFailed.value = false
+    loading.value = false
+    return
+  }
+  if (!reset && (loading.value || loadingMore.value || finished.value)) return
+  const seq = ++requestSeq
+  if (reset) {
+    loading.value = true
+    loadFailed.value = false
+  } else {
+    loadingMore.value = true
+  }
+  try {
+    const page = reset ? 1 : pageNum.value + 1
+    const res = await getMyApplications({
+      pageNum: page,
+      pageSize,
+      appType: 'leave',
+      employeeId: employeeInfo.value.id
+    })
+    // 请求期间又发起了刷新,丢弃旧响应
+    if (seq !== requestSeq) return
+    const records = normalizeRecords(res.data).map(normalizeRecord)
+    if (reset) {
+      recordList.value = records
+      pageNum.value = 1
+    } else {
+      const seen = new Set(recordList.value.map((item) => String(item.id)))
+      recordList.value = recordList.value.concat(records.filter((item) => !seen.has(String(item.id))))
+      pageNum.value = page
+    }
+    // 服务端返回 total 时按 total 判断,否则按页大小判断
+    const total = (!Array.isArray(res.data) && res.data?.total != null) ? Number(res.data.total) : null
+    finished.value = records.length < pageSize || (total !== null && total <= recordList.value.length)
+    loadFailed.value = false
+  } catch (error) {
+    if (seq !== requestSeq) return
+    if (reset) {
+      loadFailed.value = true
+    } else {
+      uni.showToast({ icon: 'none', title: '加载失败，请重试' })
+    }
+  } finally {
+    if (seq === requestSeq) {
+      loading.value = false
+      loadingMore.value = false
+    }
+  }
+}
+
+const refreshRecords = () => {
+  pageNum.value = 1
+  finished.value = false
+  return loadRecords(true)
+}
+
+const loadMoreRecords = () => {
+  loadRecords(false)
+}
+
 onShow(() => {
-  loadRecords()
+  refreshRecords()
+})
+
+onPullDownRefresh(async () => {
+  try {
+    await refreshRecords()
+  } finally {
+    uni.stopPullDownRefresh()
+  }
+})
+
+onReachBottom(() => {
+  loadMoreRecords()
 })
 </script>
 
@@ -233,6 +318,18 @@ onShow(() => {
     -webkit-box-orient: vertical;
     text-overflow: ellipsis;
     overflow: hidden;
+  }
+
+  /* 失败重试按钮 */
+  .record-retry {
+    display: inline-block;
+    margin-top: 30rpx;
+    padding: 14rpx 60rpx;
+    border-radius: 1000rpx;
+    color: #3668FC;
+    font-size: 27rpx;
+    font-weight: 600;
+    background-color: rgba(54, 104, 252, 0.1);
   }
 
   /* 背景阴影 start*/

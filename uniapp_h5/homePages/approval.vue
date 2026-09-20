@@ -136,6 +136,8 @@ const pageSize = 10
 const loading = ref(false)
 const finished = ref(false)
 const refreshing = ref(false)
+// 请求序号:刷新后丢弃旧响应,避免刷新与加载更多竞态
+let requestSeq = 0
 
 onLoad(() => {
   refresh()
@@ -156,13 +158,15 @@ function normalizeTotal(data, records) {
 }
 
 async function loadList(reset = false) {
-  if (loading.value || finished.value) return
+  // 加载更多:进行中或已加载完直接跳过;刷新(reset)允许打断在途请求
+  if (!reset && (loading.value || finished.value)) return
   if (!employeeInfo.value.id) {
     list.value = []
     finished.value = true
     refreshing.value = false
     return
   }
+  const seq = ++requestSeq
   loading.value = true
   try {
     const params = {
@@ -174,6 +178,8 @@ async function loadList(reset = false) {
     if (status !== undefined) params.status = status
 
     const res = await getMyApplications(params)
+    // 期间发起了新的刷新/切换 tab,丢弃旧响应
+    if (seq !== requestSeq) return
     const records = normalizeRecords(res.data)
     list.value = reset ? records : list.value.concat(records)
     const total = normalizeTotal(res.data, records)
@@ -181,7 +187,7 @@ async function loadList(reset = false) {
     pageNum.value += 1
   } catch (e) {
   } finally {
-    loading.value = false
+    if (seq === requestSeq) loading.value = false
     refreshing.value = false
   }
 }

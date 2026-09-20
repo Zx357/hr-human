@@ -24,6 +24,7 @@
       :refresher-enabled="true"
       :refresher-triggered="refreshing"
       @refresherrefresh="loadNotices"
+      @scrolltolower="loadMore"
     >
       <view class="list-wrap">
         <view v-for="item in filteredList" :key="item.id" class="notice-card" @click="openDetail(item)">

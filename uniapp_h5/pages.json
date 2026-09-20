@@ -125,7 +125,7 @@
 	      "path": "leave-record",
 	      "style": {
 	        "navigationBarTitleText": "请假记录",
-	        "enablePullDownRefresh": false
+	        "enablePullDownRefresh": true
 	      }
 	    },
 	    {

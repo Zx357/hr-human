@@ -1,5 +1,27 @@
 import config from '@/config'
 import { getToken } from '@/utils/auth'
+import store from '@/store'
+
+// 与 request.js 的 handleAuthExpired 对齐:防止过期后多处同时触发重复跳转
+let authExpiredRedirecting = false
+
+/**
+ * 上传会话过期处理:清本地会话并回到登录页(带防重复跳转)
+ */
+function handleAuthExpired(reject) {
+  const message = '登录状态已过期，请重新登录。'
+  if (!authExpiredRedirecting) {
+    authExpiredRedirecting = true
+    uni.showToast({ icon: 'none', title: message })
+    store.dispatch('ClearSession').finally(() => {
+      uni.reLaunch({ url: '/pages/login' })
+      setTimeout(() => {
+        authExpiredRedirecting = false
+      }, 500)
+    })
+  }
+  reject(message)
+}
 
 /**
  * 上传图片到后端 /file/upload/image
@@ -16,6 +38,11 @@ export function uploadImageToServer(filePath) {
         Authorization: 'Bearer ' + getToken()
       },
       success(res) {
+        // 会话过期:与 request.js 的处理对齐(清会话 + 回登录页)
+        if (res.statusCode === 401) {
+          handleAuthExpired(reject)
+          return
+        }
         let data = res.data
         try {
           data = JSON.parse(res.data)
@@ -25,6 +52,10 @@ export function uploadImageToServer(filePath) {
         }
         if (res.statusCode === 200 && (data.code === 200 || data.code === '200' || data.code === '0000')) {
           resolve(data.data)
+          return
+        }
+        if (data.code === '8888' || data.code === '9999') {
+          handleAuthExpired(reject)
           return
         }
         reject(data.msg || '上传失败')

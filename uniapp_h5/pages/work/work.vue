@@ -78,6 +78,9 @@ const vuex_custom_bar_height = computed(() => store.state.vuex_custom_bar_height
 
 const pendingCount = ref(0)
 const weekAttendance = ref({})
+// 申请菜单宫格与考勤统计(模板中使用,缺失会直接 ReferenceError)
+const icons = ref([])
+const attendance = ref([])
 const currentTime = ref('--:--')
 const currentSeconds = ref('--')
 const colorList = ['#4B98FE', '#FFAC00', '#00D05E', '#FB6A67', '#957BFE', '#00B9FE', '#CC52E2']

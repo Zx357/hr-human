@@ -109,10 +109,10 @@
             <text class="tn-color-gray tn-text-sm">{{ post.commentCount }} 条</text>
           </view>
 
-          <!-- 评论列表 -->
+          <!-- 评论列表(增量渲染:每次多显示 10 条,避免大列表一次渲染) -->
           <view v-if="comments.length">
             <view
-              v-for="item in comments"
+              v-for="item in visibleComments"
               :key="item.id"
               class="comment-item tn-flex tn-flex-col-top"
             >
@@ -129,6 +129,11 @@
                 <view class="tn-text-df tn-text-justify tn-padding-top-xs">{{ item.content }}</view>
                 <view class="tn-color-gray--disabled tn-text-xs tn-padding-top-xs">{{ item.time }}</view>
               </view>
+            </view>
+
+            <!-- 加载更多(评论接口为全量返回,前端分批渲染) -->
+            <view v-if="comments.length > visibleCount" class="comment-load-more tn-text-center tn-color-gray tn-text-sm tn-padding" @click="showMoreComments">
+              加载更多评论（{{ comments.length - visibleCount }}）
             </view>
           </view>
 
@@ -204,7 +209,7 @@
 
 <script setup>
 import { onLoad } from '@dcloudio/uni-app'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useStore } from 'vuex'
 import config from '@/config'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
@@ -226,6 +231,14 @@ const post = ref(null)
 const comments = ref([])
 const commentDraft = ref('')
 const commentSubmitting = ref(false)
+// 评论接口为全量返回(不支持分页),前端增量渲染避免一次渲染全部
+const COMMENT_PAGE_SIZE = 10
+const visibleCount = ref(COMMENT_PAGE_SIZE)
+const visibleComments = computed(() => comments.value.slice(0, visibleCount.value))
+
+const showMoreComments = () => {
+  visibleCount.value += COMMENT_PAGE_SIZE
+}
 
 const myEmployeeId = () => {
   const info = store.getters.employeeInfo || store.state.user?.employeeInfo || uni.getStorageSync('userInfo') || {}
@@ -252,6 +265,7 @@ const loadComments = async () => {
   try {
     const res = await getMomentComments(postId.value)
     comments.value = Array.isArray(res.data) ? res.data.map(normalizeComment) : []
+    visibleCount.value = COMMENT_PAGE_SIZE
   } catch (error) {
     uni.showToast({ title: '加载失败', icon: 'none' })
   }
@@ -265,6 +279,8 @@ const submitComment = async () => {
     const res = await addMomentComment(postId.value, content)
     if (res.data) {
       comments.value = comments.value.concat(normalizeComment(res.data))
+      // 新评论必须立即可见(可能超出当前增量渲染条数)
+      visibleCount.value = Math.max(visibleCount.value, comments.value.length)
       if (post.value) {
         post.value.commentCount = Number(post.value.commentCount || 0) + 1
       }
@@ -375,14 +391,14 @@ onLoad((options) => {
   loadComments()
 })
 
-// 小程序分享:标题取动态内容前20字,路径直达该动态详情
+// 小程序分享:标题取动态内容前20字,路径直达该动态详情页(带动态 id)
 import { onShareAppMessage } from '@dcloudio/uni-app'
 onShareAppMessage(() => {
   const content = post.value?.content || ''
   const title = content.length > 20 ? content.slice(0, 20) + '…' : (content || '时光动态')
   return {
     title,
-    path: '/pages/index?index=1'
+    path: postId.value ? `/momentPages/details?id=${postId.value}` : '/pages/index?index=1'
   }
 })
 </script>
@@ -542,6 +558,10 @@ onShareAppMessage(() => {
     }
 
     /* 评论列表 start */
+    .comment-load-more {
+      border-top: 1rpx solid #F3F2F7;
+    }
+
     .comment-item {
       padding: 24rpx 0;
       border-bottom: 1rpx solid #F3F2F7;

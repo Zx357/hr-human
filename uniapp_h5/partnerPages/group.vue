@@ -47,7 +47,7 @@
 </template>
 
 <script setup>
-  import { computed, onMounted, ref } from 'vue'
+  import { computed, ref } from 'vue'
   import { onShow } from '@dcloudio/uni-app'
   import { useCustomBarHeight, useGoBack } from '@/libs/composables'
   import config from '@/config'
@@ -95,11 +95,7 @@
     })
   }
 
-  onMounted(() => {
-    loadGroups()
-  })
-
-  // 从聊天页返回时刷新群列表(最后消息/成员变化)
+  // 群列表统一由 onShow 加载(首次显示与从聊天页返回时都会触发),onMounted 不再重复请求
   onShow(() => {
     loadGroups()
   })

@@ -24,7 +24,18 @@
 
       <!-- 消息动态 -->
       <view class="section-title">消息动态</view>
-      <view class="msg-card">
+      <!-- 首屏加载中 -->
+      <view v-if="homeLoading && !messageList.length" class="msg-card">
+        <view class="msg-empty">加载中...</view>
+      </view>
+
+      <!-- 全部接口加载失败:提示 + 重试 -->
+      <view v-else-if="homeLoadFailed && !messageList.length" class="msg-card">
+        <view class="msg-empty">首页数据加载失败</view>
+        <view class="msg-retry" @click="loadHomeData">点击重试</view>
+      </view>
+
+      <view v-else class="msg-card">
         <view v-if="!messageList.length" class="msg-empty">暂无消息</view>
         <view
           v-for="item in messageList"
@@ -148,7 +159,7 @@
       desc: item.content || '暂无内容',
       time: formatDate(item.createdTime),
       color: item.readFlag ? '#9AA4B2' : Number(item.type === 'approval_result') ? (item.title === '审批通过' ? '#00C8B0' : '#FB6A67') : '#4B98FE',
-      icon: item.type === 'reminder' ? 'clock-fill' : item.type === 'approval_todo' ? 'flag-fill' : 'ticket-fill',
+      icon: ['contract', 'probation', 'certificate'].includes(item.type) ? 'clock-fill' : item.type === 'approval_todo' ? 'flag-fill' : 'ticket-fill',
       badge: '',
       url: item.url || '/homePages/pending'
     }))
@@ -196,45 +207,54 @@
     return data?.records || data?.rows || data?.list || []
   }
 
+  // 首屏加载/失败状态(allSettled 不会 reject,失败需按各请求结果判断)
+  const homeLoading = ref(false)
+  const homeLoadFailed = ref(false)
+
   const loadHomeData = async () => {
-    try {
-      const [statsResult, messageResult, noticeResult, momentResult, chatUnreadResult, ntfResult, ntfUnreadResult] = await Promise.allSettled([
-        getHomeStats(),
-        getHomeMessages(),
-        getNoticeList({ status: 1 }),
-        getMomentMessages(),
-        getUnreadTotal(),
-        getNotificationTop(10),
-        getNotificationUnreadCount()
-      ])
-      if (statsResult.status === 'fulfilled') {
-        stats.value = {
-          ...stats.value,
-          ...(statsResult.value.data || {})
-        }
+    homeLoading.value = true
+    homeLoadFailed.value = false
+    const [statsResult, messageResult, noticeResult, momentResult, chatUnreadResult, ntfResult, ntfUnreadResult] = await Promise.allSettled([
+      getHomeStats(),
+      getHomeMessages(),
+      getNoticeList({ status: 1 }),
+      getMomentMessages(),
+      getUnreadTotal(),
+      getNotificationTop(10),
+      getNotificationUnreadCount()
+    ])
+    const results = [statsResult, messageResult, noticeResult, momentResult, chatUnreadResult, ntfResult, ntfUnreadResult]
+    if (statsResult.status === 'fulfilled') {
+      stats.value = {
+        ...stats.value,
+        ...(statsResult.value.data || {})
       }
-      if (noticeResult.status === 'fulfilled') {
-        notices.value = normalizeList(noticeResult.value.data)
-      }
-      if (messageResult.status === 'fulfilled') {
-        backendMessages.value = normalizeList(messageResult.value.data)
-      }
-      if (momentResult.status === 'fulfilled') {
-        momentSummary.value = { ...momentSummary.value, ...(momentResult.value.data || {}) }
-      }
-      if (chatUnreadResult.status === 'fulfilled') {
-        // 聊天未读总数同步到 vuex,供首页快捷入口与 tabbar 角标使用
-        store.commit('SET_UNREAD_BADGE', { chatUnread: Number(chatUnreadResult.value.data || 0) })
-      }
-      if (ntfResult.status === 'fulfilled') {
-        notifications.value = normalizeList(ntfResult.value.data)
-      }
-      if (ntfUnreadResult.status === 'fulfilled') {
-        notificationUnread.value = Number(ntfUnreadResult.value.data?.count || 0)
-      }
-    } catch (error) {
+    }
+    if (noticeResult.status === 'fulfilled') {
+      notices.value = normalizeList(noticeResult.value.data)
+    }
+    if (messageResult.status === 'fulfilled') {
+      backendMessages.value = normalizeList(messageResult.value.data)
+    }
+    if (momentResult.status === 'fulfilled') {
+      momentSummary.value = { ...momentSummary.value, ...(momentResult.value.data || {}) }
+    }
+    if (chatUnreadResult.status === 'fulfilled') {
+      // 聊天未读总数同步到 vuex,供首页快捷入口与 tabbar 角标使用
+      store.commit('SET_UNREAD_BADGE', { chatUnread: Number(chatUnreadResult.value.data || 0) })
+    }
+    if (ntfResult.status === 'fulfilled') {
+      notifications.value = normalizeList(ntfResult.value.data)
+    }
+    if (ntfUnreadResult.status === 'fulfilled') {
+      notificationUnread.value = Number(ntfUnreadResult.value.data?.count || 0)
+    }
+    // 全部请求都失败时给出失败提示与重试入口(部分失败仍正常展示)
+    homeLoadFailed.value = results.every((result) => result.status === 'rejected')
+    if (homeLoadFailed.value) {
       uni.showToast({ icon: 'none', title: '首页数据加载失败' })
     }
+    homeLoading.value = false
   }
 
   // 跳转方法
@@ -409,6 +429,16 @@
     text-align: center;
     color: #9aa4b2;
     font-size: 26rpx;
+  }
+
+  .msg-retry {
+    margin: 0 auto 40rpx;
+    padding: 12rpx 48rpx;
+    border-radius: 999rpx;
+    color: #3668fc;
+    font-size: 25rpx;
+    font-weight: 600;
+    background: rgba(54, 104, 252, 0.1);
   }
 
   .clamp-1 {

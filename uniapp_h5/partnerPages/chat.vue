@@ -98,7 +98,14 @@ import { useStore } from 'vuex'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 import config from '@/config'
 import { getChatMessages, sendChatMessage, markConversationRead } from '@/api/chat'
+import { refreshChatUnreadBadge } from '@/utils/chat-badge'
 import { uploadImageToServer } from '@/utils/upload'
+import {
+  connectChatSocket,
+  closeChatSocket,
+  isChatSocketOpen,
+  onChatMessage
+} from '@/utils/websocket'
 
 const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
@@ -116,6 +123,18 @@ const loadingHistory = ref(false)
 const historyDone = ref(false)
 const refreshing = ref(false)
 let pollTimer = null
+// 轮询防重入:上一次静默请求未返回时跳过本轮
+let silentLoading = false
+// 连续加载失败计数(恢复成功后重置,连续失败 3 次提示一次网络异常)
+let loadFailCount = 0
+let loadFailToastShown = false
+
+// ===== WebSocket 实时化 =====
+// WS 消息处理函数注销器(onLoad 注册,onUnload/H5 卸载时注销)
+let offWsChatMessage = null
+let offWsUnreadTotal = null
+// 拉取进行中收到推送时,延迟补一次增量拉取(防止推送消息被拉取结果覆盖)
+let wsCatchUpTimer = null
 
 // 历史分页大小
 const HISTORY_PAGE_SIZE = 20
@@ -243,10 +262,13 @@ const timeChipText = (item) => {
 
 const loadMessages = async (silent = false) => {
   if (!targetId.value) return
+  // 轮询加固:上一次静默拉取未返回则跳过本轮,避免请求堆积
+  if (silent && silentLoading) return
   if (!silent) {
     loading.value = true
     historyDone.value = false
   }
+  if (silent) silentLoading = true
   try {
     // 首次进入拉最近一页;轮询时传当前最大消息 id,只拉增量
     const afterMessageId = silent && messages.value.length ? maxMessageId() : undefined
@@ -257,6 +279,9 @@ const loadMessages = async (silent = false) => {
       limit: silent ? undefined : HISTORY_PAGE_SIZE
     })
     const list = Array.isArray(res.data) ? res.data : []
+    // 拉取成功,重置连续失败计数
+    loadFailCount = 0
+    loadFailToastShown = false
     if (silent) {
       const added = appendMessages(list)
       if (added) {
@@ -269,8 +294,15 @@ const loadMessages = async (silent = false) => {
       scrollToBottom()
     }
   } catch (error) {
+    // 连续失败 3 次时提示一次网络异常(非阻断),恢复成功后重置
+    loadFailCount += 1
+    if (loadFailCount >= 3 && !loadFailToastShown) {
+      loadFailToastShown = true
+      uni.showToast({ icon: 'none', title: '网络异常，消息刷新失败' })
+    }
   } finally {
     loading.value = false
+    silentLoading = false
   }
 }
 
@@ -306,6 +338,8 @@ const chooseAndSendImage = () => {
   if (sending.value) return
   uni.chooseImage({
     count: 1,
+    // 压缩后再上传,减小消息图片体积
+    sizeType: ['compressed'],
     success: async (res) => {
       const path = res.tempFilePaths && res.tempFilePaths[0]
       if (!path) return
@@ -331,7 +365,83 @@ const stopPolling = () => {
 
 const startPolling = () => {
   stopPolling()
-  pollTimer = setInterval(() => loadMessages(true), 4000)
+  pollTimer = setInterval(() => {
+    // WS 在线时暂停轮询;断开/重连中/连接失败时自动回退 4 秒轮询兜底(不劣于纯轮询现状)
+    if (isChatSocketOpen()) return
+    loadMessages(true)
+  }, 4000)
+}
+
+// ===== WebSocket 实时消息处理 =====
+
+// 推送消息是否属于当前会话
+const belongsToCurrentConversation = (msg) => {
+  if (msg == null || targetId.value == null) return false
+  if (Number(msg.chatType) !== Number(chatType.value)) return false
+  if (Number(chatType.value) === 1) {
+    return Number(msg.groupId) === Number(targetId.value)
+  }
+  // 单聊:对方发来的消息(常规)或对端ID指向当前会话(兜底)
+  return Number(msg.fromEmployeeId) === Number(targetId.value) ||
+    Number(msg.peerEmployeeId) === Number(targetId.value)
+}
+
+// 拉取进行中收到推送:延迟补一次增量拉取,防止推送消息被进行中的全量/增量结果覆盖
+const scheduleWsCatchUp = () => {
+  if (wsCatchUpTimer) return
+  wsCatchUpTimer = setTimeout(() => {
+    wsCatchUpTimer = null
+    if (isChatSocketOpen() && !loading.value && !silentLoading) {
+      loadMessages(true)
+    }
+  }, 800)
+}
+
+// 新消息推送:属于当前会话则复用现有去重/滚动/已读逻辑
+const handleWsChatMessage = (data) => {
+  const msg = data && data.message
+  if (!msg) return
+  if (loading.value || silentLoading) {
+    scheduleWsCatchUp()
+    return
+  }
+  if (!belongsToCurrentConversation(msg)) return
+  const added = appendMessages([msg])
+  if (added) {
+    scrollToBottom()
+    // 停留在聊天页收到新消息,同步标记已读,避免未读角标不清零
+    markConversationRead({ chatType: chatType.value, targetId: targetId.value }).catch(() => {})
+  }
+}
+
+// 未读总数推送:直接更新 tabbar 角标(免一次 REST 查询)
+const handleWsUnreadTotal = (data) => {
+  if (!data) return
+  store.commit('SET_UNREAD_BADGE', { chatUnread: Number(data.total || 0) })
+}
+
+const registerWsHandlers = () => {
+  if (!offWsChatMessage) {
+    offWsChatMessage = onChatMessage('chat_message', handleWsChatMessage)
+  }
+  if (!offWsUnreadTotal) {
+    offWsUnreadTotal = onChatMessage('unread_total', handleWsUnreadTotal)
+  }
+}
+
+const unregisterWsHandlers = () => {
+  if (offWsChatMessage) {
+    offWsChatMessage()
+    offWsChatMessage = null
+  }
+  if (offWsUnreadTotal) {
+    offWsUnreadTotal()
+    offWsUnreadTotal = null
+  }
+  if (wsCatchUpTimer) {
+    clearTimeout(wsCatchUpTimer)
+    wsCatchUpTimer = null
+  }
 }
 
 onLoad((options) => {
@@ -341,6 +451,8 @@ onLoad((options) => {
   if (options?.name) {
     peerName.value = decodeURIComponent(options.name)
   }
+  // 注册 WS 消息分发(token 为空时 connectChatSocket 不连接,自动走轮询)
+  registerWsHandlers()
 })
 
 onShow(() => {
@@ -350,25 +462,34 @@ onShow(() => {
   if (targetId.value) {
     markConversationRead({ chatType: chatType.value, targetId: targetId.value }).catch(() => {})
   }
-  // 轮询刷新,保证能收到对方消息(先清理旧定时器,避免重复轮询)
+  // 建立/恢复 WS 实时连接(幂等,token 为空自动跳过);在线时轮询空转,断开时轮询兜底
+  connectChatSocket()
+  // 轮询兜底刷新(先清理旧定时器,避免重复轮询)
   startPolling()
 })
 
 onHide(() => {
   stopPolling()
+  closeChatSocket()
+  // 离开聊天页(或切后台)时刷新全局未读数,让 tabbar 首页角标及时清零/更新
+  refreshChatUnreadBadge()
 })
 
 onUnload(() => {
   stopPolling()
+  closeChatSocket()
+  unregisterWsHandlers()
+  refreshChatUnreadBadge()
 })
 
 // #ifdef H5
-// H5 端页面切到后台时暂停轮询,回到前台恢复
+// H5 端页面切到后台时暂停轮询(WS 保持连接,推送仍会送达),回到前台恢复
 const handleVisibilityChange = () => {
   if (document.hidden) {
     stopPolling()
   } else {
     loadMessages(true)
+    connectChatSocket()
     startPolling()
   }
 }
@@ -380,6 +501,8 @@ onBeforeUnmount(() => {
     document.removeEventListener('visibilitychange', handleVisibilityChange)
   }
   stopPolling()
+  closeChatSocket()
+  unregisterWsHandlers()
 })
 // #endif
 </script>

@@ -140,6 +140,10 @@ const pageSize = 10
 const loading = ref(false)
 const finished = ref(false)
 const refreshing = ref(false)
+// 请求序号:刷新后丢弃旧响应,避免刷新与加载更多竞态
+let requestSeq = 0
+// 拒绝操作防重入
+const rejectSubmitting = ref(false)
 const showReject = ref(false)
 const rejectRemark = ref('')
 const rejectItem = ref(null)
@@ -167,7 +171,9 @@ function normalizeTotal(data, records) {
 }
 
 async function loadList(reset = false) {
-  if (loading.value || finished.value) return
+  // 加载更多:进行中或已加载完直接跳过;刷新(reset)允许打断在途请求
+  if (!reset && (loading.value || finished.value)) return
+  const seq = ++requestSeq
   loading.value = true
   try {
     const tab = currentValue()
@@ -175,6 +181,8 @@ async function loadList(reset = false) {
     if (!['all', 'other'].includes(tab)) params.appType = tab
 
     const res = await getPendingApprovals(params)
+    // 期间发起了新的刷新/切换 tab,丢弃旧响应
+    if (seq !== requestSeq) return
     const records = normalizeRecords(res.data)
     let next = records
     if (tab === 'other') {
@@ -188,7 +196,7 @@ async function loadList(reset = false) {
     pageNum.value += 1
   } catch (e) {
   } finally {
-    loading.value = false
+    if (seq === requestSeq) loading.value = false
     refreshing.value = false
   }
 }
@@ -256,10 +264,14 @@ function closeReject() {
 }
 
 async function confirmReject() {
+  // 防重入:提交进行中直接忽略重复点击
+  if (rejectSubmitting.value) return
+  if (!rejectItem.value?.id) return
   if (!rejectRemark.value.trim()) {
     uni.showToast({ title: '请填写拒绝原因', icon: 'none' })
     return
   }
+  rejectSubmitting.value = true
   try {
     await approveApplication(rejectItem.value.id, 2, rejectRemark.value.trim())
     uni.showToast({ title: '已拒绝', icon: 'success' })
@@ -267,6 +279,8 @@ async function confirmReject() {
     refresh()
   } catch (e) {
     uni.showToast({ title: '操作失败', icon: 'none' })
+  } finally {
+    rejectSubmitting.value = false
   }
 }
 </script>

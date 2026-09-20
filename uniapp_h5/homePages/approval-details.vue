@@ -84,6 +84,14 @@
         </view>
       </view>
 
+      <view v-else-if="loadFailed" class="loading-state">
+        <view class="loading-icon loading-icon--fail">
+          <tn-icon name="close"></tn-icon>
+        </view>
+        <text>审批详情加载失败</text>
+        <view class="retry-btn" @click="loadDetail">点击重试</view>
+      </view>
+
       <view v-else class="loading-state">
         <view class="loading-icon">
           <tn-icon name="time"></tn-icon>
@@ -107,6 +115,8 @@ const id = ref('')
 const mode = ref('')
 const detail = ref(null)
 const approveRemark = ref('')
+// 详情加载失败标记(失败展示重试入口,避免永远停在"加载中")
+const loadFailed = ref(false)
 
 const typeMap = {
   leave: '请假申请',
@@ -202,11 +212,15 @@ onLoad((options) => {
 
 async function loadDetail() {
   if (!id.value) return
+  loadFailed.value = false
   try {
     const res = await getApplicationDetail(id.value)
     detail.value = res.data
+    // 接口成功但无数据同样视为失败态
+    if (!res.data) loadFailed.value = true
   } catch (e) {
-    uni.showToast({ title: '加载失败', icon: 'none' })
+    detail.value = null
+    loadFailed.value = true
   }
 }
 
@@ -539,6 +553,21 @@ async function submitApprove(status) {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.loading-icon--fail {
+  color: #fb6a67;
+  background: rgba(251, 106, 103, 0.1);
+}
+
+.retry-btn {
+  margin-top: 28rpx;
+  padding: 14rpx 60rpx;
+  border-radius: 999rpx;
+  color: #3d7eff;
+  font-size: 27rpx;
+  font-weight: 700;
+  background: rgba(61, 126, 255, 0.1);
 }
 
 .clamp-1 {
