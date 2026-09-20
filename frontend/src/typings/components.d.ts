@@ -74,7 +74,7 @@ declare module 'vue' {
     ElTreeSelect: typeof import('element-plus/es')['ElTreeSelect']
     ElUpload: typeof import('element-plus/es')['ElUpload']
     ElWatermark: typeof import('element-plus/es')['ElWatermark']
-    EmployeePickerDialog: typeof import('./../components/common/EmployeePickerDialog.vue')['default']
+    EmployeePickerDialog: typeof import('./../components/common/employee-picker-dialog.vue')['default']
     ExceptionBase: typeof import('./../components/common/exception-base.vue')['default']
     FullScreen: typeof import('./../components/common/full-screen.vue')['default']
     GithubLink: typeof import('./../components/custom/github-link.vue')['default']

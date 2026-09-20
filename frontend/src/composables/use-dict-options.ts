@@ -30,6 +30,20 @@ async function loadDictType(dictType: string): Promise<Api.System.DictData[]> {
 }
 
 /**
+ * 清除字典缓存，使各页面 useDictOptions 在下次取值时重新拉取
+ *
+ * 不传 dictType 时清空全部缓存（字典管理增删改后调用，保证全站字典标签立即刷新）；
+ * 传入 dictType 时只清除该类型的缓存。
+ */
+export function clearDictCache(dictType?: string) {
+  if (dictType) {
+    dictCache.delete(dictType);
+  } else {
+    dictCache.clear();
+  }
+}
+
+/**
  * 字典选项 composable
  *
  * 用法：`const { options, getDictLabel } = useDictOptions('leave_type')`

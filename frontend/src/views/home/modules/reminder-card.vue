@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { type ReminderItem, fetchReminders } from '@/service/api/reminder';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'ReminderCard' });
 
@@ -22,21 +23,21 @@ const latest = computed<ReminderItem[]>(() =>
 );
 
 const tabs = computed(() => [
-  { name: 'contract', label: `合同到期 (${contracts.value.length})`, items: contracts.value },
-  { name: 'probation', label: `试用期到期 (${probations.value.length})`, items: probations.value },
-  { name: 'certificate', label: `证书到期 (${certificates.value.length})`, items: certificates.value }
+  { name: 'contract', label: $t('home.reminderCard.contractExpirations', { count: contracts.value.length }), items: contracts.value },
+  { name: 'probation', label: $t('home.reminderCard.probationExpirations', { count: probations.value.length }), items: probations.value },
+  { name: 'certificate', label: $t('home.reminderCard.certificateExpirations', { count: certificates.value.length }), items: certificates.value }
 ]);
 
 /** 到期文案：负数已过期、0 今天到期、正数 N 天后到期 */
 function getRemainText(item: ReminderItem) {
   const days = Number(item.remainDays);
   if (Number.isFinite(days) && days < 0) {
-    return `已过期 ${Math.abs(Math.trunc(days))} 天`;
+    return $t('home.reminderCard.expiredDaysAgo', { days: Math.abs(Math.trunc(days)) });
   }
   if (days === 0) {
-    return '今天到期';
+    return $t('home.reminderCard.expiresToday');
   }
-  return `${Math.trunc(days)} 天后到期`;
+  return $t('home.reminderCard.expiresInDays', { days: Math.trunc(days) });
 }
 
 function getRemainClass(item: ReminderItem) {
@@ -72,7 +73,7 @@ onMounted(() => {
       <div class="stat-info">
         <span class="stat-title">
           <SvgIcon icon="mdi:bell-ring-outline" class="mr-4px text-14px text-#f59e0b" />
-          到期提醒（30 天）
+          {{ $t('home.reminderCard.expirationReminders30Days') }}
         </span>
         <div class="stat-value">
           <CountTo :start-value="0" :end-value="total" class="text-28px font-bold" />
@@ -85,35 +86,35 @@ onMounted(() => {
 
     <div v-if="latest.length > 0" class="reminder-list">
       <div v-for="item in latest" :key="`${item.type}-${item.employeeId}-${item.date}`" class="reminder-item">
-        <span class="truncate">{{ item.employeeName }}的{{ item.typeName }}</span>
+        <span class="truncate">{{ item.employeeName }}{{ $t('home.reminderCard.s') }}{{ item.typeName }}</span>
         <span class="shrink-0 font-500" :class="getRemainClass(item)">{{ getRemainText(item) }}</span>
       </div>
-      <div v-if="total > latest.length" class="reminder-more">共 {{ total }} 条，点击查看全部</div>
+      <div v-if="total > latest.length" class="reminder-more">{{ $t('home.reminderCard.total') }} {{ total }} {{ $t('home.reminderCard.itemsClickToViewAll') }}</div>
     </div>
-    <ElEmpty v-else description="近期无到期事项" :image-size="60" />
+    <ElEmpty v-else :description="$t('home.reminderCard.noUpcomingExpirations')" :image-size="60" />
   </div>
 
-  <ElDialog v-model="dialogVisible" title="到期提醒" width="640px">
+  <ElDialog v-model="dialogVisible" :title="$t('home.reminderCard.expirationReminders')" width="640px">
     <ElTabs v-model="activeTab">
       <ElTabPane v-for="tab in tabs" :key="tab.name" :label="tab.label" :name="tab.name">
         <ElTable v-if="tab.items.length > 0" :data="tab.items" border stripe size="small" max-height="420">
-          <ElTableColumn prop="employeeName" label="员工" width="100" />
-          <ElTableColumn prop="typeName" label="类型" width="110" />
-          <ElTableColumn prop="date" label="到期日期" width="120" />
-          <ElTableColumn label="剩余时间" width="110" align="center">
+          <ElTableColumn prop="employeeName" :label="$t('common.employee')" width="100" />
+          <ElTableColumn prop="typeName" :label="$t('common.type')" width="110" />
+          <ElTableColumn prop="date" :label="$t('home.reminderCard.expirationDate')" width="120" />
+          <ElTableColumn :label="$t('home.reminderCard.timeRemaining')" width="110" align="center">
             <template #default="{ row }">
               <span :class="getRemainClass(row)">{{ getRemainText(row) }}</span>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="detail" label="详情" min-width="140" show-overflow-tooltip>
+          <ElTableColumn prop="detail" :label="$t('common.details')" min-width="140" show-overflow-tooltip>
             <template #default="{ row }">{{ row.detail || '-' }}</template>
           </ElTableColumn>
         </ElTable>
-        <ElEmpty v-else description="暂无数据" :image-size="80" />
+        <ElEmpty v-else :description="$t('common.noData')" :image-size="80" />
       </ElTabPane>
     </ElTabs>
     <template #footer>
-      <ElButton @click="dialogVisible = false">关闭</ElButton>
+      <ElButton @click="dialogVisible = false">{{ $t('common.close') }}</ElButton>
     </template>
   </ElDialog>
 </template>

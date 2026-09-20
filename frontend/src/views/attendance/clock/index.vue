@@ -8,14 +8,18 @@ import {
   fetchClockRecordPage,
   saveClockRecord
 } from '@/service/api/attendance';
-import { fetchEmployeeList } from '@/service/api/hr';
+import { fetchEmployeePage } from '@/service/api/hr';
 import { fetchCompanyList, fetchDepartmentTree } from '@/service/api/organization';
+import { formatDateTime } from '@/utils/format';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'ClockRecord' });
 
 const loading = ref(false);
 const data = ref<AttClockRecord[]>([]);
+// 补卡弹窗员工下拉：远程搜索结果（按姓名/工号），避免一次性拉取全量员工
 const employees = ref<any[]>([]);
+const employeeSearching = ref(false);
 const companies = ref<any[]>([]);
 const departments = ref<any[]>([]);
 
@@ -29,12 +33,13 @@ const searchParams = ref({
 const pagination = ref({ current: 1, pageSize: 20, total: 0 });
 
 const dialogVisible = ref(false);
+const submitLoading = ref(false);
 const dialogForm = ref<AttClockRecord>({ employeeId: undefined as any, clockTime: '', clockType: 1, clockMethod: 3 });
 
 const clockMethodOptions = [
   { value: 1, label: 'APP' },
-  { value: 2, label: '考勤机' },
-  { value: 3, label: '手动补卡' }
+  { value: 2, label: $t('attendance.clock.attendanceMachine') },
+  { value: 3, label: $t('attendance.clock.manualMakeupClock') }
 ];
 
 async function loadCompanies() {
@@ -59,9 +64,29 @@ watch(
   }
 );
 
-async function loadEmployees() {
-  const res = await fetchEmployeeList({});
-  employees.value = res.data || [];
+/** 补卡员工下拉远程搜索：纯数字按工号查，否则按姓名查 */
+async function searchEmployees(query: string) {
+  const keyword = query.trim();
+  if (!keyword) {
+    employees.value = [];
+    return;
+  }
+  employeeSearching.value = true;
+  try {
+    const byNo = /^\d+$/.test(keyword);
+    const res = await fetchEmployeePage({
+      pageNum: 1,
+      pageSize: 50,
+      employeeNo: byNo ? keyword : undefined,
+      name: byNo ? undefined : keyword,
+      status: 1
+    });
+    employees.value = res.data?.records || [];
+  } catch {
+    employees.value = [];
+  } finally {
+    employeeSearching.value = false;
+  }
 }
 
 async function loadData() {
@@ -85,7 +110,6 @@ async function loadData() {
 
 onMounted(() => {
   loadCompanies();
-  loadEmployees();
   // 默认查询今天（本地时区）
   const today = dayjs().format('YYYY-MM-DD');
   searchParams.value.dateRange = [today, today];
@@ -116,24 +140,40 @@ function handleAdd() {
 
 async function handleSubmit() {
   if (!dialogForm.value.employeeId) {
-    ElMessage.warning('请选择员工');
+    ElMessage.warning($t('common.pleaseSelectEmployees'));
     return;
   }
   if (!dialogForm.value.clockTime) {
-    ElMessage.warning('请选择打卡时间');
+    ElMessage.warning($t('attendance.clock.pleaseSelectClockTime'));
     return;
   }
-  await saveClockRecord(dialogForm.value);
-  ElMessage.success('保存成功');
-  dialogVisible.value = false;
-  loadData();
+  submitLoading.value = true;
+  try {
+    await saveClockRecord(dialogForm.value);
+    ElMessage.success($t('common.saveSuccess'));
+    dialogVisible.value = false;
+    loadData();
+  } catch {
+    // 请求层已统一弹错
+  } finally {
+    submitLoading.value = false;
+  }
 }
 
 async function handleDelete(row: AttClockRecord) {
-  await ElMessageBox.confirm('确定删除该打卡记录吗？', '提示');
-  await deleteClockRecord(row.id!);
-  ElMessage.success('删除成功');
-  loadData();
+  try {
+    await ElMessageBox.confirm($t('attendance.clock.areYouSureYouWantToDeleteThisClockRecord'), $t('common.tip'));
+  } catch {
+    // 用户取消删除
+    return;
+  }
+  try {
+    await deleteClockRecord(row.id!);
+    ElMessage.success($t('common.deleteSuccess'));
+    loadData();
+  } catch {
+    // 请求层已统一弹错
+  }
 }
 
 function handlePageChange(page: number) {
@@ -146,55 +186,56 @@ function handleSizeChange(size: number) {
   pagination.value.current = 1;
   loadData();
 }
-
-function formatDateTime(dt: string) {
-  if (!dt) return '-';
-  return dt.replace('T', ' ').slice(0, 16);
-}
 </script>
 
 <template>
   <div class="list-page">
     <ElCard class="search-card">
       <ElForm inline :model="searchParams">
-        <ElFormItem label="公司">
-          <ElSelect v-model="searchParams.companyId" placeholder="请选择公司" clearable style="width: 150px">
+        <ElFormItem :label="$t('common.company')">
+          <ElSelect v-model="searchParams.companyId" :placeholder="$t('common.pleaseSelectCompany')" clearable style="width: 150px">
             <ElOption v-for="c in companies" :key="c.id" :label="c.unitName || c.companyName" :value="c.id" />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="部门">
+        <ElFormItem :label="$t('common.department')">
           <ElTreeSelect
             v-model="searchParams.deptId"
             :data="departments"
             :props="{ label: 'unitName', value: 'id', children: 'children' }"
-            placeholder="请选择部门"
+            :placeholder="$t('common.pleaseSelectDepartment')"
             clearable
             check-strictly
             style="width: 150px"
           />
         </ElFormItem>
-        <ElFormItem label="日期范围">
+        <ElFormItem :label="$t('common.dateRange')">
           <ElDatePicker
             v-model="searchParams.dateRange"
             type="daterange"
-            range-separator="至"
-            start-placeholder="开始"
-            end-placeholder="结束"
+            :range-separator="$t('common.to')"
+            :start-placeholder="$t('attendance.clock.start')"
+            :end-placeholder="$t('attendance.clock.end')"
             value-format="YYYY-MM-DD"
             style="width: 240px"
           />
         </ElFormItem>
-        <ElFormItem label="员工">
-          <ElInput v-model="searchParams.employeeName" placeholder="员工姓名" clearable style="width: 120px" />
+        <ElFormItem :label="$t('common.employee')">
+          <ElInput
+            v-model="searchParams.employeeName"
+            :placeholder="$t('common.employeeName')"
+            clearable
+            style="width: 120px"
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" @click="handleSearch">
             <icon-ep-search />
-            搜索
+            {{ $t('common.search') }}
           </ElButton>
           <ElButton @click="handleReset">
             <icon-ep-refresh />
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
@@ -203,10 +244,10 @@ function formatDateTime(dt: string) {
     <ElCard class="table-card">
       <template #header>
         <div class="flex items-center justify-between">
-          <span>打卡记录</span>
+          <span>{{ $t('common.clockRecords') }}</span>
           <ElButton v-permission="'attendance:clock:add'" type="primary" @click="handleAdd">
             <template #icon><icon-ep-plus /></template>
-            补卡
+            {{ $t('common.makeupClock') }}
           </ElButton>
         </div>
       </template>
@@ -214,28 +255,28 @@ function formatDateTime(dt: string) {
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="data" border stripe size="small" height="100%">
           <ElTableColumn type="index" label="#" width="50" align="center" />
-          <ElTableColumn prop="companyName" label="公司" width="120" show-overflow-tooltip />
-          <ElTableColumn prop="employeeNo" label="工号" width="100" />
-          <ElTableColumn prop="employeeName" label="姓名" width="80" />
-          <ElTableColumn prop="deptName" label="部门" width="120" />
-          <ElTableColumn prop="clockTime" label="打卡时间" width="160">
+          <ElTableColumn prop="companyName" :label="$t('common.company')" width="120" show-overflow-tooltip />
+          <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="100" />
+          <ElTableColumn prop="employeeName" :label="$t('common.name')" width="80" />
+          <ElTableColumn prop="deptName" :label="$t('common.department')" width="120" show-overflow-tooltip />
+          <ElTableColumn prop="clockTime" :label="$t('attendance.clock.clockTime')" width="160">
             <template #default="{ row }">{{ formatDateTime(row.clockTime) }}</template>
           </ElTableColumn>
-          <ElTableColumn prop="clockType" label="类型" width="100" align="center">
+          <ElTableColumn prop="clockType" :label="$t('common.type')" width="100" align="center">
             <template #default="{ row }">
               <ElTag :type="row.clockType === 1 ? 'success' : 'warning'" size="small">
-                {{ row.clockType === 1 ? '上班' : '下班' }}
+                {{ row.clockType === 1 ? $t('common.clockIn') : $t('common.clockOut') }}
               </ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="clockMethod" label="方式" width="80" align="center">
+          <ElTableColumn prop="clockMethod" :label="$t('attendance.clock.method')" width="80" align="center">
             <template #default="{ row }">
               {{ clockMethodOptions.find(o => o.value === row.clockMethod)?.label || '-' }}
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="location" label="地点" min-width="150" show-overflow-tooltip />
-          <ElTableColumn prop="remark" label="备注" min-width="120" show-overflow-tooltip />
-          <ElTableColumn label="操作" width="80" align="center">
+          <ElTableColumn prop="location" :label="$t('attendance.clock.location')" min-width="150" show-overflow-tooltip />
+          <ElTableColumn prop="remark" :label="$t('common.remark')" min-width="120" show-overflow-tooltip />
+          <ElTableColumn :label="$t('common.action')" width="80" align="center">
             <template #default="{ row }">
               <ElButton
                 v-permission="'attendance:clock:delete'"
@@ -244,7 +285,7 @@ function formatDateTime(dt: string) {
                 size="small"
                 @click="handleDelete(row)"
               >
-                删除
+                {{ $t('common.delete') }}
               </ElButton>
             </template>
           </ElTableColumn>
@@ -265,10 +306,18 @@ function formatDateTime(dt: string) {
     </ElCard>
 
     <!-- 补卡弹窗 -->
-    <ElDialog v-model="dialogVisible" title="补卡" width="450px">
+    <ElDialog v-model="dialogVisible" :title="$t('common.makeupClock')" width="450px">
       <ElForm label-width="80px" :model="dialogForm">
-        <ElFormItem label="员工" required>
-          <ElSelect v-model="dialogForm.employeeId" placeholder="请选择员工" filterable style="width: 100%">
+        <ElFormItem :label="$t('common.employee')" required>
+          <ElSelect
+            v-model="dialogForm.employeeId"
+            :placeholder="$t('attendance.clock.searchEmployeesByNameOrEmployeeNo')"
+            filterable
+            remote
+            :remote-method="searchEmployees"
+            :loading="employeeSearching"
+            style="width: 100%"
+          >
             <ElOption
               v-for="emp in employees"
               :key="emp.id"
@@ -277,7 +326,7 @@ function formatDateTime(dt: string) {
             />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="打卡时间" required>
+        <ElFormItem :label="$t('attendance.clock.clockTime')" required>
           <ElDatePicker
             v-model="dialogForm.clockTime"
             type="datetime"
@@ -286,19 +335,19 @@ function formatDateTime(dt: string) {
             style="width: 100%"
           />
         </ElFormItem>
-        <ElFormItem label="类型" required>
+        <ElFormItem :label="$t('common.type')" required>
           <ElRadioGroup v-model="dialogForm.clockType">
-            <ElRadio :value="1">上班打卡</ElRadio>
-            <ElRadio :value="2">下班打卡</ElRadio>
+            <ElRadio :value="1">{{ $t('attendance.clock.clockIn') }}</ElRadio>
+            <ElRadio :value="2">{{ $t('attendance.clock.clockOut') }}</ElRadio>
           </ElRadioGroup>
         </ElFormItem>
-        <ElFormItem label="备注">
-          <ElInput v-model="dialogForm.remark" placeholder="补卡原因" />
+        <ElFormItem :label="$t('common.remark')">
+          <ElInput v-model="dialogForm.remark" :placeholder="$t('application.makeup.makeupClockReason')" />
         </ElFormItem>
       </ElForm>
       <template #footer>
-        <ElButton @click="dialogVisible = false">取消</ElButton>
-        <ElButton type="primary" @click="handleSubmit">确定</ElButton>
+        <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('common.ok') }}</ElButton>
       </template>
     </ElDialog>
   </div>

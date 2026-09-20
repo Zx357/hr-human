@@ -1,5 +1,6 @@
 import type { App, Directive, DirectiveBinding } from 'vue';
 import { useAuthStore } from '@/store/modules/auth';
+import { isAdminRole } from '@/hooks/business/auth';
 
 /**
  * 权限指令
@@ -7,6 +8,8 @@ import { useAuthStore } from '@/store/modules/auth';
  * v-permission="'system:user:add'" - 单个权限
  * v-permission="['system:user:add', 'system:user:edit']" - 多个权限（满足任一即可）
  * v-permission.all="['system:user:add', 'system:user:edit']" - 多个权限（需要全部满足）
+ *
+ * 超级管理员（ROLE_ADMIN）或持有 *:*:* 通配权限时全部放行
  */
 const permissionDirective: Directive = {
   mounted(el: HTMLElement, binding: DirectiveBinding) {
@@ -22,7 +25,11 @@ function checkAndUpdatePermission(el: HTMLElement, binding: DirectiveBinding) {
   const authStore = useAuthStore();
   const buttons = authStore.userInfo?.buttons || [];
 
-  // 调试日志
+  // 超级管理员未配置任何权限时也能看到全部按钮
+  if (isAdminRole()) {
+    el.style.display = '';
+    return;
+  }
 
   // 检查是否有通配符权限
   if (buttons.includes('*:*:*')) {

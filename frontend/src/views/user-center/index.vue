@@ -4,6 +4,7 @@ import type { FormInstance, FormRules } from 'element-plus';
 import { ElMessage } from 'element-plus';
 import { request } from '@/service/request';
 import { useAuthStore } from '@/store/modules/auth';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'UserCenter' });
 
@@ -60,11 +61,11 @@ const passwordForm = reactive({
 const displayName = computed(() => profileForm.nickname || profileForm.username || authStore.userInfo.userName || '-');
 const avatarText = computed(() => displayName.value.slice(0, 1).toUpperCase());
 const statusType = computed(() => (profileForm.status === 1 ? 'success' : 'info'));
-const statusLabel = computed(() => (profileForm.status === 1 ? '正常' : '禁用'));
+const statusLabel = computed(() => (profileForm.status === 1 ? $t('common.normal') : $t('common.disable')));
 const genderLabel = computed(() => {
-  const map: Record<number, string> = { 0: '未知', 1: '男', 2: '女' };
+  const map: Record<number, string> = { 0: $t('common.unknown'), 1: $t('common.male'), 2: $t('common.female') };
 
-  return map[profileForm.gender] || '未知';
+  return map[profileForm.gender] || $t('common.unknown');
 });
 
 const roleNames = computed(() => {
@@ -76,29 +77,29 @@ const roleNames = computed(() => {
 });
 
 const profileRules: FormRules = {
-  nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }],
-  email: [{ type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }],
+  nickname: [{ required: true, message: $t('common.pleaseEnterNickName'), trigger: 'blur' }],
+  email: [{ type: 'email', message: $t('hr.employee.pleaseEnterAValidEmailAddress'), trigger: 'blur' }],
   phone: [
     {
       pattern: /^1[3-9]\d{9}$/,
-      message: '请输入正确的手机号',
+      message: $t('hr.employee.pleaseEnterAValidPhoneNumber'),
       trigger: 'blur'
     }
   ]
 };
 
 const passwordRules: FormRules = {
-  oldPassword: [{ required: true, message: '请输入当前密码', trigger: 'blur' }],
+  oldPassword: [{ required: true, message: $t('userCenter.pleaseEnterCurrentPassword'), trigger: 'blur' }],
   newPassword: [
-    { required: true, message: '请输入新密码', trigger: 'blur' },
-    { min: 6, max: 18, message: '密码长度为 6-18 位', trigger: 'blur' }
+    { required: true, message: $t('common.pleaseEnterNewPassword'), trigger: 'blur' },
+    { min: 6, max: 18, message: $t('userCenter.passwordLengthMustBe618Characters'), trigger: 'blur' }
   ],
   confirmPassword: [
-    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    { required: true, message: $t('userCenter.pleaseEnterNewPasswordAgain'), trigger: 'blur' },
     {
       validator(_rule, value, callback) {
         if (value !== passwordForm.newPassword) {
-          callback(new Error('两次输入的新密码不一致'));
+          callback(new Error($t('userCenter.theTwoNewPasswordsDoNotMatch')));
           return;
         }
 
@@ -185,7 +186,7 @@ async function loadProfile() {
 
 async function saveProfile() {
   if (!profileForm.id || !detailLoaded.value) {
-    ElMessage.warning('当前账号资料未加载完成');
+    ElMessage.warning($t('userCenter.currentAccountProfileIsNotLoadedYet'));
     return;
   }
 
@@ -212,7 +213,7 @@ async function saveProfile() {
     });
 
     if (!error) {
-      ElMessage.success('资料保存成功');
+      ElMessage.success($t('userCenter.profileSavedSuccessfully'));
       await authStore.initUserInfo();
       await loadProfile();
     }
@@ -245,7 +246,7 @@ async function changePassword() {
     });
 
     if (!error) {
-      ElMessage.success('密码修改成功');
+      ElMessage.success($t('userCenter.passwordChangedSuccessfully'));
       resetPasswordForm();
     }
   } finally {
@@ -272,7 +273,7 @@ onMounted(() => {
         </div>
         <div class="profile-tags">
           <ElTag :type="statusType" effect="light">{{ statusLabel }}</ElTag>
-          <ElTag v-if="profileForm.employeeId" type="info" effect="plain">员工ID {{ profileForm.employeeId }}</ElTag>
+          <ElTag v-if="profileForm.employeeId" type="info" effect="plain">{{ $t('userCenter.employeeId') }} {{ profileForm.employeeId }}</ElTag>
         </div>
       </div>
     </ElCard>
@@ -283,24 +284,24 @@ onMounted(() => {
           <template #header>
             <div class="card-title">
               <SvgIcon icon="ph:identification-card" />
-              <span>账号信息</span>
+              <span>{{ $t('userCenter.accountInfo') }}</span>
             </div>
           </template>
 
           <ElDescriptions :column="1" border>
-            <ElDescriptionsItem label="登录账号">{{ profileForm.username || '-' }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="昵称">{{ profileForm.nickname || '-' }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="性别">{{ genderLabel }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="手机号">{{ profileForm.phone || '-' }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="邮箱">{{ profileForm.email || '-' }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="创建时间">{{ profileForm.createdTime || '-' }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('userCenter.loginAccount')">{{ profileForm.username || '-' }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('common.nickname')">{{ profileForm.nickname || '-' }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('common.gender')">{{ genderLabel }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('common.phone')">{{ profileForm.phone || '-' }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('common.email')">{{ profileForm.email || '-' }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('common.createTime')">{{ profileForm.createdTime || '-' }}</ElDescriptionsItem>
           </ElDescriptions>
 
           <div class="role-list">
-            <div class="section-label">所属角色</div>
+            <div class="section-label">{{ $t('userCenter.roles') }}</div>
             <div class="role-tags">
               <ElTag v-for="role in roleNames" :key="role" effect="plain">{{ role }}</ElTag>
-              <ElTag v-if="!roleNames.length" type="info" effect="plain">未分配角色</ElTag>
+              <ElTag v-if="!roleNames.length" type="info" effect="plain">{{ $t('userCenter.noRolesAssigned') }}</ElTag>
             </div>
           </div>
         </ElCard>
@@ -311,39 +312,39 @@ onMounted(() => {
           <template #header>
             <div class="card-title">
               <SvgIcon icon="ph:user-gear" />
-              <span>个人资料</span>
+              <span>{{ $t('userCenter.profile') }}</span>
             </div>
           </template>
 
           <ElForm ref="profileFormRef" :model="profileForm" :rules="profileRules" label-width="88px">
             <ElRow :gutter="16">
               <ElCol :md="12" :sm="24">
-                <ElFormItem label="登录账号">
+                <ElFormItem :label="$t('userCenter.loginAccount')">
                   <ElInput v-model="profileForm.username" disabled />
                 </ElFormItem>
               </ElCol>
               <ElCol :md="12" :sm="24">
-                <ElFormItem label="昵称" prop="nickname">
-                  <ElInput v-model="profileForm.nickname" maxlength="30" placeholder="请输入昵称" />
+                <ElFormItem :label="$t('common.nickname')" prop="nickname">
+                  <ElInput v-model="profileForm.nickname" maxlength="30" :placeholder="$t('common.pleaseEnterNickName')" />
                 </ElFormItem>
               </ElCol>
               <ElCol :md="12" :sm="24">
-                <ElFormItem label="性别">
+                <ElFormItem :label="$t('common.gender')">
                   <ElRadioGroup v-model="profileForm.gender">
-                    <ElRadioButton :value="0">未知</ElRadioButton>
-                    <ElRadioButton :value="1">男</ElRadioButton>
-                    <ElRadioButton :value="2">女</ElRadioButton>
+                    <ElRadioButton :value="0">{{ $t('common.unknown') }}</ElRadioButton>
+                    <ElRadioButton :value="1">{{ $t('common.male') }}</ElRadioButton>
+                    <ElRadioButton :value="2">{{ $t('common.female') }}</ElRadioButton>
                   </ElRadioGroup>
                 </ElFormItem>
               </ElCol>
               <ElCol :md="12" :sm="24">
-                <ElFormItem label="手机号" prop="phone">
-                  <ElInput v-model="profileForm.phone" maxlength="11" placeholder="请输入手机号" />
+                <ElFormItem :label="$t('common.phone')" prop="phone">
+                  <ElInput v-model="profileForm.phone" maxlength="11" :placeholder="$t('common.pleaseEnterPhoneNumber')" />
                 </ElFormItem>
               </ElCol>
               <ElCol :md="12" :sm="24">
-                <ElFormItem label="邮箱" prop="email">
-                  <ElInput v-model="profileForm.email" maxlength="80" placeholder="请输入邮箱" />
+                <ElFormItem :label="$t('common.email')" prop="email">
+                  <ElInput v-model="profileForm.email" maxlength="80" :placeholder="$t('common.pleaseEnterEmail')" />
                 </ElFormItem>
               </ElCol>
             </ElRow>
@@ -351,7 +352,7 @@ onMounted(() => {
             <div class="form-actions">
               <ElButton type="primary" :disabled="!detailLoaded" :loading="saving" @click="saveProfile">
                 <template #icon><icon-ep-check /></template>
-                保存资料
+                {{ $t('userCenter.saveProfile') }}
               </ElButton>
             </div>
           </ElForm>
@@ -361,47 +362,47 @@ onMounted(() => {
           <template #header>
             <div class="card-title">
               <SvgIcon icon="ph:lock-key" />
-              <span>安全设置</span>
+              <span>{{ $t('userCenter.securitySettings') }}</span>
             </div>
           </template>
 
           <ElForm ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" label-width="100px">
             <ElRow :gutter="16">
               <ElCol :md="8" :sm="24">
-                <ElFormItem label="当前密码" prop="oldPassword">
+                <ElFormItem :label="$t('userCenter.currentPassword')" prop="oldPassword">
                   <ElInput
                     v-model="passwordForm.oldPassword"
                     type="password"
                     show-password
-                    placeholder="请输入当前密码"
+                    :placeholder="$t('userCenter.pleaseEnterCurrentPassword')"
                   />
                 </ElFormItem>
               </ElCol>
               <ElCol :md="8" :sm="24">
-                <ElFormItem label="新密码" prop="newPassword">
+                <ElFormItem :label="$t('common.newPassword')" prop="newPassword">
                   <ElInput
                     v-model="passwordForm.newPassword"
                     type="password"
                     show-password
-                    placeholder="请输入新密码"
+                    :placeholder="$t('common.pleaseEnterNewPassword')"
                   />
                 </ElFormItem>
               </ElCol>
               <ElCol :md="8" :sm="24">
-                <ElFormItem label="确认新密码" prop="confirmPassword">
+                <ElFormItem :label="$t('userCenter.confirmNewPassword')" prop="confirmPassword">
                   <ElInput
                     v-model="passwordForm.confirmPassword"
                     type="password"
                     show-password
-                    placeholder="请再次输入新密码"
+                    :placeholder="$t('userCenter.pleaseEnterNewPasswordAgain')"
                   />
                 </ElFormItem>
               </ElCol>
             </ElRow>
 
             <div class="form-actions">
-              <ElButton :disabled="changingPassword" @click="resetPasswordForm">重置</ElButton>
-              <ElButton type="primary" :loading="changingPassword" @click="changePassword">修改密码</ElButton>
+              <ElButton :disabled="changingPassword" @click="resetPasswordForm">{{ $t('common.reset') }}</ElButton>
+              <ElButton type="primary" :loading="changingPassword" @click="changePassword">{{ $t('userCenter.changePassword') }}</ElButton>
             </div>
           </ElForm>
         </ElCard>

@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import { fetchAttendanceDailyTrend } from '@/service/api/report';
 import { useAppStore } from '@/store/modules/app';
 import { useEcharts } from '@/hooks/common/echarts';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'LineChart' });
 
@@ -19,19 +20,14 @@ const range = computed(() => {
 const { domRef, updateOptions } = useEcharts(() => ({
   tooltip: {
     trigger: 'axis',
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    borderColor: '#e5e7eb',
-    borderWidth: 1,
-    textStyle: { color: '#374151' },
     axisPointer: { type: 'shadow' }
   },
   legend: {
-    data: ['正常出勤', '考勤异常'],
+    data: [$t('home.lineChart.normalAttendance'), $t('home.lineChart.attendanceAbnormal')],
     right: 0,
     top: 0,
     itemWidth: 12,
-    itemHeight: 12,
-    textStyle: { color: '#6b7280' }
+    itemHeight: 12
   },
   grid: {
     left: '2%',
@@ -45,17 +41,17 @@ const { domRef, updateOptions } = useEcharts(() => ({
     data: [] as string[],
     axisLine: { show: false },
     axisTick: { show: false },
-    axisLabel: { color: '#9ca3af', fontSize: 12 }
+    axisLabel: { fontSize: 12 }
   },
   yAxis: {
     type: 'value',
     minInterval: 1,
-    splitLine: { lineStyle: { color: '#f3f4f6', type: 'dashed' } },
-    axisLabel: { color: '#9ca3af', fontSize: 12 }
+    splitLine: { lineStyle: { type: 'dashed' } },
+    axisLabel: { fontSize: 12 }
   },
   series: [
     {
-      name: '正常出勤',
+      name: $t('home.lineChart.normalAttendance'),
       type: 'bar',
       barWidth: '36%',
       itemStyle: {
@@ -76,7 +72,7 @@ const { domRef, updateOptions } = useEcharts(() => ({
       data: [] as number[]
     },
     {
-      name: '考勤异常',
+      name: $t('home.lineChart.attendanceAbnormal'),
       type: 'line',
       smooth: true,
       symbol: 'circle',
@@ -174,9 +170,9 @@ onMounted(() => {
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-8px">
           <div class="header-dot" style="background: #6366f1"></div>
-          <span class="font-medium">近 {{ rangeDays }} 天考勤概览</span>
+          <span class="font-medium">{{ $t('home.lineChart.last') }} {{ rangeDays }} {{ $t('home.lineChart.dayAttendanceOverview') }}</span>
         </div>
-        <span class="text-12px text-#9ca3af">柱状：正常出勤 · 折线：考勤异常</span>
+        <span class="text-12px text-#9ca3af">{{ $t('home.lineChart.barNormalAttendanceLineAttendanceAbnormal') }}</span>
       </div>
     </template>
     <div ref="domRef" class="h-360px overflow-hidden"></div>

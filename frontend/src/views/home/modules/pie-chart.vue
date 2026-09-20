@@ -2,6 +2,7 @@
 import { onMounted } from 'vue';
 import { fetchEmployeeReportSummary } from '@/service/api/report';
 import { useEcharts } from '@/hooks/common/echarts';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'PieChart' });
 
@@ -10,11 +11,7 @@ const pieColors = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#06b6
 const { domRef, updateOptions } = useEcharts(() => ({
   tooltip: {
     trigger: 'item',
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    borderColor: '#e5e7eb',
-    borderWidth: 1,
-    textStyle: { color: '#374151' },
-    formatter: '{b}: {c} 人 ({d}%)'
+    formatter: $t('home.educationChart.people')
   },
   legend: {
     bottom: '2%',
@@ -22,13 +19,12 @@ const { domRef, updateOptions } = useEcharts(() => ({
     itemWidth: 10,
     itemHeight: 10,
     icon: 'circle',
-    textStyle: { color: '#6b7280', fontSize: 12 },
     itemStyle: { borderWidth: 0 }
   },
   series: [
     {
       color: pieColors,
-      name: '年龄分布',
+      name: $t('common.ageDistribution'),
       type: 'pie',
       radius: ['48%', '72%'],
       center: ['50%', '45%'],
@@ -84,9 +80,9 @@ onMounted(() => {
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-8px">
           <div class="header-dot" style="background: #10b981"></div>
-          <span class="font-medium">员工年龄分布</span>
+          <span class="font-medium">{{ $t('home.pieChart.employeeAgeDistribution') }}</span>
         </div>
-        <span class="text-12px text-#9ca3af">在职员工</span>
+        <span class="text-12px text-#9ca3af">{{ $t('home.common.activeEmployees') }}</span>
       </div>
     </template>
     <div ref="domRef" class="h-360px overflow-hidden"></div>

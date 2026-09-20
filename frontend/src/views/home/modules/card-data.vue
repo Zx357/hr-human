@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
+import { $t } from '@/locales';
 import { useHomeStats } from './use-home-stats';
 
 defineOptions({ name: 'CardData' });
@@ -19,7 +20,7 @@ const { loading, stats, load } = useHomeStats();
 const cardData = computed<CardItem[]>(() => [
   {
     key: 'employeeTotal',
-    title: '在职员工',
+    title: $t('home.common.activeEmployees'),
     value: stats.value.employeeTotal,
     icon: 'mdi:account-group',
     iconBg: 'rgba(99, 102, 241, 0.1)',
@@ -27,7 +28,7 @@ const cardData = computed<CardItem[]>(() => [
   },
   {
     key: 'pendingTotal',
-    title: '待审批',
+    title: $t('common.pendingApproval'),
     value: stats.value.pendingTotal,
     icon: 'mdi:file-clock-outline',
     iconBg: 'rgba(245, 158, 11, 0.1)',
@@ -35,7 +36,7 @@ const cardData = computed<CardItem[]>(() => [
   },
   {
     key: 'todayClockTotal',
-    title: '今日打卡',
+    title: $t('home.cardData.todayClockIns'),
     value: stats.value.todayClockTotal,
     icon: 'mdi:fingerprint',
     iconBg: 'rgba(16, 185, 129, 0.1)',
@@ -43,7 +44,7 @@ const cardData = computed<CardItem[]>(() => [
   },
   {
     key: 'todayAbnormal',
-    title: '今日异常',
+    title: $t('home.cardData.todayAbnormal'),
     value: stats.value.todayAbnormal,
     icon: 'mdi:alert-circle-outline',
     iconBg: 'rgba(239, 68, 68, 0.1)',

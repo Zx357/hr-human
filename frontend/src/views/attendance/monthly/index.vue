@@ -7,6 +7,7 @@ import { type MonthlyAttendance, fetchMonthlyAttendance } from '@/service/api/at
 import { fetchCompanyList, fetchDepartmentTree } from '@/service/api/organization';
 import { resolveOrgIds } from '@/utils/report';
 import { downloadFile } from '@/utils/download';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'MonthlyAttendance' });
 
@@ -74,6 +75,10 @@ async function loadData() {
     });
     data.value = res.data || [];
     pagination.value.current = 1;
+    // 月度汇总接口为一次性全量返回（无分页参数），数据量过大时提示缩小筛选范围
+    if (data.value.length > 20000) {
+      ElMessage.warning($t('attendance.monthly.thisMonthHasTooMuchAttendanceDataAndThePageMayLagNarrowTheRangeByCompanyDepartment'));
+    }
   } finally {
     loading.value = false;
   }
@@ -123,7 +128,7 @@ function getSummary({
   const sums: string[] = [];
   columns.forEach((column, index) => {
     if (index === 0) {
-      sums[index] = '合计';
+      sums[index] = $t('common.total');
       return;
     }
     const prop = column.property;
@@ -151,15 +156,15 @@ async function handleExport() {
       const resolved = resolveOrgIds(departments.value, deptId);
       orgIds = resolved.length > 0 ? resolved : [deptId ?? companyId!];
     }
-    await downloadFile('/attendance/monthly/export', `月考勤汇总_${currentMonth.value}.xlsx`, {
+    await downloadFile('/attendance/monthly/export', $t('attendance.monthly.monthlyAttendanceSummaryXlsx', { month: currentMonth.value }), {
       month: currentMonth.value,
       orgIds: orgIds?.join(','),
       employeeNo: searchParams.value.employeeNo,
       employeeName: searchParams.value.employeeName
     });
-    ElMessage.success('导出成功');
+    ElMessage.success($t('attendance.common.exportSuccessful'));
   } catch {
-    ElMessage.error('导出失败');
+    // downloadFile 内部已提示具体错误
   } finally {
     exporting.value = false;
   }
@@ -170,47 +175,59 @@ async function handleExport() {
   <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
     <ElCard>
       <ElForm inline :model="searchParams">
-        <ElFormItem label="月份">
+        <ElFormItem :label="$t('common.month')">
           <ElDatePicker
             v-model="currentMonth"
             type="month"
-            placeholder="选择月份"
+            :placeholder="$t('attendance.monthly.selectMonth')"
             value-format="YYYY-MM"
             :clearable="false"
             style="width: 140px"
             @change="handleMonthChange"
           />
         </ElFormItem>
-        <ElFormItem label="公司">
-          <ElSelect v-model="searchParams.companyId" placeholder="请选择公司" clearable style="width: 150px">
+        <ElFormItem :label="$t('common.company')">
+          <ElSelect v-model="searchParams.companyId" :placeholder="$t('common.pleaseSelectCompany')" clearable style="width: 150px">
             <ElOption v-for="c in companies" :key="c.id" :label="c.unitName || c.companyName" :value="c.id" />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="部门">
+        <ElFormItem :label="$t('common.department')">
           <ElTreeSelect
             v-model="searchParams.deptId"
             :data="departments"
             :props="{ label: 'unitName', value: 'id', children: 'children' }"
-            placeholder="请选择部门"
+            :placeholder="$t('common.pleaseSelectDepartment')"
             clearable
             check-strictly
             style="width: 150px"
           />
         </ElFormItem>
-        <ElFormItem label="工号">
-          <ElInput v-model="searchParams.employeeNo" placeholder="工号" clearable style="width: 100px" />
+        <ElFormItem :label="$t('common.employeeNo')">
+          <ElInput
+            v-model="searchParams.employeeNo"
+            :placeholder="$t('common.employeeNo')"
+            clearable
+            style="width: 100px"
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="姓名">
-          <ElInput v-model="searchParams.employeeName" placeholder="姓名" clearable style="width: 100px" />
+        <ElFormItem :label="$t('common.name')">
+          <ElInput
+            v-model="searchParams.employeeName"
+            :placeholder="$t('common.name')"
+            clearable
+            style="width: 100px"
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" @click="handleSearch">
             <icon-ep-search />
-            搜索
+            {{ $t('common.search') }}
           </ElButton>
           <ElButton @click="handleReset">
             <icon-ep-refresh />
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
@@ -219,10 +236,10 @@ async function handleExport() {
     <ElCard class="flex-1">
       <template #header>
         <div class="flex items-center justify-between">
-          <span>月考勤汇总 - {{ currentMonth }}</span>
-          <ElButton type="primary" :loading="exporting" @click="handleExport">
+          <span>{{ $t('attendance.monthly.monthlyAttendanceSummary') }} {{ currentMonth }}</span>
+          <ElButton v-permission="'attendance:monthly:export'" type="primary" :loading="exporting" @click="handleExport">
             <template #icon><icon-ep-download /></template>
-            导出
+            {{ $t('common.export') }}
           </ElButton>
         </div>
       </template>
@@ -236,39 +253,39 @@ async function handleExport() {
         show-summary
         :summary-method="getSummary"
       >
-        <ElTableColumn prop="companyName" label="公司" width="100" show-overflow-tooltip />
-        <ElTableColumn prop="employeeNo" label="工号" width="80" />
-        <ElTableColumn prop="employeeName" label="姓名" width="70" />
-        <ElTableColumn prop="deptName" label="部门" width="100" show-overflow-tooltip />
-        <ElTableColumn prop="workDays" label="应出勤" width="70" align="center" />
-        <ElTableColumn prop="actualDays" label="实出勤" width="70" align="center" />
-        <ElTableColumn prop="lateTimes" label="迟到次数" width="80" align="center">
+        <ElTableColumn prop="companyName" :label="$t('common.company')" width="100" show-overflow-tooltip fixed="left" />
+        <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="80" fixed="left" />
+        <ElTableColumn prop="employeeName" :label="$t('common.name')" width="70" fixed="left" />
+        <ElTableColumn prop="deptName" :label="$t('common.department')" width="100" show-overflow-tooltip />
+        <ElTableColumn prop="workDays" :label="$t('attendance.monthly.requiredAttendance')" width="70" align="center" />
+        <ElTableColumn prop="actualDays" :label="$t('attendance.monthly.actualAttendance')" width="70" align="center" />
+        <ElTableColumn prop="lateTimes" :label="$t('attendance.monthly.lateCount')" width="80" align="center">
           <template #default="{ row }">
             <span :class="row.lateTimes > 0 ? 'text-red-500' : ''">{{ row.lateTimes }}</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="totalLateMinutes" label="迟到(分)" width="80" align="center">
+        <ElTableColumn prop="totalLateMinutes" :label="$t('attendance.monthly.lateMin')" width="80" align="center">
           <template #default="{ row }">
             <span :class="row.totalLateMinutes > 0 ? 'text-red-500' : ''">{{ row.totalLateMinutes }}</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="earlyTimes" label="早退次数" width="80" align="center">
+        <ElTableColumn prop="earlyTimes" :label="$t('attendance.monthly.earlyLeaveCount')" width="80" align="center">
           <template #default="{ row }">
             <span :class="row.earlyTimes > 0 ? 'text-red-500' : ''">{{ row.earlyTimes }}</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="totalEarlyMinutes" label="早退(分)" width="80" align="center">
+        <ElTableColumn prop="totalEarlyMinutes" :label="$t('attendance.monthly.earlyLeaveMin')" width="80" align="center">
           <template #default="{ row }">
             <span :class="row.totalEarlyMinutes > 0 ? 'text-red-500' : ''">{{ row.totalEarlyMinutes }}</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="absentDays" label="旷工" width="60" align="center">
+        <ElTableColumn prop="absentDays" :label="$t('common.absent')" width="60" align="center">
           <template #default="{ row }">
             <span :class="row.absentDays > 0 ? 'text-red-500 font-bold' : ''">{{ row.absentDays }}</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="leaveDays" label="请假" width="60" align="center" />
-        <ElTableColumn prop="totalWorkHours" label="总工时" min-width="80" align="center">
+        <ElTableColumn prop="leaveDays" :label="$t('common.leave')" width="60" align="center" />
+        <ElTableColumn prop="totalWorkHours" :label="$t('attendance.monthly.totalWorkHours')" min-width="80" align="center">
           <template #default="{ row }">{{ row.totalWorkHours }}h</template>
         </ElTableColumn>
       </ElTable>

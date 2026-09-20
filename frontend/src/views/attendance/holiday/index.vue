@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { type AttCalendarRule, deleteCalendarRule, fetchCalendarRules, saveCalendarRule } from '@/service/api/calendar';
 import { fetchCompanyList } from '@/service/api/organization';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'HolidayManage' });
 
@@ -22,7 +23,9 @@ const yearOptions = computed(() => {
     if (r.startDate) years.add(Number(r.startDate.slice(0, 4)));
   });
   years.add(new Date().getFullYear());
-  return Array.from(years).filter(y => Number.isFinite(y)).sort((a, b) => b - a);
+  return Array.from(years)
+    .filter(y => Number.isFinite(y))
+    .sort((a, b) => b - a);
 });
 
 const filteredRules = computed(() =>
@@ -39,6 +42,28 @@ const filteredRules = computed(() =>
   })
 );
 
+// 规则接口（/calendar/rules）不支持服务端分页，这里做前端分页，避免一次渲染过多行
+const pagination = ref({ current: 1, pageSize: 20 });
+const pagedRules = computed(() => {
+  const start = (pagination.value.current - 1) * pagination.value.pageSize;
+  return filteredRules.value.slice(start, start + pagination.value.pageSize);
+});
+
+// 过滤/删除导致总页数变少时，回收当前页码
+watch(
+  () => filteredRules.value.length,
+  len => {
+    const maxPage = Math.max(1, Math.ceil(len / pagination.value.pageSize));
+    if (pagination.value.current > maxPage) {
+      pagination.value.current = maxPage;
+    }
+  }
+);
+
+function handleFilterChange() {
+  pagination.value.current = 1;
+}
+
 const dialogVisible = ref(false);
 const operateType = ref<'add' | 'edit'>('add');
 const dialogForm = ref<AttCalendarRule>({ ruleType: 2 });
@@ -46,11 +71,11 @@ const formRef = ref<FormInstance>();
 const submitLoading = ref(false);
 
 const ruleTypeOptions = [
-  { value: 1, label: '单休（周日）', tag: 'info' },
-  { value: 2, label: '双休', tag: 'success' },
-  { value: 3, label: '单休（周六）', tag: 'info' },
-  { value: 4, label: '法定假日', tag: 'danger' },
-  { value: 5, label: '调休上班', tag: 'warning' }
+  { value: 1, label: $t('attendance.holiday.singleRestDaySunday'), tag: 'info' },
+  { value: 2, label: $t('attendance.holiday.twoDayWeekend'), tag: 'success' },
+  { value: 3, label: $t('attendance.holiday.singleRestDaySaturday'), tag: 'info' },
+  { value: 4, label: $t('attendance.holiday.statutoryHoliday'), tag: 'danger' },
+  { value: 5, label: $t('attendance.holiday.adjustedWorkday'), tag: 'warning' }
 ];
 
 /** 特殊日期（法定假日/调休上班）需要日期范围与名称 */
@@ -61,15 +86,15 @@ function needDateRange(type: number) {
 /** 校验规则：特殊日期时日期范围与名称必填 */
 function requiredWhenSpecial(_: unknown, value: unknown, callback: (error?: Error) => void) {
   if (needDateRange(dialogForm.value.ruleType) && !value) {
-    callback(new Error('必填'));
+    callback(new Error($t('common.required')));
   } else {
     callback();
   }
 }
 
 const formRules: FormRules = {
-  companyId: [{ required: true, message: '请选择公司', trigger: 'change' }],
-  ruleType: [{ required: true, message: '请选择规则类型', trigger: 'change' }],
+  companyId: [{ required: true, message: $t('common.pleaseSelectCompany'), trigger: 'change' }],
+  ruleType: [{ required: true, message: $t('attendance.holiday.pleaseSelectRuleType'), trigger: 'change' }],
   startDate: [{ validator: requiredWhenSpecial, trigger: 'change' }],
   endDate: [{ validator: requiredWhenSpecial, trigger: 'change' }],
   ruleName: [{ validator: requiredWhenSpecial, trigger: 'blur' }]
@@ -120,21 +145,30 @@ async function handleSubmit() {
   try {
     // saveCalendarRule 为 upsert：带 id 更新，不带 id 新增
     await saveCalendarRule(dialogForm.value);
-    ElMessage.success('保存成功');
+    ElMessage.success($t('common.saveSuccess'));
     dialogVisible.value = false;
     loadRules();
   } catch {
-    ElMessage.error('保存失败');
+    // 请求层已统一弹错
   } finally {
     submitLoading.value = false;
   }
 }
 
 async function handleDelete(row: AttCalendarRule) {
-  await ElMessageBox.confirm(`确定删除该规则吗？`, '提示');
-  await deleteCalendarRule(row.id!);
-  ElMessage.success('删除成功');
-  loadRules();
+  try {
+    await ElMessageBox.confirm($t('attendance.holiday.areYouSureYouWantToDeleteThisRule'), $t('common.tip'));
+  } catch {
+    // 用户取消删除
+    return;
+  }
+  try {
+    await deleteCalendarRule(row.id!);
+    ElMessage.success($t('common.deleteSuccess'));
+    loadRules();
+  } catch {
+    // 请求层已统一弹错
+  }
 }
 
 function getRuleTypeLabel(type: number) {
@@ -152,76 +186,102 @@ function getRuleTypeTag(type: number) {
       <template #header>
         <div class="flex flex-wrap items-center justify-between gap-12px">
           <div class="flex items-center gap-12px">
-            <span>考勤日历规则</span>
-            <ElSelect v-model="filterYear" placeholder="年份" clearable style="width: 110px">
-              <ElOption v-for="y in yearOptions" :key="y" :label="`${y}年`" :value="y" />
+            <span>{{ $t('attendance.holiday.attendanceCalendarRules') }}</span>
+            <ElSelect
+              v-model="filterYear"
+              :placeholder="$t('common.year')"
+              clearable
+              style="width: 110px"
+              @change="handleFilterChange"
+            >
+              <ElOption v-for="y in yearOptions" :key="y" :label="$t('attendance.holiday.year', { year: y })" :value="y" />
             </ElSelect>
-            <ElSelect v-model="filterRuleType" placeholder="规则类型" clearable style="width: 150px">
+            <ElSelect
+              v-model="filterRuleType"
+              :placeholder="$t('attendance.holiday.ruleType')"
+              clearable
+              style="width: 150px"
+              @change="handleFilterChange"
+            >
               <ElOption v-for="opt in ruleTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
             </ElSelect>
-            <ElButton v-if="filterYear !== undefined || filterRuleType !== undefined" link type="primary" @click="handleReset">
-              清除筛选
+            <ElButton
+              v-if="filterYear !== undefined || filterRuleType !== undefined"
+              link
+              type="primary"
+              @click="handleReset"
+            >
+              {{ $t('attendance.holiday.clearFilters') }}
             </ElButton>
           </div>
-          <ElButton type="primary" @click="handleAdd">
+          <ElButton v-permission="'attendance:holiday:add'" type="primary" @click="handleAdd">
             <template #icon><icon-ep-plus /></template>
-            添加规则
+            {{ $t('attendance.holiday.addRule') }}
           </ElButton>
         </div>
       </template>
 
-      <ElTable v-loading="loading" :data="filteredRules" border stripe>
-        <ElTableColumn prop="companyName" label="公司" min-width="150" />
-        <ElTableColumn prop="ruleType" label="规则类型" width="130" align="center">
+      <ElTable v-loading="loading" :data="pagedRules" border stripe>
+        <ElTableColumn prop="companyName" :label="$t('common.company')" min-width="150" />
+        <ElTableColumn prop="ruleType" :label="$t('attendance.holiday.ruleType')" width="130" align="center">
           <template #default="{ row }">
             <ElTag :type="getRuleTypeTag(row.ruleType) as any">{{ getRuleTypeLabel(row.ruleType) }}</ElTag>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="ruleName" label="名称" width="120" />
-        <ElTableColumn label="日期范围" width="200">
+        <ElTableColumn prop="ruleName" :label="$t('common.name')" width="120" show-overflow-tooltip />
+        <ElTableColumn :label="$t('common.dateRange')" width="200">
           <template #default="{ row }">
             <span v-if="row.startDate">{{ row.startDate }} ~ {{ row.endDate }}</span>
             <span v-else class="text-gray-400">-</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="remark" label="备注" min-width="150" />
-        <ElTableColumn label="操作" width="120" align="center">
+        <ElTableColumn prop="remark" :label="$t('common.remark')" min-width="150" show-overflow-tooltip />
+        <ElTableColumn :label="$t('common.action')" width="120" align="center">
           <template #default="{ row }">
-            <ElButton type="primary" link size="small" @click="handleEdit(row)">编辑</ElButton>
-            <ElButton type="danger" link size="small" @click="handleDelete(row)">删除</ElButton>
+            <ElButton v-permission="'attendance:holiday:edit'" type="primary" link size="small" @click="handleEdit(row)">{{ $t('common.edit') }}</ElButton>
+            <ElButton v-permission="'attendance:holiday:delete'" type="danger" link size="small" @click="handleDelete(row)">{{ $t('common.delete') }}</ElButton>
           </template>
         </ElTableColumn>
       </ElTable>
 
-      <div class="mt-12px text-sm text-gray-400">
-        说明：休息规则（单休/双休）每个公司只能设置一条；法定假日和调休上班可设置多条。
+      <div class="mt-12px flex items-center justify-between">
+        <span class="text-sm text-gray-400">
+          {{ $t('attendance.holiday.noteEachCompanyCanHaveOnlyOneRestRuleSingleTwoDayWeekendStatutoryHolidaysAndAdjustedWorkdaysCanHaveMultipleEntries') }}
+        </span>
+        <ElPagination
+          v-model:current-page="pagination.current"
+          v-model:page-size="pagination.pageSize"
+          :total="filteredRules.length"
+          :page-sizes="[20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
+        />
       </div>
     </ElCard>
 
     <!-- 添加/编辑弹窗 -->
-    <ElDialog v-model="dialogVisible" :title="operateType === 'add' ? '添加规则' : '编辑规则'" width="500px">
+    <ElDialog v-model="dialogVisible" :title="operateType === 'add' ? $t('attendance.holiday.addRule') : $t('attendance.holiday.editRule')" width="500px">
       <ElForm ref="formRef" label-width="80px" :model="dialogForm" :rules="formRules">
-        <ElFormItem label="公司" prop="companyId">
-          <ElSelect v-model="dialogForm.companyId" placeholder="请选择公司" style="width: 100%">
+        <ElFormItem :label="$t('common.company')" prop="companyId">
+          <ElSelect v-model="dialogForm.companyId" :placeholder="$t('common.pleaseSelectCompany')" style="width: 100%">
             <ElOption v-for="c in companies" :key="c.id" :label="c.unitName" :value="c.id" />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="规则类型" prop="ruleType">
+        <ElFormItem :label="$t('attendance.holiday.ruleType')" prop="ruleType">
           <ElSelect
             v-model="dialogForm.ruleType"
-            placeholder="请选择类型"
+            :placeholder="$t('common.pleaseSelectType')"
             style="width: 100%"
             :disabled="operateType === 'edit'"
           >
             <ElOption v-for="opt in ruleTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem v-if="needDateRange(dialogForm.ruleType)" label="日期范围" prop="startDate">
-          <div class="flex w-full items-center">
+        <ElFormItem v-if="needDateRange(dialogForm.ruleType)" :label="$t('common.dateRange')" prop="startDate">
+          <div class="w-full flex items-center">
             <ElDatePicker
               v-model="dialogForm.startDate"
               type="date"
-              placeholder="开始日期"
+              :placeholder="$t('common.startDate')"
               value-format="YYYY-MM-DD"
               style="width: 45%"
             />
@@ -229,22 +289,22 @@ function getRuleTypeTag(type: number) {
             <ElDatePicker
               v-model="dialogForm.endDate"
               type="date"
-              placeholder="结束日期"
+              :placeholder="$t('common.endDate')"
               value-format="YYYY-MM-DD"
               style="width: 45%"
             />
           </div>
         </ElFormItem>
-        <ElFormItem v-if="needDateRange(dialogForm.ruleType)" label="名称" prop="ruleName">
-          <ElInput v-model="dialogForm.ruleName" placeholder="如：国庆节" />
+        <ElFormItem v-if="needDateRange(dialogForm.ruleType)" :label="$t('common.name')" prop="ruleName">
+          <ElInput v-model="dialogForm.ruleName" :placeholder="$t('attendance.holiday.eGNationalDay')" />
         </ElFormItem>
-        <ElFormItem label="备注">
-          <ElInput v-model="dialogForm.remark" placeholder="备注" />
+        <ElFormItem :label="$t('common.remark')">
+          <ElInput v-model="dialogForm.remark" :placeholder="$t('common.remark')" />
         </ElFormItem>
       </ElForm>
       <template #footer>
-        <ElButton @click="dialogVisible = false">取消</ElButton>
-        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">确定</ElButton>
+        <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('common.ok') }}</ElButton>
       </template>
     </ElDialog>
   </div>

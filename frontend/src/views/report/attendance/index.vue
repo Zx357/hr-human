@@ -7,6 +7,7 @@ import { fetchCompanyList, fetchDepartmentTree } from '@/service/api/organizatio
 import { type AttendanceReportSummary, fetchAttendanceReportSummary } from '@/service/api/report';
 import { useEcharts } from '@/hooks/common/echarts';
 import { downloadCsv, getMonthRange, normalizeRateValue, resolveOrgIds } from '@/utils/report';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'AttendanceReport' });
 
@@ -126,24 +127,24 @@ const overview = computed(() => {
 });
 
 const overviewCards = computed(() => [
-  { label: '参统员工', value: overview.value.employeeCount, hint: '参与月度统计人数', tone: 'primary' },
-  { label: '平均出勤率', value: `${overview.value.attendanceRate}%`, hint: '实出勤 / 应出勤', tone: 'success' },
-  { label: '异常记录', value: overview.value.abnormalCount, hint: '迟到 / 早退 / 旷工', tone: 'danger' },
-  { label: '总工时', value: `${overview.value.totalWorkHours.toFixed(1)} h`, hint: '所有员工工时汇总', tone: 'info' }
+  { label: $t('report.attendance.employeesInStatistics'), value: overview.value.employeeCount, hint: $t('report.attendance.employeesInMonthlyStatistics'), tone: 'primary' },
+  { label: $t('report.attendance.averageAttendanceRate'), value: `${overview.value.attendanceRate}%`, hint: $t('report.attendance.actualRequiredAttendance'), tone: 'success' },
+  { label: $t('report.attendance.abnormalRecords'), value: overview.value.abnormalCount, hint: $t('report.attendance.lateEarlyLeaveAbsent'), tone: 'danger' },
+  { label: $t('attendance.monthly.totalWorkHours'), value: `${overview.value.totalWorkHours.toFixed(1)} h`, hint: $t('report.attendance.workHoursSummaryOfAllEmployees'), tone: 'info' }
 ]);
 
 const digestCards = computed(() => [
-  { label: '迟到', value: overview.value.totalLate, tone: 'warning' },
-  { label: '早退', value: overview.value.totalEarly, tone: 'info' },
-  { label: '旷工', value: overview.value.totalAbsent, tone: 'danger' },
-  { label: '请假', value: overview.value.totalLeave, tone: 'primary' }
+  { label: $t('common.late'), value: overview.value.totalLate, tone: 'warning' },
+  { label: $t('common.earlyLeave'), value: overview.value.totalEarly, tone: 'info' },
+  { label: $t('common.absent'), value: overview.value.totalAbsent, tone: 'danger' },
+  { label: $t('common.leave'), value: overview.value.totalLeave, tone: 'primary' }
 ]);
 
 const departmentSummary = computed<DepartmentSummary[]>(() => {
   const map = new Map<string, DepartmentSummary>();
 
   for (const item of monthlyData.value) {
-    const key = item.deptName || '未分配部门';
+    const key = item.deptName || $t('report.attendance.unassignedDepartment');
     const current = map.get(key) || {
       deptName: key,
       employees: 0,
@@ -243,19 +244,19 @@ const { domRef: deptChartRef, updateOptions: updateDeptChartOptions } = useEchar
   xAxis: {
     type: 'value',
     max: 100,
-    axisLabel: { color: '#9ca3af', fontSize: 12, formatter: '{value}%' },
-    splitLine: { lineStyle: { color: '#f3f4f6', type: 'dashed' } }
+    axisLabel: { fontSize: 12, formatter: '{value}%' },
+    splitLine: { lineStyle: { type: 'dashed' } }
   },
   yAxis: {
     type: 'category',
     data: [] as string[],
     axisTick: { show: false },
     axisLine: { show: false },
-    axisLabel: { color: '#6b7280', fontSize: 12 }
+    axisLabel: { fontSize: 12 }
   },
   series: [
     {
-      name: '出勤率',
+      name: $t('report.attendance.attendanceRate'),
       type: 'bar',
       barWidth: '55%',
       itemStyle: {
@@ -272,7 +273,7 @@ const { domRef: deptChartRef, updateOptions: updateDeptChartOptions } = useEchar
         },
         borderRadius: [0, 4, 4, 0]
       },
-      label: { show: true, position: 'right', color: '#6b7280', fontSize: 12, formatter: '{c}%' },
+      label: { show: true, position: 'right', fontSize: 12, formatter: '{c}%' },
       data: [] as number[]
     }
   ]
@@ -317,6 +318,10 @@ async function fetchAllDailyRecords() {
   const records: AttDailyRecord[] = [];
   const pageSize = 200;
   let page = 1;
+  // 分页循环上限保护：最多 100 页 / 2 万行，防止大范围查询产生过多请求拖垮页面
+  const MAX_PAGES = 100;
+  const MAX_ROWS = 20000;
+  let truncated = false;
 
   while (true) {
     // eslint-disable-next-line no-await-in-loop
@@ -340,6 +345,15 @@ async function fetchAllDailyRecords() {
     }
 
     page += 1;
+
+    if (page > MAX_PAGES || records.length >= MAX_ROWS) {
+      truncated = true;
+      break;
+    }
+  }
+
+  if (truncated) {
+    ElMessage.warning($t('report.attendance.tooMuchAttendanceDataOnlyTheFirst20000DetailsAreCountedNarrowTheTimeRangeOrAddFilters'));
   }
 
   return records;
@@ -443,28 +457,28 @@ function handleAbnormalSizeChange(size: number) {
 
 function handleExport() {
   if (!monthlyData.value.length) {
-    ElMessage.warning('暂无可导出的考勤数据');
+    ElMessage.warning($t('report.attendance.noAttendanceDataToExport'));
     return;
   }
 
   downloadCsv(
-    `考勤报表_${currentMonth.value}_${getExportStamp()}.csv`,
+    $t('report.attendance.attendanceReportCsv', { month: currentMonth.value, stamp: getExportStamp() }),
     [
-      { title: '月份', key: 'month' },
-      { title: '公司', key: 'companyName' },
-      { title: '部门', key: 'deptName' },
-      { title: '工号', key: 'employeeNo' },
-      { title: '姓名', key: 'employeeName' },
-      { title: '应出勤天数', key: 'workDays' },
-      { title: '实出勤天数', key: 'actualDays' },
-      { title: '出勤率', key: 'attendanceRate', formatter: row => formatRate(row.actualDays, row.workDays) },
-      { title: '迟到次数', key: 'lateTimes' },
-      { title: '迟到分钟', key: 'totalLateMinutes' },
-      { title: '早退次数', key: 'earlyTimes' },
-      { title: '早退分钟', key: 'totalEarlyMinutes' },
-      { title: '旷工天数', key: 'absentDays' },
-      { title: '请假天数', key: 'leaveDays' },
-      { title: '总工时', key: 'totalWorkHours' }
+      { title: $t('common.month'), key: 'month' },
+      { title: $t('common.company'), key: 'companyName' },
+      { title: $t('common.department'), key: 'deptName' },
+      { title: $t('common.employeeNo'), key: 'employeeNo' },
+      { title: $t('common.name'), key: 'employeeName' },
+      { title: $t('report.attendance.requiredAttendanceDays'), key: 'workDays' },
+      { title: $t('report.attendance.actualAttendanceDays'), key: 'actualDays' },
+      { title: $t('report.attendance.attendanceRate'), key: 'attendanceRate', formatter: row => formatRate(row.actualDays, row.workDays) },
+      { title: $t('attendance.monthly.lateCount'), key: 'lateTimes' },
+      { title: $t('report.attendance.lateMinutes'), key: 'totalLateMinutes' },
+      { title: $t('attendance.monthly.earlyLeaveCount'), key: 'earlyTimes' },
+      { title: $t('report.attendance.earlyLeaveMinutes'), key: 'totalEarlyMinutes' },
+      { title: $t('report.attendance.absentDays'), key: 'absentDays' },
+      { title: $t('report.attendance.leaveDays'), key: 'leaveDays' },
+      { title: $t('attendance.monthly.totalWorkHours'), key: 'totalWorkHours' }
     ],
     monthlyData.value.map(item => ({
       ...item,
@@ -472,7 +486,7 @@ function handleExport() {
     }))
   );
 
-  ElMessage.success('考勤报表已导出');
+  ElMessage.success($t('report.attendance.attendanceReportExported'));
 }
 
 function getCurrentMonth() {
@@ -491,16 +505,16 @@ function formatRate(actual: number, planned: number) {
 
 function getStatusLabel(status?: number) {
   const map: Record<number, string> = {
-    1: '正常',
-    2: '迟到',
-    3: '早退',
-    4: '旷工',
-    5: '请假',
-    6: '出差',
-    7: '迟到+早退'
+    1: $t('common.normal'),
+    2: $t('common.late'),
+    3: $t('common.earlyLeave'),
+    4: $t('common.absent'),
+    5: $t('common.leave'),
+    6: $t('common.businessTrip'),
+    7: $t('attendance.daily.lateEarlyLeave')
   };
 
-  return status ? map[status] || '异常' : '异常';
+  return status ? map[status] || $t('common.abnormal') : $t('common.abnormal');
 }
 
 function getStatusTagType(status?: number) {
@@ -537,51 +551,63 @@ onMounted(async () => {
   <div class="attendance-report-page flex-col-stretch gap-16px">
     <ElCard class="search-card">
       <ElForm inline :model="searchParams">
-        <ElFormItem label="月份">
+        <ElFormItem :label="$t('common.month')">
           <ElDatePicker
             v-model="currentMonth"
             type="month"
-            placeholder="请选择月份"
+            :placeholder="$t('report.attendance.pleaseSelectAMonth')"
             value-format="YYYY-MM"
             :clearable="false"
             style="width: 150px"
             @change="handleMonthChange"
           />
         </ElFormItem>
-        <ElFormItem label="公司">
-          <ElSelect v-model="searchParams.companyId" placeholder="请选择公司" clearable style="width: 170px">
+        <ElFormItem :label="$t('common.company')">
+          <ElSelect v-model="searchParams.companyId" :placeholder="$t('common.pleaseSelectCompany')" clearable style="width: 170px">
             <ElOption v-for="company in companies" :key="company.id" :label="company.unitName" :value="company.id" />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="部门">
+        <ElFormItem :label="$t('common.department')">
           <ElTreeSelect
             v-model="searchParams.deptId"
             :data="departments"
             :props="{ label: 'unitName', value: 'id', children: 'children' }"
-            placeholder="请选择部门"
+            :placeholder="$t('common.pleaseSelectDepartment')"
             clearable
             check-strictly
             style="width: 200px"
           />
         </ElFormItem>
-        <ElFormItem label="工号">
-          <ElInput v-model="searchParams.employeeNo" placeholder="请输入工号" clearable style="width: 140px" />
+        <ElFormItem :label="$t('common.employeeNo')">
+          <ElInput
+            v-model="searchParams.employeeNo"
+            :placeholder="$t('common.pleaseInputEmployeeNo')"
+            clearable
+            style="width: 140px"
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="姓名">
-          <ElInput v-model="searchParams.employeeName" placeholder="请输入姓名" clearable style="width: 140px" />
+        <ElFormItem :label="$t('common.name')">
+          <ElInput
+            v-model="searchParams.employeeName"
+            :placeholder="$t('common.pleaseInputName')"
+            clearable
+            style="width: 140px"
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" :loading="loading" @click="handleSearch">
             <template #icon><icon-ep-search /></template>
-            更新报表
+            {{ $t('report.attendance.refreshReport') }}
           </ElButton>
           <ElButton @click="handleReset">
             <template #icon><icon-ep-refresh /></template>
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
-          <ElButton type="success" :disabled="loading || monthlyData.length === 0" @click="handleExport">
+          <ElButton v-permission="'report:attendance:export'" type="success" :disabled="loading || monthlyData.length === 0" @click="handleExport">
             <template #icon><icon-ep-download /></template>
-            导出月报
+            {{ $t('report.attendance.exportMonthlyReport') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
@@ -605,8 +631,8 @@ onMounted(async () => {
       <ElCard>
         <template #header>
           <div class="section-head">
-            <span>部门表现</span>
-            <span class="section-head__meta">出勤率前 6</span>
+            <span>{{ $t('report.attendance.departmentPerformance') }}</span>
+            <span class="section-head__meta">{{ $t('report.attendance.top6AttendanceRate') }}</span>
           </div>
         </template>
         <div v-if="hasDeptChart" ref="deptChartRef" class="mb-16px h-320px overflow-hidden"></div>
@@ -620,9 +646,9 @@ onMounted(async () => {
               <span class="text-emerald-700 font-700">{{ item.attendanceRate }}%</span>
             </div>
             <div class="ranking-item__meta">
-              <span v-if="item.employees !== undefined">{{ item.employees }} 人</span>
-              <span>迟到 {{ item.lateTimes }}</span>
-              <span>旷工 {{ item.absentDays }}</span>
+              <span v-if="item.employees !== undefined">{{ item.employees }} {{ $t('org.structure.people') }}</span>
+              <span>{{ $t('common.late') }} {{ item.lateTimes }}</span>
+              <span>{{ $t('common.absent') }} {{ item.absentDays }}</span>
             </div>
             <ElProgress
               :percentage="item.attendanceRate"
@@ -631,14 +657,14 @@ onMounted(async () => {
             />
           </div>
         </div>
-        <ElEmpty v-else description="暂无部门数据" :image-size="88" />
+        <ElEmpty v-else :description="$t('report.attendance.noDepartmentData')" :image-size="88" />
       </ElCard>
 
       <ElCard>
         <template #header>
           <div class="section-head">
-            <span>异常洞察</span>
-            <span class="section-head__meta">最新异常与分布</span>
+            <span>{{ $t('report.attendance.abnormalityInsights') }}</span>
+            <span class="section-head__meta">{{ $t('report.attendance.latestAbnormalitiesDistribution') }}</span>
           </div>
         </template>
 
@@ -658,25 +684,25 @@ onMounted(async () => {
             </div>
             <div class="latest-item__meta">
               <span>{{ item.attDate }}</span>
-              <span>{{ item.deptName || '未分配部门' }}</span>
+              <span>{{ item.deptName || $t('report.attendance.unassignedDepartment') }}</span>
               <span>{{ item.occurrenceTime }}</span>
             </div>
           </div>
         </div>
-        <ElEmpty v-else description="暂无异常记录" :image-size="88" />
+        <ElEmpty v-else :description="$t('report.attendance.noAbnormalRecords')" :image-size="88" />
       </ElCard>
     </div>
 
     <ElCard>
       <template #header>
         <div class="section-head">
-          <span>明细视图</span>
-          <span class="section-head__meta">切换部门、员工和异常三个视角</span>
+          <span>{{ $t('report.attendance.detailView') }}</span>
+          <span class="section-head__meta">{{ $t('report.attendance.switchAmongDepartmentEmployeeAndAbnormalityViews') }}</span>
         </div>
       </template>
 
       <ElTabs v-model="activeTab">
-        <ElTabPane label="部门汇总" name="department">
+        <ElTabPane :label="$t('report.attendance.departmentSummary')" name="department">
           <div class="table-wrapper">
             <ElTable
               v-loading="loading"
@@ -686,25 +712,25 @@ onMounted(async () => {
               size="small"
               class="table-content table-content--department"
             >
-              <ElTableColumn prop="deptName" label="部门" min-width="180" show-overflow-tooltip />
-              <ElTableColumn prop="employees" label="员工数" width="90" align="center" />
-              <ElTableColumn prop="workDays" label="应出勤" width="90" align="center" />
-              <ElTableColumn prop="actualDays" label="实出勤" width="90" align="center" />
-              <ElTableColumn prop="attendanceRate" label="出勤率" width="110" align="center">
+              <ElTableColumn prop="deptName" :label="$t('common.department')" min-width="180" show-overflow-tooltip />
+              <ElTableColumn prop="employees" :label="$t('report.attendance.employees')" width="90" align="center" />
+              <ElTableColumn prop="workDays" :label="$t('attendance.monthly.requiredAttendance')" width="90" align="center" />
+              <ElTableColumn prop="actualDays" :label="$t('attendance.monthly.actualAttendance')" width="90" align="center" />
+              <ElTableColumn prop="attendanceRate" :label="$t('report.attendance.attendanceRate')" width="110" align="center">
                 <template #default="{ row }">{{ row.attendanceRate }}%</template>
               </ElTableColumn>
-              <ElTableColumn prop="lateTimes" label="迟到" width="80" align="center" />
-              <ElTableColumn prop="earlyTimes" label="早退" width="80" align="center" />
-              <ElTableColumn prop="absentDays" label="旷工" width="80" align="center" />
-              <ElTableColumn prop="leaveDays" label="请假" width="80" align="center" />
-              <ElTableColumn prop="totalWorkHours" label="总工时" width="100" align="center">
+              <ElTableColumn prop="lateTimes" :label="$t('common.late')" width="80" align="center" />
+              <ElTableColumn prop="earlyTimes" :label="$t('common.earlyLeave')" width="80" align="center" />
+              <ElTableColumn prop="absentDays" :label="$t('common.absent')" width="80" align="center" />
+              <ElTableColumn prop="leaveDays" :label="$t('common.leave')" width="80" align="center" />
+              <ElTableColumn prop="totalWorkHours" :label="$t('attendance.monthly.totalWorkHours')" width="100" align="center">
                 <template #default="{ row }">{{ row.totalWorkHours.toFixed(1) }}h</template>
               </ElTableColumn>
             </ElTable>
           </div>
         </ElTabPane>
 
-        <ElTabPane label="员工月报" name="employee">
+        <ElTabPane :label="$t('report.attendance.employeeMonthlyReport')" name="employee">
           <div class="table-wrapper">
             <ElTable
               v-loading="loading"
@@ -714,22 +740,22 @@ onMounted(async () => {
               size="small"
               class="table-content table-content--monthly"
             >
-              <ElTableColumn prop="companyName" label="公司" width="150" show-overflow-tooltip />
-              <ElTableColumn prop="deptName" label="部门" width="160" show-overflow-tooltip />
-              <ElTableColumn prop="employeeNo" label="工号" width="110" />
-              <ElTableColumn prop="employeeName" label="姓名" width="100" />
-              <ElTableColumn prop="workDays" label="应出勤" width="88" align="center" />
-              <ElTableColumn prop="actualDays" label="实出勤" width="88" align="center" />
-              <ElTableColumn label="出勤率" width="100" align="center">
+              <ElTableColumn prop="companyName" :label="$t('common.company')" width="150" show-overflow-tooltip />
+              <ElTableColumn prop="deptName" :label="$t('common.department')" width="160" show-overflow-tooltip />
+              <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="110" />
+              <ElTableColumn prop="employeeName" :label="$t('common.name')" width="100" />
+              <ElTableColumn prop="workDays" :label="$t('attendance.monthly.requiredAttendance')" width="88" align="center" />
+              <ElTableColumn prop="actualDays" :label="$t('attendance.monthly.actualAttendance')" width="88" align="center" />
+              <ElTableColumn :label="$t('report.attendance.attendanceRate')" width="100" align="center">
                 <template #default="{ row }">{{ formatRate(row.actualDays, row.workDays) }}</template>
               </ElTableColumn>
-              <ElTableColumn prop="lateTimes" label="迟到" width="72" align="center" />
-              <ElTableColumn prop="totalLateMinutes" label="迟到分" width="86" align="center" />
-              <ElTableColumn prop="earlyTimes" label="早退" width="72" align="center" />
-              <ElTableColumn prop="totalEarlyMinutes" label="早退分" width="86" align="center" />
-              <ElTableColumn prop="absentDays" label="旷工" width="72" align="center" />
-              <ElTableColumn prop="leaveDays" label="请假" width="72" align="center" />
-              <ElTableColumn prop="totalWorkHours" label="总工时" width="90" align="center">
+              <ElTableColumn prop="lateTimes" :label="$t('common.late')" width="72" align="center" />
+              <ElTableColumn prop="totalLateMinutes" :label="$t('report.attendance.lateMinutes2')" width="86" align="center" />
+              <ElTableColumn prop="earlyTimes" :label="$t('common.earlyLeave')" width="72" align="center" />
+              <ElTableColumn prop="totalEarlyMinutes" :label="$t('report.attendance.earlyLeaveMinutes2')" width="86" align="center" />
+              <ElTableColumn prop="absentDays" :label="$t('common.absent')" width="72" align="center" />
+              <ElTableColumn prop="leaveDays" :label="$t('common.leave')" width="72" align="center" />
+              <ElTableColumn prop="totalWorkHours" :label="$t('attendance.monthly.totalWorkHours')" width="90" align="center">
                 <template #default="{ row }">{{ Number(row.totalWorkHours || 0).toFixed(1) }}h</template>
               </ElTableColumn>
             </ElTable>
@@ -748,7 +774,7 @@ onMounted(async () => {
           </div>
         </ElTabPane>
 
-        <ElTabPane label="异常明细" name="abnormal">
+        <ElTabPane :label="$t('report.attendance.abnormalityDetails')" name="abnormal">
           <div class="table-wrapper">
             <ElTable
               v-loading="loading"
@@ -759,18 +785,18 @@ onMounted(async () => {
               class="table-content table-content--abnormal"
             >
               <ElTableColumn type="index" label="#" width="54" align="center" />
-              <ElTableColumn prop="attDate" label="日期" width="120" />
-              <ElTableColumn prop="companyName" label="公司" width="140" show-overflow-tooltip />
-              <ElTableColumn prop="deptName" label="部门" width="150" show-overflow-tooltip />
-              <ElTableColumn prop="employeeNo" label="工号" width="110" />
-              <ElTableColumn prop="employeeName" label="姓名" width="100" />
-              <ElTableColumn prop="abnormalType" label="异常类型" width="110" align="center">
+              <ElTableColumn prop="attDate" :label="$t('common.date')" width="120" />
+              <ElTableColumn prop="companyName" :label="$t('common.company')" width="140" show-overflow-tooltip />
+              <ElTableColumn prop="deptName" :label="$t('common.department')" width="150" show-overflow-tooltip />
+              <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="110" />
+              <ElTableColumn prop="employeeName" :label="$t('common.name')" width="100" />
+              <ElTableColumn prop="abnormalType" :label="$t('report.attendance.abnormalityType')" width="110" align="center">
                 <template #default="{ row }">
                   <ElTag :type="getStatusTagType(row.status)" size="small">{{ row.abnormalType }}</ElTag>
                 </template>
               </ElTableColumn>
-              <ElTableColumn prop="occurrenceTime" label="相关时间" width="180" show-overflow-tooltip />
-              <ElTableColumn prop="remark" label="备注" min-width="180" show-overflow-tooltip>
+              <ElTableColumn prop="occurrenceTime" :label="$t('report.attendance.relatedTime')" width="180" show-overflow-tooltip />
+              <ElTableColumn prop="remark" :label="$t('common.remark')" min-width="180" show-overflow-tooltip>
                 <template #default="{ row }">{{ row.remark || '-' }}</template>
               </ElTableColumn>
             </ElTable>

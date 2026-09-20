@@ -2,6 +2,8 @@
 import { onMounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { request } from '@/service/request';
+import { clearDictCache } from '@/composables/use-dict-options';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'DictManage' });
 
@@ -18,6 +20,8 @@ const dictDataList = ref<any[]>([]);
 const typeDrawerVisible = ref(false);
 const dataDrawerVisible = ref(false);
 const operateType = ref<'add' | 'edit'>('add');
+const saveTypeLoading = ref(false);
+const saveDataLoading = ref(false);
 const editingType = ref<any>({});
 const editingData = ref<any>({});
 
@@ -79,7 +83,7 @@ function handleEditType(row: any) {
 
 async function handleDeleteType(id: number) {
   try {
-    await ElMessageBox.confirm('确定删除该字典类型吗？删除后相关字典数据也会被删除', '提示', {
+    await ElMessageBox.confirm($t('sys.dict.areYouSureYouWantToDeleteThisDictionaryTypeRelatedDictionaryDataWillAlsoBeDeleted'), $t('common.tip'), {
       type: 'warning'
     });
 
@@ -89,14 +93,14 @@ async function handleDeleteType(id: number) {
     });
 
     if (!res.error) {
-      ElMessage.success('删除成功');
+      ElMessage.success($t('common.deleteSuccess'));
       if (selectedDictType.value?.id === id) {
         selectedDictType.value = null;
         dictDataList.value = [];
       }
+      // 清空字典缓存，全站标签按需重新拉取
+      clearDictCache();
       await loadDictTypes();
-    } else {
-      ElMessage.error('删除失败');
     }
   } catch {
     // 用户取消删除，不做任何处理
@@ -105,7 +109,7 @@ async function handleDeleteType(id: number) {
 
 function handleAddData() {
   if (!selectedDictType.value) {
-    ElMessage.warning('请先选择字典类型');
+    ElMessage.warning($t('sys.dict.pleaseSelectADictionaryTypeFirst'));
     return;
   }
   operateType.value = 'add';
@@ -128,7 +132,7 @@ function handleEditData(row: any) {
 
 async function handleDeleteData(id: number) {
   try {
-    await ElMessageBox.confirm('确定删除该字典数据吗？', '提示', {
+    await ElMessageBox.confirm($t('sys.dict.areYouSureYouWantToDeleteThisDictionaryData'), $t('common.tip'), {
       type: 'warning'
     });
 
@@ -138,10 +142,10 @@ async function handleDeleteData(id: number) {
     });
 
     if (!res.error) {
-      ElMessage.success('删除成功');
+      ElMessage.success($t('common.deleteSuccess'));
+      // 清除该类型缓存，使全站字典标签立即刷新
+      clearDictCache(selectedDictType.value?.dictCode);
       await loadDictData(selectedDictType.value.id);
-    } else {
-      ElMessage.error('删除失败');
     }
   } catch {
     // 用户取消删除，不做任何处理
@@ -150,41 +154,55 @@ async function handleDeleteData(id: number) {
 
 async function handleSaveType() {
   if (!editingType.value.dictName || !editingType.value.dictCode) {
-    ElMessage.warning('请填写必填项');
+    ElMessage.warning($t('common.pleaseFillRequired'));
     return;
   }
 
-  const isEdit = operateType.value === 'edit';
-  const { error } = await request({
-    url: '/system/dict/type',
-    method: isEdit ? 'put' : 'post',
-    data: editingType.value
-  });
+  saveTypeLoading.value = true;
+  try {
+    const isEdit = operateType.value === 'edit';
+    const { error } = await request({
+      url: '/system/dict/type',
+      method: isEdit ? 'put' : 'post',
+      data: editingType.value
+    });
 
-  if (!error) {
-    ElMessage.success(isEdit ? '更新成功' : '新增成功');
-    typeDrawerVisible.value = false;
-    loadDictTypes();
+    if (!error) {
+      ElMessage.success(isEdit ? $t('common.updateSuccess') : $t('common.addSuccess'));
+      typeDrawerVisible.value = false;
+      // 字典类型变化影响全站缓存，清空后各页面按需重新拉取
+      clearDictCache();
+      loadDictTypes();
+    }
+  } finally {
+    saveTypeLoading.value = false;
   }
 }
 
 async function handleSaveData() {
   if (!editingData.value.dictLabel || !editingData.value.dictValue) {
-    ElMessage.warning('请填写必填项');
+    ElMessage.warning($t('common.pleaseFillRequired'));
     return;
   }
 
-  const isEdit = operateType.value === 'edit';
-  const { error } = await request({
-    url: '/system/dict/data',
-    method: isEdit ? 'put' : 'post',
-    data: editingData.value
-  });
+  saveDataLoading.value = true;
+  try {
+    const isEdit = operateType.value === 'edit';
+    const { error } = await request({
+      url: '/system/dict/data',
+      method: isEdit ? 'put' : 'post',
+      data: editingData.value
+    });
 
-  if (!error) {
-    ElMessage.success(isEdit ? '更新成功' : '新增成功');
-    dataDrawerVisible.value = false;
-    loadDictData(selectedDictType.value.id);
+    if (!error) {
+      ElMessage.success(isEdit ? $t('common.updateSuccess') : $t('common.addSuccess'));
+      dataDrawerVisible.value = false;
+      // 清除该类型缓存，使全站字典标签立即刷新
+      clearDictCache(selectedDictType.value?.dictCode);
+      loadDictData(selectedDictType.value.id);
+    }
+  } finally {
+    saveDataLoading.value = false;
   }
 }
 
@@ -199,10 +217,10 @@ onMounted(() => {
     <ElCard class="w-400px flex flex-col lt-sm:w-full">
       <template #header>
         <div class="flex items-center justify-between">
-          <span>字典类型</span>
+          <span>{{ $t('sys.dict.dictionaryType') }}</span>
           <ElButton v-permission="'system:dict:add'" type="primary" size="small" @click="handleAddType">
             <template #icon><icon-ep-plus /></template>
-            新增
+            {{ $t('common.add') }}
           </ElButton>
         </div>
       </template>
@@ -215,16 +233,16 @@ onMounted(() => {
         highlight-current-row
         @row-click="handleSelectDictType"
       >
-        <ElTableColumn prop="dictName" label="字典名称" min-width="100" />
-        <ElTableColumn prop="dictCode" label="字典编码" width="130" />
-        <ElTableColumn prop="status" label="状态" width="70" align="center">
+        <ElTableColumn prop="dictName" :label="$t('sys.dict.dictionaryName')" min-width="100" />
+        <ElTableColumn prop="dictCode" :label="$t('sys.dict.dictionaryCode')" width="130" />
+        <ElTableColumn prop="status" :label="$t('common.status')" width="70" align="center">
           <template #default="{ row }">
             <ElTag :type="row.status === 1 ? 'success' : 'danger'" size="small">
-              {{ row.status === 1 ? '启用' : '禁用' }}
+              {{ row.status === 1 ? $t('common.enable') : $t('common.disable') }}
             </ElTag>
           </template>
         </ElTableColumn>
-        <ElTableColumn label="操作" width="100" align="center">
+        <ElTableColumn :label="$t('common.action')" width="100" align="center">
           <template #default="{ row }">
             <ElButton
               v-permission="'system:dict:edit'"
@@ -233,7 +251,7 @@ onMounted(() => {
               size="small"
               @click.stop="handleEditType(row)"
             >
-              编辑
+              {{ $t('common.edit') }}
             </ElButton>
             <ElButton
               v-permission="'system:dict:delete'"
@@ -242,7 +260,7 @@ onMounted(() => {
               size="small"
               @click.stop="handleDeleteType(row.id)"
             >
-              删除
+              {{ $t('common.delete') }}
             </ElButton>
           </template>
         </ElTableColumn>
@@ -254,37 +272,37 @@ onMounted(() => {
       <template #header>
         <div class="flex items-center justify-between">
           <span>
-            字典数据
+            {{ $t('common.dictionaryData') }}
             <template v-if="selectedDictType">
               - {{ selectedDictType.dictName }}（{{ selectedDictType.dictCode }}）
             </template>
           </span>
           <ElButton v-permission="'system:dict:add'" type="primary" size="small" @click="handleAddData">
             <template #icon><icon-ep-plus /></template>
-            新增
+            {{ $t('common.add') }}
           </ElButton>
         </div>
       </template>
 
       <div class="dict-data-content">
-        <ElEmpty v-if="!selectedDictType" description="请选择左侧字典类型" />
+        <ElEmpty v-if="!selectedDictType" :description="$t('sys.dict.pleaseSelectADictionaryTypeOnTheLeft')" />
 
         <ElTable v-else v-loading="loading" :data="dictDataList" border stripe class="dict-data-table">
-          <ElTableColumn type="index" label="序号" width="60" align="center" />
-          <ElTableColumn prop="dictLabel" label="标签" min-width="120" />
-          <ElTableColumn prop="dictValue" label="值" width="100" />
-          <ElTableColumn prop="sortOrder" label="排序" width="70" align="center" />
-          <ElTableColumn prop="status" label="状态" width="80" align="center">
+          <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" />
+          <ElTableColumn prop="dictLabel" :label="$t('sys.dict.label')" min-width="120" />
+          <ElTableColumn prop="dictValue" :label="$t('sys.dict.value')" width="100" />
+          <ElTableColumn prop="sortOrder" :label="$t('common.sort')" width="70" align="center" />
+          <ElTableColumn prop="status" :label="$t('common.status')" width="80" align="center">
             <template #default="{ row }">
               <ElTag :type="row.status === 1 ? 'success' : 'danger'" size="small">
-                {{ row.status === 1 ? '启用' : '禁用' }}
+                {{ row.status === 1 ? $t('common.enable') : $t('common.disable') }}
               </ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn label="操作" width="120" align="center">
+          <ElTableColumn :label="$t('common.action')" width="120" align="center">
             <template #default="{ row }">
               <ElButton v-permission="'system:dict:edit'" type="primary" link size="small" @click="handleEditData(row)">
-                编辑
+                {{ $t('common.edit') }}
               </ElButton>
               <ElButton
                 v-permission="'system:dict:delete'"
@@ -293,7 +311,7 @@ onMounted(() => {
                 size="small"
                 @click="handleDeleteData(row.id)"
               >
-                删除
+                {{ $t('common.delete') }}
               </ElButton>
             </template>
           </ElTableColumn>
@@ -302,58 +320,58 @@ onMounted(() => {
     </ElCard>
 
     <!-- 字典类型编辑抽屉 -->
-    <ElDrawer v-model="typeDrawerVisible" :title="operateType === 'add' ? '新增字典类型' : '编辑字典类型'" size="450px">
+    <ElDrawer v-model="typeDrawerVisible" :title="operateType === 'add' ? $t('sys.dict.newDictionaryType') : $t('sys.dict.editDictionaryType')" size="450px">
       <ElForm label-width="100px" :model="editingType">
-        <ElFormItem label="字典名称" required>
-          <ElInput v-model="editingType.dictName" placeholder="请输入字典名称（中文）" />
+        <ElFormItem :label="$t('sys.dict.dictionaryName')" required>
+          <ElInput v-model="editingType.dictName" :placeholder="$t('sys.dict.pleaseEnterDictionaryNameChinese')" />
         </ElFormItem>
-        <ElFormItem label="英文名称">
-          <ElInput v-model="editingType.dictNameEn" placeholder="请输入字典名称（英文）" />
+        <ElFormItem :label="$t('sys.dict.englishName')">
+          <ElInput v-model="editingType.dictNameEn" :placeholder="$t('sys.dict.pleaseEnterDictionaryNameEnglish')" />
         </ElFormItem>
-        <ElFormItem label="字典编码" required>
-          <ElInput v-model="editingType.dictCode" placeholder="请输入字典编码" :disabled="operateType === 'edit'" />
+        <ElFormItem :label="$t('sys.dict.dictionaryCode')" required>
+          <ElInput v-model="editingType.dictCode" :placeholder="$t('sys.dict.pleaseEnterDictionaryCode')" :disabled="operateType === 'edit'" />
         </ElFormItem>
-        <ElFormItem label="状态">
+        <ElFormItem :label="$t('common.status')">
           <ElRadioGroup v-model="editingType.status">
-            <ElRadio :value="1">启用</ElRadio>
-            <ElRadio :value="0">禁用</ElRadio>
+            <ElRadio :value="1">{{ $t('common.enable') }}</ElRadio>
+            <ElRadio :value="0">{{ $t('common.disable') }}</ElRadio>
           </ElRadioGroup>
         </ElFormItem>
-        <ElFormItem label="描述">
-          <ElInput v-model="editingType.description" type="textarea" :rows="2" placeholder="请输入描述" />
+        <ElFormItem :label="$t('common.description')">
+          <ElInput v-model="editingType.description" type="textarea" :rows="2" :placeholder="$t('approval.flow.pleaseEnterDescription')" />
         </ElFormItem>
       </ElForm>
       <template #footer>
-        <ElButton @click="typeDrawerVisible = false">取消</ElButton>
-        <ElButton type="primary" @click="handleSaveType">保存</ElButton>
+        <ElButton @click="typeDrawerVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="saveTypeLoading" @click="handleSaveType">{{ $t('common.save') }}</ElButton>
       </template>
     </ElDrawer>
 
     <!-- 字典数据编辑抽屉 -->
-    <ElDrawer v-model="dataDrawerVisible" :title="operateType === 'add' ? '新增字典数据' : '编辑字典数据'" size="450px">
+    <ElDrawer v-model="dataDrawerVisible" :title="operateType === 'add' ? $t('sys.dict.newDictionaryData') : $t('sys.dict.editDictionaryData')" size="450px">
       <ElForm label-width="100px" :model="editingData">
-        <ElFormItem label="标签（中文）" required>
-          <ElInput v-model="editingData.dictLabel" placeholder="请输入标签（中文）" />
+        <ElFormItem :label="$t('sys.dict.labelChinese')" required>
+          <ElInput v-model="editingData.dictLabel" :placeholder="$t('sys.dict.pleaseEnterLabelChinese')" />
         </ElFormItem>
-        <ElFormItem label="标签（英文）">
-          <ElInput v-model="editingData.dictLabelEn" placeholder="请输入标签（英文）" />
+        <ElFormItem :label="$t('sys.dict.labelEnglish')">
+          <ElInput v-model="editingData.dictLabelEn" :placeholder="$t('sys.dict.pleaseEnterLabelEnglish')" />
         </ElFormItem>
-        <ElFormItem label="值" required>
-          <ElInput v-model="editingData.dictValue" placeholder="请输入值" />
+        <ElFormItem :label="$t('sys.dict.value')" required>
+          <ElInput v-model="editingData.dictValue" :placeholder="$t('sys.dict.pleaseEnterValue')" />
         </ElFormItem>
-        <ElFormItem label="排序">
+        <ElFormItem :label="$t('common.sort')">
           <ElInputNumber v-model="editingData.sortOrder" :min="0" :max="999" />
         </ElFormItem>
-        <ElFormItem label="状态">
+        <ElFormItem :label="$t('common.status')">
           <ElRadioGroup v-model="editingData.status">
-            <ElRadio :value="1">启用</ElRadio>
-            <ElRadio :value="0">禁用</ElRadio>
+            <ElRadio :value="1">{{ $t('common.enable') }}</ElRadio>
+            <ElRadio :value="0">{{ $t('common.disable') }}</ElRadio>
           </ElRadioGroup>
         </ElFormItem>
       </ElForm>
       <template #footer>
-        <ElButton @click="dataDrawerVisible = false">取消</ElButton>
-        <ElButton type="primary" @click="handleSaveData">保存</ElButton>
+        <ElButton @click="dataDrawerVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="saveDataLoading" @click="handleSaveData">{{ $t('common.save') }}</ElButton>
       </template>
     </ElDrawer>
   </div>
@@ -402,16 +420,16 @@ onMounted(() => {
 }
 
 .dict-data-content::-webkit-scrollbar-thumb {
-  background-color: #c0c4cc;
+  background-color: var(--el-border-color-darker);
   border-radius: 4px;
 }
 
 .dict-data-content::-webkit-scrollbar-thumb:hover {
-  background-color: #909399;
+  background-color: var(--el-text-color-placeholder);
 }
 
 .dict-data-content::-webkit-scrollbar-track {
-  background-color: #f5f7fa;
+  background-color: var(--el-fill-color-lighter);
   border-radius: 4px;
 }
 </style>

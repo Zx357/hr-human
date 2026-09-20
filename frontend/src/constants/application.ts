@@ -20,6 +20,34 @@ export const statusMap: Record<number, { label: string; type: string }> = {
   3: { label: '已撤销', type: 'info' }
 };
 
+/** 申请类型简称（用于首页待审批徽标等紧凑展示） */
+export const appTypeShortMap: Record<string, string> = {
+  leave: '请假',
+  overtime: '加班',
+  business: '出差',
+  makeup: '补卡',
+  exchange: '换休',
+  regularization: '转正',
+  transfer: '调动',
+  reward: '奖励',
+  punish: '惩罚',
+  resignation: '离职'
+};
+
+/** 申请类型徽标配色（与简称配套使用） */
+export const appTypeColorMap: Record<string, string> = {
+  leave: '#6366f1',
+  overtime: '#f59e0b',
+  business: '#06b6d4',
+  makeup: '#8b5cf6',
+  exchange: '#10b981',
+  regularization: '#3b82f6',
+  transfer: '#ec4899',
+  reward: '#22c55e',
+  punish: '#ef4444',
+  resignation: '#64748b'
+};
+
 /** 各申请类型的时长单位：请假/加班/换休/补卡按小时，出差按天 */
 export const durationUnitMap: Record<string, string> = {
   leave: '小时',

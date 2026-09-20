@@ -10,8 +10,10 @@ import {
   fetchApplicationPage
 } from '@/service/api/application';
 import { useDictOptions } from '@/composables/use-dict-options';
-import EmployeePickerDialog from '@/components/common/EmployeePickerDialog.vue';
+import { formatDateTime } from '@/utils/format';
+import EmployeePickerDialog from '@/components/common/employee-picker-dialog.vue';
 import ApplicationDetailDrawer from '@/components/business/application-detail-drawer.vue';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'RegularizationApplication' });
 
@@ -42,7 +44,12 @@ const formData = ref<
 // 员工选择弹窗
 const employeeDialogVisible = ref(false);
 
-const searchParams = ref({ employeeName: '', employeeNo: '', status: undefined as number | undefined });
+const searchParams = ref({
+  employeeName: '',
+  employeeNo: '',
+  dateRange: [] as string[],
+  status: undefined as number | undefined
+});
 async function loadData() {
   loading.value = true;
   try {
@@ -52,7 +59,9 @@ async function loadData() {
       appType: 'regularization',
       employeeName: searchParams.value.employeeName || undefined,
       employeeNo: searchParams.value.employeeNo || undefined,
-      status: searchParams.value.status
+      status: searchParams.value.status,
+      beginTime: searchParams.value.dateRange?.[0] || undefined,
+      endTime: searchParams.value.dateRange?.[1] || undefined
     });
     data.value = res.data?.records || [];
     total.value = res.data?.total || 0;
@@ -101,17 +110,17 @@ function handleConfirmEmployee(selected: Api.Hr.Employee[]) {
 
 async function handleSubmit() {
   if (!formData.value.employeeId || !formData.value.regularDate || !formData.value.newEmployeeType) {
-    ElMessage.warning('请填写必填项');
+    ElMessage.warning($t('common.pleaseFillRequired'));
     return;
   }
   submitLoading.value = true;
   try {
     await createApplication(formData.value);
-    ElMessage.success('申请提交成功');
+    ElMessage.success($t('application.common.applicationSubmittedSuccessfully'));
     dialogVisible.value = false;
     loadData();
   } catch {
-    ElMessage.error('提交失败');
+    // 请求层已统一弹错
   } finally {
     submitLoading.value = false;
   }
@@ -128,20 +137,20 @@ function handleViewDetail(row: Application) {
 
 async function handleCancel(id: number) {
   try {
-    await ElMessageBox.confirm('确定撤销该申请吗？撤销后不可恢复', '撤销确认', {
+    await ElMessageBox.confirm($t('application.business.areYouSureYouWantToWithdrawThisApplicationThisCannotBeUndone'), $t('application.common.withdrawalConfirmation'), {
       type: 'warning',
-      confirmButtonText: '确认撤销',
-      cancelButtonText: '取消'
+      confirmButtonText: $t('application.common.confirmWithdrawal'),
+      cancelButtonText: $t('common.cancel')
     });
   } catch {
     return;
   }
   try {
     await cancelApplication(id);
-    ElMessage.success('已撤销');
+    ElMessage.success($t('common.withdrawn'));
     loadData();
   } catch {
-    ElMessage.error('撤销失败');
+    // 请求层已统一弹错
   }
 }
 
@@ -150,7 +159,7 @@ function handleSearch() {
   loadData();
 }
 function handleReset() {
-  searchParams.value = { employeeName: '', employeeNo: '', status: undefined };
+  searchParams.value = { dateRange: [], employeeName: '', employeeNo: '', status: undefined };
   currentPage.value = 1;
   loadData();
 }
@@ -170,28 +179,49 @@ function handleSizeChange(size: number) {
     <!-- 搜索区域 -->
     <ElCard class="search-card">
       <ElForm inline :model="searchParams">
-        <ElFormItem label="员工姓名">
-          <ElInput v-model="searchParams.employeeName" placeholder="请输入员工姓名" clearable />
+        <ElFormItem :label="$t('common.employeeName')">
+          <ElInput
+            v-model="searchParams.employeeName"
+            :placeholder="$t('common.pleaseInputEmployeeName')"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="员工编号">
-          <ElInput v-model="searchParams.employeeNo" placeholder="请输入员工编号" clearable />
+        <ElFormItem :label="$t('common.employeeNo')">
+          <ElInput
+            v-model="searchParams.employeeNo"
+            :placeholder="$t('common.pleaseInputEmployeeNo')"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="状态">
-          <ElSelect v-model="searchParams.status" placeholder="请选择状态" clearable style="width: 150px">
-            <ElOption label="待审批" :value="0" />
-            <ElOption label="已通过" :value="1" />
-            <ElOption label="已拒绝" :value="2" />
-            <ElOption label="已撤销" :value="3" />
+        <ElFormItem :label="$t('application.common.applicationTime')">
+          <ElDatePicker
+            v-model="searchParams.dateRange"
+            type="daterange"
+            :range-separator="$t('common.to')"
+            :start-placeholder="$t('common.startDate')"
+            :end-placeholder="$t('common.endDate')"
+            value-format="YYYY-MM-DD"
+            style="width: 240px"
+          />
+        </ElFormItem>
+        <ElFormItem :label="$t('common.status')">
+          <ElSelect v-model="searchParams.status" :placeholder="$t('common.pleaseSelectStatus')" clearable style="width: 150px">
+            <ElOption :label="$t('common.pendingApproval')" :value="0" />
+            <ElOption :label="$t('common.approved')" :value="1" />
+            <ElOption :label="$t('common.rejected')" :value="2" />
+            <ElOption :label="$t('common.withdrawn')" :value="3" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" @click="handleSearch">
             <template #icon><icon-ep-search /></template>
-            搜索
+            {{ $t('common.search') }}
           </ElButton>
           <ElButton @click="handleReset">
             <template #icon><icon-ep-refresh /></template>
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
@@ -201,42 +231,42 @@ function handleSizeChange(size: number) {
     <ElCard class="table-card">
       <template #header>
         <div class="flex items-center justify-between">
-          <span>转正申请列表</span>
-          <ElButton type="primary" @click="handleAdd">
+          <span>{{ $t('application.regularization.regularizationApplications') }}</span>
+          <ElButton v-permission="'application:regularization:add'" type="primary" @click="handleAdd">
             <template #icon><icon-ep-plus /></template>
-            新增申请
+            {{ $t('application.common.newApplication') }}
           </ElButton>
         </div>
       </template>
 
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="data" border stripe height="100%">
-          <ElTableColumn type="index" label="序号" width="60" align="center" />
-          <ElTableColumn prop="employeeNo" label="工号" min-width="100" />
-          <ElTableColumn prop="employeeName" label="员工姓名" min-width="100" />
-          <ElTableColumn prop="companyName" label="所属公司" min-width="120" />
-          <ElTableColumn prop="deptName" label="部门" min-width="100" />
-          <ElTableColumn prop="regularDate" label="转正日期" min-width="110" />
-          <ElTableColumn prop="newEmployeeType" label="转正后类型" min-width="100" align="center">
+          <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" />
+          <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" min-width="100" />
+          <ElTableColumn prop="employeeName" :label="$t('common.employeeName')" min-width="100" />
+          <ElTableColumn prop="companyName" :label="$t('application.common.company')" min-width="120" />
+          <ElTableColumn prop="deptName" :label="$t('common.department')" min-width="100" />
+          <ElTableColumn prop="regularDate" :label="$t('application.regularization.regularizationDate')" min-width="110" />
+          <ElTableColumn prop="newEmployeeType" :label="$t('application.regularization.typeAfterRegularization')" min-width="100" align="center">
             <template #default="{ row }">
               {{ getEmployeeTypeLabel(row.newEmployeeType) }}
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="status" label="状态" min-width="90" align="center">
+          <ElTableColumn prop="status" :label="$t('common.status')" min-width="90" align="center">
             <template #default="{ row }">
               <ElTag :type="statusMap[row.status]?.type as any">
                 {{ statusMap[row.status]?.label }}
               </ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="createdTime" label="申请时间" min-width="160" />
-          <ElTableColumn label="操作" width="160" align="center" fixed="right">
+          <ElTableColumn prop="createdTime" :label="$t('application.common.applicationTime')" min-width="160">
+            <template #default="{ row }">{{ formatDateTime(row.createdTime) }}</template>
+          </ElTableColumn>
+          <ElTableColumn :label="$t('common.action')" width="160" align="center" fixed="right">
             <template #default="{ row }">
-              <ElButton type="primary" link size="small" @click="handleViewDetail(row)">
-                详情
-              </ElButton>
+              <ElButton type="primary" link size="small" @click="handleViewDetail(row)">{{ $t('common.details') }}</ElButton>
               <ElButton v-if="row.status === 0" type="warning" link size="small" @click="handleCancel(row.id)">
-                撤销
+                {{ $t('common.withdraw') }}
               </ElButton>
             </template>
           </ElTableColumn>
@@ -257,25 +287,25 @@ function handleSizeChange(size: number) {
     </ElCard>
 
     <!-- 新增申请弹窗 -->
-    <ElDialog v-model="dialogVisible" title="新增转正申请" width="600px" destroy-on-close>
+    <ElDialog v-model="dialogVisible" :title="$t('application.regularization.newRegularizationApplication')" width="600px" destroy-on-close>
       <ElForm label-width="100px" :model="formData">
-        <ElFormItem label="员工" required>
+        <ElFormItem :label="$t('common.employee')" required>
           <div class="w-full flex gap-8px">
-            <ElInput v-model="employeeDisplayName" disabled placeholder="请选择员工" class="flex-1" />
-            <ElButton type="primary" @click="employeeDialogVisible = true">选择员工</ElButton>
+            <ElInput v-model="employeeDisplayName" disabled :placeholder="$t('common.pleaseSelectEmployees')" class="flex-1" />
+            <ElButton type="primary" @click="employeeDialogVisible = true">{{ $t('common.selectEmployees') }}</ElButton>
           </div>
         </ElFormItem>
-        <ElFormItem label="转正日期" required>
+        <ElFormItem :label="$t('application.regularization.regularizationDate')" required>
           <ElDatePicker
             v-model="formData.regularDate"
             type="date"
-            placeholder="选择转正日期"
+            :placeholder="$t('application.regularization.selectRegularizationDate')"
             style="width: 100%"
             value-format="YYYY-MM-DD"
           />
         </ElFormItem>
-        <ElFormItem label="转正后类型" required>
-          <ElSelect v-model="formData.newEmployeeType" placeholder="请选择员工类型" style="width: 100%">
+        <ElFormItem :label="$t('application.regularization.typeAfterRegularization')" required>
+          <ElSelect v-model="formData.newEmployeeType" :placeholder="$t('application.regularization.pleaseSelectEmployeeType')" style="width: 100%">
             <ElOption
               v-for="item in employeeTypeOptions"
               :key="item.dictValue"
@@ -284,16 +314,16 @@ function handleSizeChange(size: number) {
             />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="试用期评价">
-          <ElInput v-model="formData.evaluation" type="textarea" :rows="3" placeholder="请输入试用期评价" />
+        <ElFormItem :label="$t('application.regularization.probationEvaluation')">
+          <ElInput v-model="formData.evaluation" type="textarea" :rows="3" :placeholder="$t('application.regularization.pleaseEnterProbationEvaluation')" />
         </ElFormItem>
-        <ElFormItem label="申请理由">
-          <ElInput v-model="formData.reason" type="textarea" :rows="3" placeholder="请输入申请理由" />
+        <ElFormItem :label="$t('application.common.applicationReason')">
+          <ElInput v-model="formData.reason" type="textarea" :rows="3" :placeholder="$t('application.common.pleaseEnterApplicationReason')" />
         </ElFormItem>
       </ElForm>
       <template #footer>
-        <ElButton @click="dialogVisible = false">取消</ElButton>
-        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">提交申请</ElButton>
+        <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('application.common.submitApplication') }}</ElButton>
       </template>
     </ElDialog>
 

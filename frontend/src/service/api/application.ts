@@ -55,6 +55,10 @@ export function fetchApplicationPage(params: {
   pageSize?: number;
   employeeName?: string;
   employeeNo?: string;
+  /** 申请时间范围-开始（yyyy-MM-dd，按 createTime 过滤） */
+  beginTime?: string;
+  /** 申请时间范围-结束（yyyy-MM-dd，按 createTime 过滤） */
+  endTime?: string;
   appType?: string;
   status?: number;
   employeeId?: number;

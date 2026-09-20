@@ -9,6 +9,7 @@ import {
   fetchShiftList,
   updateShift
 } from '@/service/api/shift';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'ShiftManage' });
 
@@ -68,8 +69,8 @@ function handleAdd() {
     shiftName: '',
     status: 1,
     periods: [
-      { periodName: '上午', startTime: '09:00', endTime: '12:00', crossDay: 0, needClockIn: 1, needClockOut: 1 },
-      { periodName: '下午', startTime: '13:00', endTime: '18:00', crossDay: 0, needClockIn: 1, needClockOut: 1 }
+      { periodName: $t('attendance.shift.am'), startTime: '09:00', endTime: '12:00', crossDay: 0, needClockIn: 1, needClockOut: 1 },
+      { periodName: $t('attendance.shift.pm'), startTime: '13:00', endTime: '18:00', crossDay: 0, needClockIn: 1, needClockOut: 1 }
     ]
   };
   dialogVisible.value = true;
@@ -81,7 +82,7 @@ function handleEdit(row: Shift) {
   // 如果没有时段数据，从主表时间生成
   if (!periods.length && row.workStartTime && row.workEndTime) {
     periods.push({
-      periodName: '工作时段',
+      periodName: $t('attendance.shift.workPeriod'),
       startTime: row.workStartTime,
       endTime: row.workEndTime,
       crossDay: row.isNextDay || 0
@@ -94,10 +95,10 @@ function handleEdit(row: Shift) {
 async function handleDelete(id: number) {
   try {
     await deleteShift(id);
-    ElMessage.success('删除成功');
+    ElMessage.success($t('common.deleteSuccess'));
     loadData();
   } catch {
-    ElMessage.error('删除失败');
+    // 请求层已统一弹错
   }
 }
 
@@ -118,16 +119,16 @@ function removePeriod(index: number) {
 
 async function handleSubmit() {
   if (!formData.value.shiftCode || !formData.value.shiftName) {
-    ElMessage.warning('请填写班次编码和名称');
+    ElMessage.warning($t('attendance.shift.pleaseEnterShiftCodeAndName'));
     return;
   }
   if (!formData.value.periods?.length) {
-    ElMessage.warning('请至少添加一个时段');
+    ElMessage.warning($t('attendance.shift.pleaseAddAtLeastOnePeriod'));
     return;
   }
   for (const period of formData.value.periods) {
     if (!period.startTime || !period.endTime) {
-      ElMessage.warning('请填写完整的时段时间');
+      ElMessage.warning($t('attendance.shift.pleaseFillInCompletePeriodTimes'));
       return;
     }
   }
@@ -142,23 +143,23 @@ async function handleSubmit() {
   try {
     if (operateType.value === 'add') {
       await createShift(formData.value);
-      ElMessage.success('新增成功');
+      ElMessage.success($t('common.addSuccess'));
     } else {
       await updateShift(formData.value);
-      ElMessage.success('更新成功');
+      ElMessage.success($t('common.updateSuccess'));
     }
     dialogVisible.value = false;
     loadData();
   } catch {
-    ElMessage.error('保存失败');
+    // 请求层已统一弹错
   } finally {
     submitLoading.value = false;
   }
 }
 
 const statusMap: Record<number, { label: string; type: string }> = {
-  0: { label: '禁用', type: 'danger' },
-  1: { label: '启用', type: 'success' }
+  0: { label: $t('common.disable'), type: 'danger' },
+  1: { label: $t('common.enable'), type: 'success' }
 };
 
 function formatTime(time?: string) {
@@ -173,51 +174,51 @@ function formatTime(time?: string) {
     <ElCard>
       <template #header>
         <div class="flex items-center justify-between">
-          <span>班次管理</span>
+          <span>{{ $t('attendance.shift.shiftManagement') }}</span>
           <ElButton v-permission="'attendance:shift:add'" type="primary" @click="handleAdd">
             <template #icon><icon-ep-plus /></template>
-            新增班次
+            {{ $t('attendance.shift.newShift') }}
           </ElButton>
         </div>
       </template>
 
       <ElTable v-loading="loading" :data="data" border stripe>
-        <ElTableColumn type="index" label="序号" width="60" align="center" />
-        <ElTableColumn prop="shiftCode" label="班次编码" width="120" />
-        <ElTableColumn prop="shiftName" label="班次名称" width="120" />
-        <ElTableColumn label="工作时段" min-width="350">
+        <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" />
+        <ElTableColumn prop="shiftCode" :label="$t('attendance.shift.shiftCode')" width="120" />
+        <ElTableColumn prop="shiftName" :label="$t('attendance.shift.shiftName')" width="120" />
+        <ElTableColumn :label="$t('attendance.shift.workPeriod')" min-width="350">
           <template #default="{ row }">
             <div v-if="row.periods?.length" class="flex flex-wrap gap-8px">
               <ElTag v-for="(period, index) in row.periods" :key="index" size="small">
-                {{ period.periodName || `时段${index + 1}` }}: {{ formatTime(period.startTime) }} -
+                {{ period.periodName || $t('attendance.shift.period', { index: index + 1 }) }}: {{ formatTime(period.startTime) }} -
                 {{ formatTime(period.endTime) }}
-                <span v-if="period.crossDay" class="text-orange-500">(跨天)</span>
+                <span v-if="period.crossDay" class="text-orange-500">{{ $t('attendance.shift.crossDay') }}</span>
               </ElTag>
             </div>
             <div v-else>
               <ElTag size="small">
                 {{ formatTime(row.workStartTime) }} - {{ formatTime(row.workEndTime) }}
-                <span v-if="row.isNextDay" class="text-orange-500">(跨天)</span>
+                <span v-if="row.isNextDay" class="text-orange-500">{{ $t('attendance.shift.crossDay') }}</span>
               </ElTag>
             </div>
           </template>
         </ElTableColumn>
-        <ElTableColumn label="正班时间" width="100" align="center">
-          <template #default="{ row }">{{ getRowWorkHours(row) }} 小时</template>
+        <ElTableColumn :label="$t('attendance.shift.regularShiftTime')" width="100" align="center">
+          <template #default="{ row }">{{ getRowWorkHours(row) }} {{ $t('common.hours') }}</template>
         </ElTableColumn>
-        <ElTableColumn prop="status" label="状态" width="80" align="center">
+        <ElTableColumn prop="status" :label="$t('common.status')" width="80" align="center">
           <template #default="{ row }">
             <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
           </template>
         </ElTableColumn>
-        <ElTableColumn label="操作" width="150" align="center" fixed="right">
+        <ElTableColumn :label="$t('common.action')" width="150" align="center" fixed="right">
           <template #default="{ row }">
             <ElButton v-permission="'attendance:shift:edit'" type="primary" link size="small" @click="handleEdit(row)">
-              编辑
+              {{ $t('common.edit') }}
             </ElButton>
-            <ElPopconfirm title="确定删除该班次吗？" @confirm="handleDelete(row.id)">
+            <ElPopconfirm :title="$t('attendance.shift.areYouSureYouWantToDeleteThisShift')" @confirm="handleDelete(row.id)">
               <template #reference>
-                <ElButton v-permission="'attendance:shift:delete'" type="danger" link size="small">删除</ElButton>
+                <ElButton v-permission="'attendance:shift:delete'" type="danger" link size="small">{{ $t('common.delete') }}</ElButton>
               </template>
             </ElPopconfirm>
           </template>
@@ -225,26 +226,26 @@ function formatTime(time?: string) {
       </ElTable>
     </ElCard>
 
-    <ElDialog v-model="dialogVisible" :title="operateType === 'add' ? '新增班次' : '编辑班次'" width="750px">
+    <ElDialog v-model="dialogVisible" :title="operateType === 'add' ? $t('attendance.shift.newShift') : $t('attendance.shift.editShift')" width="750px">
       <ElForm :model="formData" label-position="top">
         <ElRow :gutter="16">
           <ElCol :span="8">
-            <ElFormItem label="班次编码" required>
-              <ElInput v-model="formData.shiftCode" placeholder="如：DAY01" :disabled="operateType === 'edit'" />
+            <ElFormItem :label="$t('attendance.shift.shiftCode')" required>
+              <ElInput v-model="formData.shiftCode" :placeholder="$t('attendance.shift.eGDay01')" :disabled="operateType === 'edit'" />
             </ElFormItem>
           </ElCol>
           <ElCol :span="8">
-            <ElFormItem label="班次名称" required>
-              <ElInput v-model="formData.shiftName" placeholder="如：白班" />
+            <ElFormItem :label="$t('attendance.shift.shiftName')" required>
+              <ElInput v-model="formData.shiftName" :placeholder="$t('attendance.shift.eGDayShift')" />
             </ElFormItem>
           </ElCol>
           <ElCol :span="4">
-            <ElFormItem label="正班时长">
+            <ElFormItem :label="$t('attendance.shift.regularShiftHours')">
               <div class="work-hours">{{ computedWorkHours }}h</div>
             </ElFormItem>
           </ElCol>
           <ElCol :span="4">
-            <ElFormItem label="状态">
+            <ElFormItem :label="$t('common.status')">
               <ElSwitch v-model="formData.status" :active-value="1" :inactive-value="0" />
             </ElFormItem>
           </ElCol>
@@ -252,10 +253,10 @@ function formatTime(time?: string) {
 
         <div class="period-section">
           <div class="period-header">
-            <span>工作时段</span>
+            <span>{{ $t('attendance.shift.workPeriod') }}</span>
             <ElButton type="primary" link size="small" @click="addPeriod">
               <icon-ep-plus />
-              添加
+              {{ $t('common.add') }}
             </ElButton>
           </div>
 
@@ -263,30 +264,30 @@ function formatTime(time?: string) {
             <div v-for="(period, index) in formData.periods" :key="index" class="period-item">
               <div class="period-row">
                 <span class="period-num">{{ index + 1 }}</span>
-                <ElInput v-model="period.periodName" placeholder="名称" class="period-name" />
+                <ElInput v-model="period.periodName" :placeholder="$t('common.name')" class="period-name" />
                 <ElTimePicker
                   v-model="period.startTime"
                   format="HH:mm"
                   value-format="HH:mm"
-                  placeholder="上班"
+                  :placeholder="$t('common.clockIn')"
                   class="period-time"
                 />
-                <span class="period-to">至</span>
+                <span class="period-to">{{ $t('common.to') }}</span>
                 <ElTimePicker
                   v-model="period.endTime"
                   format="HH:mm"
                   value-format="HH:mm"
-                  placeholder="下班"
+                  :placeholder="$t('common.clockOut')"
                   class="period-time"
                 />
                 <ElCheckbox v-model="period.crossDay" :true-value="1" :false-value="0" class="period-check">
-                  跨天
+                  {{ $t('attendance.shift.crossDay2') }}
                 </ElCheckbox>
                 <ElCheckbox v-model="period.needClockIn" :true-value="1" :false-value="0" class="period-check">
-                  上班卡
+                  {{ $t('attendance.shift.clockIn') }}
                 </ElCheckbox>
                 <ElCheckbox v-model="period.needClockOut" :true-value="1" :false-value="0" class="period-check">
-                  下班卡
+                  {{ $t('attendance.shift.clockOut') }}
                 </ElCheckbox>
                 <ElButton
                   v-if="formData.periods && formData.periods.length > 1"
@@ -304,8 +305,8 @@ function formatTime(time?: string) {
         </div>
       </ElForm>
       <template #footer>
-        <ElButton @click="dialogVisible = false">取消</ElButton>
-        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">确定</ElButton>
+        <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('common.ok') }}</ElButton>
       </template>
     </ElDialog>
   </div>
@@ -315,7 +316,7 @@ function formatTime(time?: string) {
 .work-hours {
   font-size: 18px;
   font-weight: 600;
-  color: #409eff;
+  color: var(--el-color-primary);
   line-height: 32px;
 }
 
@@ -329,21 +330,21 @@ function formatTime(time?: string) {
   justify-content: space-between;
   margin-bottom: 12px;
   font-weight: 500;
-  color: #606266;
+  color: var(--el-text-color-regular);
 }
 
 .period-list {
-  background: #fafafa;
+  background: var(--el-fill-color-light);
   border-radius: 6px;
   padding: 12px;
 }
 
 .period-item {
-  background: #fff;
+  background: var(--el-bg-color);
   border-radius: 4px;
   padding: 10px 12px;
   margin-bottom: 8px;
-  border: 1px solid #ebeef5;
+  border: 1px solid var(--el-border-color-lighter);
 }
 
 .period-item:last-child {
@@ -360,7 +361,7 @@ function formatTime(time?: string) {
 .period-num {
   width: 20px;
   height: 20px;
-  background: #409eff;
+  background: var(--el-color-primary);
   color: #fff;
   border-radius: 50%;
   font-size: 12px;
@@ -381,7 +382,7 @@ function formatTime(time?: string) {
 }
 
 .period-to {
-  color: #909399;
+  color: var(--el-text-color-secondary);
   font-size: 12px;
 }
 

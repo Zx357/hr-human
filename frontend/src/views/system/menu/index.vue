@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import { createMenu, deleteMenu, fetchMenuTree, updateMenu } from '@/service/api';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'MenuManage' });
 
@@ -134,16 +135,16 @@ const formData = reactive<Api.System.MenuForm>({
 
 // 表单验证规则
 const rules: FormRules = {
-  menuCode: [{ required: true, message: '请输入菜单编码', trigger: 'blur' }],
-  menuName: [{ required: true, message: '请输入菜单名称', trigger: 'blur' }],
-  sortOrder: [{ required: true, message: '请输入显示排序', trigger: 'blur' }]
+  menuCode: [{ required: true, message: $t('sys.menu.pleaseEnterMenuCode'), trigger: 'blur' }],
+  menuName: [{ required: true, message: $t('sys.common.pleaseEnterMenuName'), trigger: 'blur' }],
+  sortOrder: [{ required: true, message: $t('sys.menu.pleaseEnterDisplayOrder'), trigger: 'blur' }]
 };
 
 // 菜单类型选项
 const menuTypeOptions = [
-  { label: '目录', value: 1 },
-  { label: '菜单', value: 2 },
-  { label: '按钮', value: 3 }
+  { label: $t('sys.common.directory'), value: 1 },
+  { label: $t('sys.common.menu'), value: 2 },
+  { label: $t('common.button'), value: 3 }
 ];
 
 // 重置表单
@@ -167,7 +168,7 @@ function resetForm() {
 function handleAdd(parentId = 0) {
   resetForm();
   operateType.value = 'add';
-  dialogTitle.value = '添加菜单';
+  dialogTitle.value = $t('sys.menu.addMenu');
   formData.parentId = parentId;
   // 如果有父级，默认为菜单类型
   if (parentId !== 0) {
@@ -197,7 +198,7 @@ function findMenuById(menus: Api.System.Menu[], id: number): Api.System.Menu | n
 function handleEdit(row: Api.System.Menu) {
   resetForm();
   operateType.value = 'edit';
-  dialogTitle.value = '修改菜单';
+  dialogTitle.value = $t('sys.menu.modifyMenu');
   Object.assign(formData, {
     id: row.id,
     parentId: row.parentId,
@@ -222,7 +223,7 @@ async function handleDelete(id: number) {
   try {
     const { error } = await deleteMenu(id);
     if (!error) {
-      window.$message?.success('删除成功');
+      window.$message?.success($t('common.deleteSuccess'));
       loadData();
     }
   } finally {
@@ -241,14 +242,14 @@ async function submitForm() {
         if (operateType.value === 'add') {
           const { error } = await createMenu(formData);
           if (!error) {
-            window.$message?.success('新增成功');
+            window.$message?.success($t('common.addSuccess'));
             dialogVisible.value = false;
             loadData();
           }
         } else {
           const { error } = await updateMenu(formData);
           if (!error) {
-            window.$message?.success('修改成功');
+            window.$message?.success($t('common.modifySuccess'));
             dialogVisible.value = false;
             loadData();
           }
@@ -268,9 +269,9 @@ function cancel() {
 
 // 菜单类型标签
 const menuTypeMap: Record<number, { text: string; type: 'primary' | 'success' | 'warning' }> = {
-  1: { text: '目录', type: 'primary' },
-  2: { text: '菜单', type: 'success' },
-  3: { text: '按钮', type: 'warning' }
+  1: { text: $t('sys.common.directory'), type: 'primary' },
+  2: { text: $t('sys.common.menu'), type: 'success' },
+  3: { text: $t('common.button'), type: 'warning' }
 };
 
 // 常用图标列表
@@ -337,29 +338,29 @@ function selectIcon(icon: string) {
     <!-- 搜索区域 -->
     <ElCard shadow="never">
       <ElForm :model="queryForm" inline>
-        <ElFormItem label="菜单名称">
+        <ElFormItem :label="$t('sys.common.menuName')">
           <ElInput
             v-model="queryForm.menuName"
-            placeholder="请输入菜单名称"
+            :placeholder="$t('sys.common.pleaseEnterMenuName')"
             clearable
             style="width: 200px"
             @keyup.enter="handleQuery"
           />
         </ElFormItem>
-        <ElFormItem label="状态">
-          <ElSelect v-model="queryForm.status" placeholder="菜单状态" clearable style="width: 200px">
-            <ElOption label="正常" :value="1" />
-            <ElOption label="停用" :value="0" />
+        <ElFormItem :label="$t('common.status')">
+          <ElSelect v-model="queryForm.status" :placeholder="$t('sys.common.menuStatus')" clearable style="width: 200px">
+            <ElOption :label="$t('common.normal')" :value="1" />
+            <ElOption :label="$t('common.deactivate')" :value="0" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" @click="handleQuery">
             <template #icon><icon-ep-search /></template>
-            搜索
+            {{ $t('common.search') }}
           </ElButton>
           <ElButton @click="resetQuery">
             <template #icon><icon-ep-refresh /></template>
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
@@ -372,11 +373,11 @@ function selectIcon(icon: string) {
         <div>
           <ElButton v-permission="'system:menu:add'" type="primary" @click="handleAdd(0)">
             <template #icon><icon-ep-plus /></template>
-            新增
+            {{ $t('common.add') }}
           </ElButton>
           <ElButton type="info" plain @click="toggleExpandAll">
             <template #icon><icon-ep-sort /></template>
-            {{ isExpandAll ? '折叠' : '展开' }}
+            {{ isExpandAll ? $t('common.collapse') : $t('common.expand') }}
           </ElButton>
         </div>
         <div>
@@ -398,66 +399,66 @@ function selectIcon(icon: string) {
         :max-height="tableMaxHeight"
         class="flex-1"
       >
-        <ElTableColumn prop="menuName" label="菜单名称" min-width="180" show-overflow-tooltip />
-        <ElTableColumn prop="icon" label="图标" width="80" align="center">
+        <ElTableColumn prop="menuName" :label="$t('sys.common.menuName')" min-width="180" show-overflow-tooltip />
+        <ElTableColumn prop="icon" :label="$t('common.icon')" width="80" align="center">
           <template #default="{ row }">
             <SvgIcon v-if="row.icon" :icon="row.icon" class="text-18px" />
             <span v-else>-</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="sortOrder" label="排序" width="80" align="center" />
-        <ElTableColumn prop="permission" label="权限标识" min-width="150" show-overflow-tooltip>
+        <ElTableColumn prop="sortOrder" :label="$t('common.sort')" width="80" align="center" />
+        <ElTableColumn prop="permission" :label="$t('sys.menu.permission')" min-width="150" show-overflow-tooltip>
           <template #default="{ row }">
             <span>{{ row.permission || '-' }}</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="component" label="组件路径" min-width="150" show-overflow-tooltip>
+        <ElTableColumn prop="component" :label="$t('sys.menu.componentPath')" min-width="150" show-overflow-tooltip>
           <template #default="{ row }">
             <span>{{ row.component || '-' }}</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="menuType" label="类型" width="80" align="center">
+        <ElTableColumn prop="menuType" :label="$t('common.type')" width="80" align="center">
           <template #default="{ row }">
             <ElTag :type="menuTypeMap[row.menuType]?.type || 'info'" size="small">
-              {{ menuTypeMap[row.menuType]?.text || '未知' }}
+              {{ menuTypeMap[row.menuType]?.text || $t('common.unknown') }}
             </ElTag>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="visible" label="可见" width="80" align="center">
+        <ElTableColumn prop="visible" :label="$t('sys.menu.visible')" width="80" align="center">
           <template #default="{ row }">
             <ElTag :type="row.visible === 1 ? 'success' : 'info'" size="small">
-              {{ row.visible === 1 ? '显示' : '隐藏' }}
+              {{ row.visible === 1 ? $t('common.show') : $t('common.hide') }}
             </ElTag>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="status" label="状态" width="80" align="center">
+        <ElTableColumn prop="status" :label="$t('common.status')" width="80" align="center">
           <template #default="{ row }">
             <ElTag :type="row.status === 1 ? 'success' : 'danger'" size="small">
-              {{ row.status === 1 ? '正常' : '停用' }}
+              {{ row.status === 1 ? $t('common.normal') : $t('common.deactivate') }}
             </ElTag>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="createTime" label="创建时间" width="160" align="center" />
-        <ElTableColumn label="操作" width="200" align="center" fixed="right">
+        <ElTableColumn prop="createTime" :label="$t('common.createTime')" width="160" align="center" />
+        <ElTableColumn :label="$t('common.action')" width="200" align="center" fixed="right">
           <template #default="{ row }">
             <ElButton v-permission="'system:menu:edit'" type="primary" link size="small" @click="handleEdit(row)">
               <template #icon><icon-ep-edit /></template>
-              修改
+              {{ $t('common.modify') }}
             </ElButton>
             <ElButton v-permission="'system:menu:add'" type="primary" link size="small" @click="handleAdd(row.id)">
               <template #icon><icon-ep-plus /></template>
-              新增
+              {{ $t('common.add') }}
             </ElButton>
             <ElPopconfirm
-              title="确认要删除该菜单吗？"
-              confirm-button-text="确定"
-              cancel-button-text="取消"
+              :title="$t('sys.menu.areYouSureYouWantToDeleteThisMenu')"
+              :confirm-button-text="$t('common.ok')"
+              :cancel-button-text="$t('common.cancel')"
               @confirm="handleDelete(row.id)"
             >
               <template #reference>
                 <ElButton v-permission="'system:menu:delete'" type="danger" link size="small">
                   <template #icon><icon-ep-delete /></template>
-                  删除
+                  {{ $t('common.delete') }}
                 </ElButton>
               </template>
             </ElPopconfirm>
@@ -471,13 +472,13 @@ function selectIcon(icon: string) {
       <ElForm ref="formRef" :model="formData" :rules="rules" label-width="100px">
         <ElRow :gutter="20">
           <ElCol :span="24">
-            <ElFormItem label="上级菜单">
+            <ElFormItem :label="$t('sys.menu.parentMenu')">
               <ElTreeSelect
                 v-model="formData.parentId"
-                :data="[{ id: 0, menuName: '主类目', children: data }]"
+                :data="[{ id: 0, menuName: $t('sys.menu.rootCategory'), children: data }]"
                 :props="{ value: 'id', label: 'menuName', children: 'children' }"
                 value-key="id"
-                placeholder="选择上级菜单"
+                :placeholder="$t('sys.menu.selectParentMenu')"
                 check-strictly
                 :render-after-expand="false"
                 style="width: 100%"
@@ -485,7 +486,7 @@ function selectIcon(icon: string) {
             </ElFormItem>
           </ElCol>
           <ElCol :span="24">
-            <ElFormItem label="菜单类型" required>
+            <ElFormItem :label="$t('sys.common.menuType')" required>
               <ElRadioGroup v-model="formData.menuType">
                 <ElRadio v-for="item in menuTypeOptions" :key="item.value" :value="item.value">
                   {{ item.label }}
@@ -494,10 +495,10 @@ function selectIcon(icon: string) {
             </ElFormItem>
           </ElCol>
           <ElCol v-if="formData.menuType !== 3" :span="24">
-            <ElFormItem label="菜单图标">
+            <ElFormItem :label="$t('sys.menu.menuIcon')">
               <ElPopover v-model:visible="showIconPicker" placement="bottom-start" :width="400" trigger="click">
                 <template #reference>
-                  <ElInput v-model="formData.icon" placeholder="点击选择图标" readonly>
+                  <ElInput v-model="formData.icon" :placeholder="$t('sys.menu.clickToSelectAnIcon')" readonly>
                     <template #prefix>
                       <SvgIcon v-if="formData.icon" :icon="formData.icon" class="text-16px" />
                     </template>
@@ -508,7 +509,7 @@ function selectIcon(icon: string) {
                 </template>
                 <div class="icon-picker">
                   <div class="icon-picker-search mb-8px">
-                    <ElInput v-model="formData.icon" placeholder="输入图标名称" clearable />
+                    <ElInput v-model="formData.icon" :placeholder="$t('sys.menu.enterIconName')" clearable />
                   </div>
                   <div class="icon-picker-list">
                     <div
@@ -526,12 +527,12 @@ function selectIcon(icon: string) {
             </ElFormItem>
           </ElCol>
           <ElCol :span="12">
-            <ElFormItem label="菜单编码" prop="menuCode">
-              <ElInput v-model="formData.menuCode" placeholder="请输入菜单编码" />
+            <ElFormItem :label="$t('sys.common.menuCode')" prop="menuCode">
+              <ElInput v-model="formData.menuCode" :placeholder="$t('sys.menu.pleaseEnterMenuCode')" />
             </ElFormItem>
           </ElCol>
           <ElCol :span="12">
-            <ElFormItem label="显示排序" prop="sortOrder">
+            <ElFormItem :label="$t('sys.menu.displayOrder')" prop="sortOrder">
               <ElInputNumber
                 v-model="formData.sortOrder"
                 :min="0"
@@ -542,45 +543,45 @@ function selectIcon(icon: string) {
             </ElFormItem>
           </ElCol>
           <ElCol :span="12">
-            <ElFormItem label="菜单名称" prop="menuName">
-              <ElInput v-model="formData.menuName" placeholder="请输入菜单名称（中文）" />
+            <ElFormItem :label="$t('sys.common.menuName')" prop="menuName">
+              <ElInput v-model="formData.menuName" :placeholder="$t('sys.menu.pleaseEnterMenuNameChinese')" />
             </ElFormItem>
           </ElCol>
           <ElCol :span="12">
-            <ElFormItem label="英文名称">
-              <ElInput v-model="formData.menuNameEn" placeholder="请输入菜单名称（英文）" />
+            <ElFormItem :label="$t('sys.dict.englishName')">
+              <ElInput v-model="formData.menuNameEn" :placeholder="$t('sys.menu.pleaseEnterMenuNameEnglish')" />
             </ElFormItem>
           </ElCol>
           <ElCol v-if="formData.menuType !== 3" :span="12">
-            <ElFormItem label="路由地址">
-              <ElInput v-model="formData.path" placeholder="请输入路由地址" />
+            <ElFormItem :label="$t('sys.menu.routeAddress')">
+              <ElInput v-model="formData.path" :placeholder="$t('sys.menu.pleaseEnterRouteAddress')" />
             </ElFormItem>
           </ElCol>
           <ElCol v-if="formData.menuType === 2" :span="12">
-            <ElFormItem label="组件路径">
-              <ElInput v-model="formData.component" placeholder="请输入组件路径">
+            <ElFormItem :label="$t('sys.menu.componentPath')">
+              <ElInput v-model="formData.component" :placeholder="$t('sys.menu.pleaseEnterComponentPath')">
                 <template #prepend>view.</template>
               </ElInput>
             </ElFormItem>
           </ElCol>
           <ElCol v-if="formData.menuType === 3" :span="12">
-            <ElFormItem label="权限标识">
-              <ElInput v-model="formData.permission" placeholder="请输入权限标识" />
+            <ElFormItem :label="$t('sys.menu.permission')">
+              <ElInput v-model="formData.permission" :placeholder="$t('sys.menu.pleaseEnterPermission')" />
             </ElFormItem>
           </ElCol>
           <ElCol v-if="formData.menuType !== 3" :span="12">
-            <ElFormItem label="显示状态">
+            <ElFormItem :label="$t('sys.menu.visibleStatus')">
               <ElRadioGroup v-model="formData.visible">
-                <ElRadio :value="1">显示</ElRadio>
-                <ElRadio :value="0">隐藏</ElRadio>
+                <ElRadio :value="1">{{ $t('common.show') }}</ElRadio>
+                <ElRadio :value="0">{{ $t('common.hide') }}</ElRadio>
               </ElRadioGroup>
             </ElFormItem>
           </ElCol>
           <ElCol :span="12">
-            <ElFormItem label="菜单状态">
+            <ElFormItem :label="$t('sys.common.menuStatus')">
               <ElRadioGroup v-model="formData.status">
-                <ElRadio :value="1">正常</ElRadio>
-                <ElRadio :value="0">停用</ElRadio>
+                <ElRadio :value="1">{{ $t('common.normal') }}</ElRadio>
+                <ElRadio :value="0">{{ $t('common.deactivate') }}</ElRadio>
               </ElRadioGroup>
             </ElFormItem>
           </ElCol>
@@ -588,8 +589,8 @@ function selectIcon(icon: string) {
       </ElForm>
       <template #footer>
         <div class="dialog-footer">
-          <ElButton @click="cancel">取 消</ElButton>
-          <ElButton type="primary" :loading="loading" @click="submitForm">确 定</ElButton>
+          <ElButton @click="cancel">{{ $t('common.cancel') }}</ElButton>
+          <ElButton type="primary" :loading="loading" @click="submitForm">{{ $t('common.ok') }}</ElButton>
         </div>
       </template>
     </ElDialog>

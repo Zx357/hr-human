@@ -8,6 +8,7 @@ import { type EmployeeReportSummary, fetchEmployeeReportSummary } from '@/servic
 import { useEcharts } from '@/hooks/common/echarts';
 import { getDictLabelByValue } from '@/utils/dict';
 import { downloadCsv, resolveOrgIds } from '@/utils/report';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'EmployeeReport' });
 
@@ -53,8 +54,8 @@ const searchParams = ref({
 });
 
 const statusOptions = [
-  { label: '在职', value: 1 },
-  { label: '离职', value: 2 }
+  { label: $t('common.active'), value: 1 },
+  { label: $t('common.resigned'), value: 2 }
 ];
 
 watch(
@@ -98,26 +99,26 @@ const summaryCards = computed<StatCard[]>(() => {
   if (api?.totals) {
     const apiTrend = api.monthlyTrend?.find(item => item.month === currentMonth);
     return [
-      { label: '员工总数', value: Number(api.totals.total || 0), hint: '当前筛选条件下的员工数量', tone: 'primary' },
-      { label: '在职人数', value: Number(api.totals.active || 0), hint: '状态为在职的员工', tone: 'success' },
-      { label: '试用期人数', value: Number(api.totals.probation || 0), hint: '状态为试用期的员工', tone: 'info' },
-      { label: '离职人数', value: Number(api.totals.resigned || 0), hint: '状态为离职的员工', tone: 'warning' },
+      { label: $t('common.totalEmployees'), value: Number(api.totals.total || 0), hint: $t('report.employee.employeesUnderCurrentFilters'), tone: 'primary' },
+      { label: $t('report.employee.activeEmployees'), value: Number(api.totals.active || 0), hint: $t('report.employee.employeesWithActiveStatus'), tone: 'success' },
+      { label: $t('report.employee.employeesOnProbation'), value: Number(api.totals.probation || 0), hint: $t('report.employee.employeesOnProbation2'), tone: 'info' },
+      { label: $t('report.employee.resignedEmployees'), value: Number(api.totals.resigned || 0), hint: $t('report.employee.employeesWithResignedStatus'), tone: 'warning' },
       {
-        label: '本月入职',
+        label: $t('report.employee.newHiresThisMonth'),
         value: apiTrend ? Number(apiTrend.entry || 0) : newThisMonthLocal,
-        hint: '按入职日期统计',
+        hint: $t('report.employee.countedByEntryDate'),
         tone: 'primary'
       },
       {
-        label: '本月离职',
+        label: $t('report.employee.resignationsThisMonth'),
         value: apiTrend ? Number(apiTrend.exit || 0) : resignedThisMonthLocal,
-        hint: '按离职日期统计',
+        hint: $t('report.employee.countedByResignationDate'),
         tone: 'danger'
       },
       {
-        label: '平均年龄',
-        value: averageAge > 0 ? `${averageAge.toFixed(1)} 岁` : '-',
-        hint: '基于已填写生日的员工',
+        label: $t('report.employee.averageAge'),
+        value: averageAge > 0 ? $t('report.employee.yrs', { age: averageAge.toFixed(1) }) : '-',
+        hint: $t('report.employee.basedOnEmployeesWithBirthdayFilled'),
         tone: 'primary'
       }
     ];
@@ -128,15 +129,15 @@ const summaryCards = computed<StatCard[]>(() => {
   const resignedCount = employees.value.filter(item => item.status === 2).length;
 
   return [
-    { label: '员工总数', value: totalEmployees.value, hint: '当前筛选条件下的员工数量', tone: 'primary' },
-    { label: '在职人数', value: onJobCount, hint: '状态为在职的员工', tone: 'success' },
-    { label: '离职人数', value: resignedCount, hint: '状态为离职的员工', tone: 'warning' },
-    { label: '本月入职', value: newThisMonthLocal, hint: '按入职日期统计', tone: 'info' },
-    { label: '本月离职', value: resignedThisMonthLocal, hint: '按离职日期统计', tone: 'danger' },
+    { label: $t('common.totalEmployees'), value: totalEmployees.value, hint: $t('report.employee.employeesUnderCurrentFilters'), tone: 'primary' },
+    { label: $t('report.employee.activeEmployees'), value: onJobCount, hint: $t('report.employee.employeesWithActiveStatus'), tone: 'success' },
+    { label: $t('report.employee.resignedEmployees'), value: resignedCount, hint: $t('report.employee.employeesWithResignedStatus'), tone: 'warning' },
+    { label: $t('report.employee.newHiresThisMonth'), value: newThisMonthLocal, hint: $t('report.employee.countedByEntryDate'), tone: 'info' },
+    { label: $t('report.employee.resignationsThisMonth'), value: resignedThisMonthLocal, hint: $t('report.employee.countedByResignationDate'), tone: 'danger' },
     {
-      label: '平均年龄',
-      value: averageAge > 0 ? `${averageAge.toFixed(1)} 岁` : '-',
-      hint: '基于已填写生日的员工',
+      label: $t('report.employee.averageAge'),
+      value: averageAge > 0 ? $t('report.employee.yrs', { age: averageAge.toFixed(1) }) : '-',
+      hint: $t('report.employee.basedOnEmployeesWithBirthdayFilled'),
       tone: 'primary'
     }
   ];
@@ -161,7 +162,7 @@ const departmentDistribution = computed(() => {
   // 回退：前端全量计算
   return buildDistribution(
     employees.value.reduce<Record<string, number>>((acc, item) => {
-      const name = item.deptName || '未分配部门';
+      const name = item.deptName || $t('report.attendance.unassignedDepartment');
       acc[name] = (acc[name] || 0) + 1;
 
       return acc;
@@ -180,7 +181,7 @@ const educationDistribution = computed(() => {
     employees.value.reduce<Record<string, number>>((acc, item) => {
       const name = item.highestEducation
         ? getDictLabelByValue(educationOptions.value, item.highestEducation)
-        : '未填写';
+        : $t('home.educationChart.notFilled');
       acc[name] = (acc[name] || 0) + 1;
 
       return acc;
@@ -191,7 +192,7 @@ const educationDistribution = computed(() => {
 const employeeTypeDistribution = computed(() =>
   buildDistribution(
     employees.value.reduce<Record<string, number>>((acc, item) => {
-      const name = item.employeeType ? getDictLabelByValue(employeeTypeOptions.value, item.employeeType) : '未填写';
+      const name = item.employeeType ? getDictLabelByValue(employeeTypeOptions.value, item.employeeType) : $t('home.educationChart.notFilled');
       acc[name] = (acc[name] || 0) + 1;
 
       return acc;
@@ -220,7 +221,7 @@ const ageDistribution = computed(() => {
     const age = getAge(item.birthDate);
 
     if (age === null) {
-      bucketMap['未填写'] += 1;
+      bucketMap[$t('home.educationChart.notFilled')] += 1;
     } else if (age <= 24) {
       bucketMap['24岁及以下'] += 1;
     } else if (age <= 29) {
@@ -275,23 +276,23 @@ const pagedEmployees = computed(() => {
 /** 近 12 个月入离职趋势 - 折线图 */
 const { domRef: trendChartRef, updateOptions: updateTrendOptions } = useEcharts(() => ({
   tooltip: { trigger: 'axis' },
-  legend: { data: ['入职人数', '离职人数', '净增长'], top: 0 },
+  legend: { data: [$t('report.employee.newHires'), $t('report.employee.resignedEmployees'), $t('report.employee.netGrowth')], top: 0 },
   grid: { left: '2%', right: '2%', bottom: '3%', top: '40px', containLabel: true },
   xAxis: {
     type: 'category',
     boundaryGap: false,
     data: [] as string[],
-    axisLabel: { color: '#9ca3af', fontSize: 12 }
+    axisLabel: { fontSize: 12 }
   },
   yAxis: {
     type: 'value',
     minInterval: 1,
-    splitLine: { lineStyle: { color: '#f3f4f6', type: 'dashed' } },
-    axisLabel: { color: '#9ca3af', fontSize: 12 }
+    splitLine: { lineStyle: { type: 'dashed' } },
+    axisLabel: { fontSize: 12 }
   },
   series: [
     {
-      name: '入职人数',
+      name: $t('report.employee.newHires'),
       type: 'line',
       smooth: true,
       symbol: 'circle',
@@ -300,7 +301,7 @@ const { domRef: trendChartRef, updateOptions: updateTrendOptions } = useEcharts(
       data: [] as number[]
     },
     {
-      name: '离职人数',
+      name: $t('report.employee.resignedEmployees'),
       type: 'line',
       smooth: true,
       symbol: 'circle',
@@ -309,7 +310,7 @@ const { domRef: trendChartRef, updateOptions: updateTrendOptions } = useEcharts(
       data: [] as number[]
     },
     {
-      name: '净增长',
+      name: $t('report.employee.netGrowth'),
       type: 'line',
       smooth: true,
       symbol: 'circle',
@@ -323,11 +324,11 @@ const { domRef: trendChartRef, updateOptions: updateTrendOptions } = useEcharts(
 
 /** 年龄分布 - 环形图 */
 const { domRef: ageChartRef, updateOptions: updateAgeOptions } = useEcharts(() => ({
-  tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
-  legend: { orient: 'vertical', right: 0, top: 'middle', textStyle: { color: '#6b7280' } },
+  tooltip: { trigger: 'item', formatter: $t('report.employee.people') },
+  legend: { orient: 'vertical', right: 0, top: 'middle' },
   series: [
     {
-      name: '年龄分布',
+      name: $t('common.ageDistribution'),
       type: 'pie',
       radius: ['42%', '68%'],
       center: ['38%', '50%'],
@@ -344,11 +345,11 @@ const { domRef: ageChartRef, updateOptions: updateAgeOptions } = useEcharts(() =
 
 /** 学历分布 - 环形图 */
 const { domRef: educationChartRef, updateOptions: updateEducationOptions } = useEcharts(() => ({
-  tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
-  legend: { orient: 'vertical', right: 0, top: 'middle', textStyle: { color: '#6b7280' } },
+  tooltip: { trigger: 'item', formatter: $t('report.employee.people') },
+  legend: { orient: 'vertical', right: 0, top: 'middle' },
   series: [
     {
-      name: '学历分布',
+      name: $t('home.educationChart.educationDistribution'),
       type: 'pie',
       radius: ['42%', '68%'],
       center: ['38%', '50%'],
@@ -412,6 +413,10 @@ async function fetchAllEmployees() {
   const records: Api.Hr.Employee[] = [];
   const pageSize = 200;
   let pageNum = 1;
+  // 分页循环上限保护：最多 100 页 / 2 万行，防止全量拉取产生过多请求
+  const MAX_PAGES = 100;
+  const MAX_ROWS = 20000;
+  let truncated = false;
 
   while (true) {
     // eslint-disable-next-line no-await-in-loop
@@ -434,6 +439,15 @@ async function fetchAllEmployees() {
     }
 
     pageNum += 1;
+
+    if (pageNum > MAX_PAGES || records.length >= MAX_ROWS) {
+      truncated = true;
+      break;
+    }
+  }
+
+  if (truncated) {
+    ElMessage.warning($t('report.employee.tooManyEmployeesOnlyTheFirst20000AreCountedAddFiltersToNarrowTheRange'));
   }
 
   return records;
@@ -496,29 +510,29 @@ function handleSizeChange(size: number) {
 
 function handleExport() {
   if (!employees.value.length) {
-    ElMessage.warning('暂无可导出的员工数据');
+    ElMessage.warning($t('report.employee.noEmployeeDataToExport'));
     return;
   }
 
   downloadCsv(
-    `员工报表_${getExportStamp()}.csv`,
+    $t('report.employee.employeeReportCsv', { stamp: getExportStamp() }),
     [
-      { title: '公司', key: 'companyName' },
-      { title: '部门', key: 'deptName' },
-      { title: '工号', key: 'employeeNo' },
-      { title: '姓名', key: 'name' },
-      { title: '性别', key: 'gender', formatter: row => getGenderLabel(row.gender) },
-      { title: '学历', key: 'highestEducation', formatter: row => getEducationLabel(row.highestEducation) },
-      { title: '员工类别', key: 'employeeType', formatter: row => getEmployeeTypeLabel(row.employeeType) },
-      { title: '入职日期', key: 'entryDate' },
-      { title: '离职日期', key: 'leaveDate' },
-      { title: '手机号', key: 'phone' },
-      { title: '状态', key: 'status', formatter: row => getStatusLabel(row.status) }
+      { title: $t('common.company'), key: 'companyName' },
+      { title: $t('common.department'), key: 'deptName' },
+      { title: $t('common.employeeNo'), key: 'employeeNo' },
+      { title: $t('common.name'), key: 'name' },
+      { title: $t('common.gender'), key: 'gender', formatter: row => getGenderLabel(row.gender) },
+      { title: $t('common.education'), key: 'highestEducation', formatter: row => getEducationLabel(row.highestEducation) },
+      { title: $t('hr.employee.employeeCategory'), key: 'employeeType', formatter: row => getEmployeeTypeLabel(row.employeeType) },
+      { title: $t('common.entryDate'), key: 'entryDate' },
+      { title: $t('common.resignationDate'), key: 'leaveDate' },
+      { title: $t('common.phone'), key: 'phone' },
+      { title: $t('common.status'), key: 'status', formatter: row => getStatusLabel(row.status) }
     ],
     employees.value
   );
 
-  ElMessage.success('员工报表已导出');
+  ElMessage.success($t('report.employee.employeeReportExported'));
 }
 
 function buildDistribution(source: Record<string, number>) {
@@ -587,27 +601,27 @@ function getAverageAge(list: Api.Hr.Employee[]) {
 }
 
 function getEducationLabel(value?: string) {
-  return value ? getDictLabelByValue(educationOptions.value, value) : '未填写';
+  return value ? getDictLabelByValue(educationOptions.value, value) : $t('home.educationChart.notFilled');
 }
 
 function getEmployeeTypeLabel(value?: string) {
-  return value ? getDictLabelByValue(employeeTypeOptions.value, value) : '未填写';
+  return value ? getDictLabelByValue(employeeTypeOptions.value, value) : $t('home.educationChart.notFilled');
 }
 
 function getGenderLabel(value?: string) {
-  return value ? getDictLabelByValue(genderOptions.value, value) : '未填写';
+  return value ? getDictLabelByValue(genderOptions.value, value) : $t('home.educationChart.notFilled');
 }
 
 function getStatusLabel(status?: number) {
   if (status === 1) {
-    return '在职';
+    return $t('common.active');
   }
 
   if (status === 2) {
-    return '离职';
+    return $t('common.resigned');
   }
 
-  return '未知';
+  return $t('common.unknown');
 }
 
 function getStatusTagType(status?: number) {
@@ -643,45 +657,57 @@ onMounted(async () => {
   <div class="report-page flex-col-stretch gap-16px">
     <ElCard class="search-card">
       <ElForm inline :model="searchParams">
-        <ElFormItem label="公司">
-          <ElSelect v-model="searchParams.companyId" placeholder="请选择公司" clearable style="width: 180px">
+        <ElFormItem :label="$t('common.company')">
+          <ElSelect v-model="searchParams.companyId" :placeholder="$t('common.pleaseSelectCompany')" clearable style="width: 180px">
             <ElOption v-for="company in companies" :key="company.id" :label="company.unitName" :value="company.id" />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="部门">
+        <ElFormItem :label="$t('common.department')">
           <ElTreeSelect
             v-model="searchParams.deptId"
             :data="departments"
             :props="{ label: 'unitName', value: 'id', children: 'children' }"
-            placeholder="请选择部门"
+            :placeholder="$t('common.pleaseSelectDepartment')"
             clearable
             check-strictly
             style="width: 200px"
           />
         </ElFormItem>
-        <ElFormItem label="工号">
-          <ElInput v-model="searchParams.employeeNo" placeholder="请输入工号" clearable style="width: 140px" />
+        <ElFormItem :label="$t('common.employeeNo')">
+          <ElInput
+            v-model="searchParams.employeeNo"
+            :placeholder="$t('common.pleaseInputEmployeeNo')"
+            clearable
+            style="width: 140px"
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="姓名">
-          <ElInput v-model="searchParams.employeeName" placeholder="请输入姓名" clearable style="width: 140px" />
+        <ElFormItem :label="$t('common.name')">
+          <ElInput
+            v-model="searchParams.employeeName"
+            :placeholder="$t('common.pleaseInputName')"
+            clearable
+            style="width: 140px"
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="状态">
-          <ElSelect v-model="searchParams.status" placeholder="全部状态" clearable style="width: 140px">
+        <ElFormItem :label="$t('common.status')">
+          <ElSelect v-model="searchParams.status" :placeholder="$t('common.allStatus')" clearable style="width: 140px">
             <ElOption v-for="item in statusOptions" :key="String(item.value)" :label="item.label" :value="item.value" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" :loading="loading" @click="handleSearch">
             <template #icon><icon-ep-search /></template>
-            查询报表
+            {{ $t('report.employee.queryReport') }}
           </ElButton>
           <ElButton @click="handleReset">
             <template #icon><icon-ep-refresh /></template>
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
-          <ElButton type="success" :disabled="loading || totalEmployees === 0" @click="handleExport">
+          <ElButton v-permission="'report:employee:export'" type="success" :disabled="loading || totalEmployees === 0" @click="handleExport">
             <template #icon><icon-ep-download /></template>
-            导出明细
+            {{ $t('report.employee.exportDetails') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
@@ -705,8 +731,8 @@ onMounted(async () => {
       <ElCard class="data-card">
         <template #header>
           <div class="card-header">
-            <span>部门分布</span>
-            <span class="card-header__meta">共 {{ totalEmployees }} 人</span>
+            <span>{{ $t('report.employee.departmentDistribution') }}</span>
+            <span class="card-header__meta">{{ $t('home.reminderCard.total') }} {{ totalEmployees }} {{ $t('org.structure.people') }}</span>
           </div>
         </template>
         <div class="table-wrapper">
@@ -719,9 +745,9 @@ onMounted(async () => {
             class="table-content table-content--distribution"
           >
             <ElTableColumn type="index" label="#" width="54" align="center" />
-            <ElTableColumn prop="name" label="部门" min-width="180" show-overflow-tooltip />
-            <ElTableColumn prop="value" label="人数" width="90" align="center" />
-            <ElTableColumn prop="ratio" label="占比" width="180">
+            <ElTableColumn prop="name" :label="$t('common.department')" min-width="180" show-overflow-tooltip />
+            <ElTableColumn prop="value" :label="$t('common.employees')" width="90" align="center" />
+            <ElTableColumn prop="ratio" :label="$t('org.structure.percentage')" width="180">
               <template #default="{ row }">
                 <ElProgress :percentage="row.ratio" :stroke-width="10" />
               </template>
@@ -733,8 +759,8 @@ onMounted(async () => {
       <ElCard class="data-card">
         <template #header>
           <div class="card-header">
-            <span>学历分布</span>
-            <span class="card-header__meta">共 {{ totalEmployees }} 人</span>
+            <span>{{ $t('home.educationChart.educationDistribution') }}</span>
+            <span class="card-header__meta">{{ $t('home.reminderCard.total') }} {{ totalEmployees }} {{ $t('org.structure.people') }}</span>
           </div>
         </template>
         <div ref="educationChartRef" class="h-300px overflow-hidden"></div>
@@ -748,9 +774,9 @@ onMounted(async () => {
             class="table-content table-content--distribution"
           >
             <ElTableColumn type="index" label="#" width="54" align="center" />
-            <ElTableColumn prop="name" label="学历" min-width="180" />
-            <ElTableColumn prop="value" label="人数" width="90" align="center" />
-            <ElTableColumn prop="ratio" label="占比" width="180">
+            <ElTableColumn prop="name" :label="$t('common.education')" min-width="180" />
+            <ElTableColumn prop="value" :label="$t('common.employees')" width="90" align="center" />
+            <ElTableColumn prop="ratio" :label="$t('org.structure.percentage')" width="180">
               <template #default="{ row }">
                 <ElProgress :percentage="row.ratio" :stroke-width="10" status="success" />
               </template>
@@ -762,8 +788,8 @@ onMounted(async () => {
       <ElCard class="data-card">
         <template #header>
           <div class="card-header">
-            <span>员工类别分布</span>
-            <span class="card-header__meta">共 {{ totalEmployees }} 人</span>
+            <span>{{ $t('report.employee.employeeCategoryDistribution') }}</span>
+            <span class="card-header__meta">{{ $t('home.reminderCard.total') }} {{ totalEmployees }} {{ $t('org.structure.people') }}</span>
           </div>
         </template>
         <div class="table-wrapper">
@@ -776,9 +802,9 @@ onMounted(async () => {
             class="table-content table-content--distribution"
           >
             <ElTableColumn type="index" label="#" width="54" align="center" />
-            <ElTableColumn prop="name" label="员工类别" min-width="180" />
-            <ElTableColumn prop="value" label="人数" width="90" align="center" />
-            <ElTableColumn prop="ratio" label="占比" width="180">
+            <ElTableColumn prop="name" :label="$t('hr.employee.employeeCategory')" min-width="180" />
+            <ElTableColumn prop="value" :label="$t('common.employees')" width="90" align="center" />
+            <ElTableColumn prop="ratio" :label="$t('org.structure.percentage')" width="180">
               <template #default="{ row }">
                 <ElProgress :percentage="row.ratio" :stroke-width="10" status="warning" />
               </template>
@@ -790,8 +816,8 @@ onMounted(async () => {
       <ElCard class="data-card">
         <template #header>
           <div class="card-header">
-            <span>年龄分布</span>
-            <span class="card-header__meta">共 {{ totalEmployees }} 人</span>
+            <span>{{ $t('common.ageDistribution') }}</span>
+            <span class="card-header__meta">{{ $t('home.reminderCard.total') }} {{ totalEmployees }} {{ $t('org.structure.people') }}</span>
           </div>
         </template>
         <div ref="ageChartRef" class="h-300px overflow-hidden"></div>
@@ -805,9 +831,9 @@ onMounted(async () => {
             class="table-content table-content--distribution"
           >
             <ElTableColumn type="index" label="#" width="54" align="center" />
-            <ElTableColumn prop="name" label="年龄段" min-width="180" />
-            <ElTableColumn prop="value" label="人数" width="90" align="center" />
-            <ElTableColumn prop="ratio" label="占比" width="180">
+            <ElTableColumn prop="name" :label="$t('org.structure.ageRange')" min-width="180" />
+            <ElTableColumn prop="value" :label="$t('common.employees')" width="90" align="center" />
+            <ElTableColumn prop="ratio" :label="$t('org.structure.percentage')" width="180">
               <template #default="{ row }">
                 <ElProgress :percentage="row.ratio" :stroke-width="10" status="exception" />
               </template>
@@ -820,25 +846,25 @@ onMounted(async () => {
     <ElCard class="data-card">
       <template #header>
         <div class="card-header">
-          <span>近 12 个月入离职趋势</span>
-          <span class="card-header__meta">按当前筛选范围统计</span>
+          <span>{{ $t('report.employee.hireResignTrendLast12Months') }}</span>
+          <span class="card-header__meta">{{ $t('report.employee.countedByCurrentFilterRange') }}</span>
         </div>
       </template>
       <div ref="trendChartRef" class="h-320px overflow-hidden"></div>
       <div class="table-wrapper">
         <ElTable :data="entryTrend" border stripe size="small" class="table-content table-content--trend">
-          <ElTableColumn prop="month" label="月份" width="120" />
-          <ElTableColumn prop="entry" label="入职人数" min-width="120" align="center">
+          <ElTableColumn prop="month" :label="$t('common.month')" width="120" />
+          <ElTableColumn prop="entry" :label="$t('report.employee.newHires')" min-width="120" align="center">
             <template #default="{ row }">
               <span class="text-emerald-600 font-600">+{{ row.entry }}</span>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="resign" label="离职人数" min-width="120" align="center">
+          <ElTableColumn prop="resign" :label="$t('report.employee.resignedEmployees')" min-width="120" align="center">
             <template #default="{ row }">
               <span class="text-rose-500 font-600">-{{ row.resign }}</span>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="net" label="净增长" min-width="120" align="center">
+          <ElTableColumn prop="net" :label="$t('report.employee.netGrowth')" min-width="120" align="center">
             <template #default="{ row }">
               <span :class="row.net >= 0 ? 'text-emerald-600 font-600' : 'text-rose-500 font-600'">
                 {{ row.net >= 0 ? '+' : '' }}{{ row.net }}
@@ -852,8 +878,8 @@ onMounted(async () => {
     <ElCard class="data-card">
       <template #header>
         <div class="card-header">
-          <span>员工明细</span>
-          <span class="card-header__meta">当前共 {{ totalEmployees }} 条</span>
+          <span>{{ $t('report.employee.employeeDetails') }}</span>
+          <span class="card-header__meta">{{ $t('report.employee.total') }} {{ totalEmployees }} {{ $t('hr.employee.items') }}</span>
         </div>
       </template>
 
@@ -866,25 +892,25 @@ onMounted(async () => {
           size="small"
           class="table-content table-content--detail"
         >
-          <ElTableColumn prop="companyName" label="公司" width="150" show-overflow-tooltip />
-          <ElTableColumn prop="deptName" label="部门" width="160" show-overflow-tooltip />
-          <ElTableColumn prop="employeeNo" label="工号" width="110" />
-          <ElTableColumn prop="name" label="姓名" width="100" />
-          <ElTableColumn prop="gender" label="性别" width="80" align="center">
+          <ElTableColumn prop="companyName" :label="$t('common.company')" width="150" show-overflow-tooltip />
+          <ElTableColumn prop="deptName" :label="$t('common.department')" width="160" show-overflow-tooltip />
+          <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="110" />
+          <ElTableColumn prop="name" :label="$t('common.name')" width="100" />
+          <ElTableColumn prop="gender" :label="$t('common.gender')" width="80" align="center">
             <template #default="{ row }">{{ getGenderLabel(row.gender) }}</template>
           </ElTableColumn>
-          <ElTableColumn prop="highestEducation" label="学历" width="110">
+          <ElTableColumn prop="highestEducation" :label="$t('common.education')" width="110">
             <template #default="{ row }">{{ getEducationLabel(row.highestEducation) }}</template>
           </ElTableColumn>
-          <ElTableColumn prop="employeeType" label="员工类别" width="120">
+          <ElTableColumn prop="employeeType" :label="$t('hr.employee.employeeCategory')" width="120">
             <template #default="{ row }">{{ getEmployeeTypeLabel(row.employeeType) }}</template>
           </ElTableColumn>
-          <ElTableColumn prop="entryDate" label="入职日期" width="120" />
-          <ElTableColumn prop="leaveDate" label="离职日期" width="120">
+          <ElTableColumn prop="entryDate" :label="$t('common.entryDate')" width="120" />
+          <ElTableColumn prop="leaveDate" :label="$t('common.resignationDate')" width="120">
             <template #default="{ row }">{{ row.leaveDate || '-' }}</template>
           </ElTableColumn>
-          <ElTableColumn prop="phone" label="手机号" width="140" />
-          <ElTableColumn prop="status" label="状态" width="90" align="center">
+          <ElTableColumn prop="phone" :label="$t('common.phone')" width="140" />
+          <ElTableColumn prop="status" :label="$t('common.status')" width="90" align="center">
             <template #default="{ row }">
               <ElTag :type="getStatusTagType(row.status)" size="small">{{ getStatusLabel(row.status) }}</ElTag>
             </template>

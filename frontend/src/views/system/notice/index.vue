@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
-import { deleteNotice, fetchNoticePage, saveNotice, type SysNoticeItem } from '@/service/api/system';
+import { type SysNoticeItem, deleteNotice, fetchNoticePage, saveNotice } from '@/service/api/system';
+import { formatDateTime } from '@/utils/format';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'SystemNotice' });
 
-interface NoticeRow extends SysNoticeItem {}
+type NoticeRow = SysNoticeItem;
 
 const queryParams = reactive({
   current: 1,
@@ -31,9 +33,10 @@ const formData = reactive({
 });
 
 const formRef = ref<FormInstance>();
+const saving = ref(false);
 const formRules: FormRules = {
-  noticeTitle: [{ required: true, message: '请填写公告标题', trigger: 'blur' }],
-  publishTime: [{ required: true, message: '请选择发布日期', trigger: 'change' }]
+  noticeTitle: [{ required: true, message: $t('sys.notice.pleaseEnterNoticeTitle2'), trigger: 'blur' }],
+  publishTime: [{ required: true, message: $t('sys.notice.pleaseSelectPublishDate'), trigger: 'change' }]
 };
 
 async function fetchData() {
@@ -104,23 +107,26 @@ async function handleSave() {
   const valid = await formRef.value?.validate().catch(() => false);
   if (!valid) return;
   const isEdit = operateType.value === 'edit';
-  const res = await saveNotice({ ...formData });
-  if (res.data !== null) {
-    ElMessage.success(isEdit ? '更新成功' : '新增成功');
-    drawerVisible.value = false;
-    fetchData();
+  saving.value = true;
+  try {
+    const res = await saveNotice({ ...formData });
+    if (!res.error) {
+      ElMessage.success(isEdit ? $t('common.updateSuccess') : $t('common.addSuccess'));
+      drawerVisible.value = false;
+      fetchData();
+    }
+  } finally {
+    saving.value = false;
   }
 }
 
 async function handleDelete(id: number) {
   try {
-    await ElMessageBox.confirm('确定删除该公告吗？', '提示', { type: 'warning' });
+    await ElMessageBox.confirm($t('sys.notice.areYouSureYouWantToDeleteThisNotice'), $t('common.tip'), { type: 'warning' });
     const res = await deleteNotice(id);
-    if (res.data !== null) {
-      ElMessage.success('删除成功');
+    if (!res.error) {
+      ElMessage.success($t('common.deleteSuccess'));
       fetchData();
-    } else {
-      ElMessage.error('删除失败');
     }
   } catch {
     // canceled
@@ -136,29 +142,34 @@ onMounted(() => {
   <div class="list-page">
     <ElCard class="search-card">
       <ElForm :model="queryParams" inline>
-        <ElFormItem label="公告标题">
-          <ElInput v-model="queryParams.noticeTitle" placeholder="请输入公告标题" clearable />
+        <ElFormItem :label="$t('sys.notice.noticeTitle')">
+          <ElInput
+            v-model="queryParams.noticeTitle"
+            :placeholder="$t('sys.notice.pleaseEnterNoticeTitle')"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="公告类型">
-          <ElSelect v-model="queryParams.noticeType" placeholder="请选择类型" clearable style="width: 120px">
-            <ElOption label="公告" :value="1" />
-            <ElOption label="通知" :value="2" />
+        <ElFormItem :label="$t('sys.notice.noticeType')">
+          <ElSelect v-model="queryParams.noticeType" :placeholder="$t('common.pleaseSelectType')" clearable style="width: 120px">
+            <ElOption :label="$t('sys.notice.notice')" :value="1" />
+            <ElOption :label="$t('sys.notice.notification')" :value="2" />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="状态">
-          <ElSelect v-model="queryParams.status" placeholder="请选择状态" clearable style="width: 120px">
-            <ElOption label="正常" :value="1" />
-            <ElOption label="关闭" :value="0" />
+        <ElFormItem :label="$t('common.status')">
+          <ElSelect v-model="queryParams.status" :placeholder="$t('common.pleaseSelectStatus')" clearable style="width: 120px">
+            <ElOption :label="$t('common.normal')" :value="1" />
+            <ElOption :label="$t('common.close')" :value="0" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" @click="handleSearch">
             <template #icon><icon-ep-search /></template>
-            搜索
+            {{ $t('common.search') }}
           </ElButton>
           <ElButton @click="handleReset">
             <template #icon><icon-ep-refresh /></template>
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
@@ -167,10 +178,10 @@ onMounted(() => {
     <ElCard class="table-card">
       <template #header>
         <div class="flex items-center justify-between">
-          <span>公告列表</span>
+          <span>{{ $t('sys.notice.noticeList') }}</span>
           <ElButton v-permission="'system:notice:add'" type="primary" @click="handleAdd">
             <template #icon><icon-ep-plus /></template>
-            新增
+            {{ $t('common.add') }}
           </ElButton>
         </div>
       </template>
@@ -178,28 +189,30 @@ onMounted(() => {
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="tableData" border stripe height="100%">
           <ElTableColumn prop="id" label="ID" width="80" />
-          <ElTableColumn prop="noticeTitle" label="公告标题" min-width="220" show-overflow-tooltip />
-          <ElTableColumn prop="noticeContent" label="公告内容" min-width="320" show-overflow-tooltip />
-          <ElTableColumn prop="noticeType" label="公告类型" width="100" align="center">
+          <ElTableColumn prop="noticeTitle" :label="$t('sys.notice.noticeTitle')" min-width="220" show-overflow-tooltip />
+          <ElTableColumn prop="noticeContent" :label="$t('sys.notice.noticeContent')" min-width="320" show-overflow-tooltip />
+          <ElTableColumn prop="noticeType" :label="$t('sys.notice.noticeType')" width="100" align="center">
             <template #default="{ row }">
-              <ElTag v-if="row.noticeType === 1" type="warning">公告</ElTag>
-              <ElTag v-else type="primary">通知</ElTag>
+              <ElTag v-if="row.noticeType === 1" type="warning">{{ $t('sys.notice.notice') }}</ElTag>
+              <ElTag v-else type="primary">{{ $t('sys.notice.notification') }}</ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="status" label="状态" width="80" align="center">
+          <ElTableColumn prop="status" :label="$t('common.status')" width="80" align="center">
             <template #default="{ row }">
               <ElTag :type="row.status === 1 ? 'success' : 'danger'" size="small">
-                {{ row.status === 1 ? '正常' : '关闭' }}
+                {{ row.status === 1 ? $t('common.normal') : $t('common.close') }}
               </ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="publishTime" label="发布日期" width="120" />
-          <ElTableColumn prop="createdTime" label="创建时间" width="180" />
-          <ElTableColumn label="操作" width="150" fixed="right" align="center">
+          <ElTableColumn prop="publishTime" :label="$t('sys.notice.publishDate')" width="120" />
+          <ElTableColumn prop="createdTime" :label="$t('common.createTime')" width="180">
+            <template #default="{ row }">{{ formatDateTime(row.createdTime) }}</template>
+          </ElTableColumn>
+          <ElTableColumn :label="$t('common.action')" width="150" fixed="right" align="center">
             <template #default="{ row }">
-              <ElButton v-permission="'system:notice:edit'" type="primary" link @click="handleEdit(row)">编辑</ElButton>
+              <ElButton v-permission="'system:notice:edit'" type="primary" link @click="handleEdit(row)">{{ $t('common.edit') }}</ElButton>
               <ElButton v-permission="'system:notice:delete'" type="danger" link @click="handleDelete(row.id)">
-                删除
+                {{ $t('common.delete') }}
               </ElButton>
             </template>
           </ElTableColumn>
@@ -219,39 +232,39 @@ onMounted(() => {
       </div>
     </ElCard>
 
-    <ElDrawer v-model="drawerVisible" :title="operateType === 'add' ? '新增公告' : '编辑公告'" size="500px">
+    <ElDrawer v-model="drawerVisible" :title="operateType === 'add' ? $t('sys.notice.newNotice') : $t('sys.notice.editNotice')" size="500px">
       <ElForm ref="formRef" :model="formData" :rules="formRules" label-width="100px">
-        <ElFormItem label="公告标题" prop="noticeTitle">
-          <ElInput v-model="formData.noticeTitle" placeholder="请输入公告标题" />
+        <ElFormItem :label="$t('sys.notice.noticeTitle')" prop="noticeTitle">
+          <ElInput v-model="formData.noticeTitle" :placeholder="$t('sys.notice.pleaseEnterNoticeTitle')" />
         </ElFormItem>
-        <ElFormItem label="公告类型">
+        <ElFormItem :label="$t('sys.notice.noticeType')">
           <ElRadioGroup v-model="formData.noticeType">
-            <ElRadio :value="1">公告</ElRadio>
-            <ElRadio :value="2">通知</ElRadio>
+            <ElRadio :value="1">{{ $t('sys.notice.notice') }}</ElRadio>
+            <ElRadio :value="2">{{ $t('sys.notice.notification') }}</ElRadio>
           </ElRadioGroup>
         </ElFormItem>
-        <ElFormItem label="状态">
+        <ElFormItem :label="$t('common.status')">
           <ElRadioGroup v-model="formData.status">
-            <ElRadio :value="1">正常</ElRadio>
-            <ElRadio :value="0">关闭</ElRadio>
+            <ElRadio :value="1">{{ $t('common.normal') }}</ElRadio>
+            <ElRadio :value="0">{{ $t('common.close') }}</ElRadio>
           </ElRadioGroup>
         </ElFormItem>
-        <ElFormItem label="发布日期" prop="publishTime">
+        <ElFormItem :label="$t('sys.notice.publishDate')" prop="publishTime">
           <ElDatePicker
             v-model="formData.publishTime"
             type="date"
             value-format="YYYY-MM-DD"
-            placeholder="请选择发布日期"
+            :placeholder="$t('sys.notice.pleaseSelectPublishDate')"
             style="width: 100%"
           />
         </ElFormItem>
-        <ElFormItem label="内容">
-          <ElInput v-model="formData.noticeContent" type="textarea" :rows="8" placeholder="请输入公告内容" />
+        <ElFormItem :label="$t('common.content')">
+          <ElInput v-model="formData.noticeContent" type="textarea" :rows="8" :placeholder="$t('sys.notice.pleaseEnterNoticeContent')" />
         </ElFormItem>
       </ElForm>
       <template #footer>
-        <ElButton @click="drawerVisible = false">取消</ElButton>
-        <ElButton type="primary" @click="handleSave">保存</ElButton>
+        <ElButton @click="drawerVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="saving" @click="handleSave">{{ $t('common.save') }}</ElButton>
       </template>
     </ElDrawer>
   </div>

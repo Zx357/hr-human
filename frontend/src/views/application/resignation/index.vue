@@ -9,8 +9,10 @@ import {
   fetchApplicationPage
 } from '@/service/api/application';
 import { useDictOptions } from '@/composables/use-dict-options';
-import EmployeePickerDialog from '@/components/common/EmployeePickerDialog.vue';
+import { formatDateTime } from '@/utils/format';
+import EmployeePickerDialog from '@/components/common/employee-picker-dialog.vue';
 import ApplicationDetailDrawer from '@/components/business/application-detail-drawer.vue';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'ResignationApplication' });
 
@@ -48,6 +50,7 @@ const handoverToName = ref('');
 const searchParams = ref({
   employeeName: '',
   employeeNo: '',
+  dateRange: [] as string[],
   status: undefined as number | undefined,
   resignType: undefined as string | undefined
 });
@@ -61,6 +64,8 @@ async function loadData() {
       employeeName: searchParams.value.employeeName || undefined,
       employeeNo: searchParams.value.employeeNo || undefined,
       status: searchParams.value.status,
+      beginTime: searchParams.value.dateRange?.[0] || undefined,
+      endTime: searchParams.value.dateRange?.[1] || undefined,
       resignType: searchParams.value.resignType
     });
     data.value = res.data?.records || [];
@@ -117,17 +122,17 @@ function handleConfirmHandover(selected: Api.Hr.Employee[]) {
 
 async function handleSubmit() {
   if (!formData.value.employeeId || !formData.value.resignType || !formData.value.lastWorkDate) {
-    ElMessage.warning('请填写必填项');
+    ElMessage.warning($t('common.pleaseFillRequired'));
     return;
   }
   submitLoading.value = true;
   try {
     await createApplication(formData.value);
-    ElMessage.success('申请提交成功');
+    ElMessage.success($t('application.common.applicationSubmittedSuccessfully'));
     dialogVisible.value = false;
     loadData();
   } catch {
-    ElMessage.error('提交失败');
+    // 请求层已统一弹错
   } finally {
     submitLoading.value = false;
   }
@@ -144,20 +149,20 @@ function handleViewDetail(row: Application) {
 
 async function handleCancel(id: number) {
   try {
-    await ElMessageBox.confirm('确定撤销该申请吗？撤销后不可恢复', '撤销确认', {
+    await ElMessageBox.confirm($t('application.business.areYouSureYouWantToWithdrawThisApplicationThisCannotBeUndone'), $t('application.common.withdrawalConfirmation'), {
       type: 'warning',
-      confirmButtonText: '确认撤销',
-      cancelButtonText: '取消'
+      confirmButtonText: $t('application.common.confirmWithdrawal'),
+      cancelButtonText: $t('common.cancel')
     });
   } catch {
     return;
   }
   try {
     await cancelApplication(id);
-    ElMessage.success('已撤销');
+    ElMessage.success($t('common.withdrawn'));
     loadData();
   } catch {
-    ElMessage.error('撤销失败');
+    // 请求层已统一弹错
   }
 }
 
@@ -166,7 +171,7 @@ function handleSearch() {
   loadData();
 }
 function handleReset() {
-  searchParams.value = { employeeName: '', employeeNo: '', status: undefined, resignType: undefined };
+  searchParams.value = { dateRange: [], employeeName: '', employeeNo: '', status: undefined, resignType: undefined };
   currentPage.value = 1;
   loadData();
 }
@@ -185,14 +190,24 @@ function handleSizeChange(size: number) {
   <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
     <ElCard>
       <ElForm inline :model="searchParams">
-        <ElFormItem label="员工姓名">
-          <ElInput v-model="searchParams.employeeName" placeholder="请输入员工姓名" clearable />
+        <ElFormItem :label="$t('common.employeeName')">
+          <ElInput
+            v-model="searchParams.employeeName"
+            :placeholder="$t('common.pleaseInputEmployeeName')"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="员工编号">
-          <ElInput v-model="searchParams.employeeNo" placeholder="请输入员工编号" clearable />
+        <ElFormItem :label="$t('common.employeeNo')">
+          <ElInput
+            v-model="searchParams.employeeNo"
+            :placeholder="$t('common.pleaseInputEmployeeNo')"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="离职类型">
-          <ElSelect v-model="searchParams.resignType" placeholder="请选择类型" clearable style="width: 120px">
+        <ElFormItem :label="$t('common.resignationType')">
+          <ElSelect v-model="searchParams.resignType" :placeholder="$t('common.pleaseSelectType')" clearable style="width: 120px">
             <ElOption
               v-for="item in resignTypeOptions"
               :key="item.dictValue"
@@ -201,22 +216,33 @@ function handleSizeChange(size: number) {
             />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="状态">
-          <ElSelect v-model="searchParams.status" placeholder="请选择状态" clearable style="width: 120px">
-            <ElOption label="待审批" :value="0" />
-            <ElOption label="已通过" :value="1" />
-            <ElOption label="已拒绝" :value="2" />
-            <ElOption label="已撤销" :value="3" />
+        <ElFormItem :label="$t('application.common.applicationTime')">
+          <ElDatePicker
+            v-model="searchParams.dateRange"
+            type="daterange"
+            :range-separator="$t('common.to')"
+            :start-placeholder="$t('common.startDate')"
+            :end-placeholder="$t('common.endDate')"
+            value-format="YYYY-MM-DD"
+            style="width: 240px"
+          />
+        </ElFormItem>
+        <ElFormItem :label="$t('common.status')">
+          <ElSelect v-model="searchParams.status" :placeholder="$t('common.pleaseSelectStatus')" clearable style="width: 120px">
+            <ElOption :label="$t('common.pendingApproval')" :value="0" />
+            <ElOption :label="$t('common.approved')" :value="1" />
+            <ElOption :label="$t('common.rejected')" :value="2" />
+            <ElOption :label="$t('common.withdrawn')" :value="3" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" @click="handleSearch">
             <template #icon><icon-ep-search /></template>
-            搜索
+            {{ $t('common.search') }}
           </ElButton>
           <ElButton @click="handleReset">
             <template #icon><icon-ep-refresh /></template>
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
@@ -225,40 +251,40 @@ function handleSizeChange(size: number) {
     <ElCard class="flex-1">
       <template #header>
         <div class="flex items-center justify-between">
-          <span>离职申请列表</span>
-          <ElButton type="primary" @click="handleAdd">
+          <span>{{ $t('application.resignation.resignationApplications') }}</span>
+          <ElButton v-permission="'application:resignation:add'" type="primary" @click="handleAdd">
             <template #icon><icon-ep-plus /></template>
-            发起离职申请
+            {{ $t('application.resignation.createResignationApplication') }}
           </ElButton>
         </div>
       </template>
 
       <ElTable v-loading="loading" :data="data" border stripe>
-        <ElTableColumn type="index" label="序号" width="60" align="center" />
-        <ElTableColumn prop="employeeNo" label="工号" width="100" />
-        <ElTableColumn prop="employeeName" label="员工姓名" width="100" />
-        <ElTableColumn prop="companyName" label="所属公司" min-width="120" show-overflow-tooltip />
-        <ElTableColumn prop="deptName" label="部门" width="100" />
-        <ElTableColumn prop="entryDate" label="入职日期" width="110" />
-        <ElTableColumn prop="resignType" label="离职类型" width="100">
+        <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" />
+        <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="100" />
+        <ElTableColumn prop="employeeName" :label="$t('common.employeeName')" width="100" />
+        <ElTableColumn prop="companyName" :label="$t('application.common.company')" min-width="120" show-overflow-tooltip />
+        <ElTableColumn prop="deptName" :label="$t('common.department')" width="100" />
+        <ElTableColumn prop="entryDate" :label="$t('common.entryDate')" width="110" />
+        <ElTableColumn prop="resignType" :label="$t('common.resignationType')" width="100">
           <template #default="{ row }">{{ getResignTypeLabel(row.resignType) }}</template>
         </ElTableColumn>
-        <ElTableColumn prop="lastWorkDate" label="最后工作日" width="110" />
-        <ElTableColumn prop="handoverToName" label="交接人" width="100" />
-        <ElTableColumn prop="reason" label="离职原因" min-width="150" show-overflow-tooltip />
-        <ElTableColumn prop="status" label="状态" width="90" align="center">
+        <ElTableColumn prop="lastWorkDate" :label="$t('application.resignation.lastWorkingDay')" width="110" />
+        <ElTableColumn prop="handoverToName" :label="$t('common.handoverPerson2')" width="100" />
+        <ElTableColumn prop="reason" :label="$t('application.resignation.resignationReason')" min-width="150" show-overflow-tooltip />
+        <ElTableColumn prop="status" :label="$t('common.status')" width="90" align="center">
           <template #default="{ row }">
             <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="createdTime" label="申请时间" width="160" />
-        <ElTableColumn label="操作" width="140" align="center" fixed="right">
+        <ElTableColumn prop="createdTime" :label="$t('application.common.applicationTime')" width="160">
+          <template #default="{ row }">{{ formatDateTime(row.createdTime) }}</template>
+        </ElTableColumn>
+        <ElTableColumn :label="$t('common.action')" width="140" align="center" fixed="right">
           <template #default="{ row }">
-            <ElButton type="primary" link size="small" @click="handleViewDetail(row)">
-              详情
-            </ElButton>
+            <ElButton type="primary" link size="small" @click="handleViewDetail(row)">{{ $t('common.details') }}</ElButton>
             <ElButton v-if="row.status === 0" type="warning" link size="small" @click="handleCancel(row.id)">
-              撤销
+              {{ $t('common.withdraw') }}
             </ElButton>
           </template>
         </ElTableColumn>
@@ -278,16 +304,16 @@ function handleSizeChange(size: number) {
     </ElCard>
 
     <!-- 新增申请弹窗 -->
-    <ElDialog v-model="dialogVisible" title="发起离职申请" width="600px" destroy-on-close>
+    <ElDialog v-model="dialogVisible" :title="$t('application.resignation.createResignationApplication')" width="600px" destroy-on-close>
       <ElForm label-width="100px" :model="formData">
-        <ElFormItem label="员工" required>
+        <ElFormItem :label="$t('common.employee')" required>
           <div class="w-full flex gap-8px">
-            <ElInput v-model="employeeDisplayName" disabled placeholder="请选择员工" class="flex-1" />
-            <ElButton type="primary" @click="employeeDialogVisible = true">选择员工</ElButton>
+            <ElInput v-model="employeeDisplayName" disabled :placeholder="$t('common.pleaseSelectEmployees')" class="flex-1" />
+            <ElButton type="primary" @click="employeeDialogVisible = true">{{ $t('common.selectEmployees') }}</ElButton>
           </div>
         </ElFormItem>
-        <ElFormItem label="离职类型" required>
-          <ElSelect v-model="formData.resignType" placeholder="请选择离职类型" style="width: 100%">
+        <ElFormItem :label="$t('common.resignationType')" required>
+          <ElSelect v-model="formData.resignType" :placeholder="$t('application.resignation.pleaseSelectResignationType')" style="width: 100%">
             <ElOption
               v-for="item in resignTypeOptions"
               :key="item.dictValue"
@@ -296,28 +322,28 @@ function handleSizeChange(size: number) {
             />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="最后工作日" required>
+        <ElFormItem :label="$t('application.resignation.lastWorkingDay')" required>
           <ElDatePicker
             v-model="formData.lastWorkDate"
             type="date"
-            placeholder="选择日期"
+            :placeholder="$t('common.selectDate')"
             style="width: 100%"
             value-format="YYYY-MM-DD"
           />
         </ElFormItem>
-        <ElFormItem label="工作交接人">
+        <ElFormItem :label="$t('common.handoverPerson')">
           <div class="w-full flex gap-8px">
-            <ElInput v-model="handoverToName" disabled placeholder="请选择交接人" class="flex-1" />
-            <ElButton @click="handoverDialogVisible = true">选择交接人</ElButton>
+            <ElInput v-model="handoverToName" disabled :placeholder="$t('application.resignation.pleaseSelectHandoverPerson')" class="flex-1" />
+            <ElButton @click="handoverDialogVisible = true">{{ $t('application.resignation.selectHandoverPerson') }}</ElButton>
           </div>
         </ElFormItem>
-        <ElFormItem label="离职原因">
-          <ElInput v-model="formData.reason" type="textarea" :rows="3" placeholder="请输入离职原因" />
+        <ElFormItem :label="$t('application.resignation.resignationReason')">
+          <ElInput v-model="formData.reason" type="textarea" :rows="3" :placeholder="$t('application.resignation.pleaseEnterResignationReason')" />
         </ElFormItem>
       </ElForm>
       <template #footer>
-        <ElButton @click="dialogVisible = false">取消</ElButton>
-        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">提交申请</ElButton>
+        <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('application.common.submitApplication') }}</ElButton>
       </template>
     </ElDialog>
 

@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getDurationUnit } from '@/constants/business';
-import { fetchDictDataByCode } from '@/service/api/system';
+import { appTypeMap } from '@/constants/application';
 import {
   type Application,
   type ApprovalRecord,
@@ -10,6 +10,9 @@ import {
   fetchApprovalRecords,
   fetchPendingPage
 } from '@/service/api/application';
+import { useDictOptions } from '@/composables/use-dict-options';
+import { formatDateTime } from '@/utils/format';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'ApprovalPending' });
 
@@ -27,33 +30,14 @@ const approvalRecords = ref<ApprovalRecord[]>([]);
 
 const searchParams = ref({ employeeName: '', appType: undefined as string | undefined });
 
-// 字典数据
-const leaveTypeOptions = ref<Api.System.DictData[]>([]);
-const transferTypeOptions = ref<Api.System.DictData[]>([]);
-const positionOptions = ref<Api.System.DictData[]>([]);
-const resignTypeOptions = ref<Api.System.DictData[]>([]);
-const rewardCategoryOptions = ref<Api.System.DictData[]>([]);
-const punishCategoryOptions = ref<Api.System.DictData[]>([]);
-const employeeTypeOptions = ref<Api.System.DictData[]>([]);
-
-async function loadDictData() {
-  const [leaveRes, transferRes, positionRes, resignRes, rewardRes, punishRes, empTypeRes] = await Promise.all([
-    fetchDictDataByCode('leave_type'),
-    fetchDictDataByCode('transfer_type'),
-    fetchDictDataByCode('position'),
-    fetchDictDataByCode('resign_type'),
-    fetchDictDataByCode('reward_category'),
-    fetchDictDataByCode('punish_category'),
-    fetchDictDataByCode('employee_type')
-  ]);
-  leaveTypeOptions.value = leaveRes.data || [];
-  transferTypeOptions.value = transferRes.data || [];
-  positionOptions.value = positionRes.data || [];
-  resignTypeOptions.value = resignRes.data || [];
-  rewardCategoryOptions.value = rewardRes.data || [];
-  punishCategoryOptions.value = punishRes.data || [];
-  employeeTypeOptions.value = empTypeRes.data || [];
-}
+// 字典走 useDictOptions 模块级缓存，多页面共享
+const { options: leaveTypeOptions } = useDictOptions('leave_type');
+const { options: transferTypeOptions } = useDictOptions('transfer_type');
+const { options: positionOptions } = useDictOptions('position');
+const { options: resignTypeOptions } = useDictOptions('resign_type');
+const { options: rewardCategoryOptions } = useDictOptions('reward_category');
+const { options: punishCategoryOptions } = useDictOptions('punish_category');
+const { options: employeeTypeOptions } = useDictOptions('employee_type');
 
 async function loadData() {
   loading.value = true;
@@ -67,7 +51,6 @@ async function loadData() {
 }
 
 onMounted(() => {
-  loadDictData();
   loadData();
 });
 
@@ -99,18 +82,18 @@ function getTimelineType(status?: number): 'primary' | 'success' | 'danger' {
 
 /** 审批节点状态文案 */
 function getRecordStatusLabel(status?: number): string {
-  if (status === 1) return '通过';
-  if (status === 2) return '拒绝';
-  return '待审批';
+  if (status === 1) return $t('common.approve');
+  if (status === 2) return $t('common.reject');
+  return $t('common.pendingApproval');
 }
 
 async function handleApprove() {
   if (!currentRecord.value) return;
   try {
-    await ElMessageBox.confirm('确认通过该申请吗？', '审批确认', {
+    await ElMessageBox.confirm($t('approval.common.areYouSureYouWantToApproveThisApplication'), $t('approval.common.approvalConfirmation'), {
       type: 'warning',
-      confirmButtonText: '确认通过',
-      cancelButtonText: '再想想'
+      confirmButtonText: $t('approval.common.confirmApproval'),
+      cancelButtonText: $t('approval.common.notNow')
     });
   } catch {
     return;
@@ -118,11 +101,11 @@ async function handleApprove() {
   submitLoading.value = true;
   try {
     await approveApplication(currentRecord.value.id!, 1, approvalComment.value);
-    ElMessage.success('审批通过');
+    ElMessage.success($t('approval.common.approved'));
     detailVisible.value = false;
     loadData();
   } catch {
-    ElMessage.error('操作失败');
+    // 请求层已统一弹错
   } finally {
     submitLoading.value = false;
   }
@@ -130,15 +113,15 @@ async function handleApprove() {
 
 async function handleReject() {
   if (!approvalComment.value) {
-    ElMessage.warning('请填写拒绝原因');
+    ElMessage.warning($t('approval.common.pleaseEnterRejectionReason'));
     return;
   }
   if (!currentRecord.value) return;
   try {
-    await ElMessageBox.confirm('确认拒绝该申请吗？', '审批确认', {
+    await ElMessageBox.confirm($t('approval.common.areYouSureYouWantToRejectThisApplication'), $t('approval.common.approvalConfirmation'), {
       type: 'warning',
-      confirmButtonText: '确认拒绝',
-      cancelButtonText: '再想想'
+      confirmButtonText: $t('approval.common.confirmRejection'),
+      cancelButtonText: $t('approval.common.notNow')
     });
   } catch {
     return;
@@ -146,11 +129,11 @@ async function handleReject() {
   submitLoading.value = true;
   try {
     await approveApplication(currentRecord.value.id!, 2, approvalComment.value);
-    ElMessage.success('已拒绝');
+    ElMessage.success($t('common.rejected'));
     detailVisible.value = false;
     loadData();
   } catch {
-    ElMessage.error('操作失败');
+    // 请求层已统一弹错
   } finally {
     submitLoading.value = false;
   }
@@ -179,50 +162,42 @@ function getDictLabel(options: Api.System.DictData[], value?: string) {
   if (!value) return '';
   return options.find(o => o.dictValue === value)?.dictLabel || value;
 }
-
-const appTypeMap: Record<string, string> = {
-  leave: '请假申请',
-  overtime: '加班申请',
-  business: '出差申请',
-  makeup: '补卡申请',
-  exchange: '换休申请',
-  regularization: '转正申请',
-  transfer: '调动申请',
-  reward: '奖励申请',
-  punish: '惩罚申请',
-  resignation: '离职申请'
-};
 </script>
 
 <template>
   <div class="list-page">
     <ElCard class="search-card">
       <ElForm inline :model="searchParams">
-        <ElFormItem label="申请人">
-          <ElInput v-model="searchParams.employeeName" placeholder="请输入申请人" clearable />
+        <ElFormItem :label="$t('application.common.applicant')">
+          <ElInput
+            v-model="searchParams.employeeName"
+            :placeholder="$t('approval.common.pleaseEnterApplicant')"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="申请类型">
-          <ElSelect v-model="searchParams.appType" placeholder="请选择类型" clearable style="width: 150px">
-            <ElOption label="请假申请" value="leave" />
-            <ElOption label="加班申请" value="overtime" />
-            <ElOption label="出差申请" value="business" />
-            <ElOption label="补卡申请" value="makeup" />
-            <ElOption label="换休申请" value="exchange" />
-            <ElOption label="转正申请" value="regularization" />
-            <ElOption label="调动申请" value="transfer" />
-            <ElOption label="奖励申请" value="reward" />
-            <ElOption label="惩罚申请" value="punish" />
-            <ElOption label="离职申请" value="resignation" />
+        <ElFormItem :label="$t('application.common.applicationType')">
+          <ElSelect v-model="searchParams.appType" :placeholder="$t('common.pleaseSelectType')" clearable style="width: 150px">
+            <ElOption :label="$t('common.leaveApplication')" value="leave" />
+            <ElOption :label="$t('common.overtimeApplication')" value="overtime" />
+            <ElOption :label="$t('common.businessTripApplication')" value="business" />
+            <ElOption :label="$t('common.makeupClockApplication')" value="makeup" />
+            <ElOption :label="$t('common.exchangeLeaveApplication')" value="exchange" />
+            <ElOption :label="$t('common.regularizationApplication')" value="regularization" />
+            <ElOption :label="$t('common.transferApplication')" value="transfer" />
+            <ElOption :label="$t('approval.common.rewardApplication')" value="reward" />
+            <ElOption :label="$t('approval.common.punishmentApplication')" value="punish" />
+            <ElOption :label="$t('common.resignationApplication')" value="resignation" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" @click="handleSearch">
             <template #icon><icon-ep-search /></template>
-            搜索
+            {{ $t('common.search') }}
           </ElButton>
           <ElButton @click="handleReset">
             <template #icon><icon-ep-refresh /></template>
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
@@ -231,28 +206,28 @@ const appTypeMap: Record<string, string> = {
     <ElCard class="table-card">
       <template #header>
         <div class="flex items-center justify-between">
-          <span>待审批列表</span>
-          <ElTag type="danger">{{ total }} 条待处理</ElTag>
+          <span>{{ $t('approval.pending.pendingApprovals') }}</span>
+          <ElTag type="danger">{{ total }} {{ $t('approval.common.pending') }}</ElTag>
         </div>
       </template>
 
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="data" border stripe height="100%">
-          <ElTableColumn type="index" label="序号" width="60" align="center" />
-          <ElTableColumn prop="appType" label="申请类型" width="120">
+          <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" />
+          <ElTableColumn prop="appType" :label="$t('application.common.applicationType')" width="120">
             <template #default="{ row }">
               <ElTag>{{ appTypeMap[row.appType] || row.appType }}</ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="employeeName" label="申请人" width="100" />
-          <ElTableColumn prop="companyName" label="公司" width="120" show-overflow-tooltip />
-          <ElTableColumn prop="deptName" label="部门" width="120" />
-          <ElTableColumn prop="reason" label="申请原因/说明" min-width="200" show-overflow-tooltip>
+          <ElTableColumn prop="employeeName" :label="$t('application.common.applicant')" width="100" />
+          <ElTableColumn prop="companyName" :label="$t('common.company')" width="120" show-overflow-tooltip />
+          <ElTableColumn prop="deptName" :label="$t('common.department')" width="120" />
+          <ElTableColumn prop="reason" :label="$t('approval.common.applicationReasonNotes')" min-width="200" show-overflow-tooltip>
             <template #default="{ row }">
               <template v-if="row.appType === 'leave'">
                 {{ getDictLabel(leaveTypeOptions, row.title) }} {{ row.duration }}{{ getDurationUnit(row.appType) }}
               </template>
-              <template v-else-if="row.appType === 'regularization'">转正日期: {{ row.regularDate }}</template>
+              <template v-else-if="row.appType === 'regularization'">{{ $t('approval.common.regularizationDate') }} {{ row.regularDate }}</template>
               <template v-else-if="row.appType === 'transfer'">
                 {{ getDictLabel(transferTypeOptions, row.transferType) }}: {{ row.fromDeptName }} → {{ row.toDeptName }}
               </template>
@@ -263,15 +238,22 @@ const appTypeMap: Record<string, string> = {
                 {{ row.amount ? `¥${row.amount}` : '' }}
               </template>
               <template v-else-if="row.appType === 'resignation'">
-                {{ getDictLabel(resignTypeOptions, row.resignType) }} 最后工作日: {{ row.lastWorkDate }}
+                {{ getDictLabel(resignTypeOptions, row.resignType) }} {{ $t('approval.common.lastWorkingDay') }} {{ row.lastWorkDate }}
               </template>
               <template v-else>{{ row.reason }}</template>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="createdTime" label="申请时间" width="170" />
-          <ElTableColumn label="操作" width="100" align="center" fixed="right">
+          <ElTableColumn prop="createdTime" :label="$t('application.common.applicationTime')" width="170">
+            <template #default="{ row }">{{ formatDateTime(row.createdTime) }}</template>
+          </ElTableColumn>
+          <ElTableColumn :label="$t('common.action')" width="100" align="center" fixed="right">
             <template #default="{ row }">
-              <ElButton type="success" size="small" @click="handleView(row)">审批</ElButton>
+              <ElButton
+                v-permission="['approval:pending:approve', 'approval:pending:reject']"
+                type="success"
+                size="small"
+                @click="handleView(row)"
+              >{{ $t('common.approval') }}</ElButton>
             </template>
           </ElTableColumn>
         </ElTable>
@@ -290,64 +272,66 @@ const appTypeMap: Record<string, string> = {
       </div>
     </ElCard>
 
-    <ElDialog v-model="detailVisible" title="审批详情" width="700px">
+    <ElDialog v-model="detailVisible" :title="$t('approval.common.approvalDetails')" width="700px">
       <template v-if="currentRecord">
         <ElDescriptions :column="2" border>
-          <ElDescriptionsItem label="申请类型">
+          <ElDescriptionsItem :label="$t('application.common.applicationType')">
             {{ appTypeMap[currentRecord.appType] || currentRecord.appType }}
           </ElDescriptionsItem>
-          <ElDescriptionsItem label="申请人">{{ currentRecord.employeeName }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="公司">{{ currentRecord.companyName }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="部门">{{ currentRecord.deptName }}</ElDescriptionsItem>
-          <ElDescriptionsItem label="申请时间" :span="2">{{ currentRecord.createdTime }}</ElDescriptionsItem>
+          <ElDescriptionsItem :label="$t('application.common.applicant')">{{ currentRecord.employeeName }}</ElDescriptionsItem>
+          <ElDescriptionsItem :label="$t('common.company')">{{ currentRecord.companyName }}</ElDescriptionsItem>
+          <ElDescriptionsItem :label="$t('common.department')">{{ currentRecord.deptName }}</ElDescriptionsItem>
+          <ElDescriptionsItem :label="$t('application.common.applicationTime')" :span="2">
+            {{ formatDateTime(currentRecord.createdTime) }}
+          </ElDescriptionsItem>
 
           <!-- 请假/加班/出差/补卡/换休 -->
           <template v-if="['leave', 'overtime', 'business', 'makeup', 'exchange'].includes(currentRecord.appType)">
-            <ElDescriptionsItem label="开始时间">{{ currentRecord.startTime }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="结束时间">{{ currentRecord.endTime }}</ElDescriptionsItem>
-            <ElDescriptionsItem v-if="currentRecord.appType === 'leave'" label="请假类型">
+            <ElDescriptionsItem :label="$t('common.startTime')">{{ currentRecord.startTime }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('common.endTime')">{{ currentRecord.endTime }}</ElDescriptionsItem>
+            <ElDescriptionsItem v-if="currentRecord.appType === 'leave'" :label="$t('common.leaveType')">
               {{ getDictLabel(leaveTypeOptions, currentRecord.title) }}
             </ElDescriptionsItem>
-            <ElDescriptionsItem v-if="currentRecord.duration" label="时长">
+            <ElDescriptionsItem v-if="currentRecord.duration" :label="$t('approval.common.duration')">
               {{ currentRecord.duration }} {{ getDurationUnit(currentRecord.appType) }}
             </ElDescriptionsItem>
           </template>
 
           <!-- 转正申请 -->
           <template v-if="currentRecord.appType === 'regularization'">
-            <ElDescriptionsItem label="入职日期">{{ currentRecord.entryDate }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="试用期结束">{{ currentRecord.probationEndDate }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="转正日期">{{ currentRecord.regularDate }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="转正后类别">
+            <ElDescriptionsItem :label="$t('common.entryDate')">{{ currentRecord.entryDate }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('approval.common.probationEnd')">{{ currentRecord.probationEndDate }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('application.regularization.regularizationDate')">{{ currentRecord.regularDate }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('approval.common.categoryAfterRegularization')">
               {{ getDictLabel(employeeTypeOptions, currentRecord.newEmployeeType) }}
             </ElDescriptionsItem>
-            <ElDescriptionsItem label="试用期评价" :span="2">{{ currentRecord.evaluation }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('application.regularization.probationEvaluation')" :span="2">{{ currentRecord.evaluation }}</ElDescriptionsItem>
           </template>
 
           <!-- 调动申请 -->
           <template v-if="currentRecord.appType === 'transfer'">
-            <ElDescriptionsItem label="变更类型" :span="2">
+            <ElDescriptionsItem :label="$t('application.transfer.changeType')" :span="2">
               {{ getDictLabel(transferTypeOptions, currentRecord.transferType) }}
             </ElDescriptionsItem>
-            <ElDescriptionsItem label="原公司">{{ currentRecord.fromCompanyName }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="新公司">{{ currentRecord.toCompanyName }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="原部门">{{ currentRecord.fromDeptName }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="新部门">{{ currentRecord.toDeptName }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="原职位">
+            <ElDescriptionsItem :label="$t('application.transfer.originalCompany')">{{ currentRecord.fromCompanyName }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('application.transfer.newCompany')">{{ currentRecord.toCompanyName }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('application.transfer.originalDepartment')">{{ currentRecord.fromDeptName }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('application.transfer.newDepartment')">{{ currentRecord.toDeptName }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('application.transfer.originalPosition')">
               {{ getDictLabel(positionOptions, currentRecord.fromPosition) }}
             </ElDescriptionsItem>
-            <ElDescriptionsItem label="新职位">
+            <ElDescriptionsItem :label="$t('application.transfer.newPosition')">
               {{ getDictLabel(positionOptions, currentRecord.toPosition) }}
             </ElDescriptionsItem>
-            <ElDescriptionsItem label="生效日期" :span="2">{{ currentRecord.effectDate }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('application.reward.effectiveDate')" :span="2">{{ currentRecord.effectDate }}</ElDescriptionsItem>
           </template>
 
           <!-- 奖惩申请 -->
           <template v-if="currentRecord.appType === 'reward' || currentRecord.appType === 'punish'">
-            <ElDescriptionsItem label="类型">
-              {{ currentRecord.appType === 'reward' ? '奖励' : '惩罚' }}
+            <ElDescriptionsItem :label="$t('common.type')">
+              {{ currentRecord.appType === 'reward' ? $t('common.reward') : $t('common.punishment') }}
             </ElDescriptionsItem>
-            <ElDescriptionsItem label="类别">
+            <ElDescriptionsItem :label="$t('common.category')">
               {{
                 getDictLabel(
                   currentRecord.appType === 'reward' ? rewardCategoryOptions : punishCategoryOptions,
@@ -355,28 +339,28 @@ const appTypeMap: Record<string, string> = {
                 )
               }}
             </ElDescriptionsItem>
-            <ElDescriptionsItem label="金额">
+            <ElDescriptionsItem :label="$t('common.amount')">
               {{ currentRecord.amount ? `¥${currentRecord.amount}` : '-' }}
             </ElDescriptionsItem>
-            <ElDescriptionsItem label="生效日期">{{ currentRecord.effectDate }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('application.reward.effectiveDate')">{{ currentRecord.effectDate }}</ElDescriptionsItem>
           </template>
 
           <!-- 离职申请 -->
           <template v-if="currentRecord.appType === 'resignation'">
-            <ElDescriptionsItem label="入职日期">{{ currentRecord.entryDate }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="离职类型">
+            <ElDescriptionsItem :label="$t('common.entryDate')">{{ currentRecord.entryDate }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('common.resignationType')">
               {{ getDictLabel(resignTypeOptions, currentRecord.resignType) }}
             </ElDescriptionsItem>
-            <ElDescriptionsItem label="最后工作日">{{ currentRecord.lastWorkDate }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="工作交接人">{{ currentRecord.handoverToName }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('application.resignation.lastWorkingDay')">{{ currentRecord.lastWorkDate }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('common.handoverPerson')">{{ currentRecord.handoverToName }}</ElDescriptionsItem>
           </template>
 
-          <ElDescriptionsItem label="申请原因/备注" :span="2">{{ currentRecord.reason }}</ElDescriptionsItem>
+          <ElDescriptionsItem :label="$t('approval.common.applicationReasonRemark')" :span="2">{{ currentRecord.reason }}</ElDescriptionsItem>
         </ElDescriptions>
 
         <!-- 审批进度 -->
         <div v-if="approvalRecords.length > 0" class="mt-20px">
-          <div class="mb-10px font-bold">审批进度</div>
+          <div class="mb-10px font-bold">{{ $t('approval.common.approvalProgress') }}</div>
           <ElTimeline>
             <ElTimelineItem
               v-for="(record, index) in approvalRecords"
@@ -385,11 +369,11 @@ const appTypeMap: Record<string, string> = {
               :timestamp="record.createTime"
             >
               <div class="flex items-center gap-8px">
-                <span class="font-medium">{{ record.nodeName || '审批节点' }}</span>
+                <span class="font-medium">{{ record.nodeName || $t('approval.flow.approvalNode') }}</span>
                 <ElTag :type="record.status === 1 ? 'success' : record.status === 2 ? 'danger' : 'info'" size="small">
                   {{ getRecordStatusLabel(record.status) }}
                 </ElTag>
-                <span v-if="record.approverName" class="text-xs text-gray-500">审批人: {{ record.approverName }}</span>
+                <span v-if="record.approverName" class="text-xs text-gray-500">{{ $t('approval.common.approver') }} {{ record.approverName }}</span>
               </div>
               <div v-if="record.comment" class="mt-2px text-xs text-gray-500">{{ record.comment }}</div>
             </ElTimelineItem>
@@ -397,14 +381,14 @@ const appTypeMap: Record<string, string> = {
         </div>
 
         <div class="mt-20px">
-          <div class="mb-10px font-bold">审批意见</div>
-          <ElInput v-model="approvalComment" type="textarea" :rows="3" placeholder="请输入审批意见（拒绝时必填）" />
+          <div class="mb-10px font-bold">{{ $t('application.common.approvalComment') }}</div>
+          <ElInput v-model="approvalComment" type="textarea" :rows="3" :placeholder="$t('approval.common.pleaseEnterApprovalCommentRequiredWhenRejecting')" />
         </div>
       </template>
       <template #footer>
-        <ElButton @click="detailVisible = false">取消</ElButton>
-        <ElButton type="danger" :loading="submitLoading" @click="handleReject">拒绝</ElButton>
-        <ElButton type="success" :loading="submitLoading" @click="handleApprove">通过</ElButton>
+        <ElButton @click="detailVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton v-permission="'approval:pending:reject'" type="danger" :loading="submitLoading" @click="handleReject">{{ $t('common.reject') }}</ElButton>
+        <ElButton v-permission="'approval:pending:approve'" type="success" :loading="submitLoading" @click="handleApprove">{{ $t('common.approve') }}</ElButton>
       </template>
     </ElDialog>
   </div>

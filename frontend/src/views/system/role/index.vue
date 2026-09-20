@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { request } from '@/service/request';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'SystemRole' });
 
@@ -26,9 +27,9 @@ const menuTreeProps = {
   label: (data: any) => {
     // 根据菜单类型显示不同的标签
     const typeLabels: Record<number, string> = {
-      1: '[目录]',
-      2: '[菜单]',
-      3: '[按钮]'
+      1: $t('sys.role.directory'),
+      2: $t('sys.role.menu'),
+      3: $t('sys.role.button')
     };
     const typeLabel = typeLabels[data.menuType] || '';
     return `${data.menuName} ${typeLabel}`;
@@ -42,12 +43,12 @@ const menuCheckStrictly = ref(true);
 
 // 数据权限选项
 const dataScopeOptions = [
-  { label: '全部数据', value: 1 },
-  { label: '本公司数据', value: 2 },
-  { label: '本部门数据', value: 3 },
-  { label: '本部门及以下数据', value: 4 },
-  { label: '仅本人数据', value: 5 },
-  { label: '自定义数据', value: 6 }
+  { label: $t('sys.role.allData'), value: 1 },
+  { label: $t('sys.role.currentCompanyData'), value: 2 },
+  { label: $t('sys.role.currentDepartmentData'), value: 3 },
+  { label: $t('sys.role.currentDepartmentAndBelow'), value: 4 },
+  { label: $t('sys.role.selfOnly'), value: 5 },
+  { label: $t('sys.role.customData'), value: 6 }
 ];
 
 // 对话框
@@ -55,6 +56,7 @@ const dialogVisible = ref(false);
 const dialogTitle = ref('');
 const formRef = ref();
 const menuTreeRef = ref();
+const submitLoading = ref(false);
 const formData = reactive({
   id: undefined as number | undefined,
   roleCode: '',
@@ -68,8 +70,8 @@ const formData = reactive({
 
 // 表单规则
 const formRules = {
-  roleCode: [{ required: true, message: '请输入角色编码', trigger: 'blur' }],
-  roleName: [{ required: true, message: '请输入角色名称', trigger: 'blur' }]
+  roleCode: [{ required: true, message: $t('sys.role.pleaseEnterRoleCode'), trigger: 'blur' }],
+  roleName: [{ required: true, message: $t('sys.role.pleaseEnterRoleName'), trigger: 'blur' }]
 };
 
 // 获取角色列表
@@ -129,7 +131,7 @@ function handleSizeChange(size: number) {
 
 // 新增
 function handleAdd() {
-  dialogTitle.value = '新增角色';
+  dialogTitle.value = $t('sys.role.addRole');
   Object.assign(formData, {
     id: undefined,
     roleCode: '',
@@ -142,14 +144,14 @@ function handleAdd() {
   });
   dialogVisible.value = true;
   // 清空菜单树选中
-  setTimeout(() => {
+  nextTick(() => {
     menuTreeRef.value?.setCheckedKeys([]);
-  }, 100);
+  });
 }
 
 // 编辑
 async function handleEdit(row: any) {
-  dialogTitle.value = '编辑角色';
+  dialogTitle.value = $t('sys.role.editRole');
   const { data, error } = await request<any>({
     url: `/system/role/${row.id}`,
     method: 'get'
@@ -167,12 +169,12 @@ async function handleEdit(row: any) {
     });
     dialogVisible.value = true;
     // 设置菜单树选中 - 只设置叶子节点，避免父子联动问题
-    setTimeout(() => {
+    nextTick(() => {
       const menuIds = data.menuIds || [];
       // 过滤出叶子节点（没有子节点的菜单）
       const leafMenuIds = filterLeafMenuIds(menuIds, menuTreeData.value);
       menuTreeRef.value?.setCheckedKeys(leafMenuIds);
-    }, 100);
+    });
   }
 }
 
@@ -211,23 +213,28 @@ async function handleSubmit() {
   const halfCheckedKeys = menuTreeRef.value?.getHalfCheckedKeys() || [];
   const menuIds = [...checkedKeys, ...halfCheckedKeys];
 
-  const { error } = await request({
-    url,
-    method,
-    data: { ...formData, menuIds }
-  });
+  submitLoading.value = true;
+  try {
+    const { error } = await request({
+      url,
+      method,
+      data: { ...formData, menuIds }
+    });
 
-  if (!error) {
-    ElMessage.success(isEdit ? '更新成功' : '新增成功');
-    dialogVisible.value = false;
-    fetchData();
+    if (!error) {
+      ElMessage.success(isEdit ? $t('common.updateSuccess') : $t('common.addSuccess'));
+      dialogVisible.value = false;
+      fetchData();
+    }
+  } finally {
+    submitLoading.value = false;
   }
 }
 
 // 删除
 async function handleDelete(row: any) {
   try {
-    await ElMessageBox.confirm('确认删除该角色吗？', '提示', {
+    await ElMessageBox.confirm($t('sys.role.areYouSureYouWantToDeleteThisRole'), $t('common.tip'), {
       type: 'warning'
     });
 
@@ -237,19 +244,27 @@ async function handleDelete(row: any) {
     });
 
     if (!error) {
-      ElMessage.success('删除成功');
+      ElMessage.success($t('common.deleteSuccess'));
       fetchData();
-    } else {
-      ElMessage.error('删除失败');
     }
   } catch {
-    // 用户取消删除
     // 用户取消删除
   }
 }
 
-// 修改状态
+// 修改状态：先确认再调接口，取消或失败时回滚开关状态
 async function handleStatusChange(row: any) {
+  const targetStatus = row.status;
+  const action = targetStatus === 1 ? $t('common.enable') : $t('common.disable');
+  try {
+    await ElMessageBox.confirm($t('sys.role.areYouSureYouWantToThisRole', { action }), $t('common.tip'), {
+      type: 'warning'
+    });
+  } catch {
+    row.status = targetStatus === 1 ? 0 : 1;
+    return;
+  }
+
   const { error } = await request({
     url: `/system/role/${row.id}/status`,
     method: 'put',
@@ -257,9 +272,9 @@ async function handleStatusChange(row: any) {
   });
 
   if (!error) {
-    ElMessage.success('状态修改成功');
+    ElMessage.success($t('sys.role.statusUpdatedSuccessfully'));
   } else {
-    row.status = row.status === 1 ? 0 : 1;
+    row.status = targetStatus === 1 ? 0 : 1;
   }
 }
 
@@ -305,26 +320,26 @@ onMounted(() => {
     <!-- 搜索区域 -->
     <ElCard class="search-card">
       <ElForm :model="queryParams" inline>
-        <ElFormItem label="角色名称">
-          <ElInput v-model="queryParams.roleName" placeholder="请输入角色名称" clearable />
+        <ElFormItem :label="$t('sys.role.roleName')">
+          <ElInput v-model="queryParams.roleName" :placeholder="$t('sys.role.pleaseEnterRoleName')" clearable @keyup.enter="handleSearch" />
         </ElFormItem>
-        <ElFormItem label="角色编码">
-          <ElInput v-model="queryParams.roleCode" placeholder="请输入角色编码" clearable />
+        <ElFormItem :label="$t('sys.role.roleCode')">
+          <ElInput v-model="queryParams.roleCode" :placeholder="$t('sys.role.pleaseEnterRoleCode')" clearable @keyup.enter="handleSearch" />
         </ElFormItem>
-        <ElFormItem label="状态">
-          <ElSelect v-model="queryParams.status" placeholder="请选择状态" clearable style="width: 120px">
-            <ElOption label="启用" :value="1" />
-            <ElOption label="禁用" :value="0" />
+        <ElFormItem :label="$t('common.status')">
+          <ElSelect v-model="queryParams.status" :placeholder="$t('common.pleaseSelectStatus')" clearable style="width: 120px">
+            <ElOption :label="$t('common.enable')" :value="1" />
+            <ElOption :label="$t('common.disable')" :value="0" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" @click="handleSearch">
             <template #icon><icon-ep-search /></template>
-            搜索
+            {{ $t('common.search') }}
           </ElButton>
           <ElButton @click="handleReset">
             <template #icon><icon-ep-refresh /></template>
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
@@ -334,10 +349,10 @@ onMounted(() => {
     <ElCard class="table-card">
       <template #header>
         <div class="flex items-center justify-between">
-          <span>角色列表</span>
+          <span>{{ $t('sys.common.roleList') }}</span>
           <ElButton v-permission="'system:role:add'" type="primary" @click="handleAdd">
             <template #icon><icon-ep-plus /></template>
-            新增
+            {{ $t('common.add') }}
           </ElButton>
         </div>
       </template>
@@ -345,26 +360,26 @@ onMounted(() => {
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="tableData" border stripe height="100%">
           <ElTableColumn prop="id" label="ID" width="80" />
-          <ElTableColumn prop="roleCode" label="角色编码" width="120" />
-          <ElTableColumn prop="roleName" label="角色名称" width="120" />
-          <ElTableColumn prop="dataScope" label="数据权限" width="140">
+          <ElTableColumn prop="roleCode" :label="$t('sys.role.roleCode')" width="120" />
+          <ElTableColumn prop="roleName" :label="$t('sys.role.roleName')" width="120" />
+          <ElTableColumn prop="dataScope" :label="$t('sys.role.dataScope')" width="140">
             <template #default="{ row }">
               <ElTag :type="row.dataScope === 1 ? 'success' : row.dataScope === 5 ? 'warning' : 'primary'">
-                {{ dataScopeOptions.find(o => o.value === row.dataScope)?.label || '全部数据' }}
+                {{ dataScopeOptions.find(o => o.value === row.dataScope)?.label || $t('sys.role.allData') }}
               </ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="description" label="描述" min-width="150" />
-          <ElTableColumn prop="sortOrder" label="排序" width="80" />
-          <ElTableColumn prop="status" label="状态" width="100">
+          <ElTableColumn prop="description" :label="$t('common.description')" min-width="150" show-overflow-tooltip />
+          <ElTableColumn prop="sortOrder" :label="$t('common.sort')" width="80" />
+          <ElTableColumn prop="status" :label="$t('common.status')" width="100">
             <template #default="{ row }">
-              <ElSwitch v-model="row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(row)" />
+              <ElSwitch v-permission="'system:role:edit'" v-model="row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(row)" />
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="createdTime" label="创建时间" width="180" />
-          <ElTableColumn label="操作" width="150" fixed="right">
+          <ElTableColumn prop="createdTime" :label="$t('common.createTime')" width="180" />
+          <ElTableColumn :label="$t('common.action')" width="150" fixed="right">
             <template #default="{ row }">
-              <ElButton v-permission="'system:role:edit'" type="primary" link @click="handleEdit(row)">编辑</ElButton>
+              <ElButton v-permission="'system:role:edit'" type="primary" link @click="handleEdit(row)">{{ $t('common.edit') }}</ElButton>
               <ElButton
                 v-if="row.roleCode !== 'ROLE_ADMIN'"
                 v-permission="'system:role:delete'"
@@ -372,7 +387,7 @@ onMounted(() => {
                 link
                 @click="handleDelete(row)"
               >
-                删除
+                {{ $t('common.delete') }}
               </ElButton>
             </template>
           </ElTableColumn>
@@ -397,44 +412,44 @@ onMounted(() => {
       <ElForm ref="formRef" :model="formData" :rules="formRules" label-width="100px">
         <ElRow :gutter="20">
           <ElCol :span="12">
-            <ElFormItem label="角色编码" prop="roleCode">
-              <ElInput v-model="formData.roleCode" placeholder="请输入角色编码" />
+            <ElFormItem :label="$t('sys.role.roleCode')" prop="roleCode">
+              <ElInput v-model="formData.roleCode" :placeholder="$t('sys.role.pleaseEnterRoleCode')" />
             </ElFormItem>
           </ElCol>
           <ElCol :span="12">
-            <ElFormItem label="角色名称" prop="roleName">
-              <ElInput v-model="formData.roleName" placeholder="请输入角色名称" />
+            <ElFormItem :label="$t('sys.role.roleName')" prop="roleName">
+              <ElInput v-model="formData.roleName" :placeholder="$t('sys.role.pleaseEnterRoleName')" />
             </ElFormItem>
           </ElCol>
         </ElRow>
         <ElRow :gutter="20">
           <ElCol :span="12">
-            <ElFormItem label="排序">
+            <ElFormItem :label="$t('common.sort')">
               <ElInputNumber v-model="formData.sortOrder" :min="0" style="width: 100%" />
             </ElFormItem>
           </ElCol>
           <ElCol :span="12">
-            <ElFormItem label="状态">
+            <ElFormItem :label="$t('common.status')">
               <ElRadioGroup v-model="formData.status">
-                <ElRadio :value="1">启用</ElRadio>
-                <ElRadio :value="0">禁用</ElRadio>
+                <ElRadio :value="1">{{ $t('common.enable') }}</ElRadio>
+                <ElRadio :value="0">{{ $t('common.disable') }}</ElRadio>
               </ElRadioGroup>
             </ElFormItem>
           </ElCol>
         </ElRow>
-        <ElFormItem label="数据权限">
-          <ElSelect v-model="formData.dataScope" placeholder="请选择数据权限" style="width: 100%">
+        <ElFormItem :label="$t('sys.role.dataScope')">
+          <ElSelect v-model="formData.dataScope" :placeholder="$t('sys.role.pleaseSelectDataScope')" style="width: 100%">
             <ElOption v-for="item in dataScopeOptions" :key="item.value" :label="item.label" :value="item.value" />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="描述">
-          <ElInput v-model="formData.description" type="textarea" :rows="2" placeholder="请输入描述" />
+        <ElFormItem :label="$t('common.description')">
+          <ElInput v-model="formData.description" type="textarea" :rows="2" :placeholder="$t('approval.flow.pleaseEnterDescription')" />
         </ElFormItem>
-        <ElFormItem label="菜单权限">
+        <ElFormItem :label="$t('sys.role.menuPermission')">
           <div class="mb-8px">
-            <ElCheckbox v-model="menuExpandAll" @change="handleExpandAll">展开/折叠</ElCheckbox>
-            <ElCheckbox v-model="menuCheckAll" @change="handleCheckAll">全选/全不选</ElCheckbox>
-            <ElCheckbox v-model="menuCheckStrictly">父子联动</ElCheckbox>
+            <ElCheckbox v-model="menuExpandAll" @change="handleExpandAll">{{ $t('common.expandCollapse') }}</ElCheckbox>
+            <ElCheckbox v-model="menuCheckAll" @change="handleCheckAll">{{ $t('common.selectAllOrNone') }}</ElCheckbox>
+            <ElCheckbox v-model="menuCheckStrictly">{{ $t('sys.role.cascadeParentChild') }}</ElCheckbox>
           </div>
           <div class="max-h-300px w-full overflow-auto border border-gray-200 rounded p-8px">
             <ElTree
@@ -450,8 +465,8 @@ onMounted(() => {
         </ElFormItem>
       </ElForm>
       <template #footer>
-        <ElButton @click="dialogVisible = false">取消</ElButton>
-        <ElButton type="primary" @click="handleSubmit">确定</ElButton>
+        <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('common.ok') }}</ElButton>
       </template>
     </ElDialog>
   </div>

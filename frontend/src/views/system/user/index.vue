@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { request } from '@/service/request';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'SystemUser' });
 
@@ -29,6 +30,8 @@ const employeeList = ref<any[]>([]);
 const dialogVisible = ref(false);
 const dialogTitle = ref('');
 const formRef = ref();
+const submitLoading = ref(false);
+const resetPwdLoading = ref(false);
 const formData = reactive({
   id: undefined as number | undefined,
   username: '',
@@ -44,9 +47,9 @@ const formData = reactive({
 
 // 表单规则
 const formRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-  nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }]
+  username: [{ required: true, message: $t('sys.user.pleaseEnterUserName'), trigger: 'blur' }],
+  password: [{ required: true, message: $t('sys.user.pleaseEnterPassword'), trigger: 'blur' }],
+  nickname: [{ required: true, message: $t('common.pleaseEnterNickName'), trigger: 'blur' }]
 };
 
 // 重置密码对话框
@@ -113,7 +116,7 @@ function handleSizeChange(size: number) {
 
 // 新增
 function handleAdd() {
-  dialogTitle.value = '新增用户';
+  dialogTitle.value = $t('sys.user.addUser');
   Object.assign(formData, {
     id: undefined,
     username: '',
@@ -131,12 +134,13 @@ function handleAdd() {
 
 // 编辑
 async function handleEdit(row: any) {
-  dialogTitle.value = '编辑用户';
+  dialogTitle.value = $t('sys.user.editUser');
   const { data, error } = await request<any>({
     url: `/system/user/${row.id}`,
     method: 'get'
   });
-  if (!error && data) {
+  // 对 data.user 判空，接口返回异常结构时直接提示不打开弹窗
+  if (!error && data?.user) {
     Object.assign(formData, {
       id: data.user.id,
       username: data.user.username,
@@ -168,23 +172,28 @@ async function handleSubmit() {
     delete (submitData as any).password;
   }
 
-  const { error } = await request({
-    url,
-    method,
-    data: submitData
-  });
+  submitLoading.value = true;
+  try {
+    const { error } = await request({
+      url,
+      method,
+      data: submitData
+    });
 
-  if (!error) {
-    ElMessage.success(isEdit ? '更新成功' : '新增成功');
-    dialogVisible.value = false;
-    fetchData();
+    if (!error) {
+      ElMessage.success(isEdit ? $t('common.updateSuccess') : $t('common.addSuccess'));
+      dialogVisible.value = false;
+      fetchData();
+    }
+  } finally {
+    submitLoading.value = false;
   }
 }
 
 // 删除
 async function handleDelete(row: any) {
   try {
-    await ElMessageBox.confirm('确认删除该用户吗？', '提示', {
+    await ElMessageBox.confirm($t('sys.user.areYouSureYouWantToDeleteThisUser'), $t('common.tip'), {
       type: 'warning'
     });
 
@@ -194,18 +203,27 @@ async function handleDelete(row: any) {
     });
 
     if (!error) {
-      ElMessage.success('删除成功');
+      ElMessage.success($t('common.deleteSuccess'));
       fetchData();
-    } else {
-      ElMessage.error('删除失败');
     }
   } catch {
     // 用户取消删除
   }
 }
 
-// 修改状态
+// 修改状态：先确认再调接口，取消或失败时回滚开关状态
 async function handleStatusChange(row: any) {
+  const targetStatus = row.status;
+  const action = targetStatus === 1 ? $t('common.enable') : $t('common.disable');
+  try {
+    await ElMessageBox.confirm($t('sys.user.areYouSureYouWantToThisUser', { action }), $t('common.tip'), {
+      type: 'warning'
+    });
+  } catch {
+    row.status = targetStatus === 1 ? 0 : 1;
+    return;
+  }
+
   const { error } = await request({
     url: `/system/user/${row.id}/status`,
     method: 'put',
@@ -213,9 +231,9 @@ async function handleStatusChange(row: any) {
   });
 
   if (!error) {
-    ElMessage.success('状态修改成功');
+    ElMessage.success($t('sys.role.statusUpdatedSuccessfully'));
   } else {
-    row.status = row.status === 1 ? 0 : 1;
+    row.status = targetStatus === 1 ? 0 : 1;
   }
 }
 
@@ -229,19 +247,29 @@ function handleResetPwd(row: any) {
 // 重置密码
 async function submitResetPwd() {
   if (!resetPwdForm.newPassword) {
-    ElMessage.warning('请输入新密码');
+    ElMessage.warning($t('common.pleaseEnterNewPassword'));
+    return;
+  }
+  // 与后端规则一致：6-20 位且同时包含字母和数字
+  if (!/^(?=.*[A-Za-z])(?=.*\d).{6,20}$/.test(resetPwdForm.newPassword)) {
+    ElMessage.warning($t('sys.user.passwordMustBe620CharactersAndContainBothLettersAndDigits'));
     return;
   }
 
-  const { error } = await request({
-    url: `/system/user/${resetPwdForm.userId}/resetPassword`,
-    method: 'post',
-    data: { newPassword: resetPwdForm.newPassword }
-  });
+  resetPwdLoading.value = true;
+  try {
+    const { error } = await request({
+      url: `/system/user/${resetPwdForm.userId}/resetPassword`,
+      method: 'post',
+      data: { newPassword: resetPwdForm.newPassword }
+    });
 
-  if (!error) {
-    ElMessage.success('密码重置成功');
-    resetPwdDialogVisible.value = false;
+    if (!error) {
+      ElMessage.success($t('sys.user.passwordResetSuccessfully'));
+      resetPwdDialogVisible.value = false;
+    }
+  } finally {
+    resetPwdLoading.value = false;
   }
 }
 
@@ -269,26 +297,26 @@ onMounted(() => {
     <!-- 搜索区域 -->
     <ElCard class="search-card">
       <ElForm :model="queryParams" inline>
-        <ElFormItem label="用户名">
-          <ElInput v-model="queryParams.username" placeholder="请输入用户名" clearable />
+        <ElFormItem :label="$t('common.username')">
+          <ElInput v-model="queryParams.username" :placeholder="$t('sys.user.pleaseEnterUserName')" clearable @keyup.enter="handleSearch" />
         </ElFormItem>
-        <ElFormItem label="昵称">
-          <ElInput v-model="queryParams.nickname" placeholder="请输入昵称" clearable />
+        <ElFormItem :label="$t('common.nickname')">
+          <ElInput v-model="queryParams.nickname" :placeholder="$t('common.pleaseEnterNickName')" clearable @keyup.enter="handleSearch" />
         </ElFormItem>
-        <ElFormItem label="状态">
-          <ElSelect v-model="queryParams.status" placeholder="请选择状态" clearable style="width: 120px">
-            <ElOption label="启用" :value="1" />
-            <ElOption label="禁用" :value="0" />
+        <ElFormItem :label="$t('common.status')">
+          <ElSelect v-model="queryParams.status" :placeholder="$t('common.pleaseSelectStatus')" clearable style="width: 120px">
+            <ElOption :label="$t('common.enable')" :value="1" />
+            <ElOption :label="$t('common.disable')" :value="0" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" @click="handleSearch">
             <template #icon><icon-ep-search /></template>
-            搜索
+            {{ $t('common.search') }}
           </ElButton>
           <ElButton @click="handleReset">
             <template #icon><icon-ep-refresh /></template>
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
@@ -298,10 +326,10 @@ onMounted(() => {
     <ElCard class="table-card">
       <template #header>
         <div class="flex items-center justify-between">
-          <span>用户列表</span>
+          <span>{{ $t('sys.user.userList') }}</span>
           <ElButton v-permission="'system:user:add'" type="primary" @click="handleAdd">
             <template #icon><icon-ep-plus /></template>
-            新增
+            {{ $t('common.add') }}
           </ElButton>
         </div>
       </template>
@@ -309,28 +337,28 @@ onMounted(() => {
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="tableData" border stripe height="100%">
           <ElTableColumn prop="id" label="ID" width="80" />
-          <ElTableColumn prop="username" label="用户名" width="120" />
-          <ElTableColumn prop="nickname" label="昵称" width="120" />
-          <ElTableColumn prop="email" label="邮箱" width="180" />
-          <ElTableColumn prop="phone" label="手机号" width="130" />
-          <ElTableColumn prop="gender" label="性别" width="80">
+          <ElTableColumn prop="username" :label="$t('common.username')" width="120" />
+          <ElTableColumn prop="nickname" :label="$t('common.nickname')" width="120" />
+          <ElTableColumn prop="email" :label="$t('common.email')" width="180" />
+          <ElTableColumn prop="phone" :label="$t('common.phone')" width="130" />
+          <ElTableColumn prop="gender" :label="$t('common.gender')" width="80">
             <template #default="{ row }">
-              <ElTag v-if="row.gender === 1" type="primary">男</ElTag>
-              <ElTag v-else-if="row.gender === 2" type="danger">女</ElTag>
-              <ElTag v-else type="info">未知</ElTag>
+              <ElTag v-if="row.gender === 1" type="primary">{{ $t('common.male') }}</ElTag>
+              <ElTag v-else-if="row.gender === 2" type="danger">{{ $t('common.female') }}</ElTag>
+              <ElTag v-else type="info">{{ $t('common.unknown') }}</ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="status" label="状态" width="100">
+          <ElTableColumn prop="status" :label="$t('common.status')" width="100">
             <template #default="{ row }">
-              <ElSwitch v-model="row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(row)" />
+              <ElSwitch v-permission="'system:user:edit'" v-model="row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(row)" />
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="createdTime" label="创建时间" width="180" />
-          <ElTableColumn label="操作" width="200" fixed="right">
+          <ElTableColumn prop="createdTime" :label="$t('common.createTime')" width="180" />
+          <ElTableColumn :label="$t('common.action')" width="200" fixed="right">
             <template #default="{ row }">
-              <ElButton v-permission="'system:user:edit'" type="primary" link @click="handleEdit(row)">编辑</ElButton>
+              <ElButton v-permission="'system:user:edit'" type="primary" link @click="handleEdit(row)">{{ $t('common.edit') }}</ElButton>
               <ElButton v-permission="'system:user:reset'" type="warning" link @click="handleResetPwd(row)">
-                重置密码
+                {{ $t('sys.user.resetPassword') }}
               </ElButton>
               <ElButton
                 v-if="row.username !== 'admin'"
@@ -339,7 +367,7 @@ onMounted(() => {
                 link
                 @click="handleDelete(row)"
               >
-                删除
+                {{ $t('common.delete') }}
               </ElButton>
             </template>
           </ElTableColumn>
@@ -362,56 +390,56 @@ onMounted(() => {
     <!-- 新增/编辑对话框 -->
     <ElDialog v-model="dialogVisible" :title="dialogTitle" width="600px" destroy-on-close>
       <ElForm ref="formRef" :model="formData" :rules="formRules" label-width="100px">
-        <ElFormItem label="用户名" prop="username">
-          <ElInput v-model="formData.username" placeholder="请输入用户名" :disabled="!!formData.id" />
+        <ElFormItem :label="$t('common.username')" prop="username">
+          <ElInput v-model="formData.username" :placeholder="$t('sys.user.pleaseEnterUserName')" :disabled="!!formData.id" />
         </ElFormItem>
-        <ElFormItem v-if="!formData.id" label="密码" prop="password">
-          <ElInput v-model="formData.password" type="password" placeholder="请输入密码" show-password />
+        <ElFormItem v-if="!formData.id" :label="$t('common.password')" prop="password">
+          <ElInput v-model="formData.password" type="password" :placeholder="$t('sys.user.pleaseEnterPassword')" show-password />
         </ElFormItem>
-        <ElFormItem label="昵称" prop="nickname">
-          <ElInput v-model="formData.nickname" placeholder="请输入昵称" />
+        <ElFormItem :label="$t('common.nickname')" prop="nickname">
+          <ElInput v-model="formData.nickname" :placeholder="$t('common.pleaseEnterNickName')" />
         </ElFormItem>
-        <ElFormItem label="邮箱">
-          <ElInput v-model="formData.email" placeholder="请输入邮箱" />
+        <ElFormItem :label="$t('common.email')">
+          <ElInput v-model="formData.email" :placeholder="$t('common.pleaseEnterEmail')" />
         </ElFormItem>
-        <ElFormItem label="手机号">
-          <ElInput v-model="formData.phone" placeholder="请输入手机号" />
+        <ElFormItem :label="$t('common.phone')">
+          <ElInput v-model="formData.phone" :placeholder="$t('common.pleaseEnterPhoneNumber')" />
         </ElFormItem>
-        <ElFormItem label="性别">
+        <ElFormItem :label="$t('common.gender')">
           <ElRadioGroup v-model="formData.gender">
-            <ElRadio :value="0">未知</ElRadio>
-            <ElRadio :value="1">男</ElRadio>
-            <ElRadio :value="2">女</ElRadio>
+            <ElRadio :value="0">{{ $t('common.unknown') }}</ElRadio>
+            <ElRadio :value="1">{{ $t('common.male') }}</ElRadio>
+            <ElRadio :value="2">{{ $t('common.female') }}</ElRadio>
           </ElRadioGroup>
         </ElFormItem>
-        <ElFormItem label="状态">
+        <ElFormItem :label="$t('common.status')">
           <ElRadioGroup v-model="formData.status">
-            <ElRadio :value="1">启用</ElRadio>
-            <ElRadio :value="0">禁用</ElRadio>
+            <ElRadio :value="1">{{ $t('common.enable') }}</ElRadio>
+            <ElRadio :value="0">{{ $t('common.disable') }}</ElRadio>
           </ElRadioGroup>
         </ElFormItem>
-        <ElFormItem label="角色">
-          <ElSelect v-model="formData.roleIds" multiple placeholder="请选择角色" style="width: 100%">
+        <ElFormItem :label="$t('common.role')">
+          <ElSelect v-model="formData.roleIds" multiple :placeholder="$t('approval.flow.pleaseSelectARole')" style="width: 100%">
             <ElOption v-for="role in roleList" :key="role.id" :label="role.roleName" :value="role.id" />
           </ElSelect>
         </ElFormItem>
       </ElForm>
       <template #footer>
-        <ElButton @click="dialogVisible = false">取消</ElButton>
-        <ElButton type="primary" @click="handleSubmit">确定</ElButton>
+        <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('common.ok') }}</ElButton>
       </template>
     </ElDialog>
 
     <!-- 重置密码对话框 -->
-    <ElDialog v-model="resetPwdDialogVisible" title="重置密码" width="400px">
+    <ElDialog v-model="resetPwdDialogVisible" :title="$t('sys.user.resetPassword')" width="400px">
       <ElForm label-width="80px">
-        <ElFormItem label="新密码">
-          <ElInput v-model="resetPwdForm.newPassword" type="password" placeholder="请输入新密码" show-password />
+        <ElFormItem :label="$t('common.newPassword')">
+          <ElInput v-model="resetPwdForm.newPassword" type="password" :placeholder="$t('common.pleaseEnterNewPassword')" show-password />
         </ElFormItem>
       </ElForm>
       <template #footer>
-        <ElButton @click="resetPwdDialogVisible = false">取消</ElButton>
-        <ElButton type="primary" @click="submitResetPwd">确定</ElButton>
+        <ElButton @click="resetPwdDialogVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="resetPwdLoading" @click="submitResetPwd">{{ $t('common.ok') }}</ElButton>
       </template>
     </ElDialog>
   </div>

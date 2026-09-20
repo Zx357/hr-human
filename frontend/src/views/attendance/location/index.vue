@@ -12,6 +12,7 @@ import {
 import { fetchEmployeePage } from '@/service/api/hr';
 import { fetchOrgTree } from '@/service/api/organization';
 import AttendanceLocationPicker from '@/views/organization/org-structure/components/attendance-location-picker.vue';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'AttendanceLocation' });
 
@@ -49,7 +50,7 @@ const employeePageNum = ref(1);
 const employeePageSize = ref(10);
 const form = ref<LocationForm>(createEmptyForm());
 
-const dialogTitle = computed(() => (form.value.id ? '编辑打卡地点' : '新增打卡地点'));
+const dialogTitle = computed(() => (form.value.id ? $t('attendance.location.editClockLocation') : $t('attendance.location.newClockLocation')));
 const assignedEmployees = computed(() => selectedLocation.value?.employees || []);
 const currentEmployeeIds = computed(() => selectedLocation.value?.employeeIds || []);
 const pagedAssignedEmployees = computed(() => {
@@ -210,8 +211,14 @@ function handleAdd() {
 }
 
 async function handleEdit(row: AttLocation) {
-  const res = await fetchAttLocationDetail(row.id as number);
-  const detail = res.data || row;
+  let detail: AttLocation;
+  try {
+    const res = await fetchAttLocationDetail(row.id as number);
+    detail = res.data || row;
+  } catch {
+    // 获取详情失败（请求层已统一弹错），不打开编辑弹窗
+    return;
+  }
   form.value = {
     ...createEmptyForm(),
     ...detail,
@@ -221,16 +228,25 @@ async function handleEdit(row: AttLocation) {
 }
 
 async function handleDelete(row: AttLocation) {
-  await ElMessageBox.confirm(`确定删除打卡地点“${row.locationName}”吗？关联员工也会同步解除。`, '提示', {
-    type: 'warning'
-  });
-  await deleteAttLocation(row.id as number);
-  ElMessage.success('删除成功');
-  if (selectedLocation.value?.id === row.id) {
-    selectedLocation.value = null;
-    resetEmployeeSelection();
+  try {
+    await ElMessageBox.confirm($t('attendance.location.areYouSureYouWantToDeleteClockLocationAssignedEmployeesWillBeUnassigned', { name: row.locationName }), $t('common.tip'), {
+      type: 'warning'
+    });
+  } catch {
+    // 用户取消删除
+    return;
   }
-  await loadLocations(false);
+  try {
+    await deleteAttLocation(row.id as number);
+    ElMessage.success($t('common.deleteSuccess'));
+    if (selectedLocation.value?.id === row.id) {
+      selectedLocation.value = null;
+      resetEmployeeSelection();
+    }
+    await loadLocations(false);
+  } catch {
+    // 请求层已统一弹错
+  }
 }
 
 function handlePickLocation() {
@@ -251,19 +267,19 @@ function handleLocationConfirm(location: { address: string; latitude: number; lo
 
 async function handleSubmit() {
   if (!form.value.locationName?.trim()) {
-    ElMessage.warning('请输入地点名称');
+    ElMessage.warning($t('attendance.location.pleaseEnterALocationName'));
     return;
   }
   if (!form.value.address?.trim()) {
-    ElMessage.warning('请先选择或填写打卡地址');
+    ElMessage.warning($t('attendance.location.pleaseSelectOrEnterAClockAddress'));
     return;
   }
   if (form.value.latitude === undefined || form.value.longitude === undefined) {
-    ElMessage.warning('请先选择地图点位');
+    ElMessage.warning($t('attendance.location.pleaseSelectAPointOnTheMap'));
     return;
   }
   if (!form.value.clockRange || form.value.clockRange <= 0) {
-    ElMessage.warning('请输入有效打卡半径');
+    ElMessage.warning($t('attendance.location.pleaseEnterAValidClockRadius'));
     return;
   }
 
@@ -274,7 +290,7 @@ async function handleSubmit() {
     } else {
       await createAttLocation(form.value);
     }
-    ElMessage.success('保存成功');
+    ElMessage.success($t('common.saveSuccess'));
     dialogVisible.value = false;
     await loadLocations();
   } finally {
@@ -284,7 +300,7 @@ async function handleSubmit() {
 
 async function handleOpenAssignDialog() {
   if (!selectedLocation.value?.id) {
-    ElMessage.warning('请先选择左侧打卡地点');
+    ElMessage.warning($t('attendance.location.pleaseSelectAClockLocationOnTheLeft'));
     return;
   }
 
@@ -306,7 +322,7 @@ async function handleSaveAssignments() {
       ...selectedLocation.value,
       employeeIds: tempSelectedEmployees.value.map(item => item.id!).filter(Boolean)
     });
-    ElMessage.success('员工关联已保存');
+    ElMessage.success($t('attendance.location.employeeAssignmentsSaved'));
     assignDialogVisible.value = false;
     await refreshSelectedLocation();
     await loadLocations();
@@ -374,23 +390,32 @@ async function removeEmployees(employees: Api.Hr.Employee[]) {
   }
 
   const names = employees.map(item => item.name || item.employeeNo).join('、');
-  await ElMessageBox.confirm(
-    `确定从当前打卡地点移除 ${employees.length} 名员工吗？${names ? `（${names}）` : ''}`,
-    '提示',
-    {
-      type: 'warning'
-    }
-  );
+  try {
+    await ElMessageBox.confirm(
+      $t('attendance.location.areYouSureYouWantToRemoveEmployeesFromTheCurrentClockLocation', { count: employees.length, names: names ? `（${names}）` : '' }),
+      $t('common.tip'),
+      {
+        type: 'warning'
+      }
+    );
+  } catch {
+    // 用户取消移除
+    return;
+  }
 
   const removeIds = new Set(employees.map(item => item.id));
   const employeeIds = currentEmployeeIds.value.filter(id => !removeIds.has(id));
-  await updateAttLocation(selectedLocation.value.id, {
-    ...selectedLocation.value,
-    employeeIds
-  });
-  ElMessage.success('已移除关联');
-  await refreshSelectedLocation();
-  await loadLocations();
+  try {
+    await updateAttLocation(selectedLocation.value.id, {
+      ...selectedLocation.value,
+      employeeIds
+    });
+    ElMessage.success($t('attendance.location.assignmentsRemoved'));
+    await refreshSelectedLocation();
+    await loadLocations();
+  } catch {
+    // 请求层已统一弹错
+  }
 }
 
 function handleRemoveEmployee(employee: Api.Hr.Employee) {
@@ -399,7 +424,7 @@ function handleRemoveEmployee(employee: Api.Hr.Employee) {
 
 function handleBatchRemoveEmployees() {
   if (selectedEmployeeRows.value.length === 0) {
-    ElMessage.warning('请先勾选要移除的员工');
+    ElMessage.warning($t('attendance.location.pleaseSelectEmployeesToRemove'));
     return;
   }
   removeEmployees(selectedEmployeeRows.value);
@@ -410,30 +435,30 @@ function handleBatchRemoveEmployees() {
   <div class="location-page">
     <div class="page-header">
       <div>
-        <div class="page-title">打卡地点设置</div>
-        <div class="page-desc">左侧维护打卡地点，右侧维护当前地点关联的员工。</div>
+        <div class="page-title">{{ $t('attendance.location.clockLocationSettings') }}</div>
+        <div class="page-desc">{{ $t('attendance.location.manageClockLocationsOnTheLeftAndAssignedEmployeesOfTheCurrentLocationOnTheRight') }}</div>
       </div>
-      <ElButton type="primary" @click="handleAdd">
+      <ElButton v-permission="'attendance:location:add'" type="primary" @click="handleAdd">
         <template #icon>
           <icon-ep-plus />
         </template>
-        新增地点
+        {{ $t('attendance.location.newLocation') }}
       </ElButton>
     </div>
 
     <div class="split-layout">
       <ElCard shadow="never" class="location-panel">
         <template #header>
-          <div class="panel-title">打卡地点</div>
+          <div class="panel-title">{{ $t('common.clockLocation') }}</div>
         </template>
 
         <div class="toolbar">
-          <ElInput v-model="keyword" clearable placeholder="搜索地点名称或地址" @keyup.enter="handleSearch">
+          <ElInput v-model="keyword" clearable :placeholder="$t('attendance.location.searchLocationNameOrAddress')" @keyup.enter="handleSearch">
             <template #prefix>
               <icon-ep-search />
             </template>
           </ElInput>
-          <ElButton type="primary" plain @click="handleSearch">查询</ElButton>
+          <ElButton type="primary" plain @click="handleSearch">{{ $t('common.search') }}</ElButton>
         </div>
 
         <ElTable
@@ -446,25 +471,25 @@ function handleBatchRemoveEmployees() {
           row-key="id"
           @row-click="selectLocation"
         >
-          <ElTableColumn prop="locationName" label="地点名称" width="110" show-overflow-tooltip />
-          <ElTableColumn prop="address" label="打卡地址" min-width="180" show-overflow-tooltip />
-          <ElTableColumn prop="clockRange" label="半径" width="72" align="center">
-            <template #default="{ row }">{{ row.clockRange }}米</template>
+          <ElTableColumn prop="locationName" :label="$t('attendance.location.locationName')" width="110" show-overflow-tooltip />
+          <ElTableColumn prop="address" :label="$t('common.clockAddress')" min-width="180" show-overflow-tooltip />
+          <ElTableColumn prop="clockRange" :label="$t('attendance.location.radius')" width="72" align="center">
+            <template #default="{ row }">{{ row.clockRange }}{{ $t('common.meter') }}</template>
           </ElTableColumn>
-          <ElTableColumn prop="assignedCount" label="员工" width="68" align="center">
+          <ElTableColumn prop="assignedCount" :label="$t('common.employee')" width="68" align="center">
             <template #default="{ row }">
-              <ElTag type="success">{{ row.assignedCount || 0 }} 人</ElTag>
+              <ElTag type="success">{{ row.assignedCount || 0 }} {{ $t('org.structure.people') }}</ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="status" label="状态" width="72" align="center">
+          <ElTableColumn prop="status" :label="$t('common.status')" width="72" align="center">
             <template #default="{ row }">
-              <ElTag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '启用' : '停用' }}</ElTag>
+              <ElTag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? $t('common.enable') : $t('common.deactivate') }}</ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn label="操作" width="116" align="center" fixed="right">
+          <ElTableColumn :label="$t('common.action')" width="116" align="center" fixed="right">
             <template #default="{ row }">
-              <ElButton type="primary" link size="small" @click.stop="handleEdit(row)">编辑</ElButton>
-              <ElButton type="danger" link size="small" @click.stop="handleDelete(row)">删除</ElButton>
+              <ElButton v-permission="'attendance:location:edit'" type="primary" link size="small" @click.stop="handleEdit(row)">{{ $t('common.edit') }}</ElButton>
+              <ElButton v-permission="'attendance:location:delete'" type="danger" link size="small" @click.stop="handleDelete(row)">{{ $t('common.delete') }}</ElButton>
             </template>
           </ElTableColumn>
         </ElTable>
@@ -486,9 +511,9 @@ function handleBatchRemoveEmployees() {
         <template #header>
           <div class="employee-header">
             <div>
-              <div class="panel-title">关联员工</div>
+              <div class="panel-title">{{ $t('common.assignEmployees') }}</div>
               <div class="panel-desc">
-                {{ selectedLocation ? `当前地点：${selectedLocation.locationName}` : '请先选择左侧打卡地点' }}
+                {{ selectedLocation ? $t('org.mapPicker.currentLocation', { name: selectedLocation.locationName }) : $t('attendance.location.pleaseSelectAClockLocationOnTheLeft') }}
               </div>
             </div>
             <div class="employee-actions">
@@ -498,10 +523,10 @@ function handleBatchRemoveEmployees() {
                 :disabled="selectedEmployeeRows.length === 0"
                 @click="handleBatchRemoveEmployees"
               >
-                批量移除
+                {{ $t('attendance.location.batchRemove') }}
               </ElButton>
               <ElButton type="primary" plain :disabled="!selectedLocation" @click="handleOpenAssignDialog">
-                关联员工
+                {{ $t('common.assignEmployees') }}
               </ElButton>
             </div>
           </div>
@@ -509,12 +534,12 @@ function handleBatchRemoveEmployees() {
 
         <div v-if="selectedLocation" class="location-summary">
           <ElDescriptions :column="1" border size="small">
-            <ElDescriptionsItem label="打卡地址">{{ selectedLocation.address || '--' }}</ElDescriptionsItem>
-            <ElDescriptionsItem label="坐标">
+            <ElDescriptionsItem :label="$t('common.clockAddress')">{{ selectedLocation.address || '--' }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('common.coordinates')">
               {{ selectedLocation.latitude?.toFixed?.(6) || '--' }},
               {{ selectedLocation.longitude?.toFixed?.(6) || '--' }}
             </ElDescriptionsItem>
-            <ElDescriptionsItem label="打卡半径">{{ selectedLocation.clockRange || 0 }} 米</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('attendance.location.clockRadius')">{{ selectedLocation.clockRange || 0 }} {{ $t('common.meter') }}</ElDescriptionsItem>
           </ElDescriptions>
         </div>
 
@@ -524,22 +549,22 @@ function handleBatchRemoveEmployees() {
           :data="pagedAssignedEmployees"
           border
           stripe
-          empty-text="暂无关联员工"
+          :empty-text="$t('attendance.location.noAssignedEmployees')"
           @selection-change="handleEmployeeSelectionChange"
         >
           <ElTableColumn type="selection" width="44" align="center" />
-          <ElTableColumn prop="employeeNo" label="工号" width="86" />
-          <ElTableColumn prop="name" label="姓名" width="88" show-overflow-tooltip />
-          <ElTableColumn prop="deptName" label="部门" min-width="100" show-overflow-tooltip />
-          <ElTableColumn prop="phone" label="手机号" min-width="106" show-overflow-tooltip />
-          <ElTableColumn prop="status" label="状态" width="66" align="center">
+          <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="86" />
+          <ElTableColumn prop="name" :label="$t('common.name')" width="88" show-overflow-tooltip />
+          <ElTableColumn prop="deptName" :label="$t('common.department')" min-width="100" show-overflow-tooltip />
+          <ElTableColumn prop="phone" :label="$t('common.phone')" min-width="106" show-overflow-tooltip />
+          <ElTableColumn prop="status" :label="$t('common.status')" width="66" align="center">
             <template #default="{ row }">
-              <ElTag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '在职' : '离职' }}</ElTag>
+              <ElTag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? $t('common.active') : $t('common.resigned') }}</ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn label="操作" width="74" align="center" fixed="right">
+          <ElTableColumn :label="$t('common.action')" width="74" align="center" fixed="right">
             <template #default="{ row }">
-              <ElButton type="danger" link size="small" @click="handleRemoveEmployee(row)">移除</ElButton>
+              <ElButton type="danger" link size="small" @click="handleRemoveEmployee(row)">{{ $t('common.remove') }}</ElButton>
             </template>
           </ElTableColumn>
         </ElTable>
@@ -560,29 +585,29 @@ function handleBatchRemoveEmployees() {
 
     <ElDialog v-model="dialogVisible" :title="dialogTitle" width="760px" destroy-on-close>
       <ElForm :model="form" label-width="100px">
-        <ElFormItem label="地点名称" required>
-          <ElInput v-model="form.locationName" maxlength="100" show-word-limit placeholder="例如：华水工业园 1栋5楼" />
+        <ElFormItem :label="$t('attendance.location.locationName')" required>
+          <ElInput v-model="form.locationName" maxlength="100" show-word-limit :placeholder="$t('attendance.location.eGHuashuiIndustrialParkBuilding1Floor5')" />
         </ElFormItem>
 
-        <ElFormItem label="地图选点" required>
+        <ElFormItem :label="$t('attendance.location.mapPicker')" required>
           <div class="pick-row">
-            <ElButton type="primary" plain @click="handlePickLocation">地图选择位置</ElButton>
-            <span class="pick-tip">选择后会自动回填地址和 GCJ-02 坐标</span>
+            <ElButton type="primary" plain @click="handlePickLocation">{{ $t('attendance.location.pickLocationOnMap') }}</ElButton>
+            <span class="pick-tip">{{ $t('attendance.location.theAddressAndGcj02CoordinatesWillBeFilledAutomaticallyAfterSelection') }}</span>
           </div>
         </ElFormItem>
 
-        <ElFormItem label="打卡地址" required>
+        <ElFormItem :label="$t('common.clockAddress')" required>
           <ElInput
             v-model="form.address"
             maxlength="255"
             show-word-limit
-            placeholder="用于移动端展示，可手动补充楼栋楼层"
+            :placeholder="$t('attendance.location.shownOnMobileBuildingAndFloorCanBeAddedManually')"
           />
         </ElFormItem>
 
         <ElRow :gutter="12">
           <ElCol :span="12">
-            <ElFormItem label="纬度" required>
+            <ElFormItem :label="$t('common.latitude')" required>
               <ElInputNumber
                 v-model="form.latitude"
                 class="w-full"
@@ -593,7 +618,7 @@ function handleBatchRemoveEmployees() {
             </ElFormItem>
           </ElCol>
           <ElCol :span="12">
-            <ElFormItem label="经度" required>
+            <ElFormItem :label="$t('common.longitude')" required>
               <ElInputNumber
                 v-model="form.longitude"
                 class="w-full"
@@ -607,7 +632,7 @@ function handleBatchRemoveEmployees() {
 
         <ElRow :gutter="12">
           <ElCol :span="12">
-            <ElFormItem label="打卡半径" required>
+            <ElFormItem :label="$t('attendance.location.clockRadius')" required>
               <ElInputNumber
                 v-model="form.clockRange"
                 class="w-full"
@@ -619,27 +644,27 @@ function handleBatchRemoveEmployees() {
             </ElFormItem>
           </ElCol>
           <ElCol :span="12">
-            <ElFormItem label="状态">
+            <ElFormItem :label="$t('common.status')">
               <ElRadioGroup v-model="form.status">
-                <ElRadioButton :value="1">启用</ElRadioButton>
-                <ElRadioButton :value="0">停用</ElRadioButton>
+                <ElRadioButton :value="1">{{ $t('common.enable') }}</ElRadioButton>
+                <ElRadioButton :value="0">{{ $t('common.deactivate') }}</ElRadioButton>
               </ElRadioGroup>
             </ElFormItem>
           </ElCol>
         </ElRow>
 
-        <ElFormItem label="备注">
+        <ElFormItem :label="$t('common.remark')">
           <ElInput v-model="form.remark" type="textarea" :rows="3" maxlength="500" show-word-limit />
         </ElFormItem>
       </ElForm>
 
       <template #footer>
-        <ElButton @click="dialogVisible = false">取消</ElButton>
-        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">保存</ElButton>
+        <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('common.save') }}</ElButton>
       </template>
     </ElDialog>
 
-    <ElDialog v-model="assignDialogVisible" title="选择员工" width="900px" destroy-on-close append-to-body>
+    <ElDialog v-model="assignDialogVisible" :title="$t('common.selectEmployees')" width="900px" destroy-on-close append-to-body>
       <div class="selected-employee-box">
         <template v-if="tempSelectedEmployees.length > 0">
           <ElTag
@@ -652,29 +677,29 @@ function handleBatchRemoveEmployees() {
             {{ employee.name }} ({{ employee.employeeNo }})
           </ElTag>
         </template>
-        <span v-else class="selected-placeholder">请选择员工</span>
+        <span v-else class="selected-placeholder">{{ $t('common.pleaseSelectEmployees') }}</span>
       </div>
 
       <div class="mb-16px">
         <ElForm inline :model="assignEmployeeSearch">
-          <ElFormItem label="姓名">
-            <ElInput v-model="assignEmployeeSearch.name" placeholder="请输入姓名" clearable style="width: 120px" />
+          <ElFormItem :label="$t('common.name')">
+            <ElInput v-model="assignEmployeeSearch.name" :placeholder="$t('common.pleaseInputName')" clearable style="width: 120px" />
           </ElFormItem>
-          <ElFormItem label="工号">
+          <ElFormItem :label="$t('common.employeeNo')">
             <ElInput
               v-model="assignEmployeeSearch.employeeNo"
-              placeholder="请输入工号"
+              :placeholder="$t('common.pleaseInputEmployeeNo')"
               clearable
               style="width: 120px"
             />
           </ElFormItem>
-          <ElFormItem label="组织">
+          <ElFormItem :label="$t('common.organization')">
             <ElTreeSelect
               v-model="assignEmployeeSearch.orgIds"
               :data="orgTreeOptions"
               :props="{ children: 'children', label: 'unitName', value: 'id' }"
               node-key="id"
-              placeholder="请选择组织"
+              :placeholder="$t('common.pleaseSelectOrganization')"
               clearable
               multiple
               :check-strictly="!cascadeSelect"
@@ -687,14 +712,14 @@ function handleBatchRemoveEmployees() {
             >
               <template #header>
                 <div class="tree-select-header">
-                  <ElCheckbox v-model="cascadeSelect" size="small">联动选择</ElCheckbox>
+                  <ElCheckbox v-model="cascadeSelect" size="small">{{ $t('common.cascadeSelect') }}</ElCheckbox>
                 </div>
               </template>
             </ElTreeSelect>
           </ElFormItem>
           <ElFormItem>
-            <ElButton type="primary" @click="handleAssignSearch">搜索</ElButton>
-            <ElButton @click="handleAssignReset">重置</ElButton>
+            <ElButton type="primary" @click="handleAssignSearch">{{ $t('common.search') }}</ElButton>
+            <ElButton @click="handleAssignReset">{{ $t('common.reset') }}</ElButton>
           </ElFormItem>
         </ElForm>
       </div>
@@ -710,15 +735,15 @@ function handleBatchRemoveEmployees() {
         @selection-change="handleAssignSelectionChange"
       >
         <ElTableColumn type="selection" width="50" />
-        <ElTableColumn prop="employeeNo" label="工号" width="110" />
-        <ElTableColumn prop="name" label="姓名" width="100" />
-        <ElTableColumn prop="companyName" label="公司" min-width="140" show-overflow-tooltip />
-        <ElTableColumn prop="deptName" label="部门" min-width="120" show-overflow-tooltip />
-        <ElTableColumn prop="phone" label="手机号" min-width="130" show-overflow-tooltip />
+        <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="110" />
+        <ElTableColumn prop="name" :label="$t('common.name')" width="100" />
+        <ElTableColumn prop="companyName" :label="$t('common.company')" min-width="140" show-overflow-tooltip />
+        <ElTableColumn prop="deptName" :label="$t('common.department')" min-width="120" show-overflow-tooltip />
+        <ElTableColumn prop="phone" :label="$t('common.phone')" min-width="130" show-overflow-tooltip />
       </ElTable>
 
       <div class="employee-dialog-footer">
-        <span class="selected-count">已选择 {{ tempSelectedEmployees.length }} 人</span>
+        <span class="selected-count">{{ $t('attendance.location.selected') }} {{ tempSelectedEmployees.length }} {{ $t('org.structure.people') }}</span>
         <ElPagination
           v-model:current-page="assignEmployeePage"
           v-model:page-size="assignEmployeePageSize"
@@ -732,15 +757,15 @@ function handleBatchRemoveEmployees() {
 
       <ElAlert
         class="assign-tip"
-        title="保存后，所选员工会绑定到当前打卡地点；员工可以同时绑定多个打卡地点。"
+        :title="$t('attendance.location.afterSavingSelectedEmployeesWillBeBoundToTheCurrentClockLocationAnEmployeeCanBindToMultipleLocations')"
         type="info"
         :closable="false"
         show-icon
       />
 
       <template #footer>
-        <ElButton @click="assignDialogVisible = false">取消</ElButton>
-        <ElButton type="primary" :loading="assignSubmitLoading" @click="handleSaveAssignments">保存关联</ElButton>
+        <ElButton @click="assignDialogVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="assignSubmitLoading" @click="handleSaveAssignments">{{ $t('attendance.location.saveAssignments') }}</ElButton>
       </template>
     </ElDialog>
 

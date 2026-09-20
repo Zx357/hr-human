@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import dayjs from 'dayjs';
+import { appTypeColorMap, appTypeShortMap } from '@/constants/application';
 import { type Application, fetchPendingPage } from '@/service/api/application';
+import { formatDateTime } from '@/utils/format';
 
 defineOptions({ name: 'ProjectNews' });
 
@@ -11,21 +12,11 @@ const loading = ref(false);
 const list = ref<Application[]>([]);
 const total = ref(0);
 
-const appTypeMap: Record<string, { label: string; color: string }> = {
-  leave: { label: '请假', color: '#6366f1' },
-  overtime: { label: '加班', color: '#f59e0b' },
-  business: { label: '出差', color: '#06b6d4' },
-  makeup: { label: '补卡', color: '#8b5cf6' },
-  exchange: { label: '换休', color: '#10b981' },
-  regularization: { label: '转正', color: '#3b82f6' },
-  transfer: { label: '调动', color: '#ec4899' },
-  reward: { label: '奖励', color: '#22c55e' },
-  punish: { label: '惩罚', color: '#ef4444' },
-  resignation: { label: '离职', color: '#64748b' }
-};
-
 function getTypeInfo(type: string) {
-  return appTypeMap[type] ?? { label: type, color: '#6b7280' };
+  return {
+    label: appTypeShortMap[type] ?? type,
+    color: appTypeColorMap[type] ?? '#6b7280'
+  };
 }
 
 async function loadData() {
@@ -57,11 +48,11 @@ onMounted(() => {
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-8px">
           <div class="header-dot" style="background: #f59e0b"></div>
-          <span class="font-medium">待审批</span>
+          <span class="font-medium">{{ $t('common.pendingApproval') }}</span>
           <ElBadge v-if="total" :value="total" :max="99" class="ml-4px" />
         </div>
         <ElButton link type="primary" @click="goPending">
-          查看全部
+          {{ $t('home.common.viewAll') }}
           <SvgIcon icon="mdi:chevron-right" class="ml-2px text-16px" />
         </ElButton>
       </div>
@@ -69,7 +60,7 @@ onMounted(() => {
 
     <div v-if="!list.length" class="empty-state">
       <SvgIcon icon="mdi:check-circle-outline" class="mb-12px text-48px text-#d1d5db" />
-      <p class="text-14px text-#9ca3af">暂无待审批事项，一切顺利！</p>
+      <p class="text-14px text-#9ca3af">{{ $t('home.projectNews.noPendingApprovalsAllGood') }}</p>
     </div>
 
     <div v-else class="approval-list">
@@ -91,7 +82,7 @@ onMounted(() => {
           </div>
         </div>
         <div class="item-time whitespace-nowrap text-12px text-#9ca3af">
-          {{ item.createdTime ? dayjs(item.createdTime).format('MM-DD HH:mm') : '' }}
+          {{ formatDateTime(item.createdTime, 'MM-DD HH:mm') }}
         </div>
       </div>
     </div>

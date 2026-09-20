@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import * as echarts from 'echarts';
 import {
   OrgUnitType,
   createOrgUnit,
@@ -12,6 +11,8 @@ import {
   updateOrgUnit
 } from '@/service/api/organization';
 import { fetchEmployeePage } from '@/service/api/hr';
+import { useEcharts } from '@/hooks/common/echarts';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'OrgStructure' });
 
@@ -37,20 +38,19 @@ const treeRef = ref<any>(null);
 const contextMenuRef = ref<any>(null);
 const contextMenuNode = ref<Api.Organization.OrgUnit | null>(null);
 const contextMenuVirtualRef = ref<any>(null);
-const chartRef = ref<HTMLDivElement | null>(null);
 
 const typeOptions: TypeOption[] = [
-  { label: '集团', value: OrgUnitType.GROUP },
-  { label: '公司', value: OrgUnitType.COMPANY },
-  { label: '部门', value: OrgUnitType.DEPT }
+  { label: $t('org.structure.group'), value: OrgUnitType.GROUP },
+  { label: $t('common.company'), value: OrgUnitType.COMPANY },
+  { label: $t('common.department'), value: OrgUnitType.DEPT }
 ];
 
 const dimensionOptions: Array<{ label: string; value: StatsDimension }> = [
-  { label: '年龄分析', value: 'age' },
-  { label: '性别分析', value: 'gender' },
-  { label: '学历分析', value: 'education' },
-  { label: '在职状态', value: 'status' },
-  { label: '员工类型', value: 'employeeType' }
+  { label: $t('org.structure.ageAnalysis'), value: 'age' },
+  { label: $t('org.structure.genderAnalysis'), value: 'gender' },
+  { label: $t('org.structure.educationAnalysis'), value: 'education' },
+  { label: $t('org.structure.employmentStatus'), value: 'status' },
+  { label: $t('org.structure.employeeType'), value: 'employeeType' }
 ];
 
 const chartColors = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#64748b'];
@@ -62,8 +62,43 @@ const isCompanyUnit = computed(() => editingData.value.unitType === OrgUnitType.
 
 const statistics = ref<Api.Organization.OrgStatistics>(createEmptyStatistics());
 
-let chartInstance: echarts.ECharts | null = null;
-const resizeHandler = () => chartInstance?.resize();
+// 图表改用 useEcharts hook：自动跟随暗色主题、容器尺寸与生命周期
+const { domRef: chartRef, updateOptions: updateChartOptions } = useEcharts(() => ({
+  color: chartColors,
+  tooltip: {
+    trigger: 'item',
+    formatter: $t('home.educationChart.people')
+  },
+  legend: {
+    orient: 'vertical',
+    right: 16,
+    top: 'center',
+    itemGap: 12
+  },
+  series: [
+    {
+      type: 'pie',
+      radius: ['42%', '72%'],
+      center: ['34%', '50%'],
+      avoidLabelOverlap: false,
+      itemStyle: {
+        borderRadius: 8,
+        borderColor: '#fff',
+        borderWidth: 2
+      },
+      label: { show: false },
+      emphasis: {
+        label: {
+          show: true,
+          fontSize: 14,
+          fontWeight: 'bold'
+        }
+      },
+      labelLine: { show: false },
+      data: [] as ChartDatum[]
+    }
+  ]
+}));
 
 function createEmptyStatistics(): Api.Organization.OrgStatistics {
   return {
@@ -119,14 +154,14 @@ function buildOrgUnitForm(unit: Api.Organization.OrgUnit): Api.Organization.OrgU
 function getAvailableTypes(parentType?: number): TypeOption[] {
   if (!parentType) {
     return [
-      { label: '集团', value: OrgUnitType.GROUP },
-      { label: '公司', value: OrgUnitType.COMPANY }
+      { label: $t('org.structure.group'), value: OrgUnitType.GROUP },
+      { label: $t('common.company'), value: OrgUnitType.COMPANY }
     ];
   }
   if (parentType === OrgUnitType.GROUP) {
-    return [{ label: '公司', value: OrgUnitType.COMPANY }];
+    return [{ label: $t('common.company'), value: OrgUnitType.COMPANY }];
   }
-  return [{ label: '部门', value: OrgUnitType.DEPT }];
+  return [{ label: $t('common.department'), value: OrgUnitType.DEPT }];
 }
 
 function filterNode(keyword: string, data: any) {
@@ -148,17 +183,17 @@ function findDistributionValue(items: Array<{ name: string; value: number }>, na
   return items.find(item => names.includes(item.name))?.value ?? 0;
 }
 
-const maleCount = computed(() => findDistributionValue(statistics.value.genderDistribution, ['男', 'Male']));
-const femaleCount = computed(() => findDistributionValue(statistics.value.genderDistribution, ['女', 'Female']));
-const activeCount = computed(() => findDistributionValue(statistics.value.statusDistribution, ['在职', 'Active']));
+const maleCount = computed(() => findDistributionValue(statistics.value.genderDistribution, [$t('common.male'), 'Male']));
+const femaleCount = computed(() => findDistributionValue(statistics.value.genderDistribution, [$t('common.female'), 'Female']));
+const activeCount = computed(() => findDistributionValue(statistics.value.statusDistribution, [$t('common.active'), 'Active']));
 
-const dialogTitle = computed(() => (operateType.value === 'add' ? '新增组织' : '编辑组织'));
+const dialogTitle = computed(() => (operateType.value === 'add' ? $t('org.structure.addOrganization') : $t('org.structure.editOrganization')));
 const pageTitle = computed(() =>
-  selectedNode.value ? `${selectedNode.value.unitName} - 人员结构分析` : '全公司 - 人员结构分析'
+  selectedNode.value ? $t('org.structure.workforceAnalysis', { name: selectedNode.value.unitName }) : $t('org.structure.wholeCompanyWorkforceAnalysis')
 );
 const chartTitle = computed(() => {
   const dimensionLabel = dimensionOptions.find(item => item.value === statsDimension.value)?.label ?? '';
-  const prefix = selectedNode.value?.unitName ?? '全公司';
+  const prefix = selectedNode.value?.unitName ?? $t('org.structure.wholeCompany');
   return `${prefix} - ${dimensionLabel}`;
 });
 
@@ -218,54 +253,10 @@ function renderChart() {
     return;
   }
 
-  const data = getChartData();
-  if (!data.length) {
-    chartInstance?.dispose();
-    chartInstance = null;
-    return;
-  }
-
-  if (!chartInstance) {
-    chartInstance = echarts.init(chartRef.value);
-  } else {
-    chartInstance.clear();
-  }
-
-  chartInstance.setOption({
-    color: chartColors,
-    tooltip: {
-      trigger: 'item',
-      formatter: '{b}: {c} 人 ({d}%)'
-    },
-    legend: {
-      orient: 'vertical',
-      right: 16,
-      top: 'center',
-      itemGap: 12
-    },
-    series: [
-      {
-        type: 'pie',
-        radius: ['42%', '72%'],
-        center: ['34%', '50%'],
-        avoidLabelOverlap: false,
-        itemStyle: {
-          borderRadius: 8,
-          borderColor: '#fff',
-          borderWidth: 2
-        },
-        label: { show: false },
-        emphasis: {
-          label: {
-            show: true,
-            fontSize: 14,
-            fontWeight: 'bold'
-          }
-        },
-        labelLine: { show: false },
-        data
-      }
-    ]
+  updateChartOptions(opts => {
+    const series = opts.series as { data: ChartDatum[] }[];
+    series[0].data = getChartData();
+    return opts;
   });
 }
 
@@ -303,6 +294,8 @@ async function loadStatistics(orgId?: number) {
 
 async function loadEmployees() {
   try {
+    // 负责人下拉需要全量在职员工（仅使用 id/name/employeeNo 三个字段）；
+    // 员工规模扩大后应由后端提供精简的负责人候选列表接口替代全量分页拉取
     const response = await fetchEmployeePage({ pageNum: 1, pageSize: 1000, status: 1 });
     employeeOptions.value = response.data?.records ?? [];
   } catch {
@@ -388,34 +381,32 @@ function handleEdit(row: Api.Organization.OrgUnit) {
 
 async function handleDelete(row: Api.Organization.OrgUnit) {
   if (row.children?.length) {
-    ElMessage.warning('当前节点下还有子节点，请先删除子节点');
+    ElMessage.warning($t('org.structure.thisNodeHasChildNodesDeleteTheChildNodesFirst'));
     return;
   }
 
   try {
-    await ElMessageBox.confirm(`确认删除“${row.unitName}”吗？`, '删除确认', { type: 'warning' });
+    await ElMessageBox.confirm($t('org.structure.areYouSureYouWantToDelete', { name: row.unitName }), $t('common.deleteConfirmTitle'), { type: 'warning' });
     await deleteOrgUnit(row.id);
-    ElMessage.success('删除成功');
+    ElMessage.success($t('common.deleteSuccess'));
     await loadTreeData();
     if (selectedNode.value?.id === row.id) {
       selectedNode.value = null;
       await loadStatistics();
     }
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      ElMessage.error(error?.message || '删除失败');
-    }
+  } catch {
+    // 用户取消删除；接口失败由请求层统一弹错
   }
 }
 
 async function handleSubmit() {
   if (!editingData.value.unitCode?.trim()) {
-    ElMessage.warning('请输入组织编码');
+    ElMessage.warning($t('org.structure.pleaseEnterOrganizationCode'));
     return;
   }
 
   if (!editingData.value.unitName?.trim()) {
-    ElMessage.warning('请输入组织名称');
+    ElMessage.warning($t('org.structure.pleaseEnterOrganizationName'));
     return;
   }
 
@@ -423,17 +414,17 @@ async function handleSubmit() {
   try {
     if (operateType.value === 'add') {
       await createOrgUnit(editingData.value);
-      ElMessage.success('新增成功');
+      ElMessage.success($t('common.addSuccess'));
     } else if (editingId.value !== null) {
       await updateOrgUnit(editingId.value, editingData.value);
-      ElMessage.success('保存成功');
+      ElMessage.success($t('common.saveSuccess'));
     }
 
     dialogVisible.value = false;
     await loadTreeData();
     await loadStatistics(selectedNode.value?.id);
-  } catch (error: any) {
-    ElMessage.error(error?.message || '保存失败');
+  } catch {
+    // 请求层已统一弹错
   } finally {
     submitLoading.value = false;
   }
@@ -441,41 +432,34 @@ async function handleSubmit() {
 
 function getTypeTag(type: number) {
   const typeMap: Record<number, { label: string; type: 'danger' | 'warning' | 'primary' | 'info' }> = {
-    [OrgUnitType.GROUP]: { label: '集团', type: 'danger' },
-    [OrgUnitType.COMPANY]: { label: '公司', type: 'warning' },
-    [OrgUnitType.DEPT]: { label: '部门', type: 'primary' }
+    [OrgUnitType.GROUP]: { label: $t('org.structure.group'), type: 'danger' },
+    [OrgUnitType.COMPANY]: { label: $t('common.company'), type: 'warning' },
+    [OrgUnitType.DEPT]: { label: $t('common.department'), type: 'primary' }
   };
-  return typeMap[type] ?? { label: '未知', type: 'info' };
+  return typeMap[type] ?? { label: $t('common.unknown'), type: 'info' };
 }
 
 function getAddButtonText(type?: number) {
   if (!type) {
-    return '新增';
+    return $t('common.add');
   }
   if (type === OrgUnitType.GROUP) {
-    return '添加公司';
+    return $t('org.structure.addCompany');
   }
   if (type === OrgUnitType.COMPANY) {
-    return '添加部门';
+    return $t('org.structure.addDepartment');
   }
-  return '添加子节点';
+  return $t('org.structure.addChildNode');
 }
 
 function getParentName() {
-  return parentNode.value?.unitName ?? '顶级节点';
+  return parentNode.value?.unitName ?? $t('org.structure.topLevelNode');
 }
 
 onMounted(async () => {
-  window.addEventListener('resize', resizeHandler);
   await Promise.all([loadTreeData(), loadEmployees(), loadStatistics()]);
   await nextTick();
   renderChart();
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', resizeHandler);
-  chartInstance?.dispose();
-  chartInstance = null;
 });
 </script>
 
@@ -485,7 +469,7 @@ onBeforeUnmount(() => {
       <ElCard shadow="hover" class="full-height">
         <template #header>
           <div class="tree-header">
-            <span class="tree-title">组织架构</span>
+            <span class="tree-title">{{ $t('common.organizationStructure') }}</span>
             <ElButtonGroup size="small">
               <ElButton @click="handleExpandAll">
                 <icon-ep-arrow-down />
@@ -500,15 +484,15 @@ onBeforeUnmount(() => {
           </div>
         </template>
 
-        <ElInput v-model="searchKeyword" placeholder="搜索组织名称或编码" clearable class="mb-12px">
+        <ElInput v-model="searchKeyword" :placeholder="$t('org.structure.searchOrganizationNameOrCode')" clearable class="mb-12px">
           <template #prefix>
             <icon-ep-search />
           </template>
         </ElInput>
 
-        <ElButton type="primary" size="small" class="mb-12px" @click="handleAdd()">
+        <ElButton v-permission="'org:unit:add'" type="primary" size="small" class="mb-12px" @click="handleAdd()">
           <icon-ep-plus class="mr-4px" />
-          新增顶级组织
+          {{ $t('org.structure.addTopOrganization') }}
         </ElButton>
 
         <ElScrollbar height="calc(100vh - 320px)">
@@ -540,14 +524,17 @@ onBeforeUnmount(() => {
                     class="tree-node-badge"
                   />
                 </div>
-                <div class="node-actions">
-                  <ElButton type="success" link size="small" @click.stop="handleAdd(data)">
+                <div
+                  v-permission="['org:unit:add', 'org:unit:edit', 'org:unit:delete']"
+                  class="node-actions"
+                >
+                  <ElButton v-permission="'org:unit:add'" type="success" link size="small" @click.stop="handleAdd(data)">
                     <icon-ep-plus />
                   </ElButton>
-                  <ElButton type="primary" link size="small" @click.stop="handleEdit(data)">
+                  <ElButton v-permission="'org:unit:edit'" type="primary" link size="small" @click.stop="handleEdit(data)">
                     <icon-ep-edit />
                   </ElButton>
-                  <ElButton type="danger" link size="small" @click.stop="handleDelete(data)">
+                  <ElButton v-permission="'org:unit:delete'" type="danger" link size="small" @click.stop="handleDelete(data)">
                     <icon-ep-delete />
                   </ElButton>
                 </div>
@@ -563,18 +550,18 @@ onBeforeUnmount(() => {
           >
             <template #dropdown>
               <ElDropdownMenu>
-                <ElDropdownItem v-if="contextMenuNode" :command="{ action: 'add', node: contextMenuNode }">
+                <ElDropdownItem v-if="contextMenuNode" v-permission="'org:unit:add'" :command="{ action: 'add', node: contextMenuNode }">
                   <icon-ep-plus class="mr-8px" />
                   {{ getAddButtonText(contextMenuNode.unitType) }}
                 </ElDropdownItem>
-                <ElDropdownItem v-if="contextMenuNode" :command="{ action: 'edit', node: contextMenuNode }">
+                <ElDropdownItem v-if="contextMenuNode" v-permission="'org:unit:edit'" :command="{ action: 'edit', node: contextMenuNode }">
                   <icon-ep-edit class="mr-8px" />
-                  编辑
+                  {{ $t('common.edit') }}
                 </ElDropdownItem>
-                <ElDropdownItem v-if="contextMenuNode" :command="{ action: 'delete', node: contextMenuNode }" divided>
+                <ElDropdownItem v-if="contextMenuNode" v-permission="'org:unit:delete'" :command="{ action: 'delete', node: contextMenuNode }" divided>
                   <span class="text-red-500">
                     <icon-ep-delete class="mr-8px" />
-                    删除
+                    {{ $t('common.delete') }}
                   </span>
                 </ElDropdownItem>
               </ElDropdownMenu>
@@ -597,7 +584,7 @@ onBeforeUnmount(() => {
             <div class="stats-actions">
               <ElButton v-if="selectedNode" type="primary" link @click="handleViewAll">
                 <icon-ep-back class="mr-4px" />
-                查看全公司
+                {{ $t('org.structure.viewWholeCompany') }}
               </ElButton>
             </div>
           </div>
@@ -606,7 +593,7 @@ onBeforeUnmount(() => {
         <ElRow :gutter="16" class="mb-16px">
           <ElCol :span="6">
             <ElCard shadow="never" body-style="padding: 18px">
-              <ElStatistic title="员工总数" :value="statistics.totalCount">
+              <ElStatistic :title="$t('common.totalEmployees')" :value="statistics.totalCount">
                 <template #prefix>
                   <icon-ep-user class="text-primary" />
                 </template>
@@ -615,7 +602,7 @@ onBeforeUnmount(() => {
           </ElCol>
           <ElCol :span="6">
             <ElCard shadow="never" body-style="padding: 18px">
-              <ElStatistic title="男性员工" :value="maleCount">
+              <ElStatistic :title="$t('org.structure.maleEmployees')" :value="maleCount">
                 <template #prefix>
                   <icon-ep-male class="text-blue-500" />
                 </template>
@@ -624,7 +611,7 @@ onBeforeUnmount(() => {
           </ElCol>
           <ElCol :span="6">
             <ElCard shadow="never" body-style="padding: 18px">
-              <ElStatistic title="女性员工" :value="femaleCount">
+              <ElStatistic :title="$t('org.structure.femaleEmployees')" :value="femaleCount">
                 <template #prefix>
                   <icon-ep-female class="text-pink-500" />
                 </template>
@@ -633,7 +620,7 @@ onBeforeUnmount(() => {
           </ElCol>
           <ElCol :span="6">
             <ElCard shadow="never" body-style="padding: 18px">
-              <ElStatistic title="在职员工" :value="activeCount">
+              <ElStatistic :title="$t('home.common.activeEmployees')" :value="activeCount">
                 <template #prefix>
                   <icon-ep-check class="text-green-500" />
                 </template>
@@ -659,14 +646,14 @@ onBeforeUnmount(() => {
 
               <div v-if="tableData.length" class="stats-panel-body">
                 <ElTable :data="tableData" border stripe size="small">
-                  <ElTableColumn prop="index" label="序号" width="70" align="center" />
-                  <ElTableColumn :label="statsDimension === 'age' ? '年龄段' : '类别'" prop="label" min-width="120" />
-                  <ElTableColumn prop="count" label="人数" width="90" align="center">
+                  <ElTableColumn prop="index" :label="$t('common.index2')" width="70" align="center" />
+                  <ElTableColumn :label="statsDimension === 'age' ? $t('org.structure.ageRange') : $t('common.category')" prop="label" min-width="120" />
+                  <ElTableColumn prop="count" :label="$t('common.employees')" width="90" align="center">
                     <template #default="{ row }">
                       <span class="text-primary font-bold">{{ row.count }}</span>
                     </template>
                   </ElTableColumn>
-                  <ElTableColumn label="占比" width="150" align="center">
+                  <ElTableColumn :label="$t('org.structure.percentage')" width="150" align="center">
                     <template #default="{ row }">
                       <div class="percent-cell">
                         <ElProgress :percentage="Number(row.percent)" :stroke-width="8" :show-text="false" />
@@ -676,22 +663,22 @@ onBeforeUnmount(() => {
                   </ElTableColumn>
                 </ElTable>
                 <div class="stats-total">
-                  合计
+                  {{ $t('common.total') }}
                   <span class="text-primary font-bold">{{ statistics.totalCount }}</span>
-                  人
+                  {{ $t('org.structure.people') }}
                 </div>
               </div>
-              <ElEmpty v-else description="暂无统计数据" :image-size="80" />
+              <ElEmpty v-else :description="$t('org.structure.noStatisticsData')" :image-size="80" />
             </ElCard>
           </ElCol>
 
           <ElCol :span="12">
             <ElCard shadow="never" class="stats-panel">
               <template #header>
-                <span class="font-bold">{{ chartTitle }}图表</span>
+                <span class="font-bold">{{ chartTitle }}{{ $t('org.structure.chart') }}</span>
               </template>
               <div v-if="tableData.length" ref="chartRef" class="chart-container" />
-              <ElEmpty v-else description="暂无图表数据" :image-size="80" />
+              <ElEmpty v-else :description="$t('org.structure.noChartData')" :image-size="80" />
             </ElCard>
           </ElCol>
         </ElRow>
@@ -700,11 +687,11 @@ onBeforeUnmount(() => {
 
     <ElDialog v-model="dialogVisible" :title="dialogTitle" width="680px" destroy-on-close>
       <ElForm :model="editingData" label-width="110px">
-        <ElFormItem v-if="operateType === 'add'" label="上级组织">
+        <ElFormItem v-if="operateType === 'add'" :label="$t('org.structure.parentOrganization')">
           <ElInput :model-value="getParentName()" disabled />
         </ElFormItem>
 
-        <ElFormItem label="组织类型" required>
+        <ElFormItem :label="$t('org.structure.organizationType')" required>
           <ElRadioGroup v-model="editingData.unitType" :disabled="operateType === 'edit'">
             <ElRadioButton
               v-for="item in operateType === 'add' ? getAvailableTypes(parentNode?.unitType) : typeOptions"
@@ -716,25 +703,25 @@ onBeforeUnmount(() => {
           </ElRadioGroup>
         </ElFormItem>
 
-        <ElFormItem label="组织编码" required>
+        <ElFormItem :label="$t('org.structure.organizationCode')" required>
           <ElInput
             v-model="editingData.unitCode"
-            placeholder="例如：GRP001 / COM001 / DEPT001"
+            :placeholder="$t('org.structure.eGGrp001Com001Dept001')"
             maxlength="50"
             show-word-limit
           />
         </ElFormItem>
 
-        <ElFormItem label="组织名称" required>
-          <ElInput v-model="editingData.unitName" placeholder="请输入组织名称" maxlength="100" show-word-limit />
+        <ElFormItem :label="$t('org.structure.organizationName')" required>
+          <ElInput v-model="editingData.unitName" :placeholder="$t('org.structure.pleaseEnterOrganizationName')" maxlength="100" show-word-limit />
         </ElFormItem>
 
-        <ElFormItem label="简称">
-          <ElInput v-model="editingData.shortName" placeholder="请输入简称" maxlength="50" />
+        <ElFormItem :label="$t('org.structure.abbreviation')">
+          <ElInput v-model="editingData.shortName" :placeholder="$t('org.structure.pleaseEnterAbbreviation')" maxlength="50" />
         </ElFormItem>
 
-        <ElFormItem label="负责人">
-          <ElSelect v-model="editingData.leaderId" placeholder="请选择负责人" class="w-full" filterable clearable>
+        <ElFormItem :label="$t('common.manager')">
+          <ElSelect v-model="editingData.leaderId" :placeholder="$t('org.structure.pleaseSelectAManager')" class="w-full" filterable clearable>
             <ElOption
               v-for="employee in employeeOptions"
               :key="employee.id"
@@ -744,25 +731,25 @@ onBeforeUnmount(() => {
           </ElSelect>
         </ElFormItem>
 
-        <ElFormItem label="联系电话">
-          <ElInput v-model="editingData.phone" placeholder="请输入联系电话" maxlength="20" />
+        <ElFormItem :label="$t('common.contactPhone')">
+          <ElInput v-model="editingData.phone" :placeholder="$t('hr.employee.pleaseEnterContactPhone')" maxlength="20" />
         </ElFormItem>
 
-        <ElFormItem label="邮箱">
-          <ElInput v-model="editingData.email" placeholder="请输入邮箱" maxlength="100" />
+        <ElFormItem :label="$t('common.email')">
+          <ElInput v-model="editingData.email" :placeholder="$t('common.pleaseEnterEmail')" maxlength="100" />
         </ElFormItem>
 
-        <ElFormItem v-if="editingData.unitType !== OrgUnitType.DEPT" label="办公地址">
-          <ElInput v-model="editingData.address" placeholder="请输入办公地址" maxlength="255" show-word-limit />
+        <ElFormItem v-if="editingData.unitType !== OrgUnitType.DEPT" :label="$t('org.structure.officeAddress')">
+          <ElInput v-model="editingData.address" :placeholder="$t('org.structure.pleaseEnterOfficeAddress')" maxlength="255" show-word-limit />
         </ElFormItem>
 
         <template v-if="isCompanyUnit">
-          <ElFormItem label="打卡配置">
+          <ElFormItem :label="$t('org.structure.clockConfiguration')">
             <ElAlert
               :title="
                 operateType === 'add'
-                  ? '公司创建完成后，请到“考勤管理 -> 打卡地点”维护打卡位置并分配员工。'
-                  : '打卡点已拆分到“考勤管理 -> 打卡地点”，组织架构这里只维护公司和部门基础信息。'
+                  ? $t('org.structure.afterTheCompanyIsCreatedGoToAttendanceClockLocationsToMaintainClockLocationsAndAssignEmployees')
+                  : $t('org.structure.clockLocationsHaveMovedToAttendanceClockLocationsOnlyCompanyAndDepartmentBasicInfoIsMaintainedHere')
               "
               type="info"
               :closable="false"
@@ -771,26 +758,26 @@ onBeforeUnmount(() => {
           </ElFormItem>
         </template>
 
-        <ElFormItem label="描述">
+        <ElFormItem :label="$t('common.description')">
           <ElInput
             v-model="editingData.description"
             type="textarea"
             :rows="3"
-            placeholder="请输入描述"
+            :placeholder="$t('approval.flow.pleaseEnterDescription')"
             maxlength="500"
             show-word-limit
           />
         </ElFormItem>
 
-        <ElFormItem label="排序">
+        <ElFormItem :label="$t('common.sort')">
           <ElInputNumber v-model="editingData.sortOrder" :min="0" :max="999" class="w-full" />
         </ElFormItem>
       </ElForm>
 
       <template #footer>
-        <ElButton @click="dialogVisible = false">取消</ElButton>
+        <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
         <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">
-          {{ operateType === 'add' ? '确认新增' : '确认保存' }}
+          {{ operateType === 'add' ? $t('org.structure.confirmAdd') : $t('org.structure.confirmSave') }}
         </ElButton>
       </template>
     </ElDialog>

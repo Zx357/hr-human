@@ -4,6 +4,7 @@ import { ElMessage } from 'element-plus';
 import { GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_LANGUAGE, GOOGLE_MAPS_REGION } from '@/constants/map-sdk';
 import { gcj02ToWgs84, wgs84ToGcj02 } from '@/utils/coord-transform';
 import { loadGoogleMapsApi } from '@/utils/google-maps';
+import { $t } from '@/locales';
 
 interface Props {
   modelValue: boolean;
@@ -67,11 +68,11 @@ function roundCoordinate(value: number) {
 }
 
 function getDisplayAddress() {
-  return selectedAddress.value || preferredKeyword.value || '未获取到详细地址';
+  return selectedAddress.value || preferredKeyword.value || $t('org.mapPicker.detailedAddressNotObtained');
 }
 
 function getFallbackAddress(longitude: number, latitude: number) {
-  return `已选位置 (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`;
+  return $t('org.mapPicker.selectedLocation', { lat: latitude.toFixed(6), lng: longitude.toFixed(6) });
 }
 
 function parseCoordinateKeyword(keyword: string) {
@@ -277,25 +278,25 @@ function getPlaceDetails(placeId: string) {
 
 function getSearchFailureMessage() {
   if (!GOOGLE_MAPS_API_KEY) {
-    return '当前未配置 Google Maps API Key，请先补充 VITE_GOOGLE_MAPS_API_KEY。';
+    return $t('org.mapPicker.googleMapsApiKeyIsNotConfiguredPleaseSetViteGoogleMapsApiKeyFirst');
   }
 
-  return '未找到匹配地点，或当前 Google Maps Key 未开通 Geocoding / Places 服务。';
+  return $t('org.mapPicker.noMatchingPlaceFoundOrGeocodingPlacesIsNotEnabledForTheCurrentGoogleMapsKey');
 }
 
 function getGoogleSearchFailureMessage(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
 
   if (message.includes('REQUEST_DENIED')) {
-    return 'Google 拒绝了搜索请求，请检查 Key 是否已启用 Places API 和 Geocoding API，并放行当前访问来源。';
+    return $t('org.mapPicker.googleRejectedTheSearchRequestCheckThatPlacesApiAndGeocodingApiAreEnabledForTheKeyAndTheCurrentOriginIsAllowed');
   }
 
   if (message.includes('ZERO_RESULTS')) {
-    return '没有找到匹配地点，请尝试输入更完整的地址或直接输入经纬度。';
+    return $t('org.mapPicker.noMatchingPlaceFoundTryAMoreCompleteAddressOrEnterLatitudeLongitudeDirectly');
   }
 
   if (message.includes('OVER_QUERY_LIMIT')) {
-    return 'Google Maps 查询额度暂时受限，请稍后再试或检查计费配置。';
+    return $t('org.mapPicker.googleMapsQuotaIsTemporarilyLimitedTryAgainLaterOrCheckBillingSettings');
   }
 
   return getSearchFailureMessage();
@@ -377,7 +378,7 @@ async function locateByKeyword(keyword: string, showMessage = true) {
   const normalizedKeyword = keyword.trim();
   if (!normalizedKeyword) {
     if (showMessage) {
-      ElMessage.warning('请输入地点、地址或经纬度后再搜索');
+      ElMessage.warning($t('org.mapPicker.enterAPlaceAddressOrLatLngBeforeSearching'));
     }
     return;
   }
@@ -390,7 +391,7 @@ async function locateByKeyword(keyword: string, showMessage = true) {
       const address = await reverseGeocode(wgsLongitude, wgsLatitude).catch(() => '');
       applySelectionFromGcj(coordinateLocation.longitude, coordinateLocation.latitude, address || normalizedKeyword);
       if (showMessage) {
-        ElMessage.success('已按经纬度定位，请确认地图点位');
+        ElMessage.success($t('org.mapPicker.locatedByLatLngPleaseConfirmTheMapPoint'));
       }
       return;
     }
@@ -402,7 +403,7 @@ async function locateByKeyword(keyword: string, showMessage = true) {
 
     applySelectionFromWgs84(result.longitude, result.latitude, result.address);
     if (showMessage) {
-      ElMessage.success('已定位到搜索结果，请确认地图点位');
+      ElMessage.success($t('org.mapPicker.locatedToTheSearchResultPleaseConfirmTheMapPoint'));
     }
   } catch (error) {
     console.warn('Google Maps search failed:', error);
@@ -428,7 +429,7 @@ async function handleMapClick(event: any) {
     applySelectionFromWgs84(longitude, latitude, address);
   } catch {
     applySelectionFromWgs84(latLng.lng(), latLng.lat());
-    ElMessage.warning('该位置无法自动解析完整地址，已保留经纬度');
+    ElMessage.warning($t('org.mapPicker.theFullAddressOfThisLocationCannotBeResolvedAutomaticallyLatitudeLongitudeKept'));
   } finally {
     locating.value = false;
   }
@@ -461,11 +462,11 @@ async function handleUseMyLocation() {
     const latitude = position.coords.latitude;
     const address = await reverseGeocode(longitude, latitude).catch(() => '');
 
-    applySelectionFromWgs84(longitude, latitude, address || '我的位置');
-    ElMessage.success('已选中我的位置');
+    applySelectionFromWgs84(longitude, latitude, address || $t('org.mapPicker.myLocation'));
+    ElMessage.success($t('org.mapPicker.myLocationSelected'));
   } catch (error) {
     console.warn('Browser geolocation failed:', error);
-    ElMessage.warning('无法获取我的位置，请确认浏览器定位权限已开启；线上访问建议使用 HTTPS。');
+    ElMessage.warning($t('org.mapPicker.cannotGetYourLocationMakeSureBrowserGeolocationIsEnabledHttpsIsRecommendedInProduction'));
   } finally {
     locating.value = false;
   }
@@ -517,7 +518,7 @@ async function handleOpened() {
     }, 120);
   } catch {
     ElMessage.error(
-      'Google 地图加载失败，请检查 API Key、Places/Geocoding 配置和当前网络是否可访问 maps.googleapis.com'
+      $t('org.mapPicker.failedToLoadGoogleMapsCheckTheApiKeyPlacesGeocodingSettingsAndNetworkAccessToMapsGoogleapisCom')
     );
     dialogVisible.value = false;
   } finally {
@@ -560,7 +561,7 @@ function handleSearch() {
 
 function handleUseReferenceAddress() {
   if (!preferredKeyword.value) {
-    ElMessage.warning('请先填写办公地址或当前打卡地址');
+    ElMessage.warning($t('org.mapPicker.pleaseFillInTheOfficeAddressOrCurrentClockAddressFirst'));
     return;
   }
 
@@ -574,7 +575,7 @@ function handleResetSelection() {
 
 function handleConfirm() {
   if (!hasSelection.value) {
-    ElMessage.warning('请先在地图上选择打卡位置');
+    ElMessage.warning($t('org.mapPicker.pleaseSelectAClockLocationOnTheMapFirst'));
     return;
   }
 
@@ -590,7 +591,7 @@ function handleConfirm() {
 <template>
   <ElDialog
     v-model="dialogVisible"
-    title="选择打卡位置"
+    :title="$t('org.mapPicker.selectClockLocation')"
     width="980px"
     append-to-body
     destroy-on-close
@@ -601,20 +602,20 @@ function handleConfirm() {
       <div class="location-toolbar">
         <ElInput
           v-model="searchKeyword"
-          placeholder="搜索地址、园区、楼宇、地标，或输入经纬度（经度,纬度）"
+          :placeholder="$t('org.mapPicker.searchAddressParkBuildingOrLandmarkOrEnterLatLngLngLat')"
           clearable
           @keyup.enter="handleSearch"
         >
           <template #append>
-            <ElButton :loading="searching" @click="handleSearch">搜索定位</ElButton>
+            <ElButton :loading="searching" @click="handleSearch">{{ $t('org.mapPicker.searchLocate') }}</ElButton>
           </template>
         </ElInput>
-        <ElButton @click="handleUseReferenceAddress">按当前地址定位</ElButton>
-        <ElButton @click="handleResetSelection">恢复当前配置</ElButton>
+        <ElButton @click="handleUseReferenceAddress">{{ $t('org.mapPicker.locateByCurrentAddress') }}</ElButton>
+        <ElButton @click="handleResetSelection">{{ $t('org.mapPicker.restoreCurrentConfig') }}</ElButton>
       </div>
 
       <ElAlert
-        title="这里使用 Google 地图搜索和选点，点击地图后会自动回填地址；保存到后台时会自动换算回 GCJ-02 坐标。"
+        :title="$t('org.mapPicker.searchAndPickOnGoogleMapsTheAddressIsFilledAutomaticallyAfterClickingTheMapAndConvertedBackToGcj02WhenSaved')"
         type="info"
         :closable="false"
         show-icon
@@ -623,7 +624,7 @@ function handleConfirm() {
 
       <ElAlert
         v-if="!GOOGLE_MAPS_API_KEY"
-        title="当前未配置 Google Maps API Key，请在前端环境变量中补充 VITE_GOOGLE_MAPS_API_KEY。"
+        :title="$t('org.mapPicker.googleMapsApiKeyIsNotConfiguredPleaseAddViteGoogleMapsApiKeyToTheFrontendEnv')"
         type="warning"
         :closable="false"
         show-icon
@@ -635,23 +636,23 @@ function handleConfirm() {
           ref="mapContainerRef"
           v-loading="loading || locating"
           class="location-map"
-          element-loading-text="地图加载中..."
+          :element-loading-text="$t('org.mapPicker.mapLoading')"
         />
-        <ElButton class="my-location-button" :loading="locating" @click="handleUseMyLocation">我的位置</ElButton>
+        <ElButton class="my-location-button" :loading="locating" @click="handleUseMyLocation">{{ $t('org.mapPicker.myLocation') }}</ElButton>
       </div>
 
       <div class="location-info">
         <div class="location-info-item">
-          <span class="location-info-label">已选地点</span>
+          <span class="location-info-label">{{ $t('org.mapPicker.selectedLocation2') }}</span>
           <span class="location-info-value">{{ getDisplayAddress() }}</span>
         </div>
         <div class="location-info-grid">
           <div class="location-info-item">
-            <span class="location-info-label">纬度（GCJ-02）</span>
+            <span class="location-info-label">{{ $t('org.mapPicker.latitudeGcj02') }}</span>
             <span class="location-info-value">{{ selectedLatitude ?? '--' }}</span>
           </div>
           <div class="location-info-item">
-            <span class="location-info-label">经度（GCJ-02）</span>
+            <span class="location-info-label">{{ $t('org.mapPicker.longitudeGcj02') }}</span>
             <span class="location-info-value">{{ selectedLongitude ?? '--' }}</span>
           </div>
         </div>
@@ -659,8 +660,8 @@ function handleConfirm() {
     </div>
 
     <template #footer>
-      <ElButton @click="dialogVisible = false">取消</ElButton>
-      <ElButton type="primary" :disabled="!hasSelection" @click="handleConfirm">确认并回填</ElButton>
+      <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
+      <ElButton type="primary" :disabled="!hasSelection" @click="handleConfirm">{{ $t('org.mapPicker.confirmFill') }}</ElButton>
     </template>
   </ElDialog>
 </template>

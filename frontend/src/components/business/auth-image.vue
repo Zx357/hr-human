@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, watch, onBeforeUnmount } from 'vue';
+import { onBeforeUnmount, ref, watch } from 'vue';
 import { getAuthorization } from '@/service/request/shared';
 import { getServiceBaseURL } from '@/utils/service';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'AuthImage' });
 
@@ -13,21 +14,18 @@ const props = withDefaults(
     fit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
     /** 加载失败提示文字 */
     fallbackText?: string;
+    /** 是否支持点击放大预览 */
+    preview?: boolean;
   }>(),
   {
     url: '',
     fit: 'cover',
-    fallbackText: '图片加载失败'
+    fallbackText: $t('component.authImage.failedToLoadImage'),
+    preview: false
   }
 );
 
-const SENSITIVE_PREFIXES = [
-  '/id_card_front/',
-  '/id_card_back/',
-  '/contract_photo/',
-  '/diploma_photo/',
-  '/cert_photo/'
-];
+const SENSITIVE_PREFIXES = ['/id_card_front/', '/id_card_back/', '/contract_photo/', '/diploma_photo/', '/cert_photo/'];
 
 const objectUrl = ref('');
 const failed = ref(false);
@@ -53,10 +51,10 @@ async function load(path: string) {
     const response = await fetch(path, {
       headers: { Authorization: getAuthorization() || '' }
     });
-    if (!response.ok) throw new Error(`加载失败（${response.status}）`);
+    if (!response.ok) throw new Error($t('component.authImage.loadFailed', { status: response.status }));
     const contentType = response.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
-      throw new Error('图片加载失败');
+      throw new Error($t('component.authImage.failedToLoadImage'));
     }
     const blob = await response.blob();
     currentUrl = URL.createObjectURL(blob);
@@ -93,16 +91,25 @@ onBeforeUnmount(release);
 </script>
 
 <template>
-  <ElImage v-if="objectUrl && !failed" :src="objectUrl" :fit="fit" class="auth-image" />
+  <ElImage
+    v-if="objectUrl && !failed"
+    :src="objectUrl"
+    :fit="fit"
+    class="auth-image"
+    :preview-src-list="preview ? [objectUrl] : undefined"
+    preview-teleported
+    teleported
+    hide-on-click-modal
+  />
   <div v-else-if="failed" class="auth-image auth-image__fallback">
     <span>{{ fallbackText }}</span>
   </div>
   <ElImage v-else :fit="fit" class="auth-image">
     <template #placeholder>
-      <div class="auth-image__fallback"><span>加载中...</span></div>
+      <div class="auth-image__fallback"><span>{{ $t('common.loadingDot') }}</span></div>
     </template>
     <template #error>
-      <div class="auth-image__fallback"><span>暂无图片</span></div>
+      <div class="auth-image__fallback"><span>{{ $t('component.authImage.noImage') }}</span></div>
     </template>
   </ElImage>
 </template>
@@ -112,6 +119,10 @@ onBeforeUnmount(release);
   width: 100%;
   height: 100%;
   display: block;
+}
+
+.auth-image:deep(img) {
+  cursor: pointer;
 }
 
 .auth-image__fallback {

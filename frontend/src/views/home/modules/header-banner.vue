@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import dayjs from 'dayjs';
+import { getFileUrl } from '@/service/api/file';
 import { useAppStore } from '@/store/modules/app';
 import { useAuthStore } from '@/store/modules/auth';
-import { getFileUrl } from '@/service/api/file';
+import { $t } from '@/locales';
 import { useHomeStats } from './use-home-stats';
 
 defineOptions({ name: 'HeaderBanner' });
@@ -21,35 +22,35 @@ let clockTimer: ReturnType<typeof setInterval> | null = null;
 
 const timeGreeting = computed(() => {
   const hour = now.value.hour();
-  if (hour < 9) return '早安';
-  if (hour < 12) return '上午好';
-  if (hour < 14) return '中午好';
-  if (hour < 18) return '下午好';
-  return '晚上好';
+  if (hour < 9) return $t('home.headerBanner.goodMorning');
+  if (hour < 12) return $t('home.headerBanner.goodMorning2');
+  if (hour < 14) return $t('home.headerBanner.goodAfternoon');
+  if (hour < 18) return $t('home.headerBanner.goodAfternoon2');
+  return $t('home.headerBanner.goodEvening');
 });
 
-const todayStr = computed(() => now.value.format('YYYY年M月D日 dddd'));
+const todayStr = computed(() => now.value.format($t('home.headerBanner.ddddMmmDYyyy')));
 
 const userAvatar = computed(() => getFileUrl(authStore.userInfo.avatar));
 
 const statisticData = computed(() => [
   {
     id: 'employeeTotal',
-    title: '在职员工',
+    title: $t('home.common.activeEmployees'),
     value: stats.value.employeeTotal,
     icon: 'mdi:account-group',
     color: '#6366f1'
   },
   {
     id: 'pendingTotal',
-    title: '待审批',
+    title: $t('common.pendingApproval'),
     value: stats.value.pendingTotal,
     icon: 'mdi:file-clock-outline',
     color: '#f59e0b'
   },
   {
     id: 'todayAbnormal',
-    title: '今日异常',
+    title: $t('home.cardData.todayAbnormal'),
     value: stats.value.todayAbnormal,
     icon: 'mdi:alert-decagram-outline',
     color: '#ef4444'
@@ -87,7 +88,7 @@ onBeforeUnmount(() => {
                   {{ timeGreeting }}，{{ authStore.userInfo.userName }}
                 </h2>
                 <p class="text-14px" style="color: var(--el-text-color-secondary)">
-                  {{ todayStr }} · 欢迎回到人资管理工作台
+                  {{ todayStr }} {{ $t('home.headerBanner.welcomeBackToTheHrManagementWorkspace') }}
                 </p>
               </div>
             </div>

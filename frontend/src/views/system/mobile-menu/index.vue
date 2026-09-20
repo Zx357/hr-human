@@ -3,6 +3,7 @@ import { onMounted, reactive, ref } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import { ElMessage } from 'element-plus';
 import { deleteMobileMenu, fetchMobileMenuPage, saveMobileMenu, toggleMobileMenuStatus } from '@/service/api/system';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'MobileMenuManage' });
 
@@ -100,16 +101,16 @@ const formData = reactive<MobileMenu>({
 });
 
 const rules: FormRules = {
-  menuName: [{ required: true, message: '请输入菜单名称', trigger: 'blur' }],
-  menuCode: [{ required: true, message: '请输入菜单编码', trigger: 'blur' }],
-  path: [{ required: true, message: '请输入路由路径', trigger: 'blur' }],
-  menuGroup: [{ required: true, message: '请选择菜单分组', trigger: 'change' }]
+  menuName: [{ required: true, message: $t('sys.common.pleaseEnterMenuName'), trigger: 'blur' }],
+  menuCode: [{ required: true, message: $t('sys.menu.pleaseEnterMenuCode'), trigger: 'blur' }],
+  path: [{ required: true, message: $t('sys.mobileMenu.pleaseEnterRoutePath'), trigger: 'blur' }],
+  menuGroup: [{ required: true, message: $t('sys.mobileMenu.pleaseSelectAMenuGroup'), trigger: 'change' }]
 };
 
 // 菜单分组选项
 const menuGroupOptions = [
-  { label: '快捷功能', value: 'quick' },
-  { label: '申请中心', value: 'apply' }
+  { label: $t('sys.mobileMenu.quickFeatures'), value: 'quick' },
+  { label: $t('sys.mobileMenu.applicationCenter'), value: 'apply' }
 ];
 
 // 图标选项
@@ -163,14 +164,14 @@ function resetForm() {
 function handleAdd() {
   resetForm();
   operateType.value = 'add';
-  dialogTitle.value = '新增移动端菜单';
+  dialogTitle.value = $t('sys.mobileMenu.newMobileMenu');
   dialogVisible.value = true;
 }
 
 function handleEdit(row: MobileMenu) {
   resetForm();
   operateType.value = 'edit';
-  dialogTitle.value = '编辑移动端菜单';
+  dialogTitle.value = $t('sys.mobileMenu.editMobileMenu');
   Object.assign(formData, row);
   dialogVisible.value = true;
 }
@@ -180,7 +181,7 @@ async function handleDelete(id: number) {
   try {
     const res = await deleteMobileMenu(id);
     if (res.data !== null && res.data !== undefined) {
-      ElMessage.success('删除成功');
+      ElMessage.success($t('common.deleteSuccess'));
       loadData();
     }
   } finally {
@@ -191,9 +192,9 @@ async function handleDelete(id: number) {
 async function handleToggleStatus(row: MobileMenu) {
   loading.value = true;
   try {
-    const res = await toggleMobileMenuStatus(row.id);
+    const res = await toggleMobileMenuStatus(row.id!);
     if (res.data !== null && res.data !== undefined) {
-      ElMessage.success(row.status === 1 ? '已禁用' : '已启用');
+      ElMessage.success(row.status === 1 ? $t('sys.common.disabled') : $t('approval.flow.enabled'));
       loadData();
     }
   } finally {
@@ -210,7 +211,7 @@ async function submitForm() {
       try {
         const res = await saveMobileMenu({ ...formData });
         if (res.data !== null && res.data !== undefined) {
-          ElMessage.success(operateType.value === 'add' ? '新增成功' : '修改成功');
+          ElMessage.success(operateType.value === 'add' ? $t('common.addSuccess') : $t('common.modifySuccess'));
           dialogVisible.value = false;
           loadData();
         }
@@ -281,29 +282,29 @@ async function swapSort(row1: MobileMenu, row2: MobileMenu) {
     <!-- 搜索区域 -->
     <ElCard shadow="never">
       <ElForm :model="queryForm" inline>
-        <ElFormItem label="菜单名称">
+        <ElFormItem :label="$t('sys.common.menuName')">
           <ElInput
             v-model="queryForm.menuName"
-            placeholder="请输入菜单名称"
+            :placeholder="$t('sys.common.pleaseEnterMenuName')"
             clearable
             style="width: 200px"
             @keyup.enter="handleQuery"
           />
         </ElFormItem>
-        <ElFormItem label="状态">
-          <ElSelect v-model="queryForm.status" placeholder="菜单状态" clearable style="width: 200px">
-            <ElOption label="启用" :value="1" />
-            <ElOption label="禁用" :value="0" />
+        <ElFormItem :label="$t('common.status')">
+          <ElSelect v-model="queryForm.status" :placeholder="$t('sys.common.menuStatus')" clearable style="width: 200px">
+            <ElOption :label="$t('common.enable')" :value="1" />
+            <ElOption :label="$t('common.disable')" :value="0" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" @click="handleQuery">
             <template #icon><icon-ep-search /></template>
-            搜索
+            {{ $t('common.search') }}
           </ElButton>
           <ElButton @click="resetQuery">
             <template #icon><icon-ep-refresh /></template>
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
@@ -312,32 +313,32 @@ async function swapSort(row1: MobileMenu, row2: MobileMenu) {
     <!-- 表格区域 -->
     <ElCard shadow="never" class="table-card">
       <div class="mb-16px">
-        <ElButton type="primary" @click="handleAdd">
+        <ElButton v-permission="'system:mobile-menu:add'" type="primary" @click="handleAdd">
           <template #icon><icon-ep-plus /></template>
-          新增
+          {{ $t('common.add') }}
         </ElButton>
       </div>
 
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="tableData" border height="100%">
-          <ElTableColumn prop="menuName" label="菜单名称" min-width="120" />
-          <ElTableColumn prop="menuCode" label="菜单编码" min-width="100" />
-          <ElTableColumn prop="icon" label="图标" width="80" align="center">
+          <ElTableColumn prop="menuName" :label="$t('sys.common.menuName')" min-width="120" />
+          <ElTableColumn prop="menuCode" :label="$t('sys.common.menuCode')" min-width="100" />
+          <ElTableColumn prop="icon" :label="$t('common.icon')" width="80" align="center">
             <template #default="{ row }">
               <view class="icon-preview" :style="{ backgroundColor: row.iconBgColor }">
                 <UniIcons :type="row.icon" size="16" color="#fff" />
               </view>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="path" label="路由路径" min-width="200" show-overflow-tooltip />
-          <ElTableColumn prop="menuGroup" label="分组" width="100" align="center">
+          <ElTableColumn prop="path" :label="$t('sys.mobileMenu.routePath')" min-width="200" show-overflow-tooltip />
+          <ElTableColumn prop="menuGroup" :label="$t('common.group')" width="100" align="center">
             <template #default="{ row }">
               <ElTag :type="row.menuGroup === 'quick' ? 'success' : 'primary'" size="small">
-                {{ row.menuGroup === 'quick' ? '快捷功能' : '申请中心' }}
+                {{ row.menuGroup === 'quick' ? $t('sys.mobileMenu.quickFeatures') : $t('sys.mobileMenu.applicationCenter') }}
               </ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="sortOrder" label="排序" width="120" align="center">
+          <ElTableColumn prop="sortOrder" :label="$t('common.sort')" width="120" align="center">
             <template #default="{ row }">
               <div class="sort-actions">
                 <ElButton type="primary" link size="small" :disabled="isFirst(row)" @click="handleMoveUp(row)">
@@ -350,24 +351,25 @@ async function swapSort(row1: MobileMenu, row2: MobileMenu) {
               </div>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="status" label="状态" width="100" align="center">
+          <ElTableColumn prop="status" :label="$t('common.status')" width="100" align="center">
             <template #default="{ row }">
               <ElSwitch
+                v-permission="'system:mobile-menu:edit'"
                 :model-value="row.status === 1"
                 inline-prompt
-                active-text="启用"
-                inactive-text="禁用"
+                :active-text="$t('common.enable')"
+                :inactive-text="$t('common.disable')"
                 @change="handleToggleStatus(row)"
               />
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="createdTime" label="创建时间" width="160" align="center" />
-          <ElTableColumn label="操作" width="150" align="center" fixed="right">
+          <ElTableColumn prop="createdTime" :label="$t('common.createTime')" width="160" align="center" />
+          <ElTableColumn :label="$t('common.action')" width="150" align="center" fixed="right">
             <template #default="{ row }">
-              <ElButton type="primary" link size="small" @click="handleEdit(row)">编辑</ElButton>
-              <ElPopconfirm title="确认删除该菜单吗？" @confirm="handleDelete(row.id)">
+              <ElButton v-permission="'system:mobile-menu:edit'" type="primary" link size="small" @click="handleEdit(row)">{{ $t('common.edit') }}</ElButton>
+              <ElPopconfirm :title="$t('sys.mobileMenu.areYouSureYouWantToDeleteThisMenu')" @confirm="handleDelete(row.id)">
                 <template #reference>
-                  <ElButton type="danger" link size="small">删除</ElButton>
+                  <ElButton v-permission="'system:mobile-menu:delete'" type="danger" link size="small">{{ $t('common.delete') }}</ElButton>
                 </template>
               </ElPopconfirm>
             </template>
@@ -391,20 +393,20 @@ async function swapSort(row1: MobileMenu, row2: MobileMenu) {
     <!-- 新增/编辑弹窗 -->
     <ElDialog v-model="dialogVisible" :title="dialogTitle" width="550px" append-to-body>
       <ElForm ref="formRef" :model="formData" :rules="rules" label-width="100px">
-        <ElFormItem label="菜单名称" prop="menuName">
-          <ElInput v-model="formData.menuName" placeholder="请输入菜单名称" />
+        <ElFormItem :label="$t('sys.common.menuName')" prop="menuName">
+          <ElInput v-model="formData.menuName" :placeholder="$t('sys.common.pleaseEnterMenuName')" />
         </ElFormItem>
-        <ElFormItem label="菜单编码" prop="menuCode">
-          <ElInput v-model="formData.menuCode" placeholder="请输入菜单编码" />
+        <ElFormItem :label="$t('sys.common.menuCode')" prop="menuCode">
+          <ElInput v-model="formData.menuCode" :placeholder="$t('sys.menu.pleaseEnterMenuCode')" />
         </ElFormItem>
-        <ElFormItem label="图标" prop="icon">
-          <ElSelect v-model="formData.icon" placeholder="请选择图标" style="width: 100%">
+        <ElFormItem :label="$t('common.icon')" prop="icon">
+          <ElSelect v-model="formData.icon" :placeholder="$t('sys.mobileMenu.pleaseSelectAnIcon')" style="width: 100%">
             <ElOption v-for="icon in iconOptions" :key="icon" :label="icon" :value="icon">
               <span>{{ icon }}</span>
             </ElOption>
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="图标背景色">
+        <ElFormItem :label="$t('sys.mobileMenu.iconBackgroundColor')">
           <div class="color-picker">
             <div
               v-for="color in colorOptions"
@@ -416,29 +418,29 @@ async function swapSort(row1: MobileMenu, row2: MobileMenu) {
             />
           </div>
         </ElFormItem>
-        <ElFormItem label="路由路径" prop="path">
-          <ElInput v-model="formData.path" placeholder="如：/pages/apply/leave/index" />
+        <ElFormItem :label="$t('sys.mobileMenu.routePath')" prop="path">
+          <ElInput v-model="formData.path" :placeholder="$t('sys.mobileMenu.eGPagesApplyLeaveIndex')" />
         </ElFormItem>
-        <ElFormItem label="菜单分组" prop="menuGroup">
+        <ElFormItem :label="$t('sys.mobileMenu.menuGroup')" prop="menuGroup">
           <ElRadioGroup v-model="formData.menuGroup">
             <ElRadio v-for="item in menuGroupOptions" :key="item.value" :value="item.value">
               {{ item.label }}
             </ElRadio>
           </ElRadioGroup>
         </ElFormItem>
-        <ElFormItem label="排序">
+        <ElFormItem :label="$t('common.sort')">
           <ElInputNumber v-model="formData.sortOrder" :min="0" :max="999" />
         </ElFormItem>
-        <ElFormItem label="状态">
+        <ElFormItem :label="$t('common.status')">
           <ElRadioGroup v-model="formData.status">
-            <ElRadio :value="1">启用</ElRadio>
-            <ElRadio :value="0">禁用</ElRadio>
+            <ElRadio :value="1">{{ $t('common.enable') }}</ElRadio>
+            <ElRadio :value="0">{{ $t('common.disable') }}</ElRadio>
           </ElRadioGroup>
         </ElFormItem>
       </ElForm>
       <template #footer>
-        <ElButton @click="cancel">取消</ElButton>
-        <ElButton type="primary" :loading="loading" @click="submitForm">确定</ElButton>
+        <ElButton @click="cancel">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="loading" @click="submitForm">{{ $t('common.ok') }}</ElButton>
       </template>
     </ElDialog>
   </div>

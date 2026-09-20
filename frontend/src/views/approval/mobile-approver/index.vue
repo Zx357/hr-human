@@ -9,19 +9,20 @@ import {
   updateMobileApprover
 } from '@/service/api/mobileApprover';
 import { fetchEmployeeList } from '@/service/api/hr';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'ApprovalMobileApprover' });
 
 const APP_TYPE_OPTIONS = [
-  { label: '请假', value: 'leave' },
-  { label: '加班', value: 'overtime' },
-  { label: '出差', value: 'business' },
-  { label: '补卡', value: 'makeup' },
-  { label: '换休', value: 'exchange' },
-  { label: '转正', value: 'regularization' },
-  { label: '调动', value: 'transfer' },
-  { label: '奖惩', value: 'reward' },
-  { label: '离职', value: 'resignation' }
+  { label: $t('common.leave'), value: 'leave' },
+  { label: $t('common.overtime'), value: 'overtime' },
+  { label: $t('common.businessTrip'), value: 'business' },
+  { label: $t('common.makeupClock'), value: 'makeup' },
+  { label: $t('common.exchangeLeave'), value: 'exchange' },
+  { label: $t('common.regularization'), value: 'regularization' },
+  { label: $t('common.transfer'), value: 'transfer' },
+  { label: $t('common.rewardPunishment'), value: 'reward' },
+  { label: $t('common.resigned'), value: 'resignation' }
 ];
 
 // 列表相关
@@ -105,10 +106,10 @@ function handleEdit(row: MobileApprover) {
 
 async function handleDelete(row: MobileApprover) {
   try {
-    await ElMessageBox.confirm('确定要删除该审批权限配置吗？', '提示', { type: 'warning' });
+    await ElMessageBox.confirm($t('approval.mobileApprover.areYouSureYouWantToDeleteThisApprovalPermissionConfig'), $t('common.tip'), { type: 'warning' });
     const { error } = await deleteMobileApprover(row.id!);
     if (!error) {
-      ElMessage.success('删除成功');
+      ElMessage.success($t('common.deleteSuccess'));
       loadData();
     }
   } catch {
@@ -118,7 +119,7 @@ async function handleDelete(row: MobileApprover) {
 
 async function handleSubmit() {
   if (!formData.value.employeeId) {
-    ElMessage.warning('请选择员工');
+    ElMessage.warning($t('common.pleaseSelectEmployees'));
     return;
   }
   formData.value.appTypes = selectedTypes.value.length > 0 ? selectedTypes.value.join(',') : '';
@@ -128,7 +129,7 @@ async function handleSubmit() {
     const fn = operateType.value === 'add' ? createMobileApprover : updateMobileApprover;
     const { error } = await fn(formData.value);
     if (!error) {
-      ElMessage.success(operateType.value === 'add' ? '添加成功' : '修改成功');
+      ElMessage.success(operateType.value === 'add' ? $t('approval.mobileApprover.addSuccess') : $t('common.modifySuccess'));
       dialogVisible.value = false;
       loadData();
     }
@@ -138,7 +139,7 @@ async function handleSubmit() {
 }
 
 function formatAppTypes(types: string | undefined) {
-  if (!types) return '全部类型';
+  if (!types) return $t('approval.mobileApprover.allTypes');
   const map: Record<string, string> = {};
   APP_TYPE_OPTIONS.forEach(o => {
     map[o.value] = o.label;
@@ -166,15 +167,15 @@ function handleSizeChange(val: number) {
     <!-- 搜索栏 -->
     <ElCard shadow="never" class="mb-4">
       <ElForm inline>
-        <ElFormItem label="员工姓名">
-          <ElInput v-model="searchName" placeholder="请输入" clearable @keyup.enter="handleSearch" />
+        <ElFormItem :label="$t('common.employeeName')">
+          <ElInput v-model="searchName" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="handleSearch" />
         </ElFormItem>
-        <ElFormItem label="工号">
-          <ElInput v-model="searchNo" placeholder="请输入" clearable @keyup.enter="handleSearch" />
+        <ElFormItem :label="$t('common.employeeNo')">
+          <ElInput v-model="searchNo" :placeholder="$t('common.pleaseInput')" clearable @keyup.enter="handleSearch" />
         </ElFormItem>
         <ElFormItem>
-          <ElButton type="primary" @click="handleSearch">搜索</ElButton>
-          <ElButton @click="handleReset">重置</ElButton>
+          <ElButton type="primary" @click="handleSearch">{{ $t('common.search') }}</ElButton>
+          <ElButton @click="handleReset">{{ $t('common.reset') }}</ElButton>
         </ElFormItem>
       </ElForm>
     </ElCard>
@@ -183,25 +184,25 @@ function handleSizeChange(val: number) {
     <ElCard shadow="never" class="table-card">
       <template #header>
         <div class="card-header">
-          <span>移动端审批权限</span>
-          <ElButton type="primary" @click="handleAdd">新增</ElButton>
+          <span>{{ $t('approval.mobileApprover.mobileApprovalPermission') }}</span>
+          <ElButton type="primary" @click="handleAdd">{{ $t('common.add') }}</ElButton>
         </div>
       </template>
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="tableData" border stripe style="width: 100%">
-          <ElTableColumn prop="employeeNo" label="工号" width="100" />
-          <ElTableColumn prop="employeeName" label="员工姓名" width="120" />
-          <ElTableColumn prop="deptName" label="部门" width="150" />
-          <ElTableColumn label="可审批类型" min-width="250">
+          <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="100" />
+          <ElTableColumn prop="employeeName" :label="$t('common.employeeName')" width="120" />
+          <ElTableColumn prop="deptName" :label="$t('common.department')" width="150" />
+          <ElTableColumn :label="$t('approval.mobileApprover.approvableTypes')" min-width="250">
             <template #default="{ row }">
               <span>{{ formatAppTypes(row.appTypes) }}</span>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="createdTime" label="配置时间" width="180" />
-          <ElTableColumn label="操作" width="150" fixed="right">
+          <ElTableColumn prop="createdTime" :label="$t('approval.mobileApprover.configTime')" width="180" />
+          <ElTableColumn :label="$t('common.action')" width="150" fixed="right">
             <template #default="{ row }">
-              <ElButton link type="primary" @click="handleEdit(row)">编辑</ElButton>
-              <ElButton link type="danger" @click="handleDelete(row)">删除</ElButton>
+              <ElButton link type="primary" @click="handleEdit(row)">{{ $t('common.edit') }}</ElButton>
+              <ElButton link type="danger" @click="handleDelete(row)">{{ $t('common.delete') }}</ElButton>
             </template>
           </ElTableColumn>
         </ElTable>
@@ -220,12 +221,12 @@ function handleSizeChange(val: number) {
     </ElCard>
 
     <!-- 新增/编辑对话框 -->
-    <ElDialog v-model="dialogVisible" :title="operateType === 'add' ? '新增审批权限' : '编辑审批权限'" width="550px">
+    <ElDialog v-model="dialogVisible" :title="operateType === 'add' ? $t('approval.mobileApprover.newApprovalPermission') : $t('approval.mobileApprover.editApprovalPermission')" width="550px">
       <ElForm label-width="100px">
-        <ElFormItem label="选择员工" required>
+        <ElFormItem :label="$t('common.selectEmployees')" required>
           <ElSelect
             v-model="formData.employeeId"
-            placeholder="请选择员工"
+            :placeholder="$t('common.pleaseSelectEmployees')"
             filterable
             :disabled="operateType === 'edit'"
             style="width: 100%"
@@ -238,18 +239,18 @@ function handleSizeChange(val: number) {
             />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="审批类型">
+        <ElFormItem :label="$t('approval.mobileApprover.approvalType')">
           <ElCheckboxGroup v-model="selectedTypes">
             <ElCheckbox v-for="opt in APP_TYPE_OPTIONS" :key="opt.value" :label="opt.value">
               {{ opt.label }}
             </ElCheckbox>
           </ElCheckboxGroup>
-          <div class="mt-1 text-xs text-gray-400">不勾选则表示可审批全部类型</div>
+          <div class="mt-1 text-xs text-gray-400">{{ $t('approval.mobileApprover.leaveUncheckedToApproveAllTypes') }}</div>
         </ElFormItem>
       </ElForm>
       <template #footer>
-        <ElButton @click="dialogVisible = false">取消</ElButton>
-        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">确定</ElButton>
+        <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('common.ok') }}</ElButton>
       </template>
     </ElDialog>
   </div>

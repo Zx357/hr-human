@@ -253,8 +253,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         meta: {
           title: 'attendance_location',
           i18nKey: 'route.attendance_location',
-          order: 3,
-          icon: 'mdi:map-marker-radius'
+          order: 4
         }
       },
       {
@@ -299,8 +298,8 @@ export const generatedRoutes: GeneratedRoute[] = [
     meta: {
       title: 'home',
       i18nKey: 'route.home',
-      icon: 'mdi:monitor-dashboard',
-      order: 1
+      order: 1,
+      icon: 'mdi:monitor-dashboard'
     }
   },
   {
@@ -450,8 +449,7 @@ export const generatedRoutes: GeneratedRoute[] = [
         meta: {
           title: 'system_feedback',
           i18nKey: 'route.system_feedback',
-          order: 8,
-          icon: 'mdi:message-alert-outline'
+          order: 8
         }
       },
       {

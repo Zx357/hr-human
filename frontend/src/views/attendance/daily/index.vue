@@ -11,6 +11,7 @@ import {
 import { fetchCompanyList, fetchDepartmentTree } from '@/service/api/organization';
 import { resolveOrgIds } from '@/utils/report';
 import { downloadFile } from '@/utils/download';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'DailyAttendance' });
 
@@ -36,14 +37,14 @@ const searchParams = ref({
 const pagination = ref({ current: 1, pageSize: 20, total: 0 });
 
 const statusMap: Record<number, { label: string; type: string }> = {
-  0: { label: '未处理', type: 'info' },
-  1: { label: '正常', type: 'success' },
-  2: { label: '迟到', type: 'warning' },
-  3: { label: '早退', type: 'warning' },
-  4: { label: '旷工', type: 'danger' },
-  5: { label: '请假', type: 'info' },
-  6: { label: '出差', type: 'primary' },
-  7: { label: '迟到+早退', type: 'danger' }
+  0: { label: $t('attendance.daily.unprocessed'), type: 'info' },
+  1: { label: $t('common.normal'), type: 'success' },
+  2: { label: $t('common.late'), type: 'warning' },
+  3: { label: $t('common.earlyLeave'), type: 'warning' },
+  4: { label: $t('common.absent'), type: 'danger' },
+  5: { label: $t('common.leave'), type: 'info' },
+  6: { label: $t('common.businessTrip'), type: 'primary' },
+  7: { label: $t('attendance.daily.lateEarlyLeave'), type: 'danger' }
 };
 
 async function loadCompanies() {
@@ -128,10 +129,10 @@ function handleSelectionChange(rows: AttDailyRecord[]) {
   selectedRows.value = rows;
 }
 
-const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+const weekDays = [$t('attendance.daily.sun'), $t('attendance.daily.mon'), $t('attendance.daily.tue'), $t('attendance.daily.wed'), $t('attendance.daily.thu'), $t('attendance.daily.fri'), $t('attendance.daily.sat')];
 function getWeekDay(dateStr: string) {
   if (!dateStr) return '';
-  return `周${weekDays[dayjs(dateStr).day()]}`;
+  return $t('attendance.daily.wk', { day: weekDays[dayjs(dateStr).day()] });
 }
 
 // 计算请假总时长
@@ -150,7 +151,7 @@ function getTotalLeaveHours(row: AttDailyRecord): number {
 // 计算按钮显示文案
 function getCalculateButtonText() {
   if (selectedRows.value.length > 0) {
-    return `计算选中 ${selectedRows.value.length} 人`;
+    return $t('attendance.daily.selected', { count: selectedRows.value.length });
   }
   const filters: string[] = [];
   if (searchParams.value.companyId) {
@@ -158,55 +159,55 @@ function getCalculateButtonText() {
     if (company) filters.push(company.unitName || company.companyName);
   }
   if (searchParams.value.deptId) {
-    filters.push('指定部门');
+    filters.push($t('attendance.daily.specifiedDepartment'));
   }
   if (searchParams.value.employeeNo) {
-    filters.push(`工号:${searchParams.value.employeeNo}`);
+    filters.push($t('attendance.daily.no', { no: searchParams.value.employeeNo }));
   }
   if (searchParams.value.employeeName) {
-    filters.push(`姓名:${searchParams.value.employeeName}`);
+    filters.push($t('attendance.daily.name', { name: searchParams.value.employeeName }));
   }
   if (filters.length > 0) {
-    return `按条件计算`;
+    return $t('attendance.daily.calculateByFilters');
   }
-  return '计算全部员工';
+  return $t('attendance.daily.calculateAllEmployees');
 }
 
 // 计算提示信息
 function getCalculateTooltip() {
   if (selectedRows.value.length > 0) {
-    return `将计算选中的 ${selectedRows.value.length} 名员工的考勤`;
+    return $t('attendance.daily.attendanceWillBeCalculatedForSelectedEmployees', { count: selectedRows.value.length });
   }
   const filters: string[] = [];
   if (searchParams.value.companyId) {
     const company = companies.value.find(c => c.id === searchParams.value.companyId);
-    if (company) filters.push(`公司: ${company.unitName || company.companyName}`);
+    if (company) filters.push($t('attendance.daily.company', { name: company.unitName || company.companyName }));
   }
   if (searchParams.value.deptId) {
-    filters.push('指定部门');
+    filters.push($t('attendance.daily.specifiedDepartment'));
   }
   if (searchParams.value.employeeNo) {
-    filters.push(`工号包含: ${searchParams.value.employeeNo}`);
+    filters.push($t('attendance.daily.employeeNoContains', { no: searchParams.value.employeeNo }));
   }
   if (searchParams.value.employeeName) {
-    filters.push(`姓名包含: ${searchParams.value.employeeName}`);
+    filters.push($t('attendance.daily.nameContains', { name: searchParams.value.employeeName }));
   }
   if (filters.length > 0) {
-    return `将按以下条件筛选员工计算:\n${filters.join('\n')}`;
+    return $t('attendance.daily.employeesWillBeFilteredBy', { filters: filters.join('\n') });
   }
-  return '将计算所有在职员工的考勤';
+  return $t('attendance.daily.attendanceWillBeCalculatedForAllActiveEmployees');
 }
 
 async function handleCalculate() {
   if (!searchParams.value.dateRange?.[0] || !searchParams.value.dateRange?.[1]) {
-    ElMessage.warning('请选择日期范围');
+    ElMessage.warning($t('attendance.common.pleaseSelectDateRange'));
     return;
   }
   try {
-    await ElMessageBox.confirm(`${getCalculateTooltip().replace(/\n/g, ' ')}，确认执行考勤计算吗？`, '考勤计算确认', {
+    await ElMessageBox.confirm($t('attendance.daily.confirmToRunAttendanceCalculation', { tip: getCalculateTooltip().replace(/\n/g, ' ') }), $t('attendance.daily.attendanceCalculationConfirmation'), {
       type: 'warning',
-      confirmButtonText: '确认计算',
-      cancelButtonText: '取消'
+      confirmButtonText: $t('attendance.daily.confirmCalculation'),
+      cancelButtonText: $t('common.cancel')
     });
   } catch {
     return;
@@ -225,10 +226,10 @@ async function handleCalculate() {
       employeeName: searchParams.value.employeeName || undefined,
       employeeIds
     });
-    ElMessage.success('考勤计算完成');
+    ElMessage.success($t('attendance.daily.attendanceCalculationCompleted'));
     loadData();
   } catch {
-    ElMessage.error('考勤计算失败');
+    // 请求层已统一弹错
   } finally {
     calculating.value = false;
   }
@@ -236,7 +237,7 @@ async function handleCalculate() {
 
 async function handleLock(lock: boolean) {
   if (selectedRows.value.length === 0) {
-    ElMessage.warning('请先选择要操作的记录');
+    ElMessage.warning($t('attendance.daily.pleaseSelectRecordsToOperateFirst'));
     return;
   }
   // 收集所有时段的ID
@@ -251,17 +252,17 @@ async function handleLock(lock: boolean) {
     }
   }
   if (ids.length === 0) {
-    ElMessage.warning('没有可操作的记录');
+    ElMessage.warning($t('attendance.daily.noRecordsAvailable'));
     return;
   }
   try {
     await ElMessageBox.confirm(
-      `确认${lock ? '锁定' : '解锁'}选中的 ${selectedRows.value.length} 条考勤记录吗？`,
-      lock ? '锁定确认' : '解锁确认',
+      $t('attendance.daily.areYouSureYouWantToTheSelectedAttendanceRecords', { action: lock ? $t('attendance.daily.lock') : $t('attendance.daily.unlock'), count: selectedRows.value.length }),
+      lock ? $t('attendance.daily.lockConfirmation') : $t('attendance.daily.unlockConfirmation'),
       {
         type: 'warning',
-        confirmButtonText: '确认',
-        cancelButtonText: '取消'
+        confirmButtonText: $t('common.confirm'),
+        cancelButtonText: $t('common.cancel')
       }
     );
   } catch {
@@ -269,17 +270,17 @@ async function handleLock(lock: boolean) {
   }
   try {
     await lockDailyRecords({ ids, lock });
-    ElMessage.success(lock ? '锁定成功' : '解锁成功');
+    ElMessage.success(lock ? $t('attendance.daily.lockedSuccessfully') : $t('attendance.daily.unlockedSuccessfully'));
     loadData();
   } catch {
-    ElMessage.error(lock ? '锁定失败' : '解锁失败');
+    // 请求层已统一弹错
   }
 }
 
 /** 导出日考勤记录 */
 async function handleExport() {
   if (!searchParams.value.dateRange?.[0] || !searchParams.value.dateRange?.[1]) {
-    ElMessage.warning('请选择日期范围');
+    ElMessage.warning($t('attendance.common.pleaseSelectDateRange'));
     return;
   }
   exporting.value = true;
@@ -293,7 +294,7 @@ async function handleExport() {
       const resolved = resolveOrgIds(departments.value, deptId);
       orgIds = resolved.length > 0 ? resolved : [deptId ?? companyId!];
     }
-    await downloadFile('/attendance/daily/export', `日考勤记录_${startDate}_${endDate}.xlsx`, {
+    await downloadFile('/attendance/daily/export', $t('attendance.daily.dailyAttendanceXlsx', { start: startDate, end: endDate }), {
       startDate,
       endDate,
       orgIds: orgIds?.join(','),
@@ -301,9 +302,9 @@ async function handleExport() {
       employeeName: searchParams.value.employeeName,
       status: searchParams.value.status
     });
-    ElMessage.success('导出成功');
+    ElMessage.success($t('attendance.common.exportSuccessful'));
   } catch {
-    ElMessage.error('导出失败');
+    // downloadFile 内部已提示具体错误
   } finally {
     exporting.value = false;
   }
@@ -314,52 +315,64 @@ async function handleExport() {
   <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
     <ElCard>
       <ElForm inline :model="searchParams">
-        <ElFormItem label="日期范围">
+        <ElFormItem :label="$t('common.dateRange')">
           <ElDatePicker
             v-model="searchParams.dateRange"
             type="daterange"
-            range-separator="至"
-            start-placeholder="开始"
-            end-placeholder="结束"
+            :range-separator="$t('common.to')"
+            :start-placeholder="$t('attendance.clock.start')"
+            :end-placeholder="$t('attendance.clock.end')"
             value-format="YYYY-MM-DD"
             style="width: 240px"
           />
         </ElFormItem>
-        <ElFormItem label="公司">
-          <ElSelect v-model="searchParams.companyId" placeholder="请选择公司" clearable style="width: 150px">
+        <ElFormItem :label="$t('common.company')">
+          <ElSelect v-model="searchParams.companyId" :placeholder="$t('common.pleaseSelectCompany')" clearable style="width: 150px">
             <ElOption v-for="c in companies" :key="c.id" :label="c.unitName || c.companyName" :value="c.id" />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="部门">
+        <ElFormItem :label="$t('common.department')">
           <ElTreeSelect
             v-model="searchParams.deptId"
             :data="departments"
             :props="{ label: 'unitName', value: 'id', children: 'children' }"
-            placeholder="请选择部门"
+            :placeholder="$t('common.pleaseSelectDepartment')"
             clearable
             check-strictly
             style="width: 150px"
           />
         </ElFormItem>
-        <ElFormItem label="工号">
-          <ElInput v-model="searchParams.employeeNo" placeholder="工号" clearable style="width: 100px" />
+        <ElFormItem :label="$t('common.employeeNo')">
+          <ElInput
+            v-model="searchParams.employeeNo"
+            :placeholder="$t('common.employeeNo')"
+            clearable
+            style="width: 100px"
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="姓名">
-          <ElInput v-model="searchParams.employeeName" placeholder="姓名" clearable style="width: 100px" />
+        <ElFormItem :label="$t('common.name')">
+          <ElInput
+            v-model="searchParams.employeeName"
+            :placeholder="$t('common.name')"
+            clearable
+            style="width: 100px"
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="状态">
-          <ElSelect v-model="searchParams.status" placeholder="全部" clearable style="width: 100px">
+        <ElFormItem :label="$t('common.status')">
+          <ElSelect v-model="searchParams.status" :placeholder="$t('common.all')" clearable style="width: 100px">
             <ElOption v-for="(item, key) in statusMap" :key="key" :label="item.label" :value="Number(key)" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" @click="handleSearch">
             <icon-ep-search />
-            搜索
+            {{ $t('common.search') }}
           </ElButton>
           <ElButton @click="handleReset">
             <icon-ep-refresh />
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
@@ -369,26 +382,26 @@ async function handleExport() {
       <template #header>
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-12px">
-            <span>日考勤记录</span>
+            <span>{{ $t('attendance.daily.dailyAttendanceRecords') }}</span>
             <ElTooltip :content="getCalculateTooltip()" placement="top">
-              <ElButton type="success" :loading="calculating" @click="handleCalculate">
+              <ElButton v-permission="'attendance:daily:calculate'" type="success" :loading="calculating" @click="handleCalculate">
                 <template #icon><icon-ep-refresh /></template>
                 {{ getCalculateButtonText() }}
               </ElButton>
             </ElTooltip>
-            <ElButton type="warning" :disabled="selectedRows.length === 0" @click="handleLock(true)">
+            <ElButton v-permission="'attendance:daily:lock'" type="warning" :disabled="selectedRows.length === 0" @click="handleLock(true)">
               <template #icon><icon-ep-lock /></template>
-              锁定
+              {{ $t('attendance.daily.lock') }}
             </ElButton>
-            <ElButton :disabled="selectedRows.length === 0" @click="handleLock(false)">
+            <ElButton v-permission="'attendance:daily:lock'" :disabled="selectedRows.length === 0" @click="handleLock(false)">
               <template #icon><icon-ep-unlock /></template>
-              解锁
+              {{ $t('attendance.daily.unlock') }}
             </ElButton>
-            <ElButton type="primary" :loading="exporting" @click="handleExport">
+            <ElButton v-permission="'attendance:daily:export'" type="primary" :loading="exporting" @click="handleExport">
               <template #icon><icon-ep-download /></template>
-              导出
+              {{ $t('common.export') }}
             </ElButton>
-            <span class="text-xs text-gray-400">提示: 勾选员工计算选中，或按搜索条件筛选计算</span>
+            <span class="text-xs text-gray-400">{{ $t('attendance.daily.tipCheckEmployeesToCalculateTheSelectionOrCalculateBySearchFilters') }}</span>
           </div>
           <div class="flex items-center gap-8px text-sm">
             <ElTag v-for="(item, key) in statusMap" :key="key" :type="item.type as any" size="small">
@@ -399,17 +412,17 @@ async function handleExport() {
       </template>
 
       <ElTable v-loading="loading" :data="data" border stripe size="small" @selection-change="handleSelectionChange">
-        <ElTableColumn type="selection" width="40" />
-        <ElTableColumn prop="attDate" label="日期" width="100" />
-        <ElTableColumn label="星期" width="60" align="center">
+        <ElTableColumn type="selection" width="40" fixed="left" />
+        <ElTableColumn prop="attDate" :label="$t('common.date')" width="100" fixed="left" />
+        <ElTableColumn :label="$t('attendance.daily.weekday')" width="60" align="center" fixed="left">
           <template #default="{ row }">{{ getWeekDay(row.attDate) }}</template>
         </ElTableColumn>
-        <ElTableColumn prop="companyName" label="公司" width="100" show-overflow-tooltip />
-        <ElTableColumn prop="employeeNo" label="工号" width="80" />
-        <ElTableColumn prop="employeeName" label="姓名" width="70" />
-        <ElTableColumn prop="deptName" label="部门" width="100" show-overflow-tooltip />
-        <ElTableColumn prop="shiftName" label="班次" width="70" />
-        <ElTableColumn label="各时段打卡" min-width="400">
+        <ElTableColumn prop="companyName" :label="$t('common.company')" width="100" show-overflow-tooltip fixed="left" />
+        <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="80" fixed="left" />
+        <ElTableColumn prop="employeeName" :label="$t('common.name')" width="70" fixed="left" />
+        <ElTableColumn prop="deptName" :label="$t('common.department')" width="100" show-overflow-tooltip />
+        <ElTableColumn prop="shiftName" :label="$t('common.shift')" width="70" />
+        <ElTableColumn :label="$t('attendance.daily.clockInsByPeriod')" min-width="400">
           <template #default="{ row }">
             <div class="flex flex-wrap gap-8px">
               <div
@@ -418,64 +431,64 @@ async function handleExport() {
                 class="flex items-center gap-4px border rounded px-6px py-2px text-xs"
                 :class="
                   p.status === 1
-                    ? 'border-green-300 bg-green-50'
+                    ? 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/30'
                     : p.status === 4
-                      ? 'border-red-300 bg-red-50'
-                      : 'border-orange-300 bg-orange-50'
+                      ? 'border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/30'
+                      : 'border-orange-300 bg-orange-50 dark:border-orange-700 dark:bg-orange-900/30'
                 "
               >
                 <span class="font-medium">{{ p.periodName }}</span>
                 <span class="text-gray-400">{{ p.scheduledIn?.slice(0, 5) }}-{{ p.scheduledOut?.slice(0, 5) }}</span>
                 <span class="mx-2px">|</span>
                 <span :class="p.lateMinutes > 0 ? 'text-red-500' : 'text-green-600'">
-                  {{ p.actualIn?.slice(0, 5) || '缺卡' }}
+                  {{ p.actualIn?.slice(0, 5) || $t('common.missingClock') }}
                 </span>
                 <span>-</span>
                 <span :class="p.earlyMinutes > 0 ? 'text-red-500' : 'text-green-600'">
-                  {{ p.actualOut?.slice(0, 5) || '缺卡' }}
+                  {{ p.actualOut?.slice(0, 5) || $t('common.missingClock') }}
                 </span>
               </div>
             </div>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="lateMinutes" label="迟到" width="60" align="center">
+        <ElTableColumn prop="lateMinutes" :label="$t('common.late')" width="60" align="center">
           <template #default="{ row }">
-            <span v-if="row.lateMinutes > 0" class="text-red-500">{{ row.lateMinutes }}分</span>
+            <span v-if="row.lateMinutes > 0" class="text-red-500">{{ row.lateMinutes }}{{ $t('attendance.daily.min') }}</span>
             <span v-else>-</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="earlyMinutes" label="早退" width="60" align="center">
+        <ElTableColumn prop="earlyMinutes" :label="$t('common.earlyLeave')" width="60" align="center">
           <template #default="{ row }">
-            <span v-if="row.earlyMinutes > 0" class="text-red-500">{{ row.earlyMinutes }}分</span>
+            <span v-if="row.earlyMinutes > 0" class="text-red-500">{{ row.earlyMinutes }}{{ $t('attendance.daily.min') }}</span>
             <span v-else>-</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="workHours" label="工时" width="60" align="center">
+        <ElTableColumn prop="workHours" :label="$t('common.workHours')" width="60" align="center">
           <template #default="{ row }">{{ row.workHours || 0 }}h</template>
         </ElTableColumn>
-        <ElTableColumn prop="overtimeDuration" label="加班" width="70" align="center">
+        <ElTableColumn prop="overtimeDuration" :label="$t('common.overtime')" width="70" align="center">
           <template #default="{ row }">
             <ElTooltip v-if="row.overtimeDuration > 0" placement="top">
               <template #content>
-                <div>加班 {{ row.overtimeDuration }}h</div>
+                <div>{{ $t('common.overtime') }} {{ row.overtimeDuration }}h</div>
               </template>
               <span class="cursor-pointer text-blue-500">{{ row.overtimeDuration }}h</span>
             </ElTooltip>
             <span v-else>-</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn label="请假" width="70" align="center">
+        <ElTableColumn :label="$t('common.leave')" width="70" align="center">
           <template #default="{ row }">
             <ElTooltip v-if="getTotalLeaveHours(row) > 0" placement="top">
               <template #content>
                 <div class="text-xs">
-                  <div v-if="row.annualLeaveDuration > 0">年假: {{ row.annualLeaveDuration }}h</div>
-                  <div v-if="row.personalLeaveDuration > 0">事假: {{ row.personalLeaveDuration }}h</div>
-                  <div v-if="row.sickLeaveDuration > 0">病假: {{ row.sickLeaveDuration }}h</div>
-                  <div v-if="row.marriageLeaveDuration > 0">婚假: {{ row.marriageLeaveDuration }}h</div>
-                  <div v-if="row.maternityLeaveDuration > 0">产假: {{ row.maternityLeaveDuration }}h</div>
-                  <div v-if="row.paternityLeaveDuration > 0">陪产假: {{ row.paternityLeaveDuration }}h</div>
-                  <div v-if="row.bereavementLeaveDuration > 0">丧假: {{ row.bereavementLeaveDuration }}h</div>
+                  <div v-if="row.annualLeaveDuration > 0">{{ $t('attendance.daily.annualLeave') }} {{ row.annualLeaveDuration }}h</div>
+                  <div v-if="row.personalLeaveDuration > 0">{{ $t('attendance.daily.personalLeave') }} {{ row.personalLeaveDuration }}h</div>
+                  <div v-if="row.sickLeaveDuration > 0">{{ $t('attendance.daily.sickLeave') }} {{ row.sickLeaveDuration }}h</div>
+                  <div v-if="row.marriageLeaveDuration > 0">{{ $t('attendance.daily.marriageLeave') }} {{ row.marriageLeaveDuration }}h</div>
+                  <div v-if="row.maternityLeaveDuration > 0">{{ $t('attendance.daily.maternityLeave') }} {{ row.maternityLeaveDuration }}h</div>
+                  <div v-if="row.paternityLeaveDuration > 0">{{ $t('attendance.daily.paternityLeave') }} {{ row.paternityLeaveDuration }}h</div>
+                  <div v-if="row.bereavementLeaveDuration > 0">{{ $t('attendance.daily.bereavementLeave') }} {{ row.bereavementLeaveDuration }}h</div>
                 </div>
               </template>
               <span class="cursor-pointer text-orange-500">{{ getTotalLeaveHours(row) }}h</span>
@@ -483,26 +496,26 @@ async function handleExport() {
             <span v-else>-</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="businessDuration" label="出差" width="70" align="center">
+        <ElTableColumn prop="businessDuration" :label="$t('common.businessTrip')" width="70" align="center">
           <template #default="{ row }">
             <ElTooltip v-if="row.businessDuration > 0" placement="top">
               <template #content>
-                <div>出差 {{ row.businessDuration }}h</div>
+                <div>{{ $t('common.businessTrip') }} {{ row.businessDuration }}h</div>
               </template>
               <span class="cursor-pointer text-purple-500">{{ row.businessDuration }}h</span>
             </ElTooltip>
             <span v-else>-</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="status" label="状态" width="85" align="center">
+        <ElTableColumn prop="status" :label="$t('common.status')" width="85" align="center">
           <template #default="{ row }">
             <ElTag :type="statusMap[row.status]?.type as any" size="small">{{ statusMap[row.status]?.label }}</ElTag>
           </template>
         </ElTableColumn>
-        <ElTableColumn label="锁定" width="60" align="center">
+        <ElTableColumn :label="$t('attendance.daily.lock')" width="60" align="center">
           <template #default="{ row }">
             <icon-ep-lock v-if="row.locked === 1" class="text-orange-500" />
-            <span v-else class="text-gray-300">-</span>
+            <span v-else class="text-[var(--el-text-color-placeholder)]">-</span>
           </template>
         </ElTableColumn>
       </ElTable>

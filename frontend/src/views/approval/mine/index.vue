@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { appTypeMap, statusMap } from '@/constants/application';
 import { type Application, cancelApplication, fetchApplicationPage } from '@/service/api/application';
 import { fetchGetUserById } from '@/service/api/system';
 import { useAuthStore } from '@/store/modules/auth';
+import { formatDateTime } from '@/utils/format';
 import ApplicationDetailDrawer from '@/components/business/application-detail-drawer.vue';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'ApprovalMine' });
 
@@ -34,20 +37,20 @@ function handleViewDetail(row: Application) {
 async function handleCancel(row: Application) {
   if (!row.id) return;
   try {
-    await ElMessageBox.confirm('确定撤销该申请吗？撤销后不可恢复', '撤销确认', {
+    await ElMessageBox.confirm($t('application.business.areYouSureYouWantToWithdrawThisApplicationThisCannotBeUndone'), $t('application.common.withdrawalConfirmation'), {
       type: 'warning',
-      confirmButtonText: '确认撤销',
-      cancelButtonText: '取消'
+      confirmButtonText: $t('application.common.confirmWithdrawal'),
+      cancelButtonText: $t('common.cancel')
     });
   } catch {
     return;
   }
   try {
     await cancelApplication(row.id);
-    ElMessage.success('已撤销');
+    ElMessage.success($t('common.withdrawn'));
     loadData();
   } catch {
-    ElMessage.error('撤销失败');
+    // 请求层已统一弹错
   }
 }
 
@@ -114,97 +117,79 @@ function handleSizeChange(size: number) {
   currentPage.value = 1;
   loadData();
 }
-
-const appTypeMap: Record<string, string> = {
-  leave: '请假申请',
-  overtime: '加班申请',
-  business: '出差申请',
-  makeup: '补卡申请',
-  exchange: '换休申请',
-  regularization: '转正申请',
-  transfer: '调动申请',
-  reward: '奖励申请',
-  punish: '惩罚申请',
-  resignation: '离职申请'
-};
-
-const statusMap: Record<number, { label: string; type: string }> = {
-  0: { label: '待审批', type: 'warning' },
-  1: { label: '已通过', type: 'success' },
-  2: { label: '已拒绝', type: 'danger' },
-  3: { label: '已撤销', type: 'info' }
-};
 </script>
 
 <template>
   <div class="list-page">
     <ElCard class="search-card">
       <ElForm inline :model="searchParams">
-        <ElFormItem label="申请类型">
-          <ElSelect v-model="searchParams.appType" placeholder="请选择类型" clearable>
-            <ElOption label="请假申请" value="leave" />
-            <ElOption label="加班申请" value="overtime" />
-            <ElOption label="出差申请" value="business" />
-            <ElOption label="补卡申请" value="makeup" />
-            <ElOption label="换休申请" value="exchange" />
-            <ElOption label="转正申请" value="regularization" />
-            <ElOption label="调动申请" value="transfer" />
-            <ElOption label="奖励申请" value="reward" />
-            <ElOption label="惩罚申请" value="punish" />
-            <ElOption label="离职申请" value="resignation" />
+        <ElFormItem :label="$t('application.common.applicationType')">
+          <ElSelect v-model="searchParams.appType" :placeholder="$t('common.pleaseSelectType')" clearable>
+            <ElOption :label="$t('common.leaveApplication')" value="leave" />
+            <ElOption :label="$t('common.overtimeApplication')" value="overtime" />
+            <ElOption :label="$t('common.businessTripApplication')" value="business" />
+            <ElOption :label="$t('common.makeupClockApplication')" value="makeup" />
+            <ElOption :label="$t('common.exchangeLeaveApplication')" value="exchange" />
+            <ElOption :label="$t('common.regularizationApplication')" value="regularization" />
+            <ElOption :label="$t('common.transferApplication')" value="transfer" />
+            <ElOption :label="$t('approval.common.rewardApplication')" value="reward" />
+            <ElOption :label="$t('approval.common.punishmentApplication')" value="punish" />
+            <ElOption :label="$t('common.resignationApplication')" value="resignation" />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="状态">
-          <ElSelect v-model="searchParams.status" placeholder="请选择状态" clearable>
-            <ElOption label="待审批" :value="0" />
-            <ElOption label="已通过" :value="1" />
-            <ElOption label="已拒绝" :value="2" />
-            <ElOption label="已撤销" :value="3" />
+        <ElFormItem :label="$t('common.status')">
+          <ElSelect v-model="searchParams.status" :placeholder="$t('common.pleaseSelectStatus')" clearable>
+            <ElOption :label="$t('common.pendingApproval')" :value="0" />
+            <ElOption :label="$t('common.approved')" :value="1" />
+            <ElOption :label="$t('common.rejected')" :value="2" />
+            <ElOption :label="$t('common.withdrawn')" :value="3" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" @click="handleSearch">
             <template #icon><icon-ep-search /></template>
-            搜索
+            {{ $t('common.search') }}
           </ElButton>
           <ElButton @click="handleReset">
             <template #icon><icon-ep-refresh /></template>
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
     </ElCard>
 
     <ElCard class="table-card">
-      <template #header><span>我的申请</span></template>
+      <template #header><span>{{ $t('approval.mine.myApplications') }}</span></template>
 
       <div v-if="noEmployee" class="table-wrapper flex items-center justify-center">
-        <ElEmpty description="当前账号未关联员工" />
+        <ElEmpty :description="$t('application.common.currentAccountIsNotLinkedToAnEmployee')" />
       </div>
       <template v-else>
         <div class="table-wrapper">
           <ElTable v-loading="loading" :data="data" border stripe height="100%">
-            <ElTableColumn type="index" label="序号" width="60" align="center" />
-            <ElTableColumn prop="appType" label="申请类型" width="120">
+            <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" />
+            <ElTableColumn prop="appType" :label="$t('application.common.applicationType')" width="120">
               <template #default="{ row }">
                 <ElTag>{{ appTypeMap[row.appType] || row.appType }}</ElTag>
               </template>
             </ElTableColumn>
-            <ElTableColumn prop="startTime" label="开始时间" width="160" />
-            <ElTableColumn prop="endTime" label="结束时间" width="160" />
-            <ElTableColumn prop="reason" label="申请原因" min-width="200" show-overflow-tooltip />
-            <ElTableColumn prop="status" label="状态" width="100" align="center">
+            <ElTableColumn prop="startTime" :label="$t('common.startTime')" width="160" />
+            <ElTableColumn prop="endTime" :label="$t('common.endTime')" width="160" />
+            <ElTableColumn prop="reason" :label="$t('application.common.applicationReason2')" min-width="200" show-overflow-tooltip />
+            <ElTableColumn prop="status" :label="$t('common.status')" width="100" align="center">
               <template #default="{ row }">
                 <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
               </template>
             </ElTableColumn>
-            <ElTableColumn prop="approveRemark" label="审批意见" width="150" show-overflow-tooltip />
-            <ElTableColumn prop="createdTime" label="申请时间" width="170" />
-            <ElTableColumn label="操作" width="130" align="center" fixed="right">
+            <ElTableColumn prop="approveRemark" :label="$t('application.common.approvalComment')" width="150" show-overflow-tooltip />
+            <ElTableColumn prop="createdTime" :label="$t('application.common.applicationTime')" width="170">
+              <template #default="{ row }">{{ formatDateTime(row.createdTime) }}</template>
+            </ElTableColumn>
+            <ElTableColumn :label="$t('common.action')" width="130" align="center" fixed="right">
               <template #default="{ row }">
-                <ElButton type="primary" link size="small" @click="handleViewDetail(row)">详情</ElButton>
+                <ElButton type="primary" link size="small" @click="handleViewDetail(row)">{{ $t('common.details') }}</ElButton>
                 <ElButton v-if="row.status === 0" type="warning" link size="small" @click="handleCancel(row)">
-                  撤销
+                  {{ $t('common.withdraw') }}
                 </ElButton>
               </template>
             </ElTableColumn>

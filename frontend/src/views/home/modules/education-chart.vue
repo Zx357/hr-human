@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue';
 import { fetchEmployeeReportSummary } from '@/service/api/report';
 import { fetchDictDataByCode } from '@/service/api/system';
 import { useEcharts } from '@/hooks/common/echarts';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'EducationChart' });
 
@@ -16,11 +17,7 @@ const educationOrder = ref<string[]>([]);
 const { domRef, updateOptions } = useEcharts(() => ({
   tooltip: {
     trigger: 'item',
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    borderColor: '#e5e7eb',
-    borderWidth: 1,
-    textStyle: { color: '#374151' },
-    formatter: '{b}: {c} 人 ({d}%)'
+    formatter: $t('home.educationChart.people')
   },
   legend: {
     bottom: '2%',
@@ -28,13 +25,12 @@ const { domRef, updateOptions } = useEcharts(() => ({
     itemWidth: 10,
     itemHeight: 10,
     icon: 'circle',
-    textStyle: { color: '#6b7280', fontSize: 12 },
     itemStyle: { borderWidth: 0 }
   },
   series: [
     {
       color: pieColors,
-      name: '学历分布',
+      name: $t('home.educationChart.educationDistribution'),
       type: 'pie',
       radius: ['48%', '72%'],
       center: ['50%', '45%'],
@@ -76,7 +72,7 @@ async function loadEducationDict() {
 }
 
 function normalizeEducation(val: string | undefined): string {
-  if (!val) return '未填写';
+  if (!val) return $t('home.educationChart.notFilled');
   const v = val.trim();
   // 先按字典值匹配
   if (dictValueMap.value[v]) return dictValueMap.value[v];
@@ -132,9 +128,9 @@ onMounted(async () => {
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-8px">
           <div class="header-dot" style="background: #f59e0b"></div>
-          <span class="font-medium">员工学历分布</span>
+          <span class="font-medium">{{ $t('home.educationChart.employeeEducationDistribution') }}</span>
         </div>
-        <span class="text-12px text-#9ca3af">在职员工</span>
+        <span class="text-12px text-#9ca3af">{{ $t('home.common.activeEmployees') }}</span>
       </div>
     </template>
     <div ref="domRef" class="h-360px overflow-hidden"></div>

@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { cleanOperLogs, fetchOperLogPage } from '@/service/api';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'SystemOperLog' });
 
@@ -83,16 +84,16 @@ function handleDetail(row: Api.System.OperLogRecord) {
 
 async function handleClean() {
   try {
-    const { value } = await ElMessageBox.prompt('将删除该天数之前的所有操作日志', '清理日志', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
+    const { value } = await ElMessageBox.prompt($t('sys.operLog.allOperationLogsBeforeThisNumberOfDaysWillBeDeleted'), $t('sys.operLog.cleanLogs'), {
+      confirmButtonText: $t('common.ok'),
+      cancelButtonText: $t('common.cancel'),
       inputValue: '90',
       inputPattern: /^\d+$/,
-      inputErrorMessage: '请输入数字',
+      inputErrorMessage: $t('sys.operLog.pleaseEnterANumber'),
       inputValidator: (input: string) => {
         const days = Number(input);
         if (!Number.isFinite(days) || days < 7) {
-          return '保留天数不能小于7天';
+          return $t('sys.operLog.retentionDaysCannotBeLessThan7');
         }
         return true;
       }
@@ -102,7 +103,7 @@ async function handleClean() {
     const { error } = await cleanOperLogs(days);
 
     if (!error) {
-      ElMessage.success('清理成功');
+      ElMessage.success($t('sys.operLog.cleanedSuccessfully'));
       handleSearch();
     }
   } catch {
@@ -119,25 +120,25 @@ onMounted(() => {
   <div class="list-page">
     <ElCard class="search-card">
       <ElForm :model="queryParams" inline>
-        <ElFormItem label="模块">
-          <ElInput v-model="queryParams.module" placeholder="请输入模块" clearable />
+        <ElFormItem :label="$t('sys.operLog.module')">
+          <ElInput v-model="queryParams.module" :placeholder="$t('sys.operLog.pleaseEnterModule')" clearable @keyup.enter="handleSearch" />
         </ElFormItem>
-        <ElFormItem label="操作人">
-          <ElInput v-model="queryParams.username" placeholder="请输入操作人" clearable />
+        <ElFormItem :label="$t('sys.operLog.operator')">
+          <ElInput v-model="queryParams.username" :placeholder="$t('sys.operLog.pleaseEnterOperator')" clearable @keyup.enter="handleSearch" />
         </ElFormItem>
-        <ElFormItem label="结果">
-          <ElSelect v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
-            <ElOption label="成功" :value="1" />
-            <ElOption label="失败" :value="0" />
+        <ElFormItem :label="$t('sys.operLog.result')">
+          <ElSelect v-model="queryParams.status" :placeholder="$t('common.all')" clearable style="width: 120px">
+            <ElOption :label="$t('common.success')" :value="1" />
+            <ElOption :label="$t('common.fail')" :value="0" />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="操作时间">
+        <ElFormItem :label="$t('sys.operLog.operationTime')">
           <ElDatePicker
             v-model="dateRange"
             type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
+            :range-separator="$t('common.to')"
+            :start-placeholder="$t('common.startDate')"
+            :end-placeholder="$t('common.endDate')"
             value-format="YYYY-MM-DD"
             clearable
             style="width: 260px"
@@ -146,11 +147,11 @@ onMounted(() => {
         <ElFormItem>
           <ElButton type="primary" @click="handleSearch">
             <template #icon><icon-ep-search /></template>
-            查询
+            {{ $t('common.search') }}
           </ElButton>
           <ElButton @click="handleReset">
             <template #icon><icon-ep-refresh /></template>
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
@@ -159,41 +160,41 @@ onMounted(() => {
     <ElCard class="table-card">
       <template #header>
         <div class="flex items-center justify-between">
-          <span>操作日志列表</span>
+          <span>{{ $t('sys.operLog.operationLogList') }}</span>
           <ElButton v-permission="'system:oper-log:clean'" type="danger" plain @click="handleClean">
             <template #icon><icon-ep-delete /></template>
-            清理日志
+            {{ $t('sys.operLog.cleanLogs') }}
           </ElButton>
         </div>
       </template>
 
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="tableData" border stripe height="100%">
-          <ElTableColumn prop="createdTime" label="时间" width="180" />
-          <ElTableColumn prop="module" label="模块" min-width="120" show-overflow-tooltip />
-          <ElTableColumn prop="action" label="操作" min-width="120" show-overflow-tooltip />
-          <ElTableColumn prop="username" label="操作人" min-width="100" show-overflow-tooltip />
+          <ElTableColumn prop="createdTime" :label="$t('common.time')" width="180" />
+          <ElTableColumn prop="module" :label="$t('sys.operLog.module')" min-width="120" show-overflow-tooltip />
+          <ElTableColumn prop="action" :label="$t('common.action')" min-width="120" show-overflow-tooltip />
+          <ElTableColumn prop="username" :label="$t('sys.operLog.operator')" min-width="100" show-overflow-tooltip />
           <ElTableColumn prop="ip" label="IP" width="140" show-overflow-tooltip />
-          <ElTableColumn prop="requestUri" label="请求路径" min-width="200" show-overflow-tooltip />
-          <ElTableColumn prop="status" label="结果" width="80" align="center">
+          <ElTableColumn prop="requestUri" :label="$t('sys.operLog.requestPath')" min-width="200" show-overflow-tooltip />
+          <ElTableColumn prop="status" :label="$t('sys.operLog.result')" width="80" align="center">
             <template #default="{ row }">
               <ElTag :type="row.status === 1 ? 'success' : 'danger'" size="small">
-                {{ row.status === 1 ? '成功' : '失败' }}
+                {{ row.status === 1 ? $t('common.success') : $t('common.fail') }}
               </ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="costMs" label="耗时" width="100" align="center">
+          <ElTableColumn prop="costMs" :label="$t('sys.operLog.duration')" width="100" align="center">
             <template #default="{ row }">
               <span>{{ row.costMs != null ? `${row.costMs}ms` : '-' }}</span>
             </template>
           </ElTableColumn>
-          <ElTableColumn label="详情" width="80" fixed="right" align="center">
+          <ElTableColumn :label="$t('common.details')" width="80" fixed="right" align="center">
             <template #default="{ row }">
-              <ElButton type="primary" link @click="handleDetail(row)">详情</ElButton>
+              <ElButton type="primary" link @click="handleDetail(row)">{{ $t('common.details') }}</ElButton>
             </template>
           </ElTableColumn>
           <template #empty>
-            <ElEmpty description="暂无数据" />
+            <ElEmpty :description="$t('common.noData')" />
           </template>
         </ElTable>
       </div>
@@ -211,38 +212,38 @@ onMounted(() => {
       </div>
     </ElCard>
 
-    <ElDrawer v-model="drawerVisible" title="日志详情" size="560px">
+    <ElDrawer v-model="drawerVisible" :title="$t('sys.operLog.logDetails')" size="560px">
       <ElDescriptions v-if="currentRow" :column="1" border>
-        <ElDescriptionsItem label="时间">
+        <ElDescriptionsItem :label="$t('common.time')">
           {{ currentRow.createdTime || '-' }}
         </ElDescriptionsItem>
-        <ElDescriptionsItem label="模块">
+        <ElDescriptionsItem :label="$t('sys.operLog.module')">
           {{ currentRow.module || '-' }}
         </ElDescriptionsItem>
-        <ElDescriptionsItem label="操作">
+        <ElDescriptionsItem :label="$t('common.action')">
           {{ currentRow.action || '-' }}
         </ElDescriptionsItem>
-        <ElDescriptionsItem label="操作人">
+        <ElDescriptionsItem :label="$t('sys.operLog.operator')">
           {{ currentRow.username || '-' }}
         </ElDescriptionsItem>
         <ElDescriptionsItem label="IP">
           {{ currentRow.ip || '-' }}
         </ElDescriptionsItem>
-        <ElDescriptionsItem label="请求路径">
+        <ElDescriptionsItem :label="$t('sys.operLog.requestPath')">
           {{ currentRow.requestUri || '-' }}
         </ElDescriptionsItem>
-        <ElDescriptionsItem label="结果">
+        <ElDescriptionsItem :label="$t('sys.operLog.result')">
           <ElTag :type="currentRow.status === 1 ? 'success' : 'danger'" size="small">
-            {{ currentRow.status === 1 ? '成功' : '失败' }}
+            {{ currentRow.status === 1 ? $t('common.success') : $t('common.fail') }}
           </ElTag>
         </ElDescriptionsItem>
-        <ElDescriptionsItem label="耗时">
+        <ElDescriptionsItem :label="$t('sys.operLog.duration')">
           {{ currentRow.costMs != null ? `${currentRow.costMs}ms` : '-' }}
         </ElDescriptionsItem>
-        <ElDescriptionsItem label="请求参数">
+        <ElDescriptionsItem :label="$t('sys.operLog.requestParameters')">
           <pre class="log-pre">{{ formatRequestParams(currentRow.requestParams) || '-' }}</pre>
         </ElDescriptionsItem>
-        <ElDescriptionsItem label="错误信息">
+        <ElDescriptionsItem :label="$t('sys.operLog.errorMessage')">
           <span :class="{ 'log-error': currentRow.errorMsg }">{{ currentRow.errorMsg || '-' }}</span>
         </ElDescriptionsItem>
       </ElDescriptions>

@@ -10,8 +10,10 @@ import {
 } from '@/service/api/application';
 import { useDictOptions } from '@/composables/use-dict-options';
 import { useOrgTree } from '@/composables/use-org-tree';
-import EmployeePickerDialog from '@/components/common/EmployeePickerDialog.vue';
+import { formatDateTime } from '@/utils/format';
+import EmployeePickerDialog from '@/components/common/employee-picker-dialog.vue';
 import ApplicationDetailDrawer from '@/components/business/application-detail-drawer.vue';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'TransferApplication' });
 
@@ -46,6 +48,7 @@ const employeeDialogVisible = ref(false);
 const searchParams = ref({
   employeeName: '',
   employeeNo: '',
+  dateRange: [] as string[],
   status: undefined as number | undefined,
   transferType: undefined as string | undefined
 });
@@ -76,7 +79,9 @@ async function loadData() {
       appType: 'transfer',
       employeeName: searchParams.value.employeeName || undefined,
       employeeNo: searchParams.value.employeeNo || undefined,
-      status: searchParams.value.status
+      status: searchParams.value.status,
+      beginTime: searchParams.value.dateRange?.[0] || undefined,
+      endTime: searchParams.value.dateRange?.[1] || undefined
     });
     data.value = res.data?.records || [];
     total.value = res.data?.total || 0;
@@ -126,16 +131,16 @@ function handleConfirmEmployee(selected: Api.Hr.Employee[]) {
 
 async function handleSubmit() {
   if (!formData.value.employeeId || !formData.value.transferType || !formData.value.effectDate) {
-    ElMessage.warning('请填写必填项');
+    ElMessage.warning($t('common.pleaseFillRequired'));
     return;
   }
   // 根据变更类型验证必填项
   if (showNewDept.value && !formData.value.toDeptId) {
-    ElMessage.warning('请选择新部门');
+    ElMessage.warning($t('application.transfer.pleaseSelectNewDepartment'));
     return;
   }
   if (showNewPosition.value && !formData.value.toPosition) {
-    ElMessage.warning('请选择新职位');
+    ElMessage.warning($t('application.transfer.pleaseSelectNewPosition'));
     return;
   }
   // 自动计算新公司ID
@@ -145,11 +150,11 @@ async function handleSubmit() {
   submitLoading.value = true;
   try {
     await createApplication(formData.value);
-    ElMessage.success('申请提交成功');
+    ElMessage.success($t('application.common.applicationSubmittedSuccessfully'));
     dialogVisible.value = false;
     loadData();
   } catch {
-    ElMessage.error('提交失败');
+    // 请求层已统一弹错
   } finally {
     submitLoading.value = false;
   }
@@ -166,20 +171,20 @@ function handleViewDetail(row: Application) {
 
 async function handleCancel(id: number) {
   try {
-    await ElMessageBox.confirm('确定撤销该申请吗？撤销后不可恢复', '撤销确认', {
+    await ElMessageBox.confirm($t('application.business.areYouSureYouWantToWithdrawThisApplicationThisCannotBeUndone'), $t('application.common.withdrawalConfirmation'), {
       type: 'warning',
-      confirmButtonText: '确认撤销',
-      cancelButtonText: '取消'
+      confirmButtonText: $t('application.common.confirmWithdrawal'),
+      cancelButtonText: $t('common.cancel')
     });
   } catch {
     return;
   }
   try {
     await cancelApplication(id);
-    ElMessage.success('已撤销');
+    ElMessage.success($t('common.withdrawn'));
     loadData();
   } catch {
-    ElMessage.error('撤销失败');
+    // 请求层已统一弹错
   }
 }
 
@@ -188,7 +193,7 @@ function handleSearch() {
   loadData();
 }
 function handleReset() {
-  searchParams.value = { employeeName: '', employeeNo: '', status: undefined, transferType: undefined };
+  searchParams.value = { dateRange: [], employeeName: '', employeeNo: '', status: undefined, transferType: undefined };
   currentPage.value = 1;
   loadData();
 }
@@ -207,14 +212,24 @@ function handleSizeChange(size: number) {
   <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
     <ElCard>
       <ElForm inline :model="searchParams">
-        <ElFormItem label="员工姓名">
-          <ElInput v-model="searchParams.employeeName" placeholder="请输入员工姓名" clearable />
+        <ElFormItem :label="$t('common.employeeName')">
+          <ElInput
+            v-model="searchParams.employeeName"
+            :placeholder="$t('common.pleaseInputEmployeeName')"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="员工编号">
-          <ElInput v-model="searchParams.employeeNo" placeholder="请输入员工编号" clearable />
+        <ElFormItem :label="$t('common.employeeNo')">
+          <ElInput
+            v-model="searchParams.employeeNo"
+            :placeholder="$t('common.pleaseInputEmployeeNo')"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="变更类型">
-          <ElSelect v-model="searchParams.transferType" placeholder="请选择类型" clearable style="width: 150px">
+        <ElFormItem :label="$t('application.transfer.changeType')">
+          <ElSelect v-model="searchParams.transferType" :placeholder="$t('common.pleaseSelectType')" clearable style="width: 150px">
             <ElOption
               v-for="item in transferTypeOptions"
               :key="item.dictValue"
@@ -223,22 +238,33 @@ function handleSizeChange(size: number) {
             />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="状态">
-          <ElSelect v-model="searchParams.status" placeholder="请选择状态" clearable style="width: 120px">
-            <ElOption label="待审批" :value="0" />
-            <ElOption label="已通过" :value="1" />
-            <ElOption label="已拒绝" :value="2" />
-            <ElOption label="已撤销" :value="3" />
+        <ElFormItem :label="$t('application.common.applicationTime')">
+          <ElDatePicker
+            v-model="searchParams.dateRange"
+            type="daterange"
+            :range-separator="$t('common.to')"
+            :start-placeholder="$t('common.startDate')"
+            :end-placeholder="$t('common.endDate')"
+            value-format="YYYY-MM-DD"
+            style="width: 240px"
+          />
+        </ElFormItem>
+        <ElFormItem :label="$t('common.status')">
+          <ElSelect v-model="searchParams.status" :placeholder="$t('common.pleaseSelectStatus')" clearable style="width: 120px">
+            <ElOption :label="$t('common.pendingApproval')" :value="0" />
+            <ElOption :label="$t('common.approved')" :value="1" />
+            <ElOption :label="$t('common.rejected')" :value="2" />
+            <ElOption :label="$t('common.withdrawn')" :value="3" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" @click="handleSearch">
             <template #icon><icon-ep-search /></template>
-            搜索
+            {{ $t('common.search') }}
           </ElButton>
           <ElButton @click="handleReset">
             <template #icon><icon-ep-refresh /></template>
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
@@ -247,45 +273,45 @@ function handleSizeChange(size: number) {
     <ElCard class="flex-1">
       <template #header>
         <div class="flex items-center justify-between">
-          <span>调动申请列表</span>
-          <ElButton type="primary" @click="handleAdd">
+          <span>{{ $t('application.transfer.transferApplications') }}</span>
+          <ElButton v-permission="'application:transfer:add'" type="primary" @click="handleAdd">
             <template #icon><icon-ep-plus /></template>
-            新增申请
+            {{ $t('application.common.newApplication') }}
           </ElButton>
         </div>
       </template>
 
       <ElTable v-loading="loading" :data="data" border stripe>
-        <ElTableColumn type="index" label="序号" width="60" align="center" />
-        <ElTableColumn prop="employeeNo" label="工号" min-width="100" />
-        <ElTableColumn prop="employeeName" label="员工姓名" min-width="100" />
-        <ElTableColumn prop="transferType" label="变更类型" min-width="100" align="center">
+        <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" />
+        <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" min-width="100" />
+        <ElTableColumn prop="employeeName" :label="$t('common.employeeName')" min-width="100" />
+        <ElTableColumn prop="transferType" :label="$t('application.transfer.changeType')" min-width="100" align="center">
           <template #default="{ row }">{{ getTransferTypeLabel(row.transferType) }}</template>
         </ElTableColumn>
-        <ElTableColumn prop="fromCompanyName" label="原公司" min-width="120" show-overflow-tooltip />
-        <ElTableColumn prop="fromDeptName" label="原部门" min-width="100" />
-        <ElTableColumn prop="fromPosition" label="原职位" min-width="100">
+        <ElTableColumn prop="fromCompanyName" :label="$t('application.transfer.originalCompany')" min-width="120" show-overflow-tooltip />
+        <ElTableColumn prop="fromDeptName" :label="$t('application.transfer.originalDepartment')" min-width="100" />
+        <ElTableColumn prop="fromPosition" :label="$t('application.transfer.originalPosition')" min-width="100">
           <template #default="{ row }">{{ getPositionLabel(row.fromPosition) }}</template>
         </ElTableColumn>
-        <ElTableColumn prop="toCompanyName" label="新公司" min-width="120" show-overflow-tooltip />
-        <ElTableColumn prop="toDeptName" label="新部门" min-width="100" />
-        <ElTableColumn prop="toPosition" label="新职位" min-width="100">
+        <ElTableColumn prop="toCompanyName" :label="$t('application.transfer.newCompany')" min-width="120" show-overflow-tooltip />
+        <ElTableColumn prop="toDeptName" :label="$t('application.transfer.newDepartment')" min-width="100" />
+        <ElTableColumn prop="toPosition" :label="$t('application.transfer.newPosition')" min-width="100">
           <template #default="{ row }">{{ getPositionLabel(row.toPosition) }}</template>
         </ElTableColumn>
-        <ElTableColumn prop="effectDate" label="生效日期" min-width="110" />
-        <ElTableColumn prop="status" label="状态" min-width="90" align="center">
+        <ElTableColumn prop="effectDate" :label="$t('application.reward.effectiveDate')" min-width="110" />
+        <ElTableColumn prop="status" :label="$t('common.status')" min-width="90" align="center">
           <template #default="{ row }">
             <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="createdTime" label="申请时间" min-width="160" />
-        <ElTableColumn label="操作" width="140" align="center" fixed="right">
+        <ElTableColumn prop="createdTime" :label="$t('application.common.applicationTime')" min-width="160">
+          <template #default="{ row }">{{ formatDateTime(row.createdTime) }}</template>
+        </ElTableColumn>
+        <ElTableColumn :label="$t('common.action')" width="140" align="center" fixed="right">
           <template #default="{ row }">
-            <ElButton type="primary" link size="small" @click="handleViewDetail(row)">
-              详情
-            </ElButton>
+            <ElButton type="primary" link size="small" @click="handleViewDetail(row)">{{ $t('common.details') }}</ElButton>
             <ElButton v-if="row.status === 0" type="warning" link size="small" @click="handleCancel(row.id)">
-              撤销
+              {{ $t('common.withdraw') }}
             </ElButton>
           </template>
         </ElTableColumn>
@@ -305,33 +331,33 @@ function handleSizeChange(size: number) {
     </ElCard>
 
     <!-- 新增申请弹窗 -->
-    <ElDialog v-model="dialogVisible" title="新增调动申请" width="650px" destroy-on-close>
+    <ElDialog v-model="dialogVisible" :title="$t('application.transfer.newTransferApplication')" width="650px" destroy-on-close>
       <ElForm label-width="100px" :model="formData">
-        <ElFormItem label="员工" required>
+        <ElFormItem :label="$t('common.employee')" required>
           <div class="w-full flex gap-8px">
-            <ElInput v-model="employeeDisplayName" disabled placeholder="请选择员工" class="flex-1" />
-            <ElButton type="primary" @click="employeeDialogVisible = true">选择员工</ElButton>
+            <ElInput v-model="employeeDisplayName" disabled :placeholder="$t('common.pleaseSelectEmployees')" class="flex-1" />
+            <ElButton type="primary" @click="employeeDialogVisible = true">{{ $t('common.selectEmployees') }}</ElButton>
           </div>
         </ElFormItem>
         <ElRow :gutter="20">
           <ElCol :span="12">
-            <ElFormItem label="原公司">
-              <ElInput v-model="formData.fromCompanyName" disabled placeholder="选择员工后自动显示" />
+            <ElFormItem :label="$t('application.transfer.originalCompany')">
+              <ElInput v-model="formData.fromCompanyName" disabled :placeholder="$t('application.transfer.autoDisplayedAfterSelectingAnEmployee')" />
             </ElFormItem>
           </ElCol>
           <ElCol :span="12">
-            <ElFormItem label="原部门">
-              <ElInput v-model="formData.fromDeptName" disabled placeholder="选择员工后自动显示" />
+            <ElFormItem :label="$t('application.transfer.originalDepartment')">
+              <ElInput v-model="formData.fromDeptName" disabled :placeholder="$t('application.transfer.autoDisplayedAfterSelectingAnEmployee')" />
             </ElFormItem>
           </ElCol>
         </ElRow>
-        <ElFormItem label="原职位">
-          <ElInput :model-value="getPositionLabel(formData.fromPosition)" disabled placeholder="选择员工后自动显示" />
+        <ElFormItem :label="$t('application.transfer.originalPosition')">
+          <ElInput :model-value="getPositionLabel(formData.fromPosition)" disabled :placeholder="$t('application.transfer.autoDisplayedAfterSelectingAnEmployee')" />
         </ElFormItem>
-        <ElFormItem label="变更类型" required>
+        <ElFormItem :label="$t('application.transfer.changeType')" required>
           <ElSelect
             v-model="formData.transferType"
-            placeholder="请选择变更类型"
+            :placeholder="$t('application.transfer.pleaseSelectChangeType')"
             style="width: 100%"
             @change="handleTransferTypeChange"
           >
@@ -343,13 +369,13 @@ function handleSizeChange(size: number) {
             />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem v-if="showNewDept" label="新部门" required>
+        <ElFormItem v-if="showNewDept" :label="$t('application.transfer.newDepartment')" required>
           <ElTreeSelect
             v-model="formData.toDeptId"
             :data="orgTreeOptions"
             :props="{ children: 'children', label: 'unitName', value: 'id' }"
             node-key="id"
-            placeholder="请选择新部门"
+            :placeholder="$t('application.transfer.pleaseSelectNewDepartment')"
             clearable
             style="width: 100%"
             :render-after-expand="false"
@@ -357,8 +383,8 @@ function handleSizeChange(size: number) {
             check-strictly
           />
         </ElFormItem>
-        <ElFormItem v-if="showNewPosition" label="新职位" required>
-          <ElSelect v-model="formData.toPosition" placeholder="请选择新职位" style="width: 100%" clearable>
+        <ElFormItem v-if="showNewPosition" :label="$t('application.transfer.newPosition')" required>
+          <ElSelect v-model="formData.toPosition" :placeholder="$t('application.transfer.pleaseSelectNewPosition')" style="width: 100%" clearable>
             <ElOption
               v-for="item in positionOptions"
               :key="item.dictValue"
@@ -367,22 +393,22 @@ function handleSizeChange(size: number) {
             />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="生效日期" required>
+        <ElFormItem :label="$t('application.reward.effectiveDate')" required>
           <ElDatePicker
             v-model="formData.effectDate"
             type="date"
-            placeholder="选择日期"
+            :placeholder="$t('common.selectDate')"
             style="width: 100%"
             value-format="YYYY-MM-DD"
           />
         </ElFormItem>
-        <ElFormItem label="调动原因">
-          <ElInput v-model="formData.reason" type="textarea" :rows="3" placeholder="请输入调动原因" />
+        <ElFormItem :label="$t('application.transfer.transferReason')">
+          <ElInput v-model="formData.reason" type="textarea" :rows="3" :placeholder="$t('application.transfer.pleaseEnterTransferReason')" />
         </ElFormItem>
       </ElForm>
       <template #footer>
-        <ElButton @click="dialogVisible = false">取消</ElButton>
-        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">提交申请</ElButton>
+        <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('application.common.submitApplication') }}</ElButton>
       </template>
     </ElDialog>
 

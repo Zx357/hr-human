@@ -11,11 +11,12 @@ import {
   fetchContractPage,
   updateContract
 } from '@/service/api/contract';
-import { getFileUrl, uploadContractPhoto } from '@/service/api/file';
-import AuthImage from '@/components/business/auth-image.vue';
+import { uploadContractPhoto } from '@/service/api/file';
 import { useDictOptions } from '@/composables/use-dict-options';
 import { downloadFile } from '@/utils/download';
-import EmployeePickerDialog from '@/components/common/EmployeePickerDialog.vue';
+import AuthImage from '@/components/business/auth-image.vue';
+import EmployeePickerDialog from '@/components/common/employee-picker-dialog.vue';
+import { $t } from '@/locales';
 
 defineOptions({ name: 'ContractManage' });
 
@@ -35,7 +36,9 @@ const selectedEmployee = ref<Api.Hr.Employee | null>(null);
 const { options: contractTypeOptions, getDictLabel: getContractTypeLabel } = useDictOptions('contract_type');
 
 const drawerVisible = ref(false);
-const operateType = ref<'add' | 'edit'>('add');
+const operateType = ref<'add' | 'edit' | 'view'>('add');
+/** 查看模式：表单只读、隐藏保存/选择员工/上传操作 */
+const isViewMode = computed(() => operateType.value === 'view');
 const editingData = ref<
   Contract & { dateRange?: [string, string]; companyName?: string; employeeName?: string; employeeNo?: string }
 >({
@@ -142,15 +145,15 @@ function handleEdit(row: Contract) {
 async function handleDelete(id: number) {
   try {
     await deleteContract(id);
-    ElMessage.success('删除成功');
+    ElMessage.success($t('common.deleteSuccess'));
     loadData();
   } catch {
-    ElMessage.error('删除失败');
+    // 请求层已统一弹错
   }
 }
 
 function handleView(row: Contract) {
-  operateType.value = 'edit';
+  operateType.value = 'view';
   editingData.value = {
     ...row,
     dateRange: row.startDate && row.endDate ? [row.startDate, row.endDate] : undefined,
@@ -174,16 +177,16 @@ async function handleExport() {
   try {
     // clearable 的 ElSelect 清空后值为 ''，跳过空串
     const params = searchParams.value;
-    await downloadFile('/hr/contract/export', `合同列表_${dayjs().format('YYYYMMDD')}.xlsx`, {
+    await downloadFile('/hr/contract/export', $t('hr.contract.contractListXlsx', { date: dayjs().format('YYYYMMDD') }), {
       employeeName: params.employeeName || undefined,
       employeeNo: params.employeeNo || undefined,
       contractNo: params.contractNo || undefined,
       contractType: params.contractType || undefined,
       status: params.status === undefined || (params.status as unknown) === '' ? undefined : params.status
     });
-    ElMessage.success('导出成功');
+    ElMessage.success($t('attendance.common.exportSuccessful'));
   } catch {
-    ElMessage.error('导出失败');
+    // downloadFile 内部已提示具体错误
   } finally {
     exporting.value = false;
   }
@@ -231,9 +234,10 @@ async function handleConfirmEmployee(selected: Api.Hr.Employee[]) {
 // 自动计算合同次数
 async function calculateContractCount(employeeId: number) {
   try {
+    // 仅需要 total 计数，pageSize 用 1 拉取，避免为统计一次合同数全量拉取该员工合同列表
     const res = await fetchContractPage({
       pageNum: 1,
-      pageSize: 1000,
+      pageSize: 1,
       employeeId
     });
     if (res.data) {
@@ -247,17 +251,17 @@ async function calculateContractCount(employeeId: number) {
 
 async function handleSubmit() {
   if (!editingData.value.contractNo || !editingData.value.employeeId) {
-    ElMessage.warning('请填写必填项');
+    ElMessage.warning($t('common.pleaseFillRequired'));
     return;
   }
   // 无固定期限只需要开始日期，固定期限需要日期范围
   if (isNoFixedTerm.value) {
     if (!editingData.value.startDate) {
-      ElMessage.warning('请选择开始日期');
+      ElMessage.warning($t('hr.contract.pleaseSelectStartDate'));
       return;
     }
   } else if (!editingData.value.dateRange || editingData.value.dateRange.length !== 2) {
-    ElMessage.warning('请选择合同期限');
+    ElMessage.warning($t('hr.contract.pleaseSelectContractTerm'));
     return;
   }
   submitLoading.value = true;
@@ -270,15 +274,15 @@ async function handleSubmit() {
     };
     if (operateType.value === 'add') {
       await createContract(submitData);
-      ElMessage.success('新增成功');
+      ElMessage.success($t('common.addSuccess'));
     } else {
       await updateContract(submitData);
-      ElMessage.success('更新成功');
+      ElMessage.success($t('common.updateSuccess'));
     }
     drawerVisible.value = false;
     loadData();
   } catch {
-    ElMessage.error('保存失败');
+    // 请求层已统一弹错
   } finally {
     submitLoading.value = false;
   }
@@ -289,11 +293,11 @@ const beforeImageUpload: UploadProps['beforeUpload'] = rawFile => {
   const isImage = rawFile.type.startsWith('image/');
   const isLt5M = rawFile.size / 1024 / 1024 < 5;
   if (!isImage) {
-    ElMessage.error('只能上传图片文件!');
+    ElMessage.error($t('hr.contract.onlyImageFilesCanBeUploaded'));
     return false;
   }
   if (!isLt5M) {
-    ElMessage.error('图片大小不能超过 5MB!');
+    ElMessage.error($t('hr.contract.imageSizeCannotExceed5mb'));
     return false;
   }
   return true;
@@ -302,18 +306,18 @@ const beforeImageUpload: UploadProps['beforeUpload'] = rawFile => {
 async function handleContractImageUpload(file: File): Promise<boolean> {
   try {
     if (!editingData.value.employeeNo) {
-      ElMessage.warning('请先选择员工');
+      ElMessage.warning($t('hr.contract.pleaseSelectAnEmployeeFirst'));
       return false;
     }
     const res = await uploadContractPhoto(file, editingData.value.employeeNo);
     if (res.data) {
       contractImageList.value.push(res.data);
-      ElMessage.success('上传成功');
+      ElMessage.success($t('hr.contract.uploadedSuccessfully'));
       return true;
     }
     return false;
   } catch {
-    ElMessage.error('上传失败');
+    // 请求层已统一弹错
     return false;
   }
 }
@@ -323,10 +327,10 @@ function handleRemoveContractImage(index: number) {
 }
 
 const statusMap: Record<number, { label: string; type: string }> = {
-  1: { label: '生效中', type: 'success' },
-  2: { label: '即将到期', type: 'warning' },
-  3: { label: '已到期', type: 'info' },
-  4: { label: '已终止', type: 'danger' }
+  1: { label: $t('hr.contract.inEffect'), type: 'success' },
+  2: { label: $t('hr.contract.expiringSoon'), type: 'warning' },
+  3: { label: $t('hr.contract.expired'), type: 'info' },
+  4: { label: $t('hr.contract.terminated'), type: 'danger' }
 };
 </script>
 
@@ -335,17 +339,32 @@ const statusMap: Record<number, { label: string; type: string }> = {
     <!-- 搜索区域 -->
     <ElCard>
       <ElForm inline :model="searchParams">
-        <ElFormItem label="员工姓名">
-          <ElInput v-model="searchParams.employeeName" placeholder="请输入员工姓名" clearable />
+        <ElFormItem :label="$t('common.employeeName')">
+          <ElInput
+            v-model="searchParams.employeeName"
+            :placeholder="$t('common.pleaseInputEmployeeName')"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="员工编号">
-          <ElInput v-model="searchParams.employeeNo" placeholder="请输入员工编号" clearable />
+        <ElFormItem :label="$t('common.employeeNo')">
+          <ElInput
+            v-model="searchParams.employeeNo"
+            :placeholder="$t('common.pleaseInputEmployeeNo')"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="合同编号">
-          <ElInput v-model="searchParams.contractNo" placeholder="请输入合同编号" clearable />
+        <ElFormItem :label="$t('hr.contract.contractNo')">
+          <ElInput
+            v-model="searchParams.contractNo"
+            :placeholder="$t('hr.contract.pleaseEnterContractNo')"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
-        <ElFormItem label="合同类型">
-          <ElSelect v-model="searchParams.contractType" placeholder="请选择合同类型" clearable style="width: 180px">
+        <ElFormItem :label="$t('hr.contract.contractType')">
+          <ElSelect v-model="searchParams.contractType" :placeholder="$t('hr.contract.pleaseSelectContractType')" clearable style="width: 180px">
             <ElOption
               v-for="item in contractTypeOptions"
               :key="item.dictValue"
@@ -354,22 +373,22 @@ const statusMap: Record<number, { label: string; type: string }> = {
             />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="状态">
-          <ElSelect v-model="searchParams.status" placeholder="请选择状态" clearable style="width: 150px">
-            <ElOption label="生效中" :value="1" />
-            <ElOption label="即将到期" :value="2" />
-            <ElOption label="已到期" :value="3" />
-            <ElOption label="已终止" :value="4" />
+        <ElFormItem :label="$t('common.status')">
+          <ElSelect v-model="searchParams.status" :placeholder="$t('common.pleaseSelectStatus')" clearable style="width: 150px">
+            <ElOption :label="$t('hr.contract.inEffect')" :value="1" />
+            <ElOption :label="$t('hr.contract.expiringSoon')" :value="2" />
+            <ElOption :label="$t('hr.contract.expired')" :value="3" />
+            <ElOption :label="$t('hr.contract.terminated')" :value="4" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" @click="handleSearch">
             <template #icon><icon-ep-search /></template>
-            搜索
+            {{ $t('common.search') }}
           </ElButton>
           <ElButton @click="handleReset">
             <template #icon><icon-ep-refresh /></template>
-            重置
+            {{ $t('common.reset') }}
           </ElButton>
         </ElFormItem>
       </ElForm>
@@ -379,50 +398,50 @@ const statusMap: Record<number, { label: string; type: string }> = {
     <ElCard class="flex-1">
       <template #header>
         <div class="flex items-center justify-between">
-          <span>合同列表</span>
+          <span>{{ $t('hr.contract.contractList') }}</span>
           <div class="flex items-center gap-8px">
-            <ElButton :loading="exporting" @click="handleExport">
+            <ElButton v-permission="'hr:contract:export'" :loading="exporting" @click="handleExport">
               <template #icon><icon-ep-download /></template>
-              导出
+              {{ $t('common.export') }}
             </ElButton>
             <ElButton v-permission="'hr:contract:add'" type="primary" @click="handleAdd">
               <template #icon><icon-ep-plus /></template>
-              新增合同
+              {{ $t('hr.contract.newContract') }}
             </ElButton>
           </div>
         </div>
       </template>
 
       <ElTable v-loading="loading" :data="data" border stripe>
-        <ElTableColumn type="index" label="序号" width="60" align="center" />
-        <ElTableColumn prop="contractNo" label="合同编号" min-width="130" />
-        <ElTableColumn prop="companyName" label="所属公司" min-width="120" />
-        <ElTableColumn prop="employeeNo" label="工号" min-width="100" />
-        <ElTableColumn prop="employeeName" label="员工姓名" min-width="100" />
-        <ElTableColumn prop="contractType" label="合同类型" min-width="100" align="center">
+        <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" />
+        <ElTableColumn prop="contractNo" :label="$t('hr.contract.contractNo')" min-width="130" />
+        <ElTableColumn prop="companyName" :label="$t('application.common.company')" min-width="120" />
+        <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" min-width="100" />
+        <ElTableColumn prop="employeeName" :label="$t('common.employeeName')" min-width="100" />
+        <ElTableColumn prop="contractType" :label="$t('hr.contract.contractType')" min-width="100" align="center">
           <template #default="{ row }">
             {{ getContractTypeLabel(row.contractType) }}
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="startDate" label="开始日期" min-width="110" />
-        <ElTableColumn prop="endDate" label="结束日期" min-width="110" />
-        <ElTableColumn prop="signDate" label="签订日期" min-width="110" />
-        <ElTableColumn prop="status" label="状态" min-width="90" align="center">
+        <ElTableColumn prop="startDate" :label="$t('common.startDate')" min-width="110" />
+        <ElTableColumn prop="endDate" :label="$t('common.endDate')" min-width="110" />
+        <ElTableColumn prop="signDate" :label="$t('hr.contract.signDate')" min-width="110" />
+        <ElTableColumn prop="status" :label="$t('common.status')" min-width="90" align="center">
           <template #default="{ row }">
             <ElTag :type="statusMap[row.status]?.type as any">
               {{ statusMap[row.status]?.label }}
             </ElTag>
           </template>
         </ElTableColumn>
-        <ElTableColumn label="操作" width="180" align="center" fixed="right">
+        <ElTableColumn :label="$t('common.action')" width="180" align="center" fixed="right">
           <template #default="{ row }">
-            <ElButton type="primary" link size="small" @click="handleView(row)">查看</ElButton>
+            <ElButton type="primary" link size="small" @click="handleView(row)">{{ $t('common.view') }}</ElButton>
             <ElButton v-permission="'hr:contract:edit'" type="primary" link size="small" @click="handleEdit(row)">
-              编辑
+              {{ $t('common.edit') }}
             </ElButton>
-            <ElPopconfirm title="确定删除该合同吗？" @confirm="handleDelete(row.id)">
+            <ElPopconfirm :title="$t('hr.contract.areYouSureYouWantToDeleteThisContract')" @confirm="handleDelete(row.id)">
               <template #reference>
-                <ElButton v-permission="'hr:contract:delete'" type="danger" link size="small">删除</ElButton>
+                <ElButton v-permission="'hr:contract:delete'" type="danger" link size="small">{{ $t('common.delete') }}</ElButton>
               </template>
             </ElPopconfirm>
           </template>
@@ -442,10 +461,10 @@ const statusMap: Record<number, { label: string; type: string }> = {
       </div>
     </ElCard>
 
-    <!-- 新增/编辑弹窗 -->
+    <!-- 新增/编辑/查看弹窗 -->
     <ElDialog
       v-model="drawerVisible"
-      :title="operateType === 'add' ? '新增合同' : '编辑合同'"
+      :title="operateType === 'add' ? $t('hr.contract.newContract') : isViewMode ? $t('hr.contract.viewContract') : $t('hr.contract.editContract')"
       width="600px"
       top="24px"
       destroy-on-close
@@ -453,21 +472,21 @@ const statusMap: Record<number, { label: string; type: string }> = {
       class="contract-dialog"
       @opened="handleContractDialogOpened"
     >
-      <ElForm label-width="100px" :model="editingData">
-        <ElFormItem label="合同编号" required>
-          <ElInput v-model="editingData.contractNo" placeholder="请输入合同编号" />
+      <ElForm label-width="100px" :model="editingData" :disabled="isViewMode">
+        <ElFormItem :label="$t('hr.contract.contractNo')" required>
+          <ElInput v-model="editingData.contractNo" :placeholder="$t('hr.contract.pleaseEnterContractNo')" />
         </ElFormItem>
-        <ElFormItem label="员工" required>
+        <ElFormItem :label="$t('common.employee')" required>
           <div class="w-full flex gap-8px">
-            <ElInput v-model="employeeDisplayName" disabled placeholder="请选择员工" class="flex-1" />
-            <ElButton type="primary" @click="employeeDialogVisible = true">选择员工</ElButton>
+            <ElInput v-model="employeeDisplayName" disabled :placeholder="$t('common.pleaseSelectEmployees')" class="flex-1" />
+            <ElButton v-if="!isViewMode" type="primary" @click="employeeDialogVisible = true">{{ $t('common.selectEmployees') }}</ElButton>
           </div>
         </ElFormItem>
-        <ElFormItem v-if="editingData.contractCount" label="合同次数">
-          <ElInput :value="`第${editingData.contractCount}次`" disabled style="width: 100%" />
+        <ElFormItem v-if="editingData.contractCount" :label="$t('hr.contract.contractCount')">
+          <ElInput :value="$t('hr.contract.no', { count: editingData.contractCount })" disabled style="width: 100%" />
         </ElFormItem>
-        <ElFormItem label="合同类型" required>
-          <ElSelect v-model="editingData.contractType" placeholder="请选择合同类型" style="width: 100%">
+        <ElFormItem :label="$t('hr.contract.contractType')" required>
+          <ElSelect v-model="editingData.contractType" :placeholder="$t('hr.contract.pleaseSelectContractType')" style="width: 100%">
             <ElOption
               v-for="item in contractTypeOptions"
               :key="item.dictValue"
@@ -476,12 +495,12 @@ const statusMap: Record<number, { label: string; type: string }> = {
             />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="合同期限" required>
+        <ElFormItem :label="$t('hr.contract.contractTerm')" required>
           <template v-if="isNoFixedTerm">
             <ElDatePicker
               v-model="editingData.startDate"
               type="date"
-              placeholder="选择开始日期"
+              :placeholder="$t('hr.contract.selectStartDate')"
               style="width: 100%"
               value-format="YYYY-MM-DD"
             />
@@ -490,29 +509,30 @@ const statusMap: Record<number, { label: string; type: string }> = {
             <ElDatePicker
               v-model="editingData.dateRange"
               type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
+              :range-separator="$t('common.to')"
+              :start-placeholder="$t('common.startDate')"
+              :end-placeholder="$t('common.endDate')"
               style="width: 100%"
               value-format="YYYY-MM-DD"
             />
           </template>
         </ElFormItem>
-        <ElFormItem label="签订日期">
+        <ElFormItem :label="$t('hr.contract.signDate')">
           <ElDatePicker
             v-model="editingData.signDate"
             type="date"
-            placeholder="选择日期"
+            :placeholder="$t('common.selectDate')"
             style="width: 100%"
             value-format="YYYY-MM-DD"
           />
         </ElFormItem>
-        <ElFormItem label="合同图片">
+        <ElFormItem :label="$t('hr.contract.contractImage')">
           <div class="w-full">
             <div class="mb-8px flex flex-wrap gap-8px">
               <div v-for="(img, index) in contractImageList" :key="index" class="relative">
-                <AuthImage :url="img" fit="cover" class="h-100px w-100px border rounded" />
+                <AuthImage :url="img" fit="cover" preview class="h-100px w-100px border rounded" />
                 <ElIcon
+                  v-if="!isViewMode"
                   class="absolute right-2px top-2px cursor-pointer rounded-full bg-red-500 p-2px text-white"
                   @click="handleRemoveContractImage(index)"
                 >
@@ -520,31 +540,31 @@ const statusMap: Record<number, { label: string; type: string }> = {
                 </ElIcon>
               </div>
               <ElUpload
-                v-if="contractImageList.length < 9"
+                v-if="!isViewMode && contractImageList.length < 9"
                 class="contract-image-uploader"
                 :show-file-list="false"
                 :before-upload="beforeImageUpload"
                 :http-request="({ file }) => handleContractImageUpload(file as File)"
               >
                 <div
-                  class="h-100px w-100px flex cursor-pointer items-center justify-center border border-gray-300 rounded border-dashed bg-gray-100 hover:border-primary"
+                  class="h-100px w-100px flex cursor-pointer items-center justify-center border border-[var(--el-border-color)] rounded border-dashed bg-[var(--el-fill-color-light)] hover:border-primary"
                 >
-                  <ElIcon :size="24" class="text-gray-400">
+                  <ElIcon :size="24" class="text-[var(--el-text-color-placeholder)]">
                     <Plus />
                   </ElIcon>
                 </div>
               </ElUpload>
             </div>
-            <div class="text-xs text-gray-400">支持上传最多9张图片，每张不超过5MB</div>
+            <div class="text-xs text-gray-400">{{ $t('hr.contract.upTo9ImagesCanBeUploadedEachWithin5mb') }}</div>
           </div>
         </ElFormItem>
-        <ElFormItem label="备注">
-          <ElInput v-model="editingData.remark" type="textarea" :rows="3" placeholder="请输入备注" />
+        <ElFormItem :label="$t('common.remark')">
+          <ElInput v-model="editingData.remark" type="textarea" :rows="3" :placeholder="$t('hr.contract.pleaseEnterRemark')" />
         </ElFormItem>
       </ElForm>
       <template #footer>
-        <ElButton @click="drawerVisible = false">取消</ElButton>
-        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">确定</ElButton>
+        <ElButton @click="drawerVisible = false">{{ isViewMode ? $t('common.close') : $t('common.cancel') }}</ElButton>
+        <ElButton v-if="!isViewMode" type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('common.ok') }}</ElButton>
       </template>
     </ElDialog>
 
