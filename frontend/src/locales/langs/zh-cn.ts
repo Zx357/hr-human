@@ -275,7 +275,8 @@ const local: App.I18n.Schema = {
     system_feedback: '意见反馈',
     system_notice: '公告管理',
     'system_mobile-menu': '移动端菜单',
-    'system_file-config': '路径管理'
+    'system_file-config': '路径管理',
+    'system_oper-log': '操作日志'
   },
   page: {
     login: {
@@ -338,8 +339,7 @@ const local: App.I18n.Schema = {
       devDep: '开发依赖'
     },
     home: {
-      branchDesc:
-        '欢迎使用人资管理系统，本系统提供完整的人力资源管理功能。',
+      branchDesc: '欢迎使用人资管理系统，本系统提供完整的人力资源管理功能。',
       greeting: '早安，{userName}, 今天又是充满活力的一天!',
       weatherDesc: '今日多云转晴，20℃ - 25℃!',
       projectCount: '员工总数',

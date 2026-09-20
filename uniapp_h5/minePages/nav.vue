@@ -94,7 +94,6 @@ const sections = [
     desc: '个人资料与辅助入口',
     items: [
       routeItem('个人信息', '查看员工档案', 'identity-fill', '/minePages/set', blue),
-      routeItem('文件助手', '制度和资料模板', 'folder-fill', '/minePages/file', green),
       routeItem('帮助中心', '常见问题说明', 'help-fill', '/minePages/help', purple),
       mainItem('工作台', '回到工作台首页', 'home-fill', '/pages/index?index=2', cyan)
     ]

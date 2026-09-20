@@ -33,15 +33,32 @@
         </view>
       </view>
 
-      <view v-if="totalCount === 0" class="tn-padding-xl">
+      <!-- 互动消息列表 -->
+      <view class="tn-margin-top tn-bg-white" v-if="messages.length">
+        <view
+          v-for="(item, index) in messages"
+          :key="item.id || index"
+          class="msg-item tn-flex tn-flex-col-top tn-padding tn-margin-left tn-margin-right"
+          :class="{ 'tn-border-solid-bottom': index !== messages.length - 1 }"
+          @click="goPostDetail(item)"
+        >
+          <tn-avatar class="msg-item__avatar" shape="circle" :src="item.avatar" size="md"></tn-avatar>
+          <view class="tn-flex-1 tn-padding-left-sm" style="min-width: 0;">
+            <view class="tn-text-df msg-item__title tn-text-ellipsis">{{ item.title }}</view>
+            <view v-if="item.postContent" class="tn-color-gray tn-text-sm msg-item__desc tn-text-ellipsis">{{ item.postContent }}</view>
+          </view>
+          <view class="msg-item__right tn-color-gray--disabled tn-text-xs tn-padding-left-sm">
+            <text>{{ item.time }}</text>
+            <tn-icon class="tn-color-gray tn-padding-top-xs" name="right"></tn-icon>
+          </view>
+        </view>
+      </view>
+
+      <view v-if="!messages.length" class="tn-padding-xl">
         <view class="tn-text-center" style="font-size: 180rpx;padding-top: 60rpx;">
           <text class="tn-icon-clip tn-color-gray--light"></text>
         </view>
         <view class="tn-color-gray--disabled tn-text-center tn-text-lg">暂无互动消息</view>
-      </view>
-
-      <view v-else class="tn-color-gray tn-text-center tn-padding">
-        <text class="tn-text-xs">评论与私信功能即将上线，敬请期待</text>
       </view>
     </view>
 
@@ -52,12 +69,15 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useStore } from 'vuex'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
-import { getMomentMessages } from '@/api/moment'
+import config from '@/config'
+import { getMomentMessages, getMomentMessageList, markMomentMessagesRead } from '@/api/moment'
 
 // 使用 composable 获取自定义导航栏高度
 const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
+const store = useStore()
 
 defineOptions({
   name: 'TemplateMessage'
@@ -70,6 +90,8 @@ const summary = ref({
   mentionCount: 0
 })
 
+const messages = ref([])
+
 const summaryList = computed(() => [
   { name: '收到的赞', icon: 'like-fill', bgColor: '#FB6A67', count: Number(summary.value.likeCount || 0) },
   { name: '收到的评论', icon: 'comment-fill', bgColor: '#4B98FE', count: Number(summary.value.commentCount || 0) },
@@ -77,9 +99,33 @@ const summaryList = computed(() => [
   { name: '未读消息', icon: 'email-fill', bgColor: '#00D05E', count: Number(summary.value.unreadCount || 0) }
 ])
 
-const totalCount = computed(() =>
-  summaryList.value.reduce((total, item) => total + item.count, 0)
-)
+const formatAvatar = (avatar) => {
+  if (!avatar) return '/static/author.jpg'
+  if (/^https?:\/\//.test(avatar) || avatar.startsWith('/static')) return avatar
+  return config.baseUrl + avatar
+}
+
+const formatTime = (value) => {
+  if (!value) return ''
+  const date = String(value).replace('T', ' ')
+  return date.length > 10 ? date.slice(5, 16) : date
+}
+
+const normalizeMessage = (item, index) => {
+  const type = item.type === 'comment' ? 'comment' : 'like'
+  const operatorName = item.operatorName || '同事'
+  return {
+    id: item.id || `msg-${index}`,
+    type,
+    postId: item.postId,
+    avatar: formatAvatar(item.operatorAvatar),
+    title: type === 'like'
+      ? `${operatorName} 赞了你的动态`
+      : `${operatorName} 评论了你的动态：${item.content || ''}`,
+    postContent: item.postContent || '',
+    time: formatTime(item.time)
+  }
+}
 
 const loadSummary = async () => {
   try {
@@ -89,11 +135,46 @@ const loadSummary = async () => {
     }
   } catch (error) {
     console.log('加载互动消息失败', error)
+    uni.showToast({ title: '加载失败', icon: 'none' })
   }
 }
 
-onMounted(() => {
-  loadSummary()
+const loadMessages = async () => {
+  try {
+    const res = await getMomentMessageList(50)
+    const list = Array.isArray(res.data) ? res.data : []
+    messages.value = list.map(normalizeMessage)
+  } catch (error) {
+    console.log('加载互动消息列表失败', error)
+    uni.showToast({ title: '加载失败', icon: 'none' })
+  }
+}
+
+// 进入页面即标记已读,并同步清零 tabbar 时光角标与本地摘要未读数
+const markRead = async () => {
+  try {
+    await markMomentMessagesRead()
+    // 本地同步清零,避免显示旧的未读数
+    summary.value = { ...summary.value, unreadCount: 0 }
+    store.commit('SET_UNREAD_BADGE', { momentUnread: 0 })
+  } catch (error) {
+    console.log('标记已读失败', error)
+  }
+}
+
+// 点击消息跳转对应动态详情
+const goPostDetail = (item) => {
+  if (!item || !item.postId) return
+  uni.navigateTo({
+    url: `/momentPages/details?id=${item.postId}`
+  })
+}
+
+onMounted(async () => {
+  // 先加载摘要,再标记已读;markRead 成功后本地清零,避免并发请求把旧未读数显示回来
+  await loadSummary()
+  markRead()
+  loadMessages()
 })
 </script>
 
@@ -149,5 +230,30 @@ onMounted(() => {
 
   .tn-border-solid-bottom {
     border-bottom: 1rpx solid #F3F2F7;
+  }
+
+  /* 互动消息列表 start */
+  .msg-item {
+    background-color: #FFFFFF;
+
+    &__avatar {
+      flex-shrink: 0;
+    }
+
+    &__title {
+      font-weight: 600;
+      color: #1D2541;
+    }
+
+    &__desc {
+      padding-top: 8rpx;
+    }
+
+    &__right {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
   }
 </style>

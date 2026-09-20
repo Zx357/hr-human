@@ -53,6 +53,9 @@ public interface OrgUnitMapper extends BaseMapper<OrgUnit> {
     })
     Integer countEmployeesByDeptIds(@Param("deptIds") List<Long> deptIds);
 
+    @Select("SELECT dept_id, COUNT(*) AS cnt FROM hr_employee WHERE status = 1 AND dept_id IS NOT NULL GROUP BY dept_id")
+    List<Map<String, Object>> countEmployeesGroupByDept();
+
     @Select("SELECT COUNT(*) FROM hr_employee WHERE status = 1")
     Integer countAllEmployees();
 

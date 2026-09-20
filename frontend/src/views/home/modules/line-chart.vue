@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue';
-import { useAppStore } from '@/store/modules/app';
-import { useEcharts } from '@/hooks/common/echarts';
 import dayjs from 'dayjs';
 import { fetchDailyRecordPage } from '@/service/api/attendance';
+import { useAppStore } from '@/store/modules/app';
+import { useEcharts } from '@/hooks/common/echarts';
 
 defineOptions({ name: 'LineChart' });
 
@@ -61,7 +61,10 @@ const { domRef, updateOptions } = useEcharts(() => ({
       itemStyle: {
         color: {
           type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
+          x: 0,
+          y: 0,
+          x2: 0,
+          y2: 1,
           colorStops: [
             { offset: 0, color: '#818cf8' },
             { offset: 1, color: '#6366f1' }
@@ -146,8 +149,8 @@ async function loadData() {
   } catch {
     updateOptions(opts => {
       opts.xAxis.data = buildXAxis();
-      opts.series[0].data = new Array(rangeDays).fill(0);
-      opts.series[1].data = new Array(rangeDays).fill(0);
+      opts.series[0].data = Array.from({ length: rangeDays }, () => 0);
+      opts.series[1].data = Array.from({ length: rangeDays }, () => 0);
       return opts;
     });
   }

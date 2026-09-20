@@ -199,6 +199,10 @@ public class MobileAttendanceController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
 
+        // 参数钳位：防负偏移/超大页大小导致的SQL错误或全量拉取
+        int safePageNum = Math.max(pageNum, 1);
+        int safePageSize = Math.min(Math.max(pageSize, 1), 100);
+
         LoginUser loginUser = SecurityUtils.getCurrentUser();
         if (loginUser == null) {
             return Result.error("请先登录");
@@ -218,7 +222,7 @@ public class MobileAttendanceController {
         wrapper.orderByDesc(AttClockRecord::getClockTime);
 
         long total = clockRecordMapper.selectCount(wrapper);
-        wrapper.last("LIMIT " + (pageNum - 1) * pageSize + ", " + pageSize);
+        wrapper.last("LIMIT " + (long) (safePageNum - 1) * safePageSize + ", " + safePageSize);
         List<AttClockRecord> records = clockRecordMapper.selectList(wrapper);
 
         Map<String, Object> result = new HashMap<>();

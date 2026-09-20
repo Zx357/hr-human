@@ -3,7 +3,7 @@ import { getToken } from '@/utils/auth'
 export const LOGIN_PAGE = '/pages/login'
 export const WORKBENCH_PAGE = '/pages/index?index=2'
 
-const loginPages = [LOGIN_PAGE, '/minePages/login']
+const loginPages = [LOGIN_PAGE]
 const whiteList = [LOGIN_PAGE]
 
 export function normalizeUrl(url = '') {

@@ -1,556 +1,184 @@
 <template>
   <view class="oa-content">
     <!-- 顶部自定义导航 -->
-    <tn-navbar fixed  home-icon="" :bottom-shadow="false" bg-color="#F8F7F8" :placeholder="false">
+    <tn-navbar fixed :bottom-shadow="false" bg-color="#FFFFFF" :placeholder="false">
       <template #back><view class='tn-custom-nav-bar__back'
         @click="goBack">
-        <tn-icon name="left-arrow" class='icon'></tn-icon>
+        <tn-icon class='icon' name="left-arrow"></tn-icon>
       </view></template>
-      <view class="tn-flex tn-flex-col-center tn-flex-row-center tn-padding-left" @click="tn('/partnerPages/user')">
-        <text class="tn-text-bold tn-text-xl tn-color-black">付衣衣</text>
-        <tn-icon name="rocket" class="tn-text-xl tn-padding-left-sm tn-color-gray"></tn-icon>
+      <view class="tn-flex tn-flex-col-center tn-flex-row-center tn-padding-left">
+        <text class="tn-text-bold tn-text-xl tn-color-black">沟通交流</text>
       </view>
     </tn-navbar>
-    
-    <view class="oa-backgroup" :style="{paddingTop: vuex_custom_bar_height + 20 + 'px'}">
-      
-      <view class="tn-text-justify">
-        
-        <view class="tn-margin">
-          <view class="tn-flex tn-flex-row-between tn-flex-col-center">
-            <view class="justify-content-item">
-              <view class="tn-flex tn-flex-col-top tn-flex-row-left">
-                <view class="logo-pic tn-margin-top-sm" style="background-image:url('https://cdn.nlark.com/yuque/0/2022/jpeg/280373/1664005699053-assets/web-upload/8645ea3a-e0a9-4422-8364-cc5ede305c9f.jpeg')">
-                  <view class="logo-image" >
-                  </view>
-                </view>
-                <view class="tn-padding-right tn-color-black">
-                  
-                  <!-- <view class="tn-padding-left-sm tn-text-bold tn-margin-top-sm" style="max-width: 62vw;">
-                    付衣衣
-                  </view> -->
-                  <view class="tn-flex tn-flex-col-center">
-                    <view class="tn-bg-white tn-margin-sm tn-padding-sm" style="max-width: 62vw;border-radius: 0 20rpx 20rpx 20rpx;">
-                      <text class="">下午去抓猪</text>
-                    </view>
-                    <view class="">
-                      <!-- 发送失败 -->
-                      <!-- <tn-icon name="warning-fill" class="tn-color-purplered tn-text-xxl"></tn-icon> -->
-                    </view>
-                  </view>
-                  
-                </view>
-                
-              </view>
-            </view>
-            <view class="justify-content-item">
-              <!-- 预留空位 -->
-            </view>
-          </view>
-        </view>
-        
-        <view class="tn-margin">
-          <view class="tn-flex tn-flex-row-between tn-flex-col-center">
-            <view class="justify-content-item">
-              <view class="tn-flex tn-flex-col-top tn-flex-row-left">
-                <view class="logo-pic tn-margin-top-sm" style="background-image:url('https://cdn.nlark.com/yuque/0/2022/jpeg/280373/1664005699053-assets/web-upload/8645ea3a-e0a9-4422-8364-cc5ede305c9f.jpeg')">
-                  <view class="logo-image" >
-                  </view>
-                </view>
-                <view class="tn-padding-right tn-color-black">
-                  
-                  <!-- <view class="tn-padding-left-sm tn-text-bold tn-margin-top-sm" style="max-width: 62vw;">
-                    付衣衣
-                  </view> -->
-                  <view class="tn-flex tn-flex-col-center">
-                    <view class="tn-margin-sm" style="max-width: 62vw;">
-                      
-                      <view class="bg-img-cont tn-shadow-blur"
-                        style="background-image:url('https://resource.tuniaokj.com/images/content/rodion.jpg');">
-                      </view>
-                      
-                    </view>
-                    <view class="">
-                      <!-- 发送失败 -->
-                      <!-- <tn-icon name="warning-fill" class="tn-color-purplered tn-text-xxl"></tn-icon> -->
-                    </view>
-                  </view>
-                  
-                </view>
-                
-              </view>
-            </view>
-            <view class="justify-content-item">
-              <!-- 预留空位 -->
-            </view>
-          </view>
-        </view>
-        
-        <view class="tn-margin">
-          <view class="tn-flex tn-flex-row-between tn-flex-col-center">
-            <view class="justify-content-item">
-              <view class="tn-flex tn-flex-col-top tn-flex-row-left">
-                <view class="logo-pic tn-margin-top-sm" style="background-image:url('https://cdn.nlark.com/yuque/0/2022/jpeg/280373/1664005699053-assets/web-upload/8645ea3a-e0a9-4422-8364-cc5ede305c9f.jpeg')">
-                  <view class="logo-image" >
-                  </view>
-                </view>
-                <view class="tn-padding-right tn-color-black">
-                  
-                  <!-- <view class="tn-padding-left-sm tn-text-bold tn-margin-top-sm" style="max-width: 62vw;">
-                    付衣衣
-                  </view> -->
-                  <view class="tn-flex tn-flex-col-center">
-                    <view class="tn-bg-white tn-margin-sm tn-padding-sm" style="max-width: 62vw;border-radius: 0 20rpx 20rpx 20rpx;">
-                      <text class="">地址：广东省广州市番禺区祈福新村129号</text>
-                    </view>
-                    <view class="">
-                      <tn-icon name="location-fill" class="tn-color-blue tn-text-xxl"></tn-icon>
-                    </view>
-                  </view>
-                  
-                </view>
-                
-              </view>
-            </view>
-            <view class="justify-content-item">
-              <!-- 预留空位 -->
-            </view>
-          </view>
-        </view>
-        
-        
-        <view class="tn-margin">
-          <view class="tn-flex tn-flex-row-between tn-flex-col-center">
-            <view class="justify-content-item">
-              <!-- 预留空位 -->
-            </view>
-            <view class="justify-content-item">
-              <view class="tn-flex tn-flex-col-top tn-flex-row-left">
-                
-                <view class="tn-padding-left tn-color-black">
-                  <!-- <view class="tn-padding-right tn-text-bold tn-margin-top-sm tn-text-right" style="max-width: 62vw;">
-                    不许凶我
-                  </view> -->
-                  <view class="tn-flex tn-flex-col-center">
-                    <view class="">
-                      <!-- 发送失败 -->
-                      <tn-icon name="warning-fill" class="tn-color-purplered tn-text-xxl"></tn-icon>
-                    </view>
-                    <view class="tn-color-white tn-margin-sm tn-padding-sm" style="max-width: 62vw;border-radius: 20rpx 0 20rpx 20rpx;background: #00C8B0">
-                      <text class="">遵命衣衣大人</text>
-                    </view>
-                  </view>
-                </view>
-                <view class="logo-pic tn-margin-top-sm" style="background-image:url('https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1692940242409-assets/web-upload/fcc4eab6-b2ce-44eb-9165-c49b51f5f830.jpeg')">
-                  <view class="logo-image" >
-                  </view>
-                </view>
-                
-              </view>
-            </view>
-          </view>
-        </view>
-        
-        
-        <view class="tn-margin">
-          <view class="tn-flex tn-flex-row-between tn-flex-col-center">
-            <view class="justify-content-item">
-              <!-- 预留空位 -->
-            </view>
-            <view class="justify-content-item">
-              <view class="tn-flex tn-flex-col-top tn-flex-row-left">
-                
-                <view class="tn-padding-left tn-color-black">
-                  <!-- <view class="tn-padding-right tn-text-bold tn-margin-top-sm tn-text-right" style="max-width: 62vw;">
-                    不许凶我
-                  </view> -->
-                  <view class="tn-flex tn-flex-col-center">
-                    <view class="tn-bg-white tn-margin-sm tn-padding-sm" style="max-width: 62vw;border-radius: 20rpx 0 20rpx 20rpx;">
-                      <view class="tn-flex tn-flex-row-left tn-flex-col-center tn-strip-bottom-min" style="padding: 10rpx 0 20rpx 0;">
-                        <view class="justify-content-item user-pic" style="background-image:url('https://cdn.nlark.com/yuque/0/2021/jpeg/280373/1631345816936-assets/web-upload/b89032b6-4d07-4983-90e5-cc6d86de8b3e.jpeg')">
-                          <view class="user-image" >
-                          </view>
-                        </view>
-                        <view class="justify-content-item tn-padding-left-sm tn-padding-right">
-                          <view class="tn-text-bold">
-                            东东
-                          </view>
-                          <view class="tn-color-gray tn-padding-top-xs">
-                            图鸟科技・背锅侠
-                          </view>
-                        </view>
-                      </view>
-                      
-                      <view class="tn-padding-top-sm tn-color-gray">个人名片</view>
-                    </view>
-                  </view>
-                </view>
-                <view class="logo-pic tn-margin-top-sm" style="background-image:url('https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1692940242409-assets/web-upload/fcc4eab6-b2ce-44eb-9165-c49b51f5f830.jpeg')">
-                  <view class="logo-image" >
-                  </view>
-                </view>
-                
-              </view>
-            </view>
-          </view>
-        </view>
-        
-        
-        <view class="tn-text-center">
-          <text class="tn-bg-white tn-text-xs" style="border-radius: 6rpx;padding: 10rpx 14rpx;">晚上 7:02</text>
-        </view>
-        
-        <view class="tn-margin">
-          <view class="tn-flex tn-flex-row-between tn-flex-col-center">
-            <view class="justify-content-item">
-              <!-- 预留空位 -->
-            </view>
-            <view class="justify-content-item">
-              <view class="tn-flex tn-flex-col-top tn-flex-row-left">
-                
-                <view class="tn-padding-left tn-color-black">
-                  <!-- <view class="tn-padding-right tn-text-bold tn-margin-top-sm tn-text-right" style="max-width: 62vw;">
-                    不许凶我
-                  </view> -->
-                  <view class="tn-flex tn-flex-col-center">
-                    <view class="">
-                      <!-- 发送失败 -->
-                      <!-- <tn-icon name="warning-fill" class="tn-color-purplered tn-text-xxl"></tn-icon> -->
-                    </view>
-                    <view class="tn-color-white tn-margin-sm tn-padding-sm" style="max-width: 62vw;border-radius: 20rpx 0 20rpx 20rpx;background: #00C8B0">
-                      <text class="">现在就去抓</text>
-                    </view>
-                  </view>
-                </view>
-                <view class="logo-pic tn-margin-top-sm" style="background-image:url('https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1692940242409-assets/web-upload/fcc4eab6-b2ce-44eb-9165-c49b51f5f830.jpeg')">
-                  <view class="logo-image" >
-                  </view>
-                </view>
-                
-              </view>
-            </view>
-          </view>
-        </view>
-        
-        <view class="tn-margin">
-          <view class="tn-flex tn-flex-row-between tn-flex-col-center">
-            <view class="justify-content-item">
-              <view class="tn-flex tn-flex-col-top tn-flex-row-left">
-                <view class="logo-pic tn-margin-top-sm" style="background-image:url('https://cdn.nlark.com/yuque/0/2022/jpeg/280373/1664005699053-assets/web-upload/8645ea3a-e0a9-4422-8364-cc5ede305c9f.jpeg')">
-                  <view class="logo-image" >
-                  </view>
-                </view>
-                <view class="tn-padding-right tn-color-black">
-                  
-                  <!-- <view class="tn-padding-left-sm tn-text-bold tn-margin-top-sm" style="max-width: 62vw;">
-                    付衣衣
-                  </view> -->
-                  <view class="tn-flex tn-flex-col-center">
-                    <view class="tn-bg-white tn-margin-sm tn-padding-sm" style="max-width: 62vw;border-radius: 0 20rpx 20rpx 20rpx;">
-                      <text class="">妹妹，现在很晚了</text>
-                    </view>
-                    <!-- <view class="">
-                      <tn-icon name="location-fill" class="tn-color-blue tn-text-xxl"></tn-icon>
-                    </view> -->
-                  </view>
-                  
-                </view>
-                
-              </view>
-            </view>
-            <view class="justify-content-item">
-              <!-- 预留空位 -->
-            </view>
-          </view>
-        </view>
-        
-        
-        <view class="tn-margin">
-          <view class="tn-flex tn-flex-row-between tn-flex-col-center">
-            <view class="justify-content-item">
-              <!-- 预留空位 -->
-            </view>
-            <view class="justify-content-item">
-              <view class="tn-flex tn-flex-col-top tn-flex-row-left">
-                
-                <view class="tn-padding-left tn-color-black">
-                  <!-- <view class="tn-padding-right tn-text-bold tn-margin-top-sm tn-text-right" style="max-width: 62vw;">
-                    不许凶我
-                  </view> -->
-                  <view class="tn-flex tn-flex-col-center">
-                    <view class="">
-                      <!-- 发送失败 -->
-                      <!-- <tn-icon name="warning-fill" class="tn-color-purplered tn-text-xxl"></tn-icon> -->
-                    </view>
-                    <view class="tn-color-white tn-margin-sm tn-padding-sm" style="max-width: 62vw;border-radius: 20rpx 0 20rpx 20rpx;background: #00C8B0">
-                      <text class="">可以的，我点蜡烛</text>
-                    </view>
-                  </view>
-                </view>
-                <view class="logo-pic tn-margin-top-sm" style="background-image:url('https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1692940242409-assets/web-upload/fcc4eab6-b2ce-44eb-9165-c49b51f5f830.jpeg')">
-                  <view class="logo-image" >
-                  </view>
-                </view>
-                
-              </view>
-            </view>
-          </view>
-        </view>
-        
-        <view class="tn-margin">
-          <view class="tn-flex tn-flex-row-between tn-flex-col-center">
-            <view class="justify-content-item">
-              <view class="tn-flex tn-flex-col-top tn-flex-row-left">
-                <view class="logo-pic tn-margin-top-sm" style="background-image:url('https://cdn.nlark.com/yuque/0/2022/jpeg/280373/1664005699053-assets/web-upload/8645ea3a-e0a9-4422-8364-cc5ede305c9f.jpeg')">
-                  <view class="logo-image" >
-                  </view>
-                </view>
-                <view class="tn-padding-right tn-color-black">
-                  
-                  <!-- <view class="tn-padding-left-sm tn-text-bold tn-margin-top-sm" style="max-width: 62vw;">
-                    付衣衣
-                  </view> -->
-                  <view class="tn-flex tn-flex-col-center">
-                    <view class="tn-bg-white tn-margin-sm tn-padding-sm" style="max-width: 62vw;border-radius: 0 20rpx 20rpx 20rpx;">
-                      <text class="">明天再去??</text>
-                    </view>
-                    <!-- <view class="">
-                      <tn-icon name="location-fill" class="tn-color-blue tn-text-xxl"></tn-icon>
-                    </view> -->
-                  </view>
-                  
-                </view>
-                
-              </view>
-            </view>
-            <view class="justify-content-item">
-              <!-- 预留空位 -->
-            </view>
-          </view>
-        </view>
-        
-        <view class="tn-margin">
-          <view class="tn-flex tn-flex-row-between tn-flex-col-center">
-            <view class="justify-content-item">
-              <view class="tn-flex tn-flex-col-top tn-flex-row-left">
-                <view class="logo-pic tn-margin-top-sm" style="background-image:url('https://cdn.nlark.com/yuque/0/2022/jpeg/280373/1664005699053-assets/web-upload/8645ea3a-e0a9-4422-8364-cc5ede305c9f.jpeg')">
-                  <view class="logo-image" >
-                  </view>
-                </view>
-                <view class="tn-padding-right tn-color-black">
-                  
-                  <!-- <view class="tn-padding-left-sm tn-text-bold tn-margin-top-sm" style="max-width: 62vw;">
-                    付衣衣
-                  </view> -->
-                  <view class="tn-flex tn-flex-col-center">
-                    <view class="" style="max-width: 62vw;font-size: 180rpx;">
-                      <text class="tn-worm-eat">️</text>
-                    </view>
-                    <!-- <view class="">
-                      <tn-icon name="location-fill" class="tn-color-blue tn-text-xxl"></tn-icon>
-                    </view> -->
-                  </view>
-                  
-                </view>
-                
-              </view>
-            </view>
-            <view class="justify-content-item">
-              <!-- 预留空位 -->
-            </view>
-          </view>
-        </view>
-        
-        
-        <view class="tn-margin">
-          <view class="tn-flex tn-flex-row-between tn-flex-col-center">
-            <view class="justify-content-item">
-              <!-- 预留空位 -->
-            </view>
-            <view class="justify-content-item">
-              <view class="tn-flex tn-flex-col-top tn-flex-row-left">
-                
-                <view class="tn-padding-left tn-color-black">
-                  <!-- <view class="tn-padding-right tn-text-bold tn-margin-top-sm tn-text-right" style="max-width: 62vw;">
-                    不许凶我
-                  </view> -->
-                  <view class="tn-flex tn-flex-col-center">
-                    <view class="">
-                      <!-- 发送失败 -->
-                      <!-- <tn-icon name="warning-fill" class="tn-color-purplered tn-text-xxl"></tn-icon> -->
-                    </view>
-                    <view class="tn-color-white tn-margin-sm tn-padding-sm" style="max-width: 62vw;border-radius: 20rpx 0 20rpx 20rpx;background: #00C8B0">
-                      <text class="">遵命大人，此处发送爱心️</text>
-                    </view>
-                  </view>
-                </view>
-                <view class="logo-pic tn-margin-top-sm" style="background-image:url('https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1692940242409-assets/web-upload/fcc4eab6-b2ce-44eb-9165-c49b51f5f830.jpeg')">
-                  <view class="logo-image" >
-                  </view>
-                </view>
-                
-              </view>
-            </view>
-          </view>
-        </view>
-        
-        
-        <view class="tn-margin">
-          <view class="tn-flex tn-flex-row-between tn-flex-col-center">
-            <view class="justify-content-item">
-              <!-- 预留空位 -->
-            </view>
-            <view class="justify-content-item">
-              <view class="tn-flex tn-flex-col-top tn-flex-row-left">
-                
-                <view class="tn-padding-left tn-color-black">
-                  <!-- <view class="tn-padding-right tn-text-bold tn-margin-top-sm tn-text-right" style="max-width: 62vw;">
-                    不许凶我
-                  </view> -->
-                  <view class="tn-flex tn-flex-col-center">
-                    <view class="">
-                      <!-- 发送失败 -->
-                      <!-- <tn-icon name="warning-fill" class="tn-color-purplered tn-text-xxl"></tn-icon> -->
-                    </view>
-                    <view class="" style="max-width: 62vw;font-size: 180rpx;">
-                      <text class="tn-cat-fish">️</text>
-                    </view>
-                  </view>
-                </view>
-                <view class="logo-pic tn-margin-top-sm" style="background-image:url('https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1692940242409-assets/web-upload/fcc4eab6-b2ce-44eb-9165-c49b51f5f830.jpeg')">
-                  <view class="logo-image" >
-                  </view>
-                </view>
-                
-              </view>
-            </view>
-          </view>
-        </view>
 
-        
-      </view>
-      
-    </view>
-    
-    
-    <view class="tabbar footerfixed tn-bg-white">
-      <view class="tn-flex tn-flex-row-between tn-flex-col-center">
-        <view class="justify-content-item tn-margin-top tn-flex-3" @tap="showLandscape">
-          <view class="tn-margin-left" style="padding: 20rpx 40rpx;background-color: #F9F9F9;max-width: 36vw;border-radius: 1000rpx;color: #999999;">
-            输入聊天内容
-          </view>
-        </view>
-        <view class="justify-content-item tn-flex-row-center tn-flex-col-center tn-margin-top tn-padding-right-sm">
-          <view class="tn-flex tn-flex-row-center tn-flex-col-center">
-            <view class="icon27__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-padding-right-sm" @tap.stop="openEmotionModal">
-              <tn-icon name="emoji-good" class="tn-color-gray"></tn-icon>
+    <view class="oa-backgroup" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
+
+      <!-- 会话列表 -->
+      <view v-if="conversations.length" class="tn-bg-white">
+        <view
+          v-for="(item, index) in conversations"
+          :key="item.key"
+          class="conv-item tn-flex tn-flex-col-center"
+          :class="{ 'conv-item--border': index !== conversations.length - 1 }"
+          @click="goChat(item)"
+        >
+          <!-- 头像:单聊显示对方头像,群聊无头像时显示默认群图标 -->
+          <view class="conv-item__avatar-box">
+            <image v-if="item.avatar" class="conv-item__avatar" :src="item.avatar" mode="aspectFill"></image>
+            <view v-else class="conv-item__avatar conv-item__avatar--group tn-flex tn-flex-row-center tn-flex-col-center">
+              <tn-icon name="group-circle" class="tn-color-white" style="font-size: 48rpx;"></tn-icon>
             </view>
-            <view class="icon27__item--icon tn-flex tn-flex-row-center tn-flex-col-center" @tap.stop="openMoreModal">
-              <tn-icon name="add-circle" class="tn-color-gray"></tn-icon>
+            <view v-if="item.unreadCount > 0" class="conv-item__badge">{{ formatBadge(item.unreadCount) }}</view>
+          </view>
+
+          <view class="tn-flex-1 tn-padding-left-sm" style="min-width: 0;">
+            <view class="tn-flex tn-flex-row-between tn-flex-col-center">
+              <text class="conv-item__name tn-text-ellipsis">{{ item.name }}</text>
+              <text class="conv-item__time tn-color-gray--disabled tn-text-xs">{{ item.timeText }}</text>
             </view>
-            <!-- <view class="avatar-all">
-              <view class="tn-shadow-blur" style="background-image:url('https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1692940242409-assets/web-upload/fcc4eab6-b2ce-44eb-9165-c49b51f5f830.jpeg');width: 60rpx;height: 60rpx;background-size: cover;">
-              </view>
-            </view> -->
+            <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-padding-top-xs">
+              <text class="conv-item__last tn-color-gray tn-text-sm tn-text-ellipsis">{{ item.lastMessage || ' ' }}</text>
+              <text v-if="item.typeText" class="conv-item__type tn-color-gray--disabled tn-text-xs">{{ item.typeText }}</text>
+            </view>
           </view>
         </view>
       </view>
-    </view>
-    
-    <view class="">
-      <!-- 压屏窗-->
-      <!-- <tn-landscape :show="show" @close="closeLandscape" :closeBtn="false">
-        <view class="chat-input" style="">
-          <view class="tn-bg-gray--light tn-padding tn-text-justify" style="border-radius: 20rpx;margin: 40rpx 30rpx 30rpx 30rpx;">
-            <textarea class="tn-input" maxlength="500" confirm-type="done" placeholder="输入聊天内容" placeholder-style="color:#AAAAAA" :show-confirm-bar="false" :focus="focusTextarea" @blur="closeLandscape"></textarea>
-          </view>
-          <view class="tn-flex tn-flex-row-right" style="width: 100vw;padding-right: 30rpx;" @tap.stop="closeLandscape">
-            <tn-button backgroundColor="#4B98FE" fontColor="#FFFFFF" :custom-style="{padding:'2rpx 30rpx 2rpx 30rpx'}" width="100%" fontSize="26">发 送</tn-button>
-          </view>
-          <view class="tn-tabbar-height-safe tn-color-white">
-            预留安全区域
-          </view>
+
+      <!-- 空会话 -->
+      <view v-else-if="!loading" class="tn-padding-xl">
+        <view class="tn-text-center" style="font-size: 180rpx;padding-top: 60rpx;">
+          <text class="tn-icon-clip tn-color-gray--light"></text>
         </view>
-    
-      </tn-landscape> -->
+        <view class="tn-color-gray--disabled tn-text-center tn-text-lg">暂无会话，去通讯录发起聊天吧</view>
+        <view class="tn-flex tn-flex-row-center tn-padding-top">
+          <tn-button
+            shape="round"
+            bg-color="#3668FC"
+            text-color="#FFFFFF"
+            :custom-style="{ padding: '18rpx 60rpx' }"
+            @click="goContacts"
+          >
+            去通讯录
+          </tn-button>
+        </view>
+      </view>
+
+      <!-- 加载中 -->
+      <view v-if="loading" class="tn-text-center tn-color-gray tn-padding-xl">加载中...</view>
     </view>
-    
-    <!-- 功能弹框 -->
-    <!-- popup会有延迟，采用这种方式来优化弹窗的优化体验-->
-    <more-modal v-model="showMoreModal"></more-modal>
-    
-    <!-- 表情弹框 -->
-    <!-- popup会有延迟，采用这种方式来优化弹窗的优化体验-->
-    <emotion-modal v-model="showEmotionModal"></emotion-modal>
-    
-    <view class="tn-tabbar-height"></view>
-    
+
+    <view class='tn-tabbar-height'></view>
+
   </view>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
-import MoreModal from '@/components/more/more.vue'
-import EmotionModal from '@/components/emotion/emotion.vue'
+import config from '@/config'
+import { getConversations } from '@/api/chat'
 
 // 使用 composable 获取自定义导航栏高度
 const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
 
-const showMoreModal = ref(false)
-const showEmotionModal = ref(false)
+defineOptions({
+  name: 'TemplateChat'
+})
 
-const show = ref(false)
-const focusTextarea = ref(false)
-const maskCloseable = ref(true)
+const conversations = ref([])
+const loading = ref(true)
 
-// 弹出压屏窗
-const showLandscape = () => {
-  openLandscape()
+const formatAvatar = (avatar) => {
+  if (!avatar) return ''
+  if (/^https?:\/\//.test(avatar) || avatar.startsWith('/static')) return avatar
+  return config.baseUrl + avatar
 }
 
-// 打开压屏窗
-const openLandscape = () => {
-  show.value = true
-  nextTick(() => {
-    focusTextarea.value = true
+const formatBadge = (value) => {
+  const count = Number(value || 0)
+  if (count <= 0) return ''
+  return count > 99 ? '99+' : String(count)
+}
+
+// 时间:今天显示 HH:mm,更早显示 MM-DD
+const formatTime = (value) => {
+  if (!value) return ''
+  const date = String(value).replace('T', ' ')
+  const now = new Date()
+  const ymd = date.slice(0, 10)
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  if (ymd === today) return date.length > 15 ? date.slice(11, 16) : ''
+  return date.length >= 10 ? date.slice(5, 10) : date
+}
+
+// 最后一条是图片消息时显示占位文案(后端 lastMessage 存原文 URL,前端按 URL 特征判断)
+const IMAGE_EXT_RE = /\.(png|jpe?g|gif|webp|bmp)(\?.*)?$/i
+const formatLastMessage = (value) => {
+  const text = String(value || '').trim()
+  if (text && /^(\/file\/upload\/image|https?:\/\/)/i.test(text) && IMAGE_EXT_RE.test(text)) {
+    return '[图片]'
+  }
+  return text
+}
+
+const normalizeConversation = (item) => {
+  const chatType = Number(item.chatType) === 2 ? 2 : 1
+  return {
+    key: `${chatType}-${item.targetId}`,
+    chatType,
+    targetId: item.targetId,
+    name: item.name || (chatType === 2 ? '单聊' : '群聊'),
+    avatar: formatAvatar(item.avatar) || (chatType === 2 ? '/static/author.jpg' : ''),
+    lastMessage: formatLastMessage(item.lastMessage),
+    unreadCount: Number(item.unreadCount || 0),
+    timeText: formatTime(item.lastMessageTime),
+    typeText: chatType === 2 ? '' : '群聊'
+  }
+}
+
+const loadConversations = async () => {
+  try {
+    const res = await getConversations()
+    const list = Array.isArray(res.data) ? res.data : []
+    conversations.value = list.map(normalizeConversation)
+  } catch (error) {
+    console.log('加载会话列表失败', error)
+    uni.showToast({ title: '加载失败', icon: 'none' })
+  } finally {
+    loading.value = false
+  }
+}
+
+// 点击会话进入聊天页(partnerPages/chat 接收 type=single|group / targetId / name)
+const goChat = (item) => {
+  uni.navigateTo({
+    url: `/partnerPages/chat?type=${item.chatType === 2 ? 'single' : 'group'}&targetId=${item.targetId}&name=${encodeURIComponent(item.name)}`
   })
 }
 
-// 关闭压屏窗，@blur 点击失去聚焦时，则相当于完成，关闭压屏窗并发送消息
-const closeLandscape = () => {
-  show.value = false
-  focusTextarea.value = false
-}
-
-// 点击失去聚焦时，则相当于完成，关闭压屏窗并发送消息
-const finish = () => {
-  closeLandscape()
-}
-
-// 跳转
-const tn = (e) => {
+// 去通讯录(首页第4个tab)
+const goContacts = () => {
   uni.navigateTo({
-    url: e,
-  });
+    url: '/pages/index?index=3'
+  })
 }
 
-// 打开信息弹框
-const openMoreModal = () => {
-  showMoreModal.value = true
-}
+// 页面显示时刷新会话(从聊天页返回后未读数/最后消息保持最新)
+onShow(() => {
+  loadConversations()
+})
 
-// 打开信息弹框
-const openEmotionModal = () => {
-  showEmotionModal.value = true
-}
+onPullDownRefresh(async () => {
+  await loadConversations()
+  uni.stopPullDownRefresh()
+})
 </script>
 
 <style lang="scss" scoped>
   /* 胶囊*/
   .tn-custom-nav-bar__back {
-    z-index: 9999;
     width: 60%;
     height: 100%;
     position: relative;
@@ -562,17 +190,17 @@ const openEmotionModal = () => {
     border-radius: 1000rpx;
     border: 1rpx solid rgba(255, 255, 255, 0.5);
     color: #FFFFFF;
-    font-size: 32rpx;
-    
+    font-size: 18px;
+
     .icon {
       display: block;
       flex: 1;
       margin: auto;
       text-align: center;
     }
-    
+
   }
-  
+
   .oa-content{
     max-width: 640px;
     margin: 0 auto;
@@ -582,169 +210,83 @@ const openEmotionModal = () => {
     padding-bottom: calc(80rpx + env(safe-area-inset-bottom) / 2);
     padding-bottom: calc(80rpx + constant(safe-area-inset-bottom));
   }
-  
-  .tn-tabbar-height {
-  	min-height: 100rpx;
-  	height: calc(120rpx + env(safe-area-inset-bottom) / 2);
-  }
-  
+
   .oa-backgroup{
     background-color: #F8F7F8;
     min-height: 100vh;
     padding-bottom: 60rpx;
   }
-  
-  /* 用户头像 start */
-  .logo-image {
-    width: 80rpx;
-    height: 80rpx;
-    position: relative;
+
+  .tn-tabbar-height {
+  	min-height: 100rpx;
+  	height: calc(120rpx + env(safe-area-inset-bottom) / 2);
   }
-  
-  .logo-pic {
-    background-size: cover;
-    background-repeat: no-repeat;
-    // background-attachment:fixed;
-    background-position: top;
-    // border: 1rpx solid rgba(255,255,255,0.05);
-    box-shadow: 0rpx 0rpx 80rpx 0rpx rgba(0, 0, 0, 0.05);
-    border-radius: 50%;
-    // overflow: hidden;
-    // background-color: #FFFFFF;
-  }
-  
-  /* 名片头像 start */
-  .user-image {
-    width: 90rpx;
-    height: 90rpx;
-    position: relative;
-  }
-  
-  .user-pic {
-    background-size: cover;
-    background-repeat: no-repeat;
-    // background-attachment:fixed;
-    background-position: top;
-    // border: 1rpx solid rgba(255,255,255,0.05);
-    box-shadow: 0rpx 0rpx 80rpx 0rpx rgba(0, 0, 0, 0.05);
-    border-radius: 50%;
-    // overflow: hidden;
-    // background-color: #FFFFFF;
-  }
-  
-  .bg-img-cont {
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    height: 260rpx;
-    width: 55vw;
-    margin: 10rpx 0 0 0;
-    border-radius: 12rpx;
-  }
-  
-  /* 图标容器27 start */
-  .icon27 {
-    &__item {
-      width: 30%;
-      background-color: #FFFFFF;
-      // border-radius: 10rpx;
-      padding: 30rpx 0rpx 30rpx 30rpx;
-      margin: 20rpx 0rpx;
-      transform: scale(1);
-      transition: transform 0.3s linear;
-      transform-origin: center center;
-      
-      &--icon {
-        width: 70rpx;
-        height: 70rpx;
-        font-size: 60rpx;
-        // border-radius: 50%;
-        position: relative;
-        z-index: 1;
-        
-        &::after {
-          content: " ";
-          position: absolute;
-          z-index: -1;
-          width: 100%;
-          height: 100%;
-          left: 0;
-          bottom: 0;
-          border-radius: inherit;
-          opacity: 1;
-          transform: scale(1, 1);
-          background-size: 100% 100%;
-            
-        }
+
+  /* 会话列表 start */
+  .conv-item {
+    padding: 24rpx 30rpx;
+    background-color: #FFFFFF;
+
+    &--border {
+      border-bottom: 1rpx solid #F3F2F7;
+    }
+
+    &__avatar-box {
+      position: relative;
+      flex-shrink: 0;
+      width: 92rpx;
+      height: 92rpx;
+    }
+
+    &__avatar {
+      width: 92rpx;
+      height: 92rpx;
+      border-radius: 16rpx;
+      background-color: #F4F5F9;
+
+      &--group {
+        background-color: #3668FC;
       }
     }
-  }
-  
-  
-  /* 底部 start*/
-  .footerfixed{
-    position: fixed;
-    width: 100%;
-    bottom: 0;
-    z-index: 999;
-    background-color: rgba(255,255,255,0.5);
-    box-shadow: 0rpx 0rpx 30rpx 0rpx rgba(0, 0, 0, 0.07);
-  }
-  
-  .tabbar {
-    max-width: 640px;
-    margin: 0 auto;
-    align-items: center;
-    min-height: 130rpx;
-  	padding: 0;
-  	height: calc(130rpx + env(safe-area-inset-bottom) / 2);
-  	padding-bottom: calc(30rpx + env(safe-area-inset-bottom) / 2);
-    padding-left: 10rpx;
-    padding-right: 10rpx;
-  }
-  
-  /* 间隔线 start*/
-  .tn-strip-bottom {
-   width: 100%;
-   border-bottom: 20rpx solid #F8F7F8;
-  }
-  /* 间隔线 start*/
-  .tn-strip-bottom-min {
-   width: 100%;
-   border-bottom: 1rpx solid #F8F7F8;
-  }
-  
-  /* 头像*/
-  .avatar-all {
-    width: 60rpx;
-    height: 60rpx;
-    border: 4rpx solid rgba(255,255,255,0.05);
-    border-radius: 50%;
-    overflow: hidden;
-    box-shadow: 0rpx 0rpx 80rpx 0rpx rgba(0, 0, 0, 0.15);
-  }
-  
-  .tn-input{
-      width: calc(100vw - 120rpx);
-      height: 120rpx;
+
+    &__badge {
+      position: absolute;
+      top: -10rpx;
+      right: -14rpx;
+      min-width: 32rpx;
+      height: 32rpx;
+      padding: 0 8rpx;
+      box-sizing: border-box;
+      background-color: #E34D59;
+      border: 2rpx solid #FFFFFF;
+      border-radius: 100rpx;
+      color: #FFFFFF;
+      font-size: 20rpx;
+      line-height: 28rpx;
+      text-align: center;
     }
-    
-    .chat-input{
-      border-radius: 24rpx 24rpx 0 0;
-      background: linear-gradient(180deg, #FFFFFF, #FFFFFF, #FFFFFF,  #FFFFFF,  #FFFFFF, #FFFFFF00);
-      margin-bottom: -640rpx;
+
+    &__name {
+      flex: 1;
+      min-width: 0;
+      font-size: 30rpx;
+      font-weight: 600;
+      color: #1D2541;
     }
-    
-    /* 底部安全边距 start*/
-    .tn-tabbar-height-safe {
-    	min-height: 580rpx;
-    	height: calc(620rpx + env(safe-area-inset-bottom));
-    	height: calc(620rpx + constant(safe-area-inset-bottom));
+
+    &__time {
+      flex-shrink: 0;
+      padding-left: 16rpx;
     }
-  
-  :deep(.input-placeholder) {
-    font-size: 30rpx;
-    color: #C6D1D8;
+
+    &__last {
+      flex: 1;
+      min-width: 0;
+    }
+
+    &__type {
+      flex-shrink: 0;
+      padding-left: 16rpx;
+    }
   }
-  
 </style>

@@ -13,8 +13,18 @@
     
     
     <view class="" :style="{paddingTop: vuex_custom_bar_height + 10 + 'px'}">
+      <!-- 未找到该同事的空态 -->
+      <view v-if="userNotFound" class="user-empty">
+        <view class="user-empty__icon tn-color-gray--light">
+          <tn-icon name="my-search"></tn-icon>
+        </view>
+        <view class="tn-color-gray--disabled tn-text-lg tn-padding-top">未找到该同事</view>
+        <view class="tn-color-gray--disabled tn-text-sm tn-padding-top-xs">该用户可能已离职或不存在</view>
+      </view>
+
+      <template v-else>
       <view class="user-fixed">
-        
+
       </view>
       <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-padding" style="position: relative;z-index: 9999;">
         <view class="justify-content-item">
@@ -187,17 +197,18 @@
       <!-- <view class="tn-footerfixed tn-padding" style="z-index: 9999;">
         <view class="tn-flex tn-flex-row-between tn-bg-white tn-padding-top-xs tn-padding-bottom-xs" style="border-radius: 100rpx;box-shadow: 0rpx 0rpx 30rpx 0rpx rgba(0, 0, 0, 0.07);">
           <view class="tn-flex-1 justify-content-item tn-margin-xs tn-text-center">
-            <tn-button shape="round" backgroundColor="#00C8B0" fontColor="#FFFFFF" :custom-style="{padding:'35rpx 0'}" width="90%" :fontSize="30">
+            <tn-button shape="round" backgroundColor="tn-bg-orange" fontColor="#FFFFFF" :custom-style="{padding:'35rpx 0'}" width="90%" :fontSize="30">
               <text class="tn-icon-add tn-padding-right-xs"></text>
               <text class="">加好友</text>
             </tn-button>
           </view>
         </view>
       </view> -->
-      
+
+      </template>
     </view>
-    
-    
+
+
     <view class='tn-tabbar-height'></view>
     
   </view>
@@ -213,17 +224,12 @@
   // 使用 composable 获取自定义导航栏高度
   const { vuex_custom_bar_height } = useCustomBarHeight()
   const { goBack } = useGoBack()
+  const store = useStore()
 
-  const user = ref({
-    name: '付衣衣',
-    employeeNo: '付总-设计主管',
-    deptName: '产品研发部',
-    position: '设计总监',
-    phone: '18219128888',
-    email: 'fuyiyi@163.com',
-    gender: '2',
-    avatar: 'https://cdn.nlark.com/yuque/0/2022/jpeg/280373/1664005699053-assets/web-upload/8645ea3a-e0a9-4422-8364-cc5ede305c9f.jpeg'
-  })
+  // 默认空对象，不展示任何假数据
+  const user = ref({})
+  // 无 id 或加载失败时展示"未找到该同事"空态
+  const userNotFound = ref(false)
 
   const avatarStyle = computed(() => ({
     backgroundImage: `url(${formatAvatar(user.value.avatar)})`,
@@ -252,17 +258,21 @@
   }
 
   const loadUser = async (id) => {
-    if (!id) return
+    if (!id) {
+      userNotFound.value = true
+      return
+    }
     try {
       const res = await getEmployeeDetail(id)
-      if (res.data) {
-        user.value = {
-          ...user.value,
-          ...res.data
-        }
+      if (res.data && res.data.id) {
+        user.value = res.data
+        userNotFound.value = false
+      } else {
+        userNotFound.value = true
       }
     } catch (error) {
       console.log('加载用户信息失败', error)
+      userNotFound.value = true
     }
   }
   
@@ -274,7 +284,6 @@
       uni.showToast({ icon: 'none', title: '暂无法发起会话' })
       return
     }
-    const store = useStore()
     const mine = store.getters.employeeInfo || uni.getStorageSync('userInfo') || {}
     const myId = store.getters.id || mine.id
     if (myId && String(myId) === String(id)) {
@@ -347,6 +356,20 @@
     padding-bottom: calc(80rpx + env(safe-area-inset-bottom) / 2);
     padding-bottom: calc(80rpx + constant(safe-area-inset-bottom));
   }
+
+  /* 未找到该同事空态 start */
+  .user-empty {
+    padding: 20vh 40rpx 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    &__icon {
+      font-size: 160rpx;
+      line-height: 1;
+    }
+  }
+  /* 未找到该同事空态 end */
   
   /* 用户头像 start */
   .user-image {

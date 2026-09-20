@@ -88,9 +88,9 @@
               <view class="tn-icon-organizatio-fill"></view>
             </view>
           </view>
-          <view class="tn-padding-left-sm" style="width: 67vw">
+          <view class="tn-padding-left-sm org-item__name">
             <view class="tn-flex tn-flex-row-between tn-flex-col-between">
-              <view class="justify-content-item">
+              <view class="justify-content-item org-item__name-text">
                 <text class="oa-black tn-text-xl">{{ item.name }}</text>
               </view>
             </view>
@@ -116,7 +116,6 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { onShow } from "@dcloudio/uni-app";
 import PopupModal from "@/components/popup/popup.vue";
 import config from "@/config";
 import { getEmployeeList } from "@/api/employee";
@@ -296,6 +295,7 @@ const loadContacts = async () => {
     employees.value = normalizeList(res.data);
   } catch (error) {
     console.log("加载通讯录失败", error);
+    uni.showToast({ icon: "none", title: "加载通讯录失败" });
   }
 };
 
@@ -305,6 +305,7 @@ const loadOrganizations = async () => {
     organizations.value = normalizeList(res.data);
   } catch (error) {
     console.log("加载组织架构失败", error);
+    uni.showToast({ icon: "none", title: "加载组织架构失败" });
   }
 };
 
@@ -319,13 +320,21 @@ const loadContactSummary = async () => {
 
 onMounted(() => {
   getSystemHeight();
-});
-
-// tab 页常驻内存,每次切到通讯录都刷新,保证群数/成员/组织架构是最新的
-onShow(() => {
+  // 首次挂载加载数据,后续由父页面切换/下拉时刷新
   loadContactSummary();
   loadContacts();
   loadOrganizations();
+});
+
+// 供 pages/index.vue 调用:刷新
+defineExpose({
+  refresh: async () => {
+    await Promise.allSettled([
+      loadContactSummary(),
+      loadContacts(),
+      loadOrganizations(),
+    ]);
+  },
 });
 </script>
 
@@ -598,6 +607,27 @@ onShow(() => {
   overflow: hidden;
   // background-color: #FFFFFF;
 }
+
+/* 组织架构行名称截断 start */
+.org-item__name {
+  width: 67vw;
+  min-width: 0;
+}
+
+.org-item__name-text {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.org-item__name-text text {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 组织架构行名称截断 end */
 
 /* 列表数据样式 start */
 .list-data {

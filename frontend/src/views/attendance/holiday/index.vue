@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { fetchCalendarRules, saveCalendarRule, deleteCalendarRule, type AttCalendarRule } from '@/service/api/calendar';
+import { type AttCalendarRule, deleteCalendarRule, fetchCalendarRules, saveCalendarRule } from '@/service/api/calendar';
 import { fetchCompanyList } from '@/service/api/organization';
 
 defineOptions({ name: 'HolidayManage' });
@@ -123,7 +123,7 @@ function needDateRange(type: number) {
         </ElTableColumn>
       </ElTable>
 
-      <div class="mt-12px text-gray-400 text-sm">
+      <div class="mt-12px text-sm text-gray-400">
         说明：休息规则（单休/双休）每个公司只能设置一条；法定假日和调休上班可设置多条。
       </div>
     </ElCard>

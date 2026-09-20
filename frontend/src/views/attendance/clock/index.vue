@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { fetchClockRecordPage, saveClockRecord, deleteClockRecord, type AttClockRecord } from '@/service/api/attendance';
+import dayjs from 'dayjs';
+import {
+  type AttClockRecord,
+  deleteClockRecord,
+  fetchClockRecordPage,
+  saveClockRecord
+} from '@/service/api/attendance';
 import { fetchEmployeeList } from '@/service/api/hr';
-import { fetchCompanyList } from '@/service/api/organization';
-import { fetchDepartmentTree } from '@/service/api/organization';
+import { fetchCompanyList, fetchDepartmentTree } from '@/service/api/organization';
 
 defineOptions({ name: 'ClockRecord' });
 
@@ -26,11 +31,6 @@ const pagination = ref({ current: 1, pageSize: 20, total: 0 });
 const dialogVisible = ref(false);
 const dialogForm = ref<AttClockRecord>({ employeeId: undefined as any, clockTime: '', clockType: 1, clockMethod: 3 });
 
-const clockTypeOptions = [
-  { value: 1, label: '上班打卡', type: 'success' },
-  { value: 2, label: '下班打卡', type: 'warning' }
-];
-
 const clockMethodOptions = [
   { value: 1, label: 'APP' },
   { value: 2, label: '考勤机' },
@@ -51,10 +51,13 @@ async function loadDepartments(companyId?: number) {
   departments.value = res.data || [];
 }
 
-watch(() => searchParams.value.companyId, (val) => {
-  searchParams.value.deptId = undefined;
-  loadDepartments(val);
-});
+watch(
+  () => searchParams.value.companyId,
+  val => {
+    searchParams.value.deptId = undefined;
+    loadDepartments(val);
+  }
+);
 
 async function loadEmployees() {
   const res = await fetchEmployeeList({});
@@ -83,8 +86,8 @@ async function loadData() {
 onMounted(() => {
   loadCompanies();
   loadEmployees();
-  // 默认查询今天
-  const today = new Date().toISOString().slice(0, 10);
+  // 默认查询今天（本地时区）
+  const today = dayjs().format('YYYY-MM-DD');
   searchParams.value.dateRange = [today, today];
   loadData();
 });
@@ -95,17 +98,16 @@ function handleSearch() {
 }
 
 function handleReset() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = dayjs().format('YYYY-MM-DD');
   searchParams.value = { companyId: undefined, deptId: undefined, employeeName: '', dateRange: [today, today] };
   departments.value = [];
   handleSearch();
 }
 
 function handleAdd() {
-  const now = new Date();
   dialogForm.value = {
     employeeId: undefined as any,
-    clockTime: now.toISOString().slice(0, 16).replace('T', ' '),
+    clockTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
     clockType: 1,
     clockMethod: 3
   };
@@ -186,8 +188,14 @@ function formatDateTime(dt: string) {
           <ElInput v-model="searchParams.employeeName" placeholder="员工姓名" clearable style="width: 120px" />
         </ElFormItem>
         <ElFormItem>
-          <ElButton type="primary" @click="handleSearch"><icon-ep-search />搜索</ElButton>
-          <ElButton @click="handleReset"><icon-ep-refresh />重置</ElButton>
+          <ElButton type="primary" @click="handleSearch">
+            <icon-ep-search />
+            搜索
+          </ElButton>
+          <ElButton @click="handleReset">
+            <icon-ep-refresh />
+            重置
+          </ElButton>
         </ElFormItem>
       </ElForm>
     </ElCard>
@@ -205,34 +213,42 @@ function formatDateTime(dt: string) {
 
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="data" border stripe size="small" height="100%">
-        <ElTableColumn type="index" label="#" width="50" align="center" />
-        <ElTableColumn prop="companyName" label="公司" width="120" show-overflow-tooltip />
-        <ElTableColumn prop="employeeNo" label="工号" width="100" />
-        <ElTableColumn prop="employeeName" label="姓名" width="80" />
-        <ElTableColumn prop="deptName" label="部门" width="120" />
-        <ElTableColumn prop="clockTime" label="打卡时间" width="160">
-          <template #default="{ row }">{{ formatDateTime(row.clockTime) }}</template>
-        </ElTableColumn>
-        <ElTableColumn prop="clockType" label="类型" width="100" align="center">
-          <template #default="{ row }">
-            <ElTag :type="row.clockType === 1 ? 'success' : 'warning'" size="small">
-              {{ row.clockType === 1 ? '上班' : '下班' }}
-            </ElTag>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="clockMethod" label="方式" width="80" align="center">
-          <template #default="{ row }">
-            {{ clockMethodOptions.find(o => o.value === row.clockMethod)?.label || '-' }}
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="location" label="地点" min-width="150" show-overflow-tooltip />
-        <ElTableColumn prop="remark" label="备注" min-width="120" show-overflow-tooltip />
-        <ElTableColumn label="操作" width="80" align="center">
-          <template #default="{ row }">
-            <ElButton v-permission="'attendance:clock:delete'" type="danger" link size="small" @click="handleDelete(row)">删除</ElButton>
-          </template>
-        </ElTableColumn>
-      </ElTable>
+          <ElTableColumn type="index" label="#" width="50" align="center" />
+          <ElTableColumn prop="companyName" label="公司" width="120" show-overflow-tooltip />
+          <ElTableColumn prop="employeeNo" label="工号" width="100" />
+          <ElTableColumn prop="employeeName" label="姓名" width="80" />
+          <ElTableColumn prop="deptName" label="部门" width="120" />
+          <ElTableColumn prop="clockTime" label="打卡时间" width="160">
+            <template #default="{ row }">{{ formatDateTime(row.clockTime) }}</template>
+          </ElTableColumn>
+          <ElTableColumn prop="clockType" label="类型" width="100" align="center">
+            <template #default="{ row }">
+              <ElTag :type="row.clockType === 1 ? 'success' : 'warning'" size="small">
+                {{ row.clockType === 1 ? '上班' : '下班' }}
+              </ElTag>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn prop="clockMethod" label="方式" width="80" align="center">
+            <template #default="{ row }">
+              {{ clockMethodOptions.find(o => o.value === row.clockMethod)?.label || '-' }}
+            </template>
+          </ElTableColumn>
+          <ElTableColumn prop="location" label="地点" min-width="150" show-overflow-tooltip />
+          <ElTableColumn prop="remark" label="备注" min-width="120" show-overflow-tooltip />
+          <ElTableColumn label="操作" width="80" align="center">
+            <template #default="{ row }">
+              <ElButton
+                v-permission="'attendance:clock:delete'"
+                type="danger"
+                link
+                size="small"
+                @click="handleDelete(row)"
+              >
+                删除
+              </ElButton>
+            </template>
+          </ElTableColumn>
+        </ElTable>
       </div>
 
       <div class="mt-12px flex justify-end">
@@ -253,11 +269,22 @@ function formatDateTime(dt: string) {
       <ElForm label-width="80px" :model="dialogForm">
         <ElFormItem label="员工" required>
           <ElSelect v-model="dialogForm.employeeId" placeholder="请选择员工" filterable style="width: 100%">
-            <ElOption v-for="emp in employees" :key="emp.id" :label="`${emp.name} (${emp.employeeNo})`" :value="emp.id" />
+            <ElOption
+              v-for="emp in employees"
+              :key="emp.id"
+              :label="`${emp.name} (${emp.employeeNo})`"
+              :value="emp.id"
+            />
           </ElSelect>
         </ElFormItem>
         <ElFormItem label="打卡时间" required>
-          <ElDatePicker v-model="dialogForm.clockTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" format="YYYY-MM-DD HH:mm" style="width: 100%" />
+          <ElDatePicker
+            v-model="dialogForm.clockTime"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            format="YYYY-MM-DD HH:mm"
+            style="width: 100%"
+          />
         </ElFormItem>
         <ElFormItem label="类型" required>
           <ElRadioGroup v-model="dialogForm.clockType">

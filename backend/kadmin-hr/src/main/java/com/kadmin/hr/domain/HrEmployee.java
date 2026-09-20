@@ -3,6 +3,7 @@ package com.kadmin.hr.domain;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.kadmin.common.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -261,7 +262,9 @@ public class HrEmployee extends BaseEntity {
 
     /**
      * Mini app password for admin maintenance.
+     * 只写不读：管理端可提交新密码，但接口永不回显
      */
     @TableField(exist = false)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String miniAppPassword;
 }

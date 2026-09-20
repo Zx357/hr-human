@@ -50,7 +50,8 @@ public class ResignationController {
     @PostMapping("/approve/{id}")
     public Result<Void> approve(@PathVariable Long id, @RequestParam Integer status,
             @RequestParam(required = false) String remark) {
-        service.approve(id, status, remark, 1L);
+        Long approverId = com.kadmin.common.utils.SecurityUtils.getCurrentUserId();
+        service.approve(id, status, remark, approverId != null ? approverId : 1L);
         return Result.success();
     }
 }

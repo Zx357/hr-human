@@ -2,11 +2,11 @@
 import { onMounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import {
-  fetchMobileApproverPage,
+  type MobileApprover,
   createMobileApprover,
-  updateMobileApprover,
   deleteMobileApprover,
-  type MobileApprover
+  fetchMobileApproverPage,
+  updateMobileApprover
 } from '@/service/api/mobileApprover';
 import { fetchEmployeeList } from '@/service/api/hr';
 
@@ -67,8 +67,8 @@ async function loadEmployees() {
     if (!error && data) {
       employeeList.value = data;
     }
-  } catch (e) {
-    console.error(e);
+  } catch {
+    // 请求层已统一弹错
   }
 }
 
@@ -126,7 +126,7 @@ async function handleSubmit() {
   submitLoading.value = true;
   try {
     const fn = operateType.value === 'add' ? createMobileApprover : updateMobileApprover;
-    const { error, data: resData } = await fn(formData.value);
+    const { error } = await fn(formData.value);
     if (!error) {
       ElMessage.success(operateType.value === 'add' ? '添加成功' : '修改成功');
       dialogVisible.value = false;
@@ -140,8 +140,13 @@ async function handleSubmit() {
 function formatAppTypes(types: string | undefined) {
   if (!types) return '全部类型';
   const map: Record<string, string> = {};
-  APP_TYPE_OPTIONS.forEach(o => { map[o.value] = o.label; });
-  return types.split(',').map(t => map[t] || t).join('、');
+  APP_TYPE_OPTIONS.forEach(o => {
+    map[o.value] = o.label;
+  });
+  return types
+    .split(',')
+    .map(t => map[t] || t)
+    .join('、');
 }
 
 function handlePageChange(val: number) {
@@ -202,9 +207,15 @@ function handleSizeChange(val: number) {
         </ElTable>
       </div>
       <div class="mt-4 flex justify-end">
-        <ElPagination v-model:current-page="pageNum" v-model:page-size="pageSize" :total="total"
-          :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next" @current-change="handlePageChange"
-          @size-change="handleSizeChange" />
+        <ElPagination
+          v-model:current-page="pageNum"
+          v-model:page-size="pageSize"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
+        />
       </div>
     </ElCard>
 
@@ -212,10 +223,19 @@ function handleSizeChange(val: number) {
     <ElDialog v-model="dialogVisible" :title="operateType === 'add' ? '新增审批权限' : '编辑审批权限'" width="550px">
       <ElForm label-width="100px">
         <ElFormItem label="选择员工" required>
-          <ElSelect v-model="formData.employeeId" placeholder="请选择员工" filterable :disabled="operateType === 'edit'"
-            style="width: 100%">
-            <ElOption v-for="emp in employeeList" :key="emp.id" :label="emp.employeeNo + ' - ' + emp.name"
-              :value="emp.id" />
+          <ElSelect
+            v-model="formData.employeeId"
+            placeholder="请选择员工"
+            filterable
+            :disabled="operateType === 'edit'"
+            style="width: 100%"
+          >
+            <ElOption
+              v-for="emp in employeeList"
+              :key="emp.id"
+              :label="emp.employeeNo + ' - ' + emp.name"
+              :value="emp.id"
+            />
           </ElSelect>
         </ElFormItem>
         <ElFormItem label="审批类型">
@@ -224,7 +244,7 @@ function handleSizeChange(val: number) {
               {{ opt.label }}
             </ElCheckbox>
           </ElCheckboxGroup>
-          <div class="text-xs text-gray-400 mt-1">不勾选则表示可审批全部类型</div>
+          <div class="mt-1 text-xs text-gray-400">不勾选则表示可审批全部类型</div>
         </ElFormItem>
       </ElForm>
       <template #footer>

@@ -1412,6 +1412,7 @@ CREATE TABLE `mobile_chat_message` (
   `peer_employee_id` bigint DEFAULT NULL COMMENT '对方员工ID（单聊）',
   `from_employee_id` bigint NOT NULL COMMENT '发送人员工ID',
   `content` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '消息内容',
+  `msg_type` tinyint NOT NULL DEFAULT '1' COMMENT '消息类型：1-文本 2-图片',
   `status` tinyint DEFAULT '1',
   `created_time` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -2924,6 +2925,103 @@ INSERT INTO `wf_process_node` VALUES (3,1,'HR审批',2,3,2,NULL,1,'2025-12-22 21
 INSERT INTO `wf_process_node` VALUES (4,1,'结束',4,4,NULL,NULL,NULL,'2025-12-22 21:19:11','2025-12-22 21:19:11');
 /*!40000 ALTER TABLE `wf_process_node` ENABLE KEYS */;
 UNLOCK TABLES;
+
+-- ============================================================
+-- 2026-09 新增表（审批流转记录 / 动态评论 / 消息查看 / 聊天已读状态 /
+-- 操作日志）。后端启动时 DataInitializer 也会自动建表，此脚本供
+-- 全新数据库一次性初始化使用。
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS `hr_approval_record` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `application_id` bigint NOT NULL COMMENT '申请单ID',
+  `node_id` bigint DEFAULT NULL COMMENT '审批节点ID',
+  `node_name` varchar(100) DEFAULT NULL COMMENT '节点名称',
+  `sort_order` int DEFAULT NULL COMMENT '节点顺序',
+  `approver_id` bigint DEFAULT NULL COMMENT '审批人ID',
+  `approver_name` varchar(50) DEFAULT NULL COMMENT '审批人姓名',
+  `status` tinyint NOT NULL COMMENT '审批动作：1-通过，2-拒绝',
+  `comment` varchar(500) DEFAULT NULL COMMENT '审批意见',
+  `approve_time` datetime DEFAULT NULL COMMENT '审批时间',
+  `created_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_by` bigint DEFAULT NULL,
+  `updated_by` bigint DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_hr_approval_record_application` (`application_id`),
+  KEY `idx_hr_approval_record_node` (`node_id`),
+  UNIQUE KEY `uk_hr_approval_record_node` (`application_id`,`node_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='申请审批流转记录';
+
+CREATE TABLE IF NOT EXISTS `mobile_moment_comment` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `post_id` bigint NOT NULL,
+  `employee_id` bigint NOT NULL,
+  `content` varchar(1000) NOT NULL,
+  `created_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_by` bigint DEFAULT NULL,
+  `updated_by` bigint DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_mobile_moment_comment_post` (`post_id`),
+  KEY `idx_mobile_moment_comment_employee` (`employee_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='移动端时光评论';
+
+CREATE TABLE IF NOT EXISTS `mobile_moment_view` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `employee_id` bigint NOT NULL,
+  `last_view_time` datetime DEFAULT NULL,
+  `created_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_by` bigint DEFAULT NULL,
+  `updated_by` bigint DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_mobile_moment_view_employee` (`employee_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='移动端时光消息查看时间';
+
+CREATE TABLE IF NOT EXISTS `mobile_chat_read_state` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `employee_id` bigint NOT NULL,
+  `chat_type` tinyint NOT NULL,
+  `target_id` bigint NOT NULL,
+  `last_read_message_id` bigint NOT NULL DEFAULT '0',
+  `created_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_by` bigint DEFAULT NULL,
+  `updated_by` bigint DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_mobile_chat_read_state` (`employee_id`,`chat_type`,`target_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='移动端聊天会话已读状态';
+
+CREATE TABLE IF NOT EXISTS `sys_oper_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `module` varchar(50) DEFAULT NULL COMMENT '操作模块',
+  `action` varchar(50) DEFAULT NULL COMMENT '操作类型',
+  `request_uri` varchar(255) DEFAULT NULL COMMENT '请求方式+路径',
+  `user_id` bigint DEFAULT NULL COMMENT '操作人用户ID',
+  `username` varchar(50) DEFAULT NULL COMMENT '操作人用户名',
+  `ip` varchar(64) DEFAULT NULL COMMENT '操作人IP',
+  `request_params` text COMMENT '请求参数（脱敏截断）',
+  `status` tinyint DEFAULT NULL COMMENT '操作结果：0-失败，1-成功',
+  `error_msg` varchar(500) DEFAULT NULL COMMENT '错误信息',
+  `cost_ms` bigint DEFAULT NULL COMMENT '耗时(毫秒)',
+  `created_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_sys_oper_log_user` (`user_id`),
+  KEY `idx_sys_oper_log_created` (`created_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='操作日志';
+
+-- 操作日志菜单（挂在系统管理下）
+INSERT INTO `sys_menu` (`parent_id`, `menu_type`, `menu_code`, `menu_name`, `menu_name_en`, `path`, `component`, `permission`, `icon`, `sort_order`, `visible`, `status`, `created_time`)
+SELECT m.id, 2, 'system_oper-log', '操作日志', 'Operation Log', '/system/oper-log', 'view.system_oper-log', 'system:oper-log:list', 'mdi:text-box-outline', 9, 1, 1, NOW()
+FROM `sys_menu` m WHERE m.menu_code = 'system'
+  AND NOT EXISTS (SELECT 1 FROM `sys_menu` x WHERE x.menu_code = 'system_oper-log');
+
+INSERT INTO `sys_role_menu` (`role_id`, `menu_id`)
+SELECT r.id, m.id FROM `sys_role` r
+JOIN `sys_menu` m ON m.menu_code = 'system_oper-log'
+WHERE (r.role_code IN ('admin', 'ROLE_ADMIN') OR r.role_name LIKE '%管理员%')
+  AND NOT EXISTS (SELECT 1 FROM `sys_role_menu` rm WHERE rm.role_id = r.id AND rm.menu_id = m.id);
 
 --
 -- Dumping routines for database 'kadmin'

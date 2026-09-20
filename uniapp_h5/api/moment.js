@@ -36,3 +36,45 @@ export function toggleMomentLike(id) {
     method: 'post'
   })
 }
+
+// 动态评论列表
+export function getMomentComments(id) {
+  return request({
+    url: `/mobile/moments/posts/${id}/comments`,
+    method: 'get'
+  })
+}
+
+// 发表动态评论
+export function addMomentComment(id, content) {
+  return request({
+    url: `/mobile/moments/posts/${id}/comments`,
+    method: 'post',
+    data: { content }
+  })
+}
+
+// 删除自己的评论
+export function deleteMomentComment(commentId) {
+  return request({
+    url: `/mobile/moments/comments/${commentId}`,
+    method: 'delete'
+  })
+}
+
+// 互动消息列表(点赞/评论)
+export function getMomentMessageList(limit = 50) {
+  return request({
+    url: '/mobile/moments/messages/list',
+    method: 'get',
+    params: { limit }
+  })
+}
+
+// 标记互动消息已读(unreadCount清零)
+export function markMomentMessagesRead() {
+  return request({
+    url: '/mobile/moments/messages/read',
+    method: 'post'
+  })
+}

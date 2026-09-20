@@ -39,9 +39,22 @@ const store = createStore({
     // 状态栏高度
     vuex_status_bar_height: 0,
     // 自定义导航栏的高度
-    vuex_custom_bar_height: 0
+    vuex_custom_bar_height: 0,
+    // 底部 tabbar 角标(聊天未读数 / 时光未读数 / 工作台待办数,0 不显示)
+    unreadBadge: {
+      chatUnread: 0,
+      momentUnread: 0,
+      workTodo: 0
+    }
   },
   mutations: {
+    // 更新 tabbar 角标
+    SET_UNREAD_BADGE(state, payload) {
+      state.unreadBadge = {
+        ...state.unreadBadge,
+        ...(payload || {})
+      }
+    },
     $tStore(state, payload) {
       // 判断是否多层调用，state中为对象存在的情况，例如user.info.score = 1
       const nameArr = payload.name.split('.')

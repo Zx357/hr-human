@@ -14,6 +14,9 @@ export const REG_PWD = /^\w{6,18}$/;
 /** Email reg */
 export const REG_EMAIL = /^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/;
 
+/** 身份证号 reg（18 位，末位允许 X） */
+export const REG_ID_CARD = /^\d{6}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]$/;
+
 /** Six digit code reg */
 export const REG_CODE_SIX = /^\d{6}$/;
 

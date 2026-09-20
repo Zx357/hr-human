@@ -19,7 +19,12 @@ export interface Regularization {
   remark?: string;
 }
 
-export function fetchRegularizationPage(params: { pageNum?: number; pageSize?: number; employeeName?: string; status?: number }) {
+export function fetchRegularizationPage(params: {
+  pageNum?: number;
+  pageSize?: number;
+  employeeName?: string;
+  status?: number;
+}) {
   return request<Api.Common.PageResult<Regularization>>({ url: '/hr/regularization/page', method: 'get', params });
 }
 export function createRegularization(data: Regularization) {
@@ -59,7 +64,13 @@ export interface Transfer {
   remark?: string;
 }
 
-export function fetchTransferPage(params: { pageNum?: number; pageSize?: number; employeeName?: string; transferType?: string; status?: number }) {
+export function fetchTransferPage(params: {
+  pageNum?: number;
+  pageSize?: number;
+  employeeName?: string;
+  transferType?: string;
+  status?: number;
+}) {
   return request<Api.Common.PageResult<Transfer>>({ url: '/hr/transfer/page', method: 'get', params });
 }
 export function createTransfer(data: Transfer) {
@@ -92,7 +103,13 @@ export interface RewardPunish {
   remark?: string;
 }
 
-export function fetchRewardPunishPage(params: { pageNum?: number; pageSize?: number; employeeName?: string; type?: number; status?: number }) {
+export function fetchRewardPunishPage(params: {
+  pageNum?: number;
+  pageSize?: number;
+  employeeName?: string;
+  type?: number;
+  status?: number;
+}) {
   return request<Api.Common.PageResult<RewardPunish>>({ url: '/hr/reward/page', method: 'get', params });
 }
 export function createRewardPunish(data: RewardPunish) {
@@ -128,7 +145,13 @@ export interface Resignation {
   remark?: string;
 }
 
-export function fetchResignationPage(params: { pageNum?: number; pageSize?: number; employeeName?: string; resignType?: string; status?: number }) {
+export function fetchResignationPage(params: {
+  pageNum?: number;
+  pageSize?: number;
+  employeeName?: string;
+  resignType?: string;
+  status?: number;
+}) {
   return request<Api.Common.PageResult<Resignation>>({ url: '/hr/resignation/page', method: 'get', params });
 }
 export function createResignation(data: Resignation) {

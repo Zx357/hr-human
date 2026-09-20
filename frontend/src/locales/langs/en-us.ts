@@ -275,7 +275,8 @@ const local: App.I18n.Schema = {
     system_feedback: 'Feedback',
     system_notice: 'Notice Management',
     'system_mobile-menu': 'Mobile Menu',
-    'system_file-config': 'File Config'
+    'system_file-config': 'File Config',
+    'system_oper-log': 'Operation Log'
   },
   page: {
     login: {
@@ -338,8 +339,7 @@ const local: App.I18n.Schema = {
       devDep: 'Development Dependency'
     },
     home: {
-      branchDesc:
-        'Welcome to HR Management System, this system provides complete human resource management functions.',
+      branchDesc: 'Welcome to HR Management System, this system provides complete human resource management functions.',
       greeting: 'Good morning, {userName}, today is another day full of vitality!',
       weatherDesc: 'Today is cloudy to clear, 20℃ - 25℃!',
       projectCount: 'Total Employees',

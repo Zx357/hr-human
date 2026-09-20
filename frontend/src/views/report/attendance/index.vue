@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import type { AttDailyRecord, MonthlyAttendance } from '@/service/api/attendance';
 import { fetchDailyRecordPage, fetchMonthlyAttendance } from '@/service/api/attendance';
 import { fetchCompanyList, fetchDepartmentTree } from '@/service/api/organization';
-import { downloadCsv, getMonthRange, resolveOrgIds } from '@/utils/report';
+import { type AttendanceReportSummary, fetchAttendanceReportSummary } from '@/service/api/report';
+import { useEcharts } from '@/hooks/common/echarts';
+import { downloadCsv, getMonthRange, normalizeRateValue, resolveOrgIds } from '@/utils/report';
 
 defineOptions({ name: 'AttendanceReport' });
 
@@ -21,6 +23,15 @@ interface DepartmentSummary {
   absentDays: number;
   leaveDays: number;
   totalWorkHours: number;
+}
+
+/** 部门排行行（后端接口仅提供部分字段） */
+interface RankingRow {
+  deptName: string;
+  employees?: number;
+  attendanceRate: number;
+  lateTimes: number;
+  absentDays: number;
 }
 
 interface AbnormalRecord extends AttDailyRecord {
@@ -66,16 +77,38 @@ const selectedOrgIds = computed<number[] | undefined>(() => {
   return resolveOrgIds(departments.value, searchParams.value.deptId);
 });
 
+/** 后端统计接口数据：优先使用，接口失败或返回空时回退到前端全量计算 */
+const attendanceSummary = ref<AttendanceReportSummary | null>(null);
+
 const overview = computed(() => {
   const employeeCount = monthlyData.value.length;
+  const totalWorkHours = monthlyData.value.reduce((sum, item) => sum + Number(item.totalWorkHours || 0), 0);
+  const abnormalCount = dailyData.value.filter(item => [2, 3, 4, 7].includes(Number(item.status))).length;
+
+  // 优先使用后端统计接口数据（出勤率做空值/格式兼容）
+  const apiOverview = attendanceSummary.value?.overview;
+  if (apiOverview) {
+    return {
+      employeeCount,
+      totalWorkDays: Number(apiOverview.workDays || 0),
+      totalActualDays: Number(apiOverview.actualDays || 0),
+      totalLate: Number(apiOverview.lateTimes || 0),
+      totalEarly: Number(apiOverview.earlyTimes || 0),
+      totalAbsent: Number(apiOverview.absentDays || 0),
+      totalLeave: Number(apiOverview.leaveDays || 0),
+      totalWorkHours,
+      abnormalCount,
+      attendanceRate: normalizeRateValue(apiOverview.attendanceRate)
+    };
+  }
+
+  // 回退：前端全量计算
   const totalWorkDays = monthlyData.value.reduce((sum, item) => sum + Number(item.workDays || 0), 0);
   const totalActualDays = monthlyData.value.reduce((sum, item) => sum + Number(item.actualDays || 0), 0);
   const totalLate = monthlyData.value.reduce((sum, item) => sum + Number(item.lateTimes || 0), 0);
   const totalEarly = monthlyData.value.reduce((sum, item) => sum + Number(item.earlyTimes || 0), 0);
   const totalAbsent = monthlyData.value.reduce((sum, item) => sum + Number(item.absentDays || 0), 0);
   const totalLeave = monthlyData.value.reduce((sum, item) => sum + Number(item.leaveDays || 0), 0);
-  const totalWorkHours = monthlyData.value.reduce((sum, item) => sum + Number(item.totalWorkHours || 0), 0);
-  const abnormalCount = dailyData.value.filter(item => [2, 3, 4, 7].includes(Number(item.status))).length;
   const attendanceRate = totalWorkDays > 0 ? Number(((totalActualDays / totalWorkDays) * 100).toFixed(1)) : 0;
 
   return {
@@ -111,19 +144,18 @@ const departmentSummary = computed<DepartmentSummary[]>(() => {
 
   for (const item of monthlyData.value) {
     const key = item.deptName || '未分配部门';
-    const current =
-      map.get(key) || {
-        deptName: key,
-        employees: 0,
-        workDays: 0,
-        actualDays: 0,
-        attendanceRate: 0,
-        lateTimes: 0,
-        earlyTimes: 0,
-        absentDays: 0,
-        leaveDays: 0,
-        totalWorkHours: 0
-      };
+    const current = map.get(key) || {
+      deptName: key,
+      employees: 0,
+      workDays: 0,
+      actualDays: 0,
+      attendanceRate: 0,
+      lateTimes: 0,
+      earlyTimes: 0,
+      absentDays: 0,
+      leaveDays: 0,
+      totalWorkHours: 0
+    };
 
     current.employees += 1;
     current.workDays += Number(item.workDays || 0);
@@ -150,7 +182,29 @@ const departmentSummary = computed<DepartmentSummary[]>(() => {
     });
 });
 
-const topDepartments = computed(() => departmentSummary.value.slice(0, 6));
+/** 后端部门排行（接口字段：deptName/attendanceRate/lateTimes/absentDays），无数据时为 null */
+const apiDeptRanking = computed<RankingRow[] | null>(() => {
+  const rows = attendanceSummary.value?.deptRanking;
+  if (!rows?.length) {
+    return null;
+  }
+  return rows.map(item => ({
+    deptName: item.deptName,
+    attendanceRate: normalizeRateValue(item.attendanceRate),
+    lateTimes: Number(item.lateTimes || 0),
+    absentDays: Number(item.absentDays || 0)
+  }));
+});
+
+const topDepartments = computed<RankingRow[]>(() => {
+  // 优先使用后端统计接口数据
+  if (apiDeptRanking.value) {
+    return apiDeptRanking.value.slice(0, 6);
+  }
+  return departmentSummary.value.slice(0, 6);
+});
+
+const hasDeptChart = computed(() => departmentSummary.value.length > 0 || Boolean(apiDeptRanking.value));
 
 const abnormalRecords = computed<AbnormalRecord[]>(() =>
   dailyData.value
@@ -176,6 +230,71 @@ const pagedAbnormalRecords = computed(() => {
 
   return abnormalRecords.value.slice(start, start + abnormalPagination.value.pageSize);
 });
+
+// ==================== 部门表现 - 横向条形图 ====================
+
+const { domRef: deptChartRef, updateOptions: updateDeptChartOptions } = useEcharts(() => ({
+  tooltip: {
+    trigger: 'axis',
+    axisPointer: { type: 'shadow' },
+    formatter: '{b}: {c}%'
+  },
+  grid: { left: '2%', right: '8%', top: '10px', bottom: '3%', containLabel: true },
+  xAxis: {
+    type: 'value',
+    max: 100,
+    axisLabel: { color: '#9ca3af', fontSize: 12, formatter: '{value}%' },
+    splitLine: { lineStyle: { color: '#f3f4f6', type: 'dashed' } }
+  },
+  yAxis: {
+    type: 'category',
+    data: [] as string[],
+    axisTick: { show: false },
+    axisLine: { show: false },
+    axisLabel: { color: '#6b7280', fontSize: 12 }
+  },
+  series: [
+    {
+      name: '出勤率',
+      type: 'bar',
+      barWidth: '55%',
+      itemStyle: {
+        color: {
+          type: 'linear',
+          x: 0,
+          y: 0,
+          x2: 1,
+          y2: 0,
+          colorStops: [
+            { offset: 0, color: '#6366f1' },
+            { offset: 1, color: '#22d3ee' }
+          ]
+        },
+        borderRadius: [0, 4, 4, 0]
+      },
+      label: { show: true, position: 'right', color: '#6b7280', fontSize: 12, formatter: '{c}%' },
+      data: [] as number[]
+    }
+  ]
+}));
+
+async function renderDeptChart() {
+  // 等待 v-if 容器挂载完成后再渲染，避免首次加载图表容器不存在导致空白
+  await nextTick();
+  if (!deptChartRef.value) {
+    return;
+  }
+  // 优先使用后端部门排行数据；横向条形图类目轴自下而上，倒序使出勤率最高的部门显示在顶部
+  const source = apiDeptRanking.value ?? departmentSummary.value;
+  const rows = source.slice(0, 10).reverse();
+  await updateDeptChartOptions(opts => {
+    const yAxis = opts.yAxis as { data: string[] };
+    const series = opts.series as { data: number[] }[];
+    yAxis.data = rows.map(item => item.deptName);
+    series[0].data = rows.map(item => item.attendanceRate);
+    return opts;
+  });
+}
 
 async function loadBaseData() {
   const res = await fetchCompanyList();
@@ -226,12 +345,27 @@ async function fetchAllDailyRecords() {
   return records;
 }
 
+/** 加载后端统计接口（失败时置空，回退前端计算） */
+async function loadSummary() {
+  try {
+    const res = await fetchAttendanceReportSummary({
+      month: currentMonth.value,
+      companyId: searchParams.value.companyId,
+      deptId: searchParams.value.deptId
+    });
+    attendanceSummary.value = res.data && res.data.overview ? res.data : null;
+  } catch {
+    attendanceSummary.value = null;
+  }
+}
+
 async function loadData() {
   const orgIds = selectedOrgIds.value;
 
   if ((searchParams.value.companyId || searchParams.value.deptId) && (!orgIds || orgIds.length === 0)) {
     monthlyData.value = [];
     dailyData.value = [];
+    attendanceSummary.value = null;
     return;
   }
 
@@ -245,7 +379,8 @@ async function loadData() {
         employeeNo: searchParams.value.employeeNo || undefined,
         employeeName: searchParams.value.employeeName || undefined
       }),
-      fetchAllDailyRecords()
+      fetchAllDailyRecords(),
+      loadSummary()
     ]);
 
     monthlyData.value = (monthlyRes.data || []).sort((a, b) => {
@@ -258,6 +393,7 @@ async function loadData() {
     dailyData.value = dailyRes;
     employeePagination.value.current = 1;
     abnormalPagination.value.current = 1;
+    await renderDeptChart();
   } finally {
     loading.value = false;
   }
@@ -279,7 +415,11 @@ function handleReset() {
   loadData();
 }
 
-function handleMonthChange() {
+function handleMonthChange(val: string | null) {
+  // 清空时回退当前月
+  if (!val) {
+    currentMonth.value = getCurrentMonth();
+  }
   loadData();
 }
 
@@ -403,6 +543,7 @@ onMounted(async () => {
             type="month"
             placeholder="请选择月份"
             value-format="YYYY-MM"
+            :clearable="false"
             style="width: 150px"
             @change="handleMonthChange"
           />
@@ -447,7 +588,13 @@ onMounted(async () => {
     </ElCard>
 
     <div class="overview-grid grid grid-cols-4 gap-16px lt-lg:grid-cols-2 lt-sm:grid-cols-1">
-      <ElCard v-for="card in overviewCards" :key="card.label" shadow="hover" class="stat-card" :class="`stat-card--${card.tone}`">
+      <ElCard
+        v-for="card in overviewCards"
+        :key="card.label"
+        shadow="hover"
+        class="stat-card"
+        :class="`stat-card--${card.tone}`"
+      >
         <div class="stat-card__label">{{ card.label }}</div>
         <div class="stat-card__value">{{ card.value }}</div>
         <div class="stat-card__hint">{{ card.hint }}</div>
@@ -462,24 +609,25 @@ onMounted(async () => {
             <span class="section-head__meta">出勤率前 6</span>
           </div>
         </template>
+        <div v-if="hasDeptChart" ref="deptChartRef" class="mb-16px h-320px overflow-hidden"></div>
         <div v-if="topDepartments.length" class="ranking-list">
           <div v-for="(item, index) in topDepartments" :key="item.deptName" class="ranking-item">
             <div class="ranking-item__top">
-              <div class="flex items-center gap-10px min-w-0">
+              <div class="min-w-0 flex items-center gap-10px">
                 <span class="ranking-item__index">{{ index + 1 }}</span>
-                <span class="font-600 truncate">{{ item.deptName }}</span>
+                <span class="truncate font-600">{{ item.deptName }}</span>
               </div>
               <span class="text-emerald-700 font-700">{{ item.attendanceRate }}%</span>
             </div>
             <div class="ranking-item__meta">
-              <span>{{ item.employees }} 人</span>
+              <span v-if="item.employees !== undefined">{{ item.employees }} 人</span>
               <span>迟到 {{ item.lateTimes }}</span>
               <span>旷工 {{ item.absentDays }}</span>
             </div>
             <ElProgress
               :percentage="item.attendanceRate"
               :stroke-width="10"
-              :status="item.attendanceRate >= 95 ? 'success' : item.attendanceRate >= 90 ? '' : 'exception'"
+              :status="item.attendanceRate >= 95 ? 'success' : item.attendanceRate >= 90 ? undefined : 'exception'"
             />
           </div>
         </div>
@@ -530,7 +678,14 @@ onMounted(async () => {
       <ElTabs v-model="activeTab">
         <ElTabPane label="部门汇总" name="department">
           <div class="table-wrapper">
-            <ElTable v-loading="loading" :data="departmentSummary" border stripe size="small" class="table-content table-content--department">
+            <ElTable
+              v-loading="loading"
+              :data="departmentSummary"
+              border
+              stripe
+              size="small"
+              class="table-content table-content--department"
+            >
               <ElTableColumn prop="deptName" label="部门" min-width="180" show-overflow-tooltip />
               <ElTableColumn prop="employees" label="员工数" width="90" align="center" />
               <ElTableColumn prop="workDays" label="应出勤" width="90" align="center" />
@@ -551,7 +706,14 @@ onMounted(async () => {
 
         <ElTabPane label="员工月报" name="employee">
           <div class="table-wrapper">
-            <ElTable v-loading="loading" :data="pagedMonthlyData" border stripe size="small" class="table-content table-content--monthly">
+            <ElTable
+              v-loading="loading"
+              :data="pagedMonthlyData"
+              border
+              stripe
+              size="small"
+              class="table-content table-content--monthly"
+            >
               <ElTableColumn prop="companyName" label="公司" width="150" show-overflow-tooltip />
               <ElTableColumn prop="deptName" label="部门" width="160" show-overflow-tooltip />
               <ElTableColumn prop="employeeNo" label="工号" width="110" />
@@ -588,7 +750,14 @@ onMounted(async () => {
 
         <ElTabPane label="异常明细" name="abnormal">
           <div class="table-wrapper">
-            <ElTable v-loading="loading" :data="pagedAbnormalRecords" border stripe size="small" class="table-content table-content--abnormal">
+            <ElTable
+              v-loading="loading"
+              :data="pagedAbnormalRecords"
+              border
+              stripe
+              size="small"
+              class="table-content table-content--abnormal"
+            >
               <ElTableColumn type="index" label="#" width="54" align="center" />
               <ElTableColumn prop="attDate" label="日期" width="120" />
               <ElTableColumn prop="companyName" label="公司" width="140" show-overflow-tooltip />
@@ -844,6 +1013,3 @@ onMounted(async () => {
   }
 }
 </style>
-
-
-

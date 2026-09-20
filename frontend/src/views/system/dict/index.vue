@@ -88,8 +88,6 @@ async function handleDeleteType(id: number) {
       method: 'delete'
     });
 
-    console.log('删除字典类型响应:', res);
-
     if (!res.error) {
       ElMessage.success('删除成功');
       if (selectedDictType.value?.id === id) {
@@ -100,9 +98,8 @@ async function handleDeleteType(id: number) {
     } else {
       ElMessage.error('删除失败');
     }
-  } catch (e) {
+  } catch {
     // 用户取消删除，不做任何处理
-    console.log('删除取消或出错:', e);
   }
 }
 
@@ -140,17 +137,14 @@ async function handleDeleteData(id: number) {
       method: 'delete'
     });
 
-    console.log('删除字典数据响应:', res);
-
     if (!res.error) {
       ElMessage.success('删除成功');
       await loadDictData(selectedDictType.value.id);
     } else {
       ElMessage.error('删除失败');
     }
-  } catch (e) {
+  } catch {
     // 用户取消删除，不做任何处理
-    console.log('删除取消或出错:', e);
   }
 }
 
@@ -200,9 +194,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-full flex gap-16px overflow-hidden lt-sm:overflow-auto lt-sm:flex-col">
+  <div class="h-full flex gap-16px overflow-hidden lt-sm:flex-col lt-sm:overflow-auto">
     <!-- 左侧：字典类型列表 -->
-    <ElCard class="w-400px lt-sm:w-full flex flex-col">
+    <ElCard class="w-400px flex flex-col lt-sm:w-full">
       <template #header>
         <div class="flex items-center justify-between">
           <span>字典类型</span>
@@ -232,15 +226,31 @@ onMounted(() => {
         </ElTableColumn>
         <ElTableColumn label="操作" width="100" align="center">
           <template #default="{ row }">
-            <ElButton v-permission="'system:dict:edit'" type="primary" link size="small" @click.stop="handleEditType(row)">编辑</ElButton>
-            <ElButton v-permission="'system:dict:delete'" type="danger" link size="small" @click.stop="handleDeleteType(row.id)">删除</ElButton>
+            <ElButton
+              v-permission="'system:dict:edit'"
+              type="primary"
+              link
+              size="small"
+              @click.stop="handleEditType(row)"
+            >
+              编辑
+            </ElButton>
+            <ElButton
+              v-permission="'system:dict:delete'"
+              type="danger"
+              link
+              size="small"
+              @click.stop="handleDeleteType(row.id)"
+            >
+              删除
+            </ElButton>
           </template>
         </ElTableColumn>
       </ElTable>
     </ElCard>
 
     <!-- 右侧：字典数据列表 -->
-    <ElCard class="flex-1 dict-data-card">
+    <ElCard class="dict-data-card flex-1">
       <template #header>
         <div class="flex items-center justify-between">
           <span>
@@ -273,8 +283,18 @@ onMounted(() => {
           </ElTableColumn>
           <ElTableColumn label="操作" width="120" align="center">
             <template #default="{ row }">
-              <ElButton v-permission="'system:dict:edit'" type="primary" link size="small" @click="handleEditData(row)">编辑</ElButton>
-              <ElButton v-permission="'system:dict:delete'" type="danger" link size="small" @click="handleDeleteData(row.id)">删除</ElButton>
+              <ElButton v-permission="'system:dict:edit'" type="primary" link size="small" @click="handleEditData(row)">
+                编辑
+              </ElButton>
+              <ElButton
+                v-permission="'system:dict:delete'"
+                type="danger"
+                link
+                size="small"
+                @click="handleDeleteData(row.id)"
+              >
+                删除
+              </ElButton>
             </template>
           </ElTableColumn>
         </ElTable>

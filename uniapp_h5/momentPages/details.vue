@@ -52,7 +52,6 @@
               <tn-icon class="blogger__desc__label--prefix" name="topics-fill"></tn-icon>
               <text class="tn-text-df">{{ label_item }}</text>
             </view>
-            <text v-if="!post.label || post.label.length < 4" class="blogger__desc__content tn-flex-1 tn-text-justify tn-text-df">{{ post.desc }}</text>
           </view>
 
           <text class="blogger__content-text tn-text-justify">{{ post.content }}</text>
@@ -104,18 +103,70 @@
         </view>
 
         <!-- 评论 -->
-        <view class="tn-margin" style="padding-bottom: 140rpx;">
-          <view class="tn-text-bold tn-text-lg tn-margin-bottom">评论</view>
-          <view class="tn-text-center tn-color-gray--disabled tn-padding-xl">
+        <view class="tn-margin" style="padding-bottom: 200rpx;">
+          <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-margin-bottom">
+            <view class="tn-text-bold tn-text-lg">评论</view>
+            <text class="tn-color-gray tn-text-sm">{{ post.commentCount }} 条</text>
+          </view>
+
+          <!-- 评论列表 -->
+          <view v-if="comments.length">
+            <view
+              v-for="item in comments"
+              :key="item.id"
+              class="comment-item tn-flex tn-flex-col-top"
+            >
+              <tn-avatar class="comment-item__avatar" shape="circle" :src="item.avatar" size="sm"></tn-avatar>
+              <view class="tn-flex-1 tn-padding-left-sm" style="min-width: 0;">
+                <view class="tn-flex tn-flex-row-between tn-flex-col-center">
+                  <text class="tn-text-bold tn-text-df tn-text-ellipsis">{{ item.name }}</text>
+                  <text
+                    v-if="isMyComment(item)"
+                    class="comment-item__delete tn-color-gray tn-text-sm"
+                    @click="removeComment(item)"
+                  >删除</text>
+                </view>
+                <view class="tn-text-df tn-text-justify tn-padding-top-xs">{{ item.content }}</view>
+                <view class="tn-color-gray--disabled tn-text-xs tn-padding-top-xs">{{ item.time }}</view>
+              </view>
+            </view>
+          </view>
+
+          <!-- 空评论 -->
+          <view v-else class="tn-text-center tn-color-gray--disabled tn-padding-xl">
             <text class="tn-icon-clip" style="font-size: 120rpx;"></text>
-            <view class="tn-padding-top">评论功能即将上线</view>
+            <view class="tn-padding-top">还没有评论，快来抢沙发</view>
           </view>
         </view>
       </block>
     </view>
 
-    <!-- 底部点赞栏 -->
+    <!-- 底部点赞栏 + 评论输入 -->
     <view v-if="post" class="tabbar footerfixed tn-bg-white">
+      <!-- 评论输入框 -->
+      <view class="comment-input tn-flex tn-flex-col-center">
+        <input
+          v-model="commentDraft"
+          class="comment-input__field"
+          placeholder="写下你的评论..."
+          placeholder-style="color:#AAAAAA"
+          confirm-type="send"
+          :adjust-position="true"
+          :disabled="commentSubmitting"
+          @confirm="submitComment"
+        />
+        <tn-button
+          shape="round"
+          bg-color="#3668FC"
+          text-color="#FFFFFF"
+          :custom-style="{ padding: '12rpx 34rpx' }"
+          :disabled="commentSubmitting"
+          @click="submitComment"
+        >
+          发送
+        </tn-button>
+      </view>
+
       <view class="tn-flex tn-flex-row-between tn-flex-col-center">
         <view class="tn-flex-1 justify-content-item tn-text-center tn-margin-sm">
           <tn-button
@@ -152,12 +203,14 @@
 <script setup>
 import { onLoad } from '@dcloudio/uni-app'
 import { ref } from 'vue'
+import { useStore } from 'vuex'
 import config from '@/config'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
-import { getMomentPostDetail, toggleMomentLike } from '@/api/moment'
+import { getMomentPostDetail, toggleMomentLike, getMomentComments, addMomentComment, deleteMomentComment } from '@/api/moment'
 // 使用 composable 获取自定义导航栏高度
 const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
+const store = useStore()
 
 defineOptions({
   name: 'TemplateDetails'
@@ -167,6 +220,85 @@ const postId = ref(null)
 const loading = ref(true)
 const post = ref(null)
 
+// 评论
+const comments = ref([])
+const commentDraft = ref('')
+const commentSubmitting = ref(false)
+
+const myEmployeeId = () => {
+  const info = store.getters.employeeInfo || store.state.user?.employeeInfo || uni.getStorageSync('userInfo') || {}
+  return store.getters.id || info.id || null
+}
+
+const isMyComment = (item) => {
+  return item.employeeId != null && String(item.employeeId) === String(myEmployeeId())
+}
+
+const normalizeComment = (item) => {
+  return {
+    id: item.id,
+    employeeId: item.employeeId,
+    avatar: formatAvatar(item.authorAvatar),
+    name: item.authorName || '未命名员工',
+    content: item.content || '',
+    time: String(item.createdTime || '').replace('T', ' ').slice(0, 16)
+  }
+}
+
+const loadComments = async () => {
+  if (!postId.value) return
+  try {
+    const res = await getMomentComments(postId.value)
+    comments.value = Array.isArray(res.data) ? res.data.map(normalizeComment) : []
+  } catch (error) {
+    console.log('加载评论失败', error)
+    uni.showToast({ title: '加载失败', icon: 'none' })
+  }
+}
+
+const submitComment = async () => {
+  const content = commentDraft.value.trim()
+  if (!content || commentSubmitting.value) return
+  commentSubmitting.value = true
+  try {
+    const res = await addMomentComment(postId.value, content)
+    if (res.data) {
+      comments.value = comments.value.concat(normalizeComment(res.data))
+      if (post.value) {
+        post.value.commentCount = Number(post.value.commentCount || 0) + 1
+      }
+      commentDraft.value = ''
+    }
+  } catch (error) {
+    console.log('发表评论失败', error)
+    uni.showToast({ title: '发送失败，请重试', icon: 'none' })
+  } finally {
+    commentSubmitting.value = false
+  }
+}
+
+const removeComment = (item) => {
+  uni.showModal({
+    title: '删除评论',
+    content: '确定删除这条评论吗？',
+    confirmColor: '#FB6A67',
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await deleteMomentComment(item.id)
+        comments.value = comments.value.filter((c) => c.id !== item.id)
+        if (post.value) {
+          post.value.commentCount = Math.max(0, Number(post.value.commentCount || 0) - 1)
+        }
+        uni.showToast({ title: '已删除', icon: 'none' })
+      } catch (error) {
+        console.log('删除评论失败', error)
+        uni.showToast({ title: '删除失败，请重试', icon: 'none' })
+      }
+    }
+  })
+}
+
 const splitField = (value) => {
   if (!value) return []
   if (Array.isArray(value)) return value
@@ -174,7 +306,7 @@ const splitField = (value) => {
 }
 
 const formatAvatar = (avatar) => {
-  if (!avatar) return 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg'
+  if (!avatar) return '/static/author.jpg'
   if (/^https?:\/\//.test(avatar) || avatar.startsWith('/static')) return avatar
   return config.baseUrl + avatar
 }
@@ -186,7 +318,6 @@ const normalizePost = (item) => {
     userName: item.authorName || '未命名员工',
     date: String(item.createdTime || '').replace('T', ' ').slice(0, 16),
     label: splitField(item.labels),
-    desc: item.content || '',
     content: item.content || '',
     mainImage: splitField(item.images).map((img) => (/^https?:\/\//.test(img) || img.startsWith('/static') ? img : config.baseUrl + img)),
     commentCount: Number(item.commentCount || 0),
@@ -244,6 +375,7 @@ const previewImage = (index) => {
 onLoad((options) => {
   postId.value = options?.id || null
   loadPost()
+  loadComments()
 })
 </script>
 
@@ -383,5 +515,40 @@ onLoad((options) => {
       margin: 0 auto;
       box-shadow: 0rpx -6rpx 20rpx 0rpx rgba(0, 0, 0, 0.06);
       z-index: 1000;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* 评论输入 start */
+    .comment-input {
+      padding: 16rpx 30rpx 4rpx;
+
+      &__field {
+        flex: 1;
+        height: 68rpx;
+        padding: 0 24rpx;
+        margin-right: 20rpx;
+        background-color: #F4F5F9;
+        border-radius: 100rpx;
+        font-size: 28rpx;
+      }
+    }
+
+    /* 评论列表 start */
+    .comment-item {
+      padding: 24rpx 0;
+      border-bottom: 1rpx solid #F3F2F7;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &__avatar {
+        flex-shrink: 0;
+      }
+
+      &__delete {
+        flex-shrink: 0;
+        padding-left: 16rpx;
+      }
     }
 </style>

@@ -27,3 +27,6 @@ export const menuIconTypeRecord: Record<Api.SystemManage.IconType, App.I18n.I18n
 };
 
 export const menuIconTypeOptions = transformRecordToOption(menuIconTypeRecord);
+
+// 申请类型的时长单位已集中到 constants/application.ts，此处保留导出以兼容既有引用
+export { durationUnitMap, getDurationUnit } from './application';

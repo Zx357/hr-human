@@ -1,5 +1,5 @@
 <template>
-  <scroll-view class="template-work tn-safe-area-inset-bottom" scroll-y="true" :style="{height: '100vh'}">
+  <view class="template-work tn-safe-area-inset-bottom">
 
     <!-- 问候卡片 -->
     <view class="work-card work-greet-card">
@@ -63,20 +63,19 @@
 
     <view class="tn-tabbar-height"></view>
 
-  </scroll-view>
+  </view>
 </template>
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
 import { useStore } from 'vuex'
 import { getClockInfo, getHomeStats } from '@/api/attendance'
 import { getMobileMenus } from '@/api/menu'
 
 const store = useStore()
-const vuex_custom_bar_height = store.state.vuex_custom_bar_height
+// 使用 computed 保持响应式
+const vuex_custom_bar_height = computed(() => store.state.vuex_custom_bar_height)
 
-const navOpacity = ref(0)
 const pendingCount = ref(0)
 const weekAttendance = ref({})
 const currentTime = ref('--:--')
@@ -121,49 +120,12 @@ const entryDaysLabel = computed(() => {
   return diff >= 0 ? `已入职 ${diff} 天` : '欢迎使用'
 })
 
-const handleScroll = (e) => {
-  const scrollTop = e.detail.scrollTop
-  if (scrollTop > 150) {
-    navOpacity.value = 1
-  } else {
-    navOpacity.value = scrollTop / 150
-  }
-}
-
-// 卡片轮播当前索引
-const cardCur = ref(0)
-
-// 金刚区图标(优先使用后端移动端菜单)
-const icons = ref(getFallbackMenus())
-
-// 考勤统计四宫格(由本周考勤数据构建)
-const attendance = ref([])
-
-const iconPages = computed(() => {
-  const pageSize = 8
-  const pages = []
-  for (let index = 0; index < icons.value.length; index += pageSize) {
-    pages.push(icons.value.slice(index, index + pageSize))
-  }
-  return pages.length ? pages : [[]]
-})
-
-
-
-
-
-
-
-
 attendance.value = buildAttendanceItems()
 
 onMounted(() => {
   updateClock()
   clockTimer = setInterval(updateClock, 1000)
-})
-
-// tab 页常驻内存,每次切到工作台都刷新
-onShow(() => {
+  // 首次挂载加载数据,后续由父页面切换/下拉时刷新
   loadWorkbench()
 })
 
@@ -171,6 +133,13 @@ onUnmounted(() => {
   if (clockTimer) {
     clearInterval(clockTimer)
     clockTimer = null
+  }
+})
+
+// 供 pages/index.vue 调用:刷新
+defineExpose({
+  refresh: async () => {
+    loadWorkbench()
   }
 })
 
@@ -186,6 +155,8 @@ async function loadPendingCount() {
     if (res.code === 200 && res.data) {
       pendingCount.value = Number(res.data.approvalCount || 0)
     }
+    // 同步工作台待办数到 tabbar 角标
+    store.commit('SET_UNREAD_BADGE', { workTodo: pendingCount.value })
   } catch (error) {
     console.log('加载待办数量失败', error)
   }
@@ -351,11 +322,6 @@ function formatDateKey(date) {
   return `${year}-${month}-${day}`
 }
 
-// 卡片轮播切换
-const cardSwiper = (e) => {
-  cardCur.value = e.detail.current
-}
-
 // hex 转浅色底(rgba)
 function softColor(hex) {
   const v = String(hex || '').replace('#', '')
@@ -370,7 +336,7 @@ function goToClock() {
   uni.navigateTo({
     url: '/workPages/time',
     fail() {
-      uni.showToast({ icon: 'none', title: '打卡功能待迁移' })
+      uni.showToast({ icon: 'none', title: '打卡页打开失败，请稍后再试' })
     }
   })
 }
@@ -378,13 +344,13 @@ function goToClock() {
 // 跳转
 const tn = (e) => {
   if (!e) {
-    uni.showToast({ icon: 'none', title: '功能待迁移' })
+    uni.showToast({ icon: 'none', title: '该功能即将上线，敬请期待' })
     return
   }
   uni.navigateTo({
     url: e,
     fail() {
-      uni.showToast({ icon: 'none', title: '功能待迁移' })
+      uni.showToast({ icon: 'none', title: '页面打开失败，请稍后再试' })
     }
   })
 }

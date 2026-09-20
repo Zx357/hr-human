@@ -1,7 +1,14 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { fetchApprovalFlowList, createApprovalFlow, updateApprovalFlow, deleteApprovalFlow, updateApprovalFlowStatus, type ApprovalFlow, type ApprovalNode } from '@/service/api/approvalFlow';
+import {
+  type ApprovalFlow,
+  createApprovalFlow,
+  deleteApprovalFlow,
+  fetchApprovalFlowList,
+  updateApprovalFlow,
+  updateApprovalFlowStatus
+} from '@/service/api/approvalFlow';
 import { fetchRoleList } from '@/service/api/system';
 
 defineOptions({ name: 'ApprovalFlow' });
@@ -27,7 +34,9 @@ async function loadData() {
     } else {
       data.value = [];
     }
-  } finally { loading.value = false; }
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function loadRoles() {
@@ -36,14 +45,27 @@ async function loadRoles() {
     if (!error && resData) {
       roleOptions.value = resData;
     }
-  } catch (e) { console.error(e); }
+  } catch {
+    // 请求层已统一弹错
+  }
 }
 
-onMounted(() => { loadData(); loadRoles(); });
+onMounted(() => {
+  loadData();
+  loadRoles();
+});
 
 function handleAdd() {
   operateType.value = 'add';
-  formData.value = { flowCode: '', flowName: '', flowType: '', description: '', status: 1, autoPass: 0, nodes: [{ nodeName: '', nodeType: 1, approverType: 1 }] };
+  formData.value = {
+    flowCode: '',
+    flowName: '',
+    flowType: '',
+    description: '',
+    status: 1,
+    autoPass: 0,
+    nodes: [{ nodeName: '', nodeType: 1, approverType: 1 }]
+  };
   dialogVisible.value = true;
 }
 
@@ -58,7 +80,9 @@ async function handleDelete(id: number) {
     await deleteApprovalFlow(id);
     ElMessage.success('删除成功');
     loadData();
-  } catch { ElMessage.error('删除失败'); }
+  } catch {
+    ElMessage.error('删除失败');
+  }
 }
 
 async function handleToggleStatus(row: ApprovalFlow) {
@@ -67,7 +91,9 @@ async function handleToggleStatus(row: ApprovalFlow) {
     await updateApprovalFlowStatus(row.id!, newStatus);
     ElMessage.success(newStatus === 1 ? '已启用' : '已停用');
     loadData();
-  } catch { ElMessage.error('操作失败'); }
+  } catch {
+    ElMessage.error('操作失败');
+  }
 }
 
 function addNode() {
@@ -116,22 +142,30 @@ async function handleSubmit() {
     }
     dialogVisible.value = false;
     loadData();
-  } catch { ElMessage.error('保存失败'); }
-  finally { submitLoading.value = false; }
-}
-
-function getRoleName(roleId?: number) {
-  if (!roleId) return '';
-  const role = roleOptions.value.find(r => r.id === roleId);
-  return role?.roleName || '';
+  } catch {
+    ElMessage.error('保存失败');
+  } finally {
+    submitLoading.value = false;
+  }
 }
 
 const flowTypeMap: Record<string, string> = {
-  leave: '请假申请', overtime: '加班申请', business: '出差申请', makeup: '补卡申请', exchange: '换休申请',
-  regularization: '转正申请', transfer: '调动申请', reward: '奖励申请', punish: '惩罚申请', resignation: '离职申请'
+  leave: '请假申请',
+  overtime: '加班申请',
+  business: '出差申请',
+  makeup: '补卡申请',
+  exchange: '换休申请',
+  regularization: '转正申请',
+  transfer: '调动申请',
+  reward: '奖励申请',
+  punish: '惩罚申请',
+  resignation: '离职申请'
 };
 
-const statusMap: Record<number, { label: string; type: string }> = { 0: { label: '停用', type: 'info' }, 1: { label: '启用', type: 'success' } };
+const statusMap: Record<number, { label: string; type: string }> = {
+  0: { label: '停用', type: 'info' },
+  1: { label: '启用', type: 'success' }
+};
 </script>
 
 <template>
@@ -140,56 +174,66 @@ const statusMap: Record<number, { label: string; type: string }> = { 0: { label:
       <template #header>
         <div class="flex items-center justify-between">
           <span>审批流程配置</span>
-          <ElButton type="primary" @click="handleAdd"><template #icon><icon-ep-plus /></template>新增流程</ElButton>
+          <ElButton type="primary" @click="handleAdd">
+            <template #icon><icon-ep-plus /></template>
+            新增流程
+          </ElButton>
         </div>
       </template>
 
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="data" border stripe height="100%">
-        <ElTableColumn type="index" label="序号" width="60" align="center" />
-        <ElTableColumn prop="flowCode" label="流程编码" width="120" />
-        <ElTableColumn prop="flowName" label="流程名称" width="150" />
-        <ElTableColumn prop="flowType" label="流程类型" width="120">
-          <template #default="{ row }">{{ flowTypeMap[row.flowType] || row.flowType }}</template>
-        </ElTableColumn>
-        <ElTableColumn prop="autoPass" label="免审批" width="80" align="center">
-          <template #default="{ row }">
-            <ElTag :type="row.autoPass === 1 ? 'success' : 'info'" size="small">
-              {{ row.autoPass === 1 ? '是' : '否' }}
-            </ElTag>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn label="审批节点" min-width="300">
-          <template #default="{ row }">
-            <template v-if="row.autoPass === 1">
-              <ElTag type="success" size="small">免审批直接通过</ElTag>
+          <ElTableColumn type="index" label="序号" width="60" align="center" />
+          <ElTableColumn prop="flowCode" label="流程编码" width="120" />
+          <ElTableColumn prop="flowName" label="流程名称" width="150" />
+          <ElTableColumn prop="flowType" label="流程类型" width="120">
+            <template #default="{ row }">{{ flowTypeMap[row.flowType] || row.flowType }}</template>
+          </ElTableColumn>
+          <ElTableColumn prop="autoPass" label="免审批" width="80" align="center">
+            <template #default="{ row }">
+              <ElTag :type="row.autoPass === 1 ? 'success' : 'info'" size="small">
+                {{ row.autoPass === 1 ? '是' : '否' }}
+              </ElTag>
             </template>
-            <div v-else class="flex items-center gap-8px flex-wrap">
-              <template v-for="(node, index) in row.nodes" :key="index">
-                <ElTag size="small" :type="node.nodeType === 1 ? 'primary' : 'info'">
-                  {{ node.nodeName }}
-                  <span class="text-xs opacity-70">({{ node.roleName || '未指定角色' }})</span>
-                </ElTag>
-                <span v-if="index < row.nodes.length - 1" class="text-gray-400">→</span>
+          </ElTableColumn>
+          <ElTableColumn label="审批节点" min-width="300">
+            <template #default="{ row }">
+              <template v-if="row.autoPass === 1">
+                <ElTag type="success" size="small">免审批直接通过</ElTag>
               </template>
-            </div>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="status" label="状态" width="80" align="center">
-          <template #default="{ row }"><ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag></template>
-        </ElTableColumn>
-        <ElTableColumn label="操作" width="180" align="center" fixed="right">
-          <template #default="{ row }">
-            <ElButton type="primary" link size="small" @click="handleEdit(row)">编辑</ElButton>
-            <ElButton :type="row.status === 1 ? 'warning' : 'success'" link size="small" @click="handleToggleStatus(row)">
-              {{ row.status === 1 ? '停用' : '启用' }}
-            </ElButton>
-            <ElPopconfirm title="确定删除该流程吗？" @confirm="handleDelete(row.id)">
-              <template #reference><ElButton type="danger" link size="small">删除</ElButton></template>
-            </ElPopconfirm>
-          </template>
-        </ElTableColumn>
-      </ElTable>
+              <div v-else class="flex flex-wrap items-center gap-8px">
+                <template v-for="(node, index) in row.nodes" :key="index">
+                  <ElTag size="small" :type="node.nodeType === 1 ? 'primary' : 'info'">
+                    {{ node.nodeName }}
+                    <span class="text-xs opacity-70">({{ node.roleName || '未指定角色' }})</span>
+                  </ElTag>
+                  <span v-if="index < row.nodes.length - 1" class="text-gray-400">→</span>
+                </template>
+              </div>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn prop="status" label="状态" width="80" align="center">
+            <template #default="{ row }">
+              <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="操作" width="180" align="center" fixed="right">
+            <template #default="{ row }">
+              <ElButton type="primary" link size="small" @click="handleEdit(row)">编辑</ElButton>
+              <ElButton
+                :type="row.status === 1 ? 'warning' : 'success'"
+                link
+                size="small"
+                @click="handleToggleStatus(row)"
+              >
+                {{ row.status === 1 ? '停用' : '启用' }}
+              </ElButton>
+              <ElPopconfirm title="确定删除该流程吗？" @confirm="handleDelete(row.id)">
+                <template #reference><ElButton type="danger" link size="small">删除</ElButton></template>
+              </ElPopconfirm>
+            </template>
+          </ElTableColumn>
+        </ElTable>
       </div>
     </ElCard>
 
@@ -217,24 +261,44 @@ const statusMap: Record<number, { label: string; type: string }> = { 0: { label:
           </ElCol>
           <ElCol :span="12">
             <ElFormItem label="状态">
-              <ElSwitch v-model="formData.status" :active-value="1" :inactive-value="0" active-text="启用" inactive-text="停用" />
+              <ElSwitch
+                v-model="formData.status"
+                :active-value="1"
+                :inactive-value="0"
+                active-text="启用"
+                inactive-text="停用"
+              />
             </ElFormItem>
           </ElCol>
         </ElRow>
         <ElFormItem label="免审批">
-          <ElSwitch v-model="formData.autoPass" :active-value="1" :inactive-value="0" active-text="直接通过" inactive-text="需要审批" />
-          <span class="ml-12px text-gray-400 text-sm">开启后申请将自动通过，无需审批</span>
+          <ElSwitch
+            v-model="formData.autoPass"
+            :active-value="1"
+            :inactive-value="0"
+            active-text="直接通过"
+            inactive-text="需要审批"
+          />
+          <span class="ml-12px text-sm text-gray-400">开启后申请将自动通过，无需审批</span>
         </ElFormItem>
         <ElFormItem label="描述">
           <ElInput v-model="formData.description" type="textarea" :rows="2" placeholder="请输入描述" />
         </ElFormItem>
-        
+
         <template v-if="!isAutoPass">
           <ElDivider content-position="left">审批节点</ElDivider>
-          <div v-for="(node, index) in formData.nodes" :key="index" class="mb-16px p-16px bg-gray-50 rounded">
-            <div class="flex items-center justify-between mb-8px">
+          <div v-for="(node, index) in formData.nodes" :key="index" class="mb-16px rounded bg-gray-50 p-16px">
+            <div class="mb-8px flex items-center justify-between">
               <span class="font-bold">节点 {{ index + 1 }}</span>
-              <ElButton v-if="formData.nodes && formData.nodes.length > 1" type="danger" link size="small" @click="removeNode(index)">删除</ElButton>
+              <ElButton
+                v-if="formData.nodes && formData.nodes.length > 1"
+                type="danger"
+                link
+                size="small"
+                @click="removeNode(index)"
+              >
+                删除
+              </ElButton>
             </div>
             <ElRow :gutter="16">
               <ElCol :span="8">
@@ -259,7 +323,10 @@ const statusMap: Record<number, { label: string; type: string }> = { 0: { label:
               </ElCol>
             </ElRow>
           </div>
-          <ElButton type="primary" plain @click="addNode"><template #icon><icon-ep-plus /></template>添加节点</ElButton>
+          <ElButton type="primary" plain @click="addNode">
+            <template #icon><icon-ep-plus /></template>
+            添加节点
+          </ElButton>
         </template>
       </ElForm>
       <template #footer>

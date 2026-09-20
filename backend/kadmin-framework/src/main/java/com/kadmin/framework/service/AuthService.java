@@ -28,27 +28,36 @@ public class AuthService {
     private final EmployeeMapper employeeMapper;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
+    private final org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate;
+
+    /**
+     * 登录失败锁定：同一账号 15 分钟内失败 5 次锁定
+     */
+    private static final String LOGIN_FAIL_PREFIX = "login_fail:";
+    private static final int LOGIN_FAIL_MAX = 5;
+    private static final long LOGIN_FAIL_TTL_MINUTES = 15;
 
     /**
      * 登录 - 适配soybean-admin前端
      * 返回格式: { token: string, refreshToken: string }
      */
     public Result<Map<String, String>> login(String username, String password) {
+        assertNotLocked("PC", username);
+
         // 查询用户
         SysUser user = userMapper.selectByUsername(username);
-        if (user == null) {
-            throw new BusinessException(ResultCode.USER_NOT_FOUND);
-        }
-
-        // 验证密码
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new BusinessException(ResultCode.USER_PASSWORD_ERROR);
+        // 统一提示，防止用户名枚举
+        if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
+            recordLoginFail("PC", username);
+            throw new BusinessException("用户名或密码错误");
         }
 
         // 检查用户状态
         if (user.getStatus() != 1) {
             throw new BusinessException(ResultCode.USER_DISABLED);
         }
+
+        clearLoginFail("PC", username);
 
         // 查询用户角色和权限
         Set<String> roles = userMapper.selectRoleCodesByUserId(user.getId());
@@ -82,10 +91,16 @@ public class AuthService {
      * 返回格式: { token: string, refreshToken: string }
      */
     public Result<Map<String, String>> mobileLogin(String employeeNo, String password) {
-        // 直接通过工号查询员工
+        if (password == null || password.isEmpty()) {
+            throw new BusinessException("请输入密码");
+        }
+        assertNotLocked("M", employeeNo);
+
+        // 直接通过工号查询员工（统一提示，防止工号枚举）
         HrEmployee employee = employeeMapper.selectByEmployeeNo(employeeNo);
         if (employee == null) {
-            throw new BusinessException("工号不存在");
+            recordLoginFail("M", employeeNo);
+            throw new BusinessException("工号或密码错误");
         }
 
         // 检查员工状态（1-在职）
@@ -94,16 +109,12 @@ public class AuthService {
             throw new BusinessException("该员工已离职，无法登录");
         }
 
-        // 默认密码为123456
-        String defaultPassword = "123456";
-        String employeePassword = (employee.getPassword() == null || employee.getPassword().isEmpty())
-                ? defaultPassword
-                : employee.getPassword();
-        String checkPassword = (password == null || password.isEmpty()) ? defaultPassword : password;
-
-        if (!employeePassword.equals(checkPassword)) {
-            throw new BusinessException("密码错误");
+        if (!matchesEmployeePassword(employee, password)) {
+            recordLoginFail("M", employeeNo);
+            throw new BusinessException("工号或密码错误");
         }
+
+        clearLoginFail("M", employeeNo);
 
         // 创建登录用户（员工身份）
         Set<String> roles = new HashSet<>();
@@ -133,19 +144,74 @@ public class AuthService {
     }
 
     /**
+     * 校验员工密码：兼容存量明文（命中后自动升级为BCrypt），新密码一律BCrypt
+     * 空密码账号仅以默认密码 123456 比对（不落库），首个成功登录后才会写入加密密码
+     */
+    private boolean matchesEmployeePassword(HrEmployee employee, String rawPassword) {
+        String stored = employee.getPassword();
+        if (stored == null || stored.isEmpty()) {
+            // 未设置过密码的存量账号：与默认密码比对，成功即初始化为加密存储
+            if (!"123456".equals(rawPassword)) {
+                return false;
+            }
+            employee.setPassword(passwordEncoder.encode(rawPassword));
+            employeeMapper.updateById(employee);
+            return true;
+        }
+        if (stored.startsWith("$2")) {
+            return passwordEncoder.matches(rawPassword, stored);
+        }
+        // 存量明文密码：校验通过后立即升级为BCrypt
+        if (stored.equals(rawPassword)) {
+            employee.setPassword(passwordEncoder.encode(rawPassword));
+            employeeMapper.updateById(employee);
+            return true;
+        }
+        return false;
+    }
+
+    // ==================== 登录防爆破 ====================
+
+    private void assertNotLocked(String scene, String account) {
+        Object fails = redisTemplate.opsForValue().get(LOGIN_FAIL_PREFIX + scene + ":" + account);
+        if (fails instanceof Number count && count.intValue() >= LOGIN_FAIL_MAX) {
+            throw new BusinessException("失败次数过多，账号已临时锁定，请" + LOGIN_FAIL_TTL_MINUTES + "分钟后重试");
+        }
+    }
+
+    private void recordLoginFail(String scene, String account) {
+        try {
+            String key = LOGIN_FAIL_PREFIX + scene + ":" + account;
+            Object fails = redisTemplate.opsForValue().get(key);
+            int next = fails instanceof Number number ? number.intValue() + 1 : 1;
+            redisTemplate.opsForValue().set(key, next, LOGIN_FAIL_TTL_MINUTES, java.util.concurrent.TimeUnit.MINUTES);
+        } catch (Exception e) {
+            log.warn("记录登录失败次数异常: {}", e.getMessage());
+        }
+    }
+
+    private void clearLoginFail(String scene, String account) {
+        try {
+            redisTemplate.delete(LOGIN_FAIL_PREFIX + scene + ":" + account);
+        } catch (Exception e) {
+            log.warn("清理登录失败次数异常: {}", e.getMessage());
+        }
+    }
+
+    /**
      * 获取当前用户信息 - 适配soybean-admin前端
      * 返回格式: { userId: string, userName: string, roles: string[], buttons: string[]
      * }
-     * 每次都从数据库重新查询权限，确保权限修改后立即生效
+     * 角色权限取自登录会话；后台修改角色/权限时会删除该用户会话强制重新登录，保证生效
      */
     public Result<Map<String, Object>> getUserInfo(LoginUser loginUser) {
-        // 重新从数据库查询用户角色和权限，确保权限修改后立即生效
-        Set<String> roles = userMapper.selectRoleCodesByUserId(loginUser.getUserId());
-        Set<String> permissions = userMapper.selectPermissionsByUserId(loginUser.getUserId());
+        Set<String> roles = loginUser.getRoles() != null ? loginUser.getRoles() : new HashSet<>();
+        Set<String> permissions = loginUser.getPermissions() != null ? loginUser.getPermissions() : new HashSet<>();
 
         Map<String, Object> result = new HashMap<>();
         result.put("userId", String.valueOf(loginUser.getUserId()));
         result.put("userName", loginUser.getNickname() != null ? loginUser.getNickname() : loginUser.getUsername());
+        result.put("employeeId", loginUser.getEmployeeId());
         result.put("roles", new ArrayList<>(roles));
         result.put("buttons", new ArrayList<>(permissions));
         return Result.success(result);
@@ -214,19 +280,25 @@ public class AuthService {
             throw new BusinessException("员工不存在");
         }
 
-        // 默认密码为123456
-        String defaultPassword = "123456";
-        String currentPassword = (employee.getPassword() == null || employee.getPassword().isEmpty())
-                ? defaultPassword
-                : employee.getPassword();
-
-        if (!currentPassword.equals(oldPassword)) {
+        String stored = employee.getPassword();
+        boolean oldMatches;
+        if (stored == null || stored.isEmpty()) {
+            oldMatches = "123456".equals(oldPassword);
+        } else if (stored.startsWith("$2")) {
+            oldMatches = passwordEncoder.matches(oldPassword, stored);
+        } else {
+            oldMatches = stored.equals(oldPassword);
+        }
+        if (!oldMatches) {
             throw new BusinessException("原密码错误");
         }
 
-        // 更新密码
-        employee.setPassword(newPassword);
+        // 更新密码（BCrypt加密存储）
+        employee.setPassword(passwordEncoder.encode(newPassword));
         employeeMapper.updateById(employee);
+
+        // 修改密码后强制重新登录（员工命名空间）
+        tokenService.deleteUserTokenByEmployee(employeeId);
 
         return Result.success();
     }

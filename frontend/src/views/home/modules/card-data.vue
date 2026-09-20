@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import dayjs from 'dayjs';
-import { fetchEmployeePage } from '@/service/api/hr';
-import { fetchPendingPage } from '@/service/api/application';
-import { fetchClockRecordPage, fetchDailyRecordPage } from '@/service/api/attendance';
+import { computed, onMounted } from 'vue';
+import { useHomeStats } from './use-home-stats';
 
 defineOptions({ name: 'CardData' });
 
@@ -17,17 +14,13 @@ interface CardItem {
   trend?: string;
 }
 
-const loading = ref(false);
-const employeeTotal = ref(0);
-const pendingTotal = ref(0);
-const todayClockTotal = ref(0);
-const todayAbnormal = ref(0);
+const { loading, stats, load } = useHomeStats();
 
 const cardData = computed<CardItem[]>(() => [
   {
     key: 'employeeTotal',
     title: '在职员工',
-    value: employeeTotal.value,
+    value: stats.value.employeeTotal,
     icon: 'mdi:account-group',
     iconBg: 'rgba(99, 102, 241, 0.1)',
     iconColor: '#6366f1'
@@ -35,7 +28,7 @@ const cardData = computed<CardItem[]>(() => [
   {
     key: 'pendingTotal',
     title: '待审批',
-    value: pendingTotal.value,
+    value: stats.value.pendingTotal,
     icon: 'mdi:file-clock-outline',
     iconBg: 'rgba(245, 158, 11, 0.1)',
     iconColor: '#f59e0b'
@@ -43,7 +36,7 @@ const cardData = computed<CardItem[]>(() => [
   {
     key: 'todayClockTotal',
     title: '今日打卡',
-    value: todayClockTotal.value,
+    value: stats.value.todayClockTotal,
     icon: 'mdi:fingerprint',
     iconBg: 'rgba(16, 185, 129, 0.1)',
     iconColor: '#10b981'
@@ -51,44 +44,20 @@ const cardData = computed<CardItem[]>(() => [
   {
     key: 'todayAbnormal',
     title: '今日异常',
-    value: todayAbnormal.value,
+    value: stats.value.todayAbnormal,
     icon: 'mdi:alert-circle-outline',
     iconBg: 'rgba(239, 68, 68, 0.1)',
     iconColor: '#ef4444'
   }
 ]);
 
-async function loadCardData() {
-  loading.value = true;
-  try {
-    const today = dayjs().format('YYYY-MM-DD');
-    const [empRes, pendingRes, clockRes, dailyRes] = await Promise.all([
-      fetchEmployeePage({ pageNum: 1, pageSize: 1, status: 1 }),
-      fetchPendingPage({ pageNum: 1, pageSize: 1 }),
-      fetchClockRecordPage({ page: 1, size: 1, startDate: today, endDate: today }),
-      fetchDailyRecordPage({ page: 1, size: 2000, startDate: today, endDate: today })
-    ]);
-
-    employeeTotal.value = empRes?.data?.total ?? 0;
-    pendingTotal.value = pendingRes?.data?.total ?? 0;
-    todayClockTotal.value = clockRes?.data?.total ?? 0;
-
-    const records = dailyRes?.data?.records ?? [];
-    todayAbnormal.value = records.filter(r => r.status !== 1).length;
-  } catch {
-    // ignore
-  } finally {
-    loading.value = false;
-  }
-}
-
 onMounted(() => {
-  loadCardData();
+  load();
 });
 </script>
 
 <template>
-  <ElRow :gutter="18" class="mb-18px" v-loading="loading">
+  <ElRow v-loading="loading" :gutter="18" class="mb-18px">
     <ElCol v-for="item in cardData" :key="item.key" :xl="6" :lg="6" :md="12" :sm="12" :xs="24" class="mb-sm-0 mb-12px">
       <div class="stat-card">
         <div class="stat-card-body">

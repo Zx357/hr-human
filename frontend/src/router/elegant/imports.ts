@@ -52,6 +52,7 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   system_menu: () => import("@/views/system/menu/index.vue"),
   "system_mobile-menu": () => import("@/views/system/mobile-menu/index.vue"),
   system_notice: () => import("@/views/system/notice/index.vue"),
+  "system_oper-log": () => import("@/views/system/oper-log/index.vue"),
   system_role: () => import("@/views/system/role/index.vue"),
   system_user: () => import("@/views/system/user/index.vue"),
   "user-center": () => import("@/views/user-center/index.vue"),

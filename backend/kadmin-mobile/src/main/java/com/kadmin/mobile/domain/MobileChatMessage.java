@@ -22,6 +22,8 @@ public class MobileChatMessage extends BaseEntity {
     /** 发送人员工ID */
     private Long fromEmployeeId;
     private String content;
+    /** 消息类型：1-文本 2-图片 */
+    private Integer msgType;
 
     @TableField(exist = false)
     private String fromName;

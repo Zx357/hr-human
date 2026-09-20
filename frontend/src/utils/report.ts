@@ -103,3 +103,31 @@ export function getMonthRange(month: string) {
 
   return { startDate, endDate };
 }
+
+/**
+ * 出勤率空值/格式兼容：后端可能返回小数(0.93)、百分比数值(93)或字符串("93%" / "0.93")，
+ * 统一换算为百分比数值（93 表示 93%）
+ */
+export function normalizeRateValue(rate: number | string | null | undefined): number {
+  if (rate === undefined || rate === null || rate === '') {
+    return 0;
+  }
+
+  const text = String(rate).trim();
+  const hasPercentSuffix = text.endsWith('%');
+  const num = Number.parseFloat(text);
+
+  if (!Number.isFinite(num)) {
+    return 0;
+  }
+
+  if (hasPercentSuffix) {
+    return Number(num.toFixed(1));
+  }
+
+  if (num > 0 && num <= 1) {
+    return Number((num * 100).toFixed(1));
+  }
+
+  return Number(num.toFixed(1));
+}

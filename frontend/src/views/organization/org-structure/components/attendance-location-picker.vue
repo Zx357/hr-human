@@ -91,8 +91,7 @@ function parseCoordinateKeyword(keyword: string) {
     return null;
   }
 
-  const looksLikeLatitudeLongitude =
-    Boolean(wrappedMatch) || (Math.abs(first) <= 90 && Math.abs(second) > 90);
+  const looksLikeLatitudeLongitude = Boolean(wrappedMatch) || (Math.abs(first) <= 90 && Math.abs(second) > 90);
 
   const longitude = looksLikeLatitudeLongitude ? second : first;
   const latitude = looksLikeLatitudeLongitude ? first : second;
@@ -206,12 +205,12 @@ function geocodeAddress(keyword: string) {
           region: GOOGLE_MAPS_REGION
         },
         (results: any[], status: string) => {
-        if (status !== googleMaps.GeocoderStatus.OK || !results?.length) {
-          reject(new Error(`Geocode failed: ${status}`));
-          return;
-        }
+          if (status !== googleMaps.GeocoderStatus.OK || !results?.length) {
+            reject(new Error(`Geocode failed: ${status}`));
+            return;
+          }
 
-        resolve(results[0]);
+          resolve(results[0]);
         }
       );
     }),
@@ -234,12 +233,12 @@ function searchPlace(keyword: string) {
           region: GOOGLE_MAPS_REGION
         },
         (results: any[], status: string) => {
-        if (status !== googleMaps.places.PlacesServiceStatus.OK || !results?.length) {
-          reject(new Error(`Place search failed: ${status}`));
-          return;
-        }
+          if (status !== googleMaps.places.PlacesServiceStatus.OK || !results?.length) {
+            reject(new Error(`Place search failed: ${status}`));
+            return;
+          }
 
-        resolve(results[0]);
+          resolve(results[0]);
         }
       );
     }),
@@ -517,7 +516,9 @@ async function handleOpened() {
       }
     }, 120);
   } catch {
-    ElMessage.error('Google 地图加载失败，请检查 API Key、Places/Geocoding 配置和当前网络是否可访问 maps.googleapis.com');
+    ElMessage.error(
+      'Google 地图加载失败，请检查 API Key、Places/Geocoding 配置和当前网络是否可访问 maps.googleapis.com'
+    );
     dialogVisible.value = false;
   } finally {
     loading.value = false;
@@ -636,9 +637,7 @@ function handleConfirm() {
           class="location-map"
           element-loading-text="地图加载中..."
         />
-        <ElButton class="my-location-button" :loading="locating" @click="handleUseMyLocation">
-          我的位置
-        </ElButton>
+        <ElButton class="my-location-button" :loading="locating" @click="handleUseMyLocation">我的位置</ElButton>
       </div>
 
       <div class="location-info">

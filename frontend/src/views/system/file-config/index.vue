@@ -1,7 +1,7 @@
 <script setup lang="tsx">
 import { onMounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { fetchFileConfigList, updateFileConfig, refreshFileConfig, type FileConfig } from '@/service/api/file-config';
+import { type FileConfig, fetchFileConfigList, refreshFileConfig, updateFileConfig } from '@/service/api/file-config';
 
 defineOptions({ name: 'FileConfigManage' });
 
@@ -119,7 +119,7 @@ onMounted(() => {
           <template #default="{ row }">
             <div class="flex items-center gap-4px">
               <ElIcon :size="14" class="text-gray-400"><icon-ep-folder-opened /></ElIcon>
-              <code class="text-13px bg-gray-50 px-8px py-2px rounded">{{ row.configValue }}</code>
+              <code class="rounded bg-gray-50 px-8px py-2px text-13px">{{ row.configValue }}</code>
             </div>
           </template>
         </ElTableColumn>
@@ -147,7 +147,7 @@ onMounted(() => {
               <ElIcon><icon-ep-folder-opened /></ElIcon>
             </template>
           </ElInput>
-          <div class="text-12px text-gray-400 mt-4px">
+          <div class="mt-4px text-12px text-gray-400">
             支持绝对路径（如 D:/rzphoto/employee_photo）或相对路径（如 ./uploads）
           </div>
         </ElFormItem>

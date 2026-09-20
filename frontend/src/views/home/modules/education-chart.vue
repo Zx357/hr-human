@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
-import { useEcharts } from '@/hooks/common/echarts';
+import { onMounted, ref } from 'vue';
 import { fetchEmployeeList } from '@/service/api/hr';
+import { fetchDictDataByCode } from '@/service/api/system';
+import { useEcharts } from '@/hooks/common/echarts';
 
 defineOptions({ name: 'EducationChart' });
 
 const pieColors = ['#f59e0b', '#6366f1', '#10b981', '#f43f5e', '#06b6d4', '#8b5cf6', '#64748b'];
+
+// 学历字典（dictValue -> dictLabel），由接口获取
+const dictValueMap = ref<Record<string, string>>({});
+/** 图例排序：按字典 sortOrder，未匹配的排最后 */
+const educationOrder = ref<string[]>([]);
 
 const { domRef, updateOptions } = useEcharts(() => ({
   tooltip: {
@@ -49,26 +55,33 @@ const { domRef, updateOptions } = useEcharts(() => ({
   ]
 }));
 
-/** 字典值 -> 中文标签 */
-const dictValueMap: Record<string, string> = {
-  doctor: '博士',
-  master: '硕士',
-  bachelor: '本科',
-  college: '大专',
-  high_school: '高中',
-  secondary_vocational: '中专',
-  junior_high: '初中及以下'
-};
-
-const educationOrder = ['博士', '硕士', '本科', '大专', '高中', '中专', '初中及以下'];
+/** 加载学历字典，构建 值->标签 映射与展示顺序 */
+async function loadEducationDict() {
+  try {
+    const res = await fetchDictDataByCode('education');
+    const list = (res?.data ?? [])
+      .filter(item => item.status === 1)
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const map: Record<string, string> = {};
+    list.forEach(item => {
+      map[item.dictValue] = item.dictLabel;
+    });
+    dictValueMap.value = map;
+    educationOrder.value = list.map(item => item.dictLabel);
+  } catch {
+    dictValueMap.value = {};
+    educationOrder.value = [];
+  }
+}
 
 function normalizeEducation(val: string | undefined): string {
   if (!val) return '未填写';
   const v = val.trim();
   // 先按字典值匹配
-  if (dictValueMap[v]) return dictValueMap[v];
-  // 再按中文关键字匹配
-  for (const label of educationOrder) {
+  if (dictValueMap.value[v]) return dictValueMap.value[v];
+  // 再按标签关键字匹配（兼容历史数据直接存中文的情况）
+  for (const label of educationOrder.value) {
     if (v.includes(label)) return label;
   }
   return v;
@@ -85,11 +98,12 @@ async function loadData() {
       map.set(edu, (map.get(edu) ?? 0) + 1);
     });
 
-    // Sort by predefined order, unknowns at the end
+    // Sort by dict order, unknowns at the end
+    const order = educationOrder.value;
     const data = Array.from(map.entries())
       .sort((a, b) => {
-        const ia = educationOrder.indexOf(a[0]);
-        const ib = educationOrder.indexOf(b[0]);
+        const ia = order.indexOf(a[0]);
+        const ib = order.indexOf(b[0]);
         return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
       })
       .map(([name, value]) => ({ name, value }));
@@ -106,7 +120,8 @@ async function loadData() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await loadEducationDict();
   loadData();
 });
 </script>

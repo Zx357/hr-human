@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { fetchShiftList, createShift, updateShift, deleteShift, type Shift, type ShiftPeriod } from '@/service/api/shift';
+import {
+  type Shift,
+  type ShiftPeriod,
+  createShift,
+  deleteShift,
+  fetchShiftList,
+  updateShift
+} from '@/service/api/shift';
 
 defineOptions({ name: 'ShiftManage' });
 
@@ -18,15 +25,16 @@ function calcWorkHours(periods?: ShiftPeriod[]): number {
   if (!periods?.length) return 0;
   let totalMinutes = 0;
   for (const p of periods) {
-    if (!p.startTime || !p.endTime) continue;
-    const [sh, sm] = p.startTime.split(':').map(Number);
-    const [eh, em] = p.endTime.split(':').map(Number);
-    let startMin = sh * 60 + sm;
-    let endMin = eh * 60 + em;
-    if (p.crossDay === 1 || endMin < startMin) endMin += 24 * 60;
-    totalMinutes += endMin - startMin;
+    if (p.startTime && p.endTime) {
+      const [sh, sm] = p.startTime.split(':').map(Number);
+      const [eh, em] = p.endTime.split(':').map(Number);
+      const startMin = sh * 60 + sm;
+      let endMin = eh * 60 + em;
+      if (p.crossDay === 1 || endMin < startMin) endMin += 24 * 60;
+      totalMinutes += endMin - startMin;
+    }
   }
-  return Math.round(totalMinutes / 60 * 10) / 10;
+  return Math.round((totalMinutes / 60) * 10) / 10;
 }
 
 // 计算列表中每行的正班时间
@@ -44,18 +52,25 @@ async function loadData() {
   try {
     const res = await fetchShiftList();
     data.value = res.data || [];
-  } finally { loading.value = false; }
+  } finally {
+    loading.value = false;
+  }
 }
 
-onMounted(() => { loadData(); });
+onMounted(() => {
+  loadData();
+});
 
 function handleAdd() {
   operateType.value = 'add';
-  formData.value = { 
-    shiftCode: '', 
-    shiftName: '', 
-    status: 1, 
-    periods: [{ periodName: '上午', startTime: '09:00', endTime: '12:00', crossDay: 0, needClockIn: 1, needClockOut: 1 }, { periodName: '下午', startTime: '13:00', endTime: '18:00', crossDay: 0, needClockIn: 1, needClockOut: 1 }] 
+  formData.value = {
+    shiftCode: '',
+    shiftName: '',
+    status: 1,
+    periods: [
+      { periodName: '上午', startTime: '09:00', endTime: '12:00', crossDay: 0, needClockIn: 1, needClockOut: 1 },
+      { periodName: '下午', startTime: '13:00', endTime: '18:00', crossDay: 0, needClockIn: 1, needClockOut: 1 }
+    ]
   };
   dialogVisible.value = true;
 }
@@ -65,7 +80,12 @@ function handleEdit(row: Shift) {
   const periods = row.periods?.length ? row.periods.map(p => ({ ...p })) : [];
   // 如果没有时段数据，从主表时间生成
   if (!periods.length && row.workStartTime && row.workEndTime) {
-    periods.push({ periodName: '工作时段', startTime: row.workStartTime, endTime: row.workEndTime, crossDay: row.isNextDay || 0 });
+    periods.push({
+      periodName: '工作时段',
+      startTime: row.workStartTime,
+      endTime: row.workEndTime,
+      crossDay: row.isNextDay || 0
+    });
   }
   formData.value = { ...row, periods };
   dialogVisible.value = true;
@@ -76,11 +96,20 @@ async function handleDelete(id: number) {
     await deleteShift(id);
     ElMessage.success('删除成功');
     loadData();
-  } catch { ElMessage.error('删除失败'); }
+  } catch {
+    ElMessage.error('删除失败');
+  }
 }
 
 function addPeriod() {
-  formData.value.periods?.push({ periodName: '', startTime: '', endTime: '', crossDay: 0, needClockIn: 1, needClockOut: 1 });
+  formData.value.periods?.push({
+    periodName: '',
+    startTime: '',
+    endTime: '',
+    crossDay: 0,
+    needClockIn: 1,
+    needClockOut: 1
+  });
 }
 
 function removePeriod(index: number) {
@@ -108,7 +137,7 @@ async function handleSubmit() {
   formData.value.workEndTime = formData.value.periods[formData.value.periods.length - 1].endTime;
   formData.value.isNextDay = formData.value.periods.some(p => p.crossDay === 1) ? 1 : 0;
   formData.value.workHours = computedWorkHours.value;
-  
+
   submitLoading.value = true;
   try {
     if (operateType.value === 'add') {
@@ -120,8 +149,11 @@ async function handleSubmit() {
     }
     dialogVisible.value = false;
     loadData();
-  } catch { ElMessage.error('保存失败'); }
-  finally { submitLoading.value = false; }
+  } catch {
+    ElMessage.error('保存失败');
+  } finally {
+    submitLoading.value = false;
+  }
 }
 
 const statusMap: Record<number, { label: string; type: string }> = {
@@ -143,7 +175,8 @@ function formatTime(time?: string) {
         <div class="flex items-center justify-between">
           <span>班次管理</span>
           <ElButton v-permission="'attendance:shift:add'" type="primary" @click="handleAdd">
-            <template #icon><icon-ep-plus /></template>新增班次
+            <template #icon><icon-ep-plus /></template>
+            新增班次
           </ElButton>
         </div>
       </template>
@@ -156,7 +189,8 @@ function formatTime(time?: string) {
           <template #default="{ row }">
             <div v-if="row.periods?.length" class="flex flex-wrap gap-8px">
               <ElTag v-for="(period, index) in row.periods" :key="index" size="small">
-                {{ period.periodName || `时段${index + 1}` }}: {{ formatTime(period.startTime) }} - {{ formatTime(period.endTime) }}
+                {{ period.periodName || `时段${index + 1}` }}: {{ formatTime(period.startTime) }} -
+                {{ formatTime(period.endTime) }}
                 <span v-if="period.crossDay" class="text-orange-500">(跨天)</span>
               </ElTag>
             </div>
@@ -178,7 +212,9 @@ function formatTime(time?: string) {
         </ElTableColumn>
         <ElTableColumn label="操作" width="150" align="center" fixed="right">
           <template #default="{ row }">
-            <ElButton v-permission="'attendance:shift:edit'" type="primary" link size="small" @click="handleEdit(row)">编辑</ElButton>
+            <ElButton v-permission="'attendance:shift:edit'" type="primary" link size="small" @click="handleEdit(row)">
+              编辑
+            </ElButton>
             <ElPopconfirm title="确定删除该班次吗？" @confirm="handleDelete(row.id)">
               <template #reference>
                 <ElButton v-permission="'attendance:shift:delete'" type="danger" link size="small">删除</ElButton>
@@ -217,21 +253,49 @@ function formatTime(time?: string) {
         <div class="period-section">
           <div class="period-header">
             <span>工作时段</span>
-            <ElButton type="primary" link size="small" @click="addPeriod"><icon-ep-plus /> 添加</ElButton>
+            <ElButton type="primary" link size="small" @click="addPeriod">
+              <icon-ep-plus />
+              添加
+            </ElButton>
           </div>
-          
+
           <div class="period-list">
             <div v-for="(period, index) in formData.periods" :key="index" class="period-item">
               <div class="period-row">
                 <span class="period-num">{{ index + 1 }}</span>
                 <ElInput v-model="period.periodName" placeholder="名称" class="period-name" />
-                <ElTimePicker v-model="period.startTime" format="HH:mm" value-format="HH:mm" placeholder="上班" class="period-time" />
+                <ElTimePicker
+                  v-model="period.startTime"
+                  format="HH:mm"
+                  value-format="HH:mm"
+                  placeholder="上班"
+                  class="period-time"
+                />
                 <span class="period-to">至</span>
-                <ElTimePicker v-model="period.endTime" format="HH:mm" value-format="HH:mm" placeholder="下班" class="period-time" />
-                <ElCheckbox v-model="period.crossDay" :true-value="1" :false-value="0" class="period-check">跨天</ElCheckbox>
-                <ElCheckbox v-model="period.needClockIn" :true-value="1" :false-value="0" class="period-check">上班卡</ElCheckbox>
-                <ElCheckbox v-model="period.needClockOut" :true-value="1" :false-value="0" class="period-check">下班卡</ElCheckbox>
-                <ElButton v-if="formData.periods && formData.periods.length > 1" type="danger" link size="small" @click="removePeriod(index)" class="period-del">
+                <ElTimePicker
+                  v-model="period.endTime"
+                  format="HH:mm"
+                  value-format="HH:mm"
+                  placeholder="下班"
+                  class="period-time"
+                />
+                <ElCheckbox v-model="period.crossDay" :true-value="1" :false-value="0" class="period-check">
+                  跨天
+                </ElCheckbox>
+                <ElCheckbox v-model="period.needClockIn" :true-value="1" :false-value="0" class="period-check">
+                  上班卡
+                </ElCheckbox>
+                <ElCheckbox v-model="period.needClockOut" :true-value="1" :false-value="0" class="period-check">
+                  下班卡
+                </ElCheckbox>
+                <ElButton
+                  v-if="formData.periods && formData.periods.length > 1"
+                  type="danger"
+                  link
+                  size="small"
+                  class="period-del"
+                  @click="removePeriod(index)"
+                >
                   <icon-ep-delete />
                 </ElButton>
               </div>
@@ -246,7 +310,6 @@ function formatTime(time?: string) {
     </ElDialog>
   </div>
 </template>
-
 
 <style scoped>
 .work-hours {

@@ -82,7 +82,7 @@
           <view class="tn-flex tn-flex-row-between tn-flex-col-center">
             <view class="justify-content-item">
               <view class="tn-flex tn-flex-col-top tn-flex-row-left">
-                <view class="logo-pic tn-margin-top-sm" style="background-image:url('https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1692940242480-assets/web-upload/f09e233b-953b-4b1a-8a77-2a75f2445655.jpeg')">
+                <view class="logo-pic tn-margin-top-sm" style="background-image:url('/static/author.jpg')">
                   <view class="logo-image" >
                   </view>
                 </view>
@@ -149,7 +149,7 @@
           <view class="tn-flex tn-flex-row-between tn-flex-col-center">
             <view class="justify-content-item">
               <view class="tn-flex tn-flex-col-top tn-flex-row-left">
-                <view class="logo-pic tn-margin-top-sm" style="background-image:url('https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1692940242480-assets/web-upload/f09e233b-953b-4b1a-8a77-2a75f2445655.jpeg')">
+                <view class="logo-pic tn-margin-top-sm" style="background-image:url('/static/author.jpg')">
                   <view class="logo-image" >
                   </view>
                 </view>
@@ -215,7 +215,7 @@
           <view class="tn-flex tn-flex-row-between tn-flex-col-center">
             <view class="justify-content-item">
               <view class="tn-flex tn-flex-col-top tn-flex-row-left">
-                <view class="logo-pic tn-margin-top-sm" style="background-image:url('https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1692940242480-assets/web-upload/f09e233b-953b-4b1a-8a77-2a75f2445655.jpeg')">
+                <view class="logo-pic tn-margin-top-sm" style="background-image:url('/static/author.jpg')">
                   <view class="logo-image" >
                   </view>
                 </view>
@@ -272,7 +272,7 @@
           <view class="tn-flex tn-flex-row-between tn-flex-col-center">
             <view class="justify-content-item">
               <view class="tn-flex tn-flex-col-top tn-flex-row-left">
-                <view class="logo-pic tn-margin-top-sm" style="background-image:url('https://cdn.nlark.com/yuque/0/2023/jpeg/280373/1692940242480-assets/web-upload/f09e233b-953b-4b1a-8a77-2a75f2445655.jpeg')">
+                <view class="logo-pic tn-margin-top-sm" style="background-image:url('/static/author.jpg')">
                   <view class="logo-image" >
                   </view>
                 </view>

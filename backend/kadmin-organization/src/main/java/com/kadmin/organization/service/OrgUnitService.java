@@ -37,20 +37,29 @@ public class OrgUnitService extends ServiceImpl<OrgUnitMapper, OrgUnit> {
     }
 
     /**
-     * 递归计算员工数量
+     * 计算员工数量：一次 GROUP BY 统计各部门直接人数，再自底向上累加（替代每节点2条SQL的N+1）
      */
     private int calculateEmployeeCount(List<OrgUnit> units) {
+        Map<Long, Integer> directCount = new java.util.HashMap<>();
+        for (Map<String, Object> row : baseMapper.countEmployeesGroupByDept()) {
+            Object deptId = row.get("dept_id");
+            Object cnt = row.get("cnt");
+            if (deptId instanceof Number id && cnt instanceof Number c) {
+                directCount.put(id.longValue(), c.intValue());
+            }
+        }
+        return calculateEmployeeCount(units, directCount);
+    }
+
+    private int calculateEmployeeCount(List<OrgUnit> units, Map<Long, Integer> directCount) {
         int total = 0;
         for (OrgUnit unit : units) {
-            // 获取该组织及其所有子组织的ID
-            List<Long> orgIds = baseMapper.selectOrgAndChildIds(unit.getId());
-            Integer count = baseMapper.countEmployeesByDeptIds(orgIds);
-            unit.setEmployeeCount(count != null ? count : 0);
-            total += unit.getEmployeeCount();
-
-            if (unit.getChildren() != null && !unit.getChildren().isEmpty()) {
-                calculateEmployeeCount(unit.getChildren());
-            }
+            int self = directCount.getOrDefault(unit.getId(), 0);
+            int children = unit.getChildren() != null && !unit.getChildren().isEmpty()
+                    ? calculateEmployeeCount(unit.getChildren(), directCount)
+                    : 0;
+            unit.setEmployeeCount(self + children);
+            total += self + children;
         }
         return total;
     }

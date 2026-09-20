@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { ElMessage } from 'element-plus';
-import { fetchDictDataByCode } from '@/service/api/system';
-import { fetchEmployeePage } from '@/service/api/hr';
-import { fetchOrgTree } from '@/service/api/organization';
-import { fetchApplicationPage, createApplication, cancelApplication, type Application } from '@/service/api/application';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { statusMap } from '@/constants/application';
+import {
+  type Application,
+  cancelApplication,
+  createApplication,
+  fetchApplicationPage
+} from '@/service/api/application';
+import EmployeePickerDialog from '@/components/common/EmployeePickerDialog.vue';
 
 defineOptions({ name: 'ExchangeApplication' });
 
@@ -14,44 +18,18 @@ const total = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(10);
 
-const genderOptions = ref<Api.System.DictData[]>([]);
-const positionOptions = ref<Api.System.DictData[]>([]);
-const orgTreeOptions = ref<Api.Organization.OrgUnit[]>([]);
 const dialogVisible = ref(false);
 const submitLoading = ref(false);
 const formData = ref<Application>({
-  employeeId: undefined as any, appType: 'exchange'
+  employeeId: undefined as any,
+  appType: 'exchange'
 });
 
-// 员工选择弹窗相关
+// 员工选择弹窗
 const employeeDialogVisible = ref(false);
-const employeeDialogLoading = ref(false);
-const employeeDialogData = ref<Api.Hr.Employee[]>([]);
-const employeeDialogTotal = ref(0);
-const employeeDialogPage = ref(1);
-const employeeDialogPageSize = ref(10);
-const employeeDialogSearch = ref({ name: '', employeeNo: '', orgIds: [] as number[] });
-const cascadeSelect = ref(false);
 const employeeDisplayName = ref('');
 
 const searchParams = ref({ employeeName: '', employeeNo: '', status: undefined as number | undefined });
-
-async function loadDictData() {
-  const [genderRes, positionRes] = await Promise.all([
-    fetchDictDataByCode('gender'),
-    fetchDictDataByCode('position')
-  ]);
-  genderOptions.value = genderRes.data || [];
-  positionOptions.value = positionRes.data || [];
-}
-
-async function loadOrgTree() {
-  try {
-    const res = await fetchOrgTree();
-    orgTreeOptions.value = res.data || [];
-  } catch (error) { console.error('加载组织架构失败:', error); }
-}
-
 async function loadData() {
   loading.value = true;
   try {
@@ -65,33 +43,13 @@ async function loadData() {
     });
     data.value = res.data?.records || [];
     total.value = res.data?.total || 0;
-  } finally { loading.value = false; }
-}
-
-// 加载员工弹窗数据
-async function loadEmployeeDialogData() {
-  employeeDialogLoading.value = true;
-  try {
-    const res = await fetchEmployeePage({
-      pageNum: employeeDialogPage.value,
-      pageSize: employeeDialogPageSize.value,
-      name: employeeDialogSearch.value.name || undefined,
-      employeeNo: employeeDialogSearch.value.employeeNo || undefined,
-      orgIds: employeeDialogSearch.value.orgIds.length > 0 ? employeeDialogSearch.value.orgIds.join(',') : undefined,
-      status: 1
-    });
-    if (res.data) {
-      employeeDialogData.value = res.data.records || [];
-      employeeDialogTotal.value = res.data.total || 0;
-    }
-  } catch (error) {
-    console.error('加载员工列表失败:', error);
   } finally {
-    employeeDialogLoading.value = false;
+    loading.value = false;
   }
 }
-
-onMounted(() => { loadDictData(); loadOrgTree(); loadData(); });
+onMounted(() => {
+  loadData();
+});
 
 function handleAdd() {
   formData.value = {
@@ -104,46 +62,13 @@ function handleAdd() {
   };
   employeeDisplayName.value = '';
   dialogVisible.value = true;
-}
+} // 选择员工
+function handleConfirmEmployee(selected: Api.Hr.Employee[]) {
+  const row = selected[0];
+  if (!row?.id) return;
 
-// 打开员工选择弹窗
-function openEmployeeDialog() {
-  employeeDialogPage.value = 1;
-  employeeDialogSearch.value = { name: '', employeeNo: '', orgIds: [] };
-  employeeDialogVisible.value = true;
-  loadEmployeeDialogData();
-}
-
-// 员工弹窗搜索
-function handleEmployeeDialogSearch() {
-  employeeDialogPage.value = 1;
-  loadEmployeeDialogData();
-}
-
-// 员工弹窗重置
-function handleEmployeeDialogReset() {
-  employeeDialogSearch.value = { name: '', employeeNo: '', orgIds: [] };
-  employeeDialogPage.value = 1;
-  loadEmployeeDialogData();
-}
-
-// 员工弹窗分页
-function handleEmployeeDialogPageChange(page: number) {
-  employeeDialogPage.value = page;
-  loadEmployeeDialogData();
-}
-
-function handleEmployeeDialogSizeChange(size: number) {
-  employeeDialogPageSize.value = size;
-  employeeDialogPage.value = 1;
-  loadEmployeeDialogData();
-}
-
-// 选择员工
-function handleSelectEmployee(row: Api.Hr.Employee) {
   formData.value.employeeId = row.id!;
   employeeDisplayName.value = `${row.name} (${row.employeeNo})`;
-  employeeDialogVisible.value = false;
 }
 
 async function handleSubmit() {
@@ -156,41 +81,57 @@ async function handleSubmit() {
     // 日期补上时间部分
     const submitData = {
       ...formData.value,
-      startTime: formData.value.startTime + ' 00:00:00',
-      endTime: formData.value.endTime + ' 00:00:00'
+      startTime: `${formData.value.startTime} 00:00:00`,
+      endTime: `${formData.value.endTime} 00:00:00`
     };
     await createApplication(submitData);
     ElMessage.success('申请提交成功');
     dialogVisible.value = false;
     loadData();
-  } catch { ElMessage.error('提交失败'); }
-  finally { submitLoading.value = false; }
+  } catch {
+    ElMessage.error('提交失败');
+  } finally {
+    submitLoading.value = false;
+  }
 }
 
 async function handleCancel(id: number) {
   try {
+    await ElMessageBox.confirm('确定撤销该申请吗？撤销后不可恢复', '撤销确认', {
+      type: 'warning',
+      confirmButtonText: '确认撤销',
+      cancelButtonText: '取消'
+    });
+  } catch {
+    return;
+  }
+  try {
     await cancelApplication(id);
     ElMessage.success('已撤销');
     loadData();
-  } catch { ElMessage.error('撤销失败'); }
+  } catch {
+    ElMessage.error('撤销失败');
+  }
 }
 
-function handleSearch() { currentPage.value = 1; loadData(); }
-function handleReset() { searchParams.value = { employeeName: '', employeeNo: '', status: undefined }; currentPage.value = 1; loadData(); }
-function handlePageChange(page: number) { currentPage.value = page; loadData(); }
-function handleSizeChange(size: number) { pageSize.value = size; currentPage.value = 1; loadData(); }
-
-function getDictLabel(options: Api.System.DictData[], value?: string) {
-  if (!value) return '';
-  return options.find(o => o.dictValue === value)?.dictLabel || value;
+function handleSearch() {
+  currentPage.value = 1;
+  loadData();
 }
-
-const statusMap: Record<number, { label: string; type: string }> = {
-  0: { label: '待审批', type: 'warning' },
-  1: { label: '已通过', type: 'success' },
-  2: { label: '已拒绝', type: 'danger' },
-  3: { label: '已撤销', type: 'info' }
-};
+function handleReset() {
+  searchParams.value = { employeeName: '', employeeNo: '', status: undefined };
+  currentPage.value = 1;
+  loadData();
+}
+function handlePageChange(page: number) {
+  currentPage.value = page;
+  loadData();
+}
+function handleSizeChange(size: number) {
+  pageSize.value = size;
+  currentPage.value = 1;
+  loadData();
+}
 </script>
 
 <template>
@@ -237,25 +178,27 @@ const statusMap: Record<number, { label: string; type: string }> = {
 
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="data" border stripe height="100%">
-        <ElTableColumn type="index" label="序号" width="60" align="center" />
-        <ElTableColumn prop="employeeNo" label="工号" width="100" />
-        <ElTableColumn prop="employeeName" label="申请人" width="100" />
-        <ElTableColumn prop="deptName" label="部门" width="120" />
-        <ElTableColumn prop="startTime" label="原工作日" width="120" />
-        <ElTableColumn prop="endTime" label="换休日" width="120" />
-        <ElTableColumn prop="reason" label="换休原因" min-width="150" show-overflow-tooltip />
-        <ElTableColumn prop="status" label="状态" width="90" align="center">
-          <template #default="{ row }">
-            <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="createdTime" label="申请时间" width="160" />
-        <ElTableColumn label="操作" width="100" align="center" fixed="right">
-          <template #default="{ row }">
-            <ElButton v-if="row.status === 0" type="warning" link size="small" @click="handleCancel(row.id)">撤销</ElButton>
-          </template>
-        </ElTableColumn>
-      </ElTable>
+          <ElTableColumn type="index" label="序号" width="60" align="center" />
+          <ElTableColumn prop="employeeNo" label="工号" width="100" />
+          <ElTableColumn prop="employeeName" label="申请人" width="100" />
+          <ElTableColumn prop="deptName" label="部门" width="120" />
+          <ElTableColumn prop="startTime" label="原工作日" width="120" />
+          <ElTableColumn prop="endTime" label="换休日" width="120" />
+          <ElTableColumn prop="reason" label="换休原因" min-width="150" show-overflow-tooltip />
+          <ElTableColumn prop="status" label="状态" width="90" align="center">
+            <template #default="{ row }">
+              <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn prop="createdTime" label="申请时间" width="160" />
+          <ElTableColumn label="操作" width="100" align="center" fixed="right">
+            <template #default="{ row }">
+              <ElButton v-if="row.status === 0" type="warning" link size="small" @click="handleCancel(row.id)">
+                撤销
+              </ElButton>
+            </template>
+          </ElTableColumn>
+        </ElTable>
       </div>
 
       <div class="mt-16px flex justify-end">
@@ -275,16 +218,28 @@ const statusMap: Record<number, { label: string; type: string }> = {
     <ElDialog v-model="dialogVisible" title="发起换休申请" width="600px" destroy-on-close>
       <ElForm label-width="100px" :model="formData">
         <ElFormItem label="申请人" required>
-          <div class="flex gap-8px w-full">
+          <div class="w-full flex gap-8px">
             <ElInput v-model="employeeDisplayName" disabled placeholder="请选择员工" class="flex-1" />
-            <ElButton type="primary" @click="openEmployeeDialog">选择员工</ElButton>
+            <ElButton type="primary" @click="employeeDialogVisible = true">选择员工</ElButton>
           </div>
         </ElFormItem>
         <ElFormItem label="原工作日" required>
-          <ElDatePicker v-model="formData.startTime" type="date" placeholder="选择原工作日" style="width: 100%" value-format="YYYY-MM-DD" />
+          <ElDatePicker
+            v-model="formData.startTime"
+            type="date"
+            placeholder="选择原工作日"
+            style="width: 100%"
+            value-format="YYYY-MM-DD"
+          />
         </ElFormItem>
         <ElFormItem label="换休日" required>
-          <ElDatePicker v-model="formData.endTime" type="date" placeholder="选择换休日" style="width: 100%" value-format="YYYY-MM-DD" />
+          <ElDatePicker
+            v-model="formData.endTime"
+            type="date"
+            placeholder="选择换休日"
+            style="width: 100%"
+            value-format="YYYY-MM-DD"
+          />
         </ElFormItem>
         <ElFormItem label="换休原因" required>
           <ElInput v-model="formData.reason" type="textarea" :rows="3" placeholder="请输入换休原因" />
@@ -296,73 +251,6 @@ const statusMap: Record<number, { label: string; type: string }> = {
       </template>
     </ElDialog>
 
-    <!-- 员工选择弹窗 -->
-    <ElDialog v-model="employeeDialogVisible" title="选择员工" width="900px" destroy-on-close append-to-body>
-      <div class="mb-16px">
-        <ElForm inline :model="employeeDialogSearch">
-          <ElFormItem label="姓名">
-            <ElInput v-model="employeeDialogSearch.name" placeholder="请输入姓名" clearable style="width: 120px" />
-          </ElFormItem>
-          <ElFormItem label="工号">
-            <ElInput v-model="employeeDialogSearch.employeeNo" placeholder="请输入工号" clearable style="width: 120px" />
-          </ElFormItem>
-          <ElFormItem label="组织">
-            <ElTreeSelect
-              v-model="employeeDialogSearch.orgIds"
-              :data="orgTreeOptions"
-              :props="{ children: 'children', label: 'unitName', value: 'id' }"
-              node-key="id"
-              placeholder="请选择组织"
-              clearable
-              multiple
-              :check-strictly="!cascadeSelect"
-              show-checkbox
-              collapse-tags
-              :max-collapse-tags="1"
-              style="width: 180px"
-              :render-after-expand="false"
-              filterable
-            >
-              <template #header>
-                <div class="px-12px py-8px border-b border-gray-200">
-                  <ElCheckbox v-model="cascadeSelect" size="small">联动选择</ElCheckbox>
-                </div>
-              </template>
-            </ElTreeSelect>
-          </ElFormItem>
-          <ElFormItem>
-            <ElButton type="primary" @click="handleEmployeeDialogSearch">搜索</ElButton>
-            <ElButton @click="handleEmployeeDialogReset">重置</ElButton>
-          </ElFormItem>
-        </ElForm>
-      </div>
-      <ElTable v-loading="employeeDialogLoading" :data="employeeDialogData" border stripe max-height="400px">
-        <ElTableColumn prop="employeeNo" label="工号" width="100" />
-        <ElTableColumn prop="name" label="姓名" width="100" />
-        <ElTableColumn prop="gender" label="性别" width="60" align="center">
-          <template #default="{ row }">{{ getDictLabel(genderOptions, row.gender) }}</template>
-        </ElTableColumn>
-        <ElTableColumn prop="deptName" label="部门" min-width="120" />
-        <ElTableColumn prop="position" label="职位" min-width="120">
-          <template #default="{ row }">{{ getDictLabel(positionOptions, row.position) }}</template>
-        </ElTableColumn>
-        <ElTableColumn label="操作" width="80" align="center" fixed="right">
-          <template #default="{ row }">
-            <ElButton type="primary" link size="small" @click="handleSelectEmployee(row)">选择</ElButton>
-          </template>
-        </ElTableColumn>
-      </ElTable>
-      <div class="mt-16px flex justify-end">
-        <ElPagination
-          v-model:current-page="employeeDialogPage"
-          v-model:page-size="employeeDialogPageSize"
-          :total="employeeDialogTotal"
-          :page-sizes="[10, 20, 50]"
-          layout="total, sizes, prev, pager, next"
-          @current-change="handleEmployeeDialogPageChange"
-          @size-change="handleEmployeeDialogSizeChange"
-        />
-      </div>
-    </ElDialog>
+    <EmployeePickerDialog v-model="employeeDialogVisible" @confirm="handleConfirmEmployee" />
   </div>
 </template>

@@ -23,7 +23,6 @@ function checkAndUpdatePermission(el: HTMLElement, binding: DirectiveBinding) {
   const buttons = authStore.userInfo?.buttons || [];
 
   // 调试日志
-  console.log('权限检查:', { value, buttons, userInfo: authStore.userInfo });
 
   // 检查是否有通配符权限
   if (buttons.includes('*:*:*')) {

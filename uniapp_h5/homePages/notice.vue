@@ -115,6 +115,7 @@ async function loadNotices() {
     list.value = Array.isArray(res.data) ? res.data : (res.data?.records || res.data?.list || [])
   } catch (e) {
     console.log('加载通知失败', e)
+    uni.showToast({ icon: 'none', title: '加载通知失败' })
   } finally {
     loading.value = false
     refreshing.value = false

@@ -124,17 +124,31 @@
         <if test="appType != null and appType != ''">
             AND a.app_type = #{appType}
         </if>
-        <!-- 根据用户角色过滤：只显示用户有权审批的申请 -->
+        <!-- 根据用户角色过滤：只显示当前待审批节点匹配用户角色的申请（多级流转） -->
         <if test="roleIds != null and roleIds.size() > 0">
             AND EXISTS (
                 SELECT 1 FROM sys_approval_flow f
                 JOIN sys_approval_node n ON f.id = n.flow_id
                 WHERE f.status = 1
                 AND f.flow_type = a.app_type
+                AND n.node_type = 1
                 AND n.role_id IN
                 <foreach collection="roleIds" item="roleId" open="(" separator="," close=")">
                     #{roleId}
                 </foreach>
+                AND n.sort_order = (
+                    SELECT MIN(n2.sort_order) FROM sys_approval_flow f2
+                    JOIN sys_approval_node n2 ON f2.id = n2.flow_id
+                    WHERE f2.status = 1
+                    AND f2.flow_type = a.app_type
+                    AND n2.node_type = 1
+                    AND NOT EXISTS (
+                        SELECT 1 FROM hr_approval_record r
+                        WHERE r.application_id = a.id
+                        AND r.node_id = n2.id
+                        AND r.status = 1
+                    )
+                )
             )
         </if>
         <if test="roleIds == null or roleIds.size() == 0">

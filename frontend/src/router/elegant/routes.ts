@@ -496,6 +496,16 @@ export const generatedRoutes: GeneratedRoute[] = [
         }
       },
       {
+        name: 'system_oper-log',
+        path: '/system/oper-log',
+        component: 'view.system_oper-log',
+        meta: {
+          title: 'system_oper-log',
+          i18nKey: 'route.system_oper-log',
+          order: 8
+        }
+      },
+      {
         name: 'system_role',
         path: '/system/role',
         component: 'view.system_role',

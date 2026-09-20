@@ -56,6 +56,46 @@ public class FileController {
         return false;
     }
 
+    /**
+     * 工号净化：仅允许字母/数字/汉字/下划线/连字符，防止拼接文件名产生路径遍历
+     */
+    private boolean isValidEmployeeNo(String employeeNo) {
+        return employeeNo != null && employeeNo.matches("[\\w\\-\u4e00-\u9fa5]{1,64}");
+    }
+
+    /**
+     * 图片魔数校验：防止伪装扩展名上传任意内容（jpg/png/gif/webp）
+     */
+    private boolean hasImageMagicBytes(MultipartFile file) {
+        try (InputStream is = file.getInputStream()) {
+            byte[] header = new byte[12];
+            int read = is.read(header);
+            if (read < 4) {
+                return false;
+            }
+            // JPEG: FF D8 FF
+            if ((header[0] & 0xFF) == 0xFF && (header[1] & 0xFF) == 0xD8 && (header[2] & 0xFF) == 0xFF) {
+                return true;
+            }
+            // PNG: 89 50 4E 47
+            if ((header[0] & 0xFF) == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47) {
+                return true;
+            }
+            // GIF: GIF8
+            if (header[0] == 'G' && header[1] == 'I' && header[2] == 'F' && header[3] == '8') {
+                return true;
+            }
+            // WEBP: RIFF....WEBP
+            if (header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F'
+                    && header[8] == 'W' && header[9] == 'E' && header[10] == 'B' && header[11] == 'P') {
+                return true;
+            }
+            return false;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     @Operation(summary = "上传文件")
     @PostMapping("/upload")
     public Result<String> upload(@RequestParam("file") MultipartFile file) {
@@ -144,8 +184,8 @@ public class FileController {
             @RequestParam("employeeNo") String employeeNo) {
         if (file.isEmpty())
             return Result.error("请选择要上传的图片");
-        if (employeeNo == null || employeeNo.trim().isEmpty())
-            return Result.error("员工工号不能为空");
+        if (!isValidEmployeeNo(employeeNo))
+            return Result.error("员工工号不合法");
 
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null)
@@ -154,6 +194,8 @@ public class FileController {
         String extension = getExtension(originalFilename);
         if (!isImageType(extension))
             return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
+        if (!hasImageMagicBytes(file))
+            return Result.error("图片内容不合法或已损坏");
 
         try {
             String avatarPath = fileConfigService.getAbsolutePath(FileConfigService.KEY_AVATAR);
@@ -161,13 +203,9 @@ public class FileController {
             if (!Files.exists(employeePhotoDir))
                 Files.createDirectories(employeePhotoDir);
 
-            String newFilename = employeeNo + "." + extension;
+            // UUID命名防止通过工号枚举下载他人证件照
+            String newFilename = java.util.UUID.randomUUID().toString().replace("-", "") + "." + extension;
             Path filePath = employeePhotoDir.resolve(newFilename);
-
-            if (Files.exists(filePath)) {
-                Files.delete(filePath);
-                log.info("删除旧头像: {}", filePath.toAbsolutePath());
-            }
 
             try (InputStream inputStream = file.getInputStream()) {
                 Files.copy(inputStream, filePath, StandardCopyOption.REPLACE_EXISTING);
@@ -190,8 +228,8 @@ public class FileController {
             @RequestParam("type") String type) {
         if (file.isEmpty())
             return Result.error("请选择要上传的图片");
-        if (employeeNo == null || employeeNo.trim().isEmpty())
-            return Result.error("员工工号不能为空");
+        if (!isValidEmployeeNo(employeeNo))
+            return Result.error("员工工号不合法");
         if (type == null || (!type.equals("front") && !type.equals("back")))
             return Result.error("身份证类型参数错误，必须是 front 或 back");
 
@@ -202,6 +240,8 @@ public class FileController {
         String extension = getExtension(originalFilename);
         if (!isImageType(extension))
             return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
+        if (!hasImageMagicBytes(file))
+            return Result.error("图片内容不合法或已损坏");
 
         try {
             String configKey = type.equals("front") ? FileConfigService.KEY_ID_FRONT : FileConfigService.KEY_ID_BACK;
@@ -211,13 +251,9 @@ public class FileController {
                 Files.createDirectories(idCardDir);
 
             String folderName = type.equals("front") ? "id_card_front" : "id_card_back";
-            String newFilename = employeeNo + "." + extension;
+            // UUID命名防止通过工号枚举下载他人证件照
+            String newFilename = java.util.UUID.randomUUID().toString().replace("-", "") + "." + extension;
             Path filePath = idCardDir.resolve(newFilename);
-
-            if (Files.exists(filePath)) {
-                Files.delete(filePath);
-                log.info("删除旧身份证照片: {}", filePath.toAbsolutePath());
-            }
 
             try (InputStream inputStream = file.getInputStream()) {
                 Files.copy(inputStream, filePath, StandardCopyOption.REPLACE_EXISTING);
@@ -239,8 +275,8 @@ public class FileController {
             @RequestParam("employeeNo") String employeeNo) {
         if (file.isEmpty())
             return Result.error("请选择要上传的图片");
-        if (employeeNo == null || employeeNo.trim().isEmpty())
-            return Result.error("员工工号不能为空");
+        if (!isValidEmployeeNo(employeeNo))
+            return Result.error("员工工号不合法");
 
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null)
@@ -249,6 +285,8 @@ public class FileController {
         String extension = getExtension(originalFilename);
         if (!isImageType(extension))
             return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
+        if (!hasImageMagicBytes(file))
+            return Result.error("图片内容不合法或已损坏");
 
         try {
             String contractPath = fileConfigService.getAbsolutePath(FileConfigService.KEY_CONTRACT_PHOTO);
@@ -256,7 +294,7 @@ public class FileController {
             if (!Files.exists(contractDir))
                 Files.createDirectories(contractDir);
 
-            String newFilename = employeeNo + "_" + System.currentTimeMillis() + "." + extension;
+            String newFilename = java.util.UUID.randomUUID().toString().replace("-", "") + "_" + System.currentTimeMillis() + "." + extension;
             Path filePath = contractDir.resolve(newFilename);
 
             try (InputStream inputStream = file.getInputStream()) {
@@ -279,8 +317,8 @@ public class FileController {
             @RequestParam("employeeNo") String employeeNo) {
         if (file.isEmpty())
             return Result.error("请选择要上传的图片");
-        if (employeeNo == null || employeeNo.trim().isEmpty())
-            return Result.error("员工工号不能为空");
+        if (!isValidEmployeeNo(employeeNo))
+            return Result.error("员工工号不合法");
 
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null)
@@ -289,6 +327,8 @@ public class FileController {
         String extension = getExtension(originalFilename);
         if (!isImageType(extension))
             return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
+        if (!hasImageMagicBytes(file))
+            return Result.error("图片内容不合法或已损坏");
 
         try {
             String diplomaPath = fileConfigService.getAbsolutePath(FileConfigService.KEY_DIPLOMA_PHOTO);
@@ -296,7 +336,7 @@ public class FileController {
             if (!Files.exists(diplomaDir))
                 Files.createDirectories(diplomaDir);
 
-            String newFilename = employeeNo + "_" + System.currentTimeMillis() + "." + extension;
+            String newFilename = java.util.UUID.randomUUID().toString().replace("-", "") + "_" + System.currentTimeMillis() + "." + extension;
             Path filePath = diplomaDir.resolve(newFilename);
 
             try (InputStream inputStream = file.getInputStream()) {
@@ -319,8 +359,8 @@ public class FileController {
             @RequestParam("employeeNo") String employeeNo) {
         if (file.isEmpty())
             return Result.error("请选择要上传的图片");
-        if (employeeNo == null || employeeNo.trim().isEmpty())
-            return Result.error("员工工号不能为空");
+        if (!isValidEmployeeNo(employeeNo))
+            return Result.error("员工工号不合法");
 
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null)
@@ -329,6 +369,8 @@ public class FileController {
         String extension = getExtension(originalFilename);
         if (!isImageType(extension))
             return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
+        if (!hasImageMagicBytes(file))
+            return Result.error("图片内容不合法或已损坏");
 
         try {
             String certPath = fileConfigService.getAbsolutePath(FileConfigService.KEY_CERT_PHOTO);
@@ -336,7 +378,7 @@ public class FileController {
             if (!Files.exists(certDir))
                 Files.createDirectories(certDir);
 
-            String newFilename = employeeNo + "_" + System.currentTimeMillis() + "." + extension;
+            String newFilename = java.util.UUID.randomUUID().toString().replace("-", "") + "_" + System.currentTimeMillis() + "." + extension;
             Path filePath = certDir.resolve(newFilename);
 
             try (InputStream inputStream = file.getInputStream()) {
@@ -366,7 +408,12 @@ public class FileController {
                 relativePath = relativePath.substring(9);
             }
 
-            Path filePath = Paths.get(getUploadPath(), relativePath);
+            // 归一化后必须仍位于上传根目录内，防止绝对路径/符号链接逃逸
+            Path baseDir = Paths.get(getUploadPath()).toAbsolutePath().normalize();
+            Path filePath = baseDir.resolve(relativePath).normalize();
+            if (!filePath.startsWith(baseDir)) {
+                return Result.error("非法的文件路径");
+            }
             if (Files.exists(filePath)) {
                 Files.delete(filePath);
                 return Result.success(true);

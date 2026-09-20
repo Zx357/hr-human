@@ -7,6 +7,7 @@ import com.kadmin.attendance.domain.dto.LockDailyRecordRequest;
 import com.kadmin.attendance.domain.AttClockRecord;
 import com.kadmin.attendance.domain.AttDailyRecord;
 import com.kadmin.attendance.service.AttendanceService;
+import com.kadmin.common.annotation.OperLog;
 import com.kadmin.common.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -33,7 +34,8 @@ public class AttendanceController {
                 .success(attendanceService.getClockRecordPage(page, size, orgIds, employeeName, startDate, endDate));
     }
 
-    // 保存打卡记录
+    // 保存打卡记录（PC补录）
+    @OperLog(module = "考勤管理", action = "补录打卡")
     @PostMapping("/clock")
     public Result<Void> saveClockRecord(@RequestBody AttClockRecord record) {
         attendanceService.saveClockRecord(record);
@@ -41,6 +43,7 @@ public class AttendanceController {
     }
 
     // 删除打卡记录
+    @OperLog(module = "考勤管理", action = "删除打卡")
     @DeleteMapping("/clock/{id}")
     public Result<Void> deleteClockRecord(@PathVariable Long id) {
         attendanceService.deleteClockRecord(id);
@@ -80,6 +83,7 @@ public class AttendanceController {
     }
 
     // 锁定日考勤记录
+    @OperLog(module = "考勤管理", action = "锁定解锁")
     @PostMapping("/daily/lock")
     public Result<Void> lockDailyRecords(@RequestBody LockDailyRecordRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();

@@ -78,15 +78,31 @@ public class AttendanceService {
         IPage<AttDailyRecord> resultPage = dailyRecordMapper.selectGroupedPage(
                 new Page<>(page, size), startDate, endDate, expandOrgIds(orgIds), employeeNo, employeeName, status);
 
-        // 为每条聚合记录加载各时段明细
-        for (AttDailyRecord grouped : resultPage.getRecords()) {
-            List<AttDailyRecord> periods = dailyRecordMapper.selectListWithEmployee(
-                    grouped.getAttDate().toString(), grouped.getAttDate().toString(),
-                    null, null, null, null);
-            List<AttDailyRecord> empPeriods = periods.stream()
-                    .filter(r -> r.getEmployeeId().equals(grouped.getEmployeeId()))
+        // 按本页涉及的日期+员工一次性查明细，避免每行一次全量重查
+        List<AttDailyRecord> grouped = resultPage.getRecords();
+        if (grouped.isEmpty()) {
+            return resultPage;
+        }
+        Set<LocalDate> dates = new LinkedHashSet<>();
+        Set<Long> employeeIdSet = new LinkedHashSet<>();
+        for (AttDailyRecord g : grouped) {
+            if (g.getAttDate() != null) {
+                dates.add(g.getAttDate());
+            }
+            if (g.getEmployeeId() != null) {
+                employeeIdSet.add(g.getEmployeeId());
+            }
+        }
+        List<AttDailyRecord> periodDetails = dailyRecordMapper.selectList(
+                new LambdaQueryWrapper<AttDailyRecord>()
+                        .in(AttDailyRecord::getAttDate, dates)
+                        .in(AttDailyRecord::getEmployeeId, employeeIdSet));
+        for (AttDailyRecord g : grouped) {
+            List<AttDailyRecord> empPeriods = periodDetails.stream()
+                    .filter(r -> r.getEmployeeId().equals(g.getEmployeeId())
+                            && r.getAttDate() != null && r.getAttDate().equals(g.getAttDate()))
                     .toList();
-            grouped.setPeriods(empPeriods);
+            g.setPeriods(empPeriods);
         }
 
         return resultPage;
@@ -101,19 +117,20 @@ public class AttendanceService {
         }
     }
 
-    // 锁定/解锁日考勤记录
+    // 锁定/解锁日考勤记录（单条 UPDATE 批量生效）
     public void lockDailyRecords(List<Long> ids, boolean lock, Long userId) {
         if (ids == null || ids.isEmpty())
             return;
-        for (Long id : ids) {
-            AttDailyRecord record = dailyRecordMapper.selectById(id);
-            if (record != null) {
-                record.setLocked(lock ? 1 : 0);
-                record.setLockedBy(lock ? userId : null);
-                record.setLockedTime(lock ? java.time.LocalDateTime.now() : null);
-                dailyRecordMapper.updateById(record);
-            }
+        com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<AttDailyRecord> wrapper =
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<AttDailyRecord>()
+                        .in(AttDailyRecord::getId, ids)
+                        .set(AttDailyRecord::getLocked, lock ? 1 : 0)
+                        .set(lock, AttDailyRecord::getLockedBy, userId)
+                        .set(lock, AttDailyRecord::getLockedTime, java.time.LocalDateTime.now());
+        if (!lock) {
+            wrapper.set(AttDailyRecord::getLockedBy, null).set(AttDailyRecord::getLockedTime, null);
         }
+        dailyRecordMapper.update(null, wrapper);
     }
 
     // 月考勤汇总
@@ -235,9 +252,20 @@ public class AttendanceService {
      * @param employeeName 姓名筛选
      * @param employeeIds  指定员工ID列表（优先级最高）
      */
+    /**
+     * 计算指定日期范围的日考勤（批量预载版）
+     * 排班/班次/时段/假日规则/打卡/请假单/组织链 全部一次性预载到内存，
+     * 循环内纯内存计算，将原来的"每员工每天10+条SQL"降为约10条总查询；
+     * 整体在单事务内执行，中途失败全部回滚。
+     */
+    @org.springframework.transaction.annotation.Transactional
     public void calculateDailyAttendance(LocalDate startDate, LocalDate endDate, List<Long> orgIds, String employeeNo,
             String employeeName, List<Long> employeeIds) {
-        // 获取员工列表
+        if (ChronoUnit.DAYS.between(startDate, endDate) > 92) {
+            throw new IllegalArgumentException("核算日期范围不能超过92天");
+        }
+
+        // 1. 获取员工列表
         LambdaQueryWrapper<HrEmployee> wrapper = new LambdaQueryWrapper<HrEmployee>()
                 .eq(HrEmployee::getStatus, 1);
 
@@ -258,48 +286,143 @@ public class AttendanceService {
         }
 
         List<HrEmployee> employees = employeeMapper.selectList(wrapper);
+        if (employees.isEmpty()) {
+            return;
+        }
+        List<Long> empIds = employees.stream().map(HrEmployee::getId).toList();
 
-        // 遍历日期范围
+        // 2. 批量预载排班：员工 × 日期
+        List<AttSchedule> schedules = scheduleMapper.selectList(new LambdaQueryWrapper<AttSchedule>()
+                .in(AttSchedule::getEmployeeId, empIds)
+                .between(AttSchedule::getScheduleDate, startDate, endDate));
+        var scheduleMap = new java.util.HashMap<String, AttSchedule>();
+        for (AttSchedule schedule : schedules) {
+            scheduleMap.put(schedule.getEmployeeId() + "|" + schedule.getScheduleDate(), schedule);
+        }
+
+        // 3. 批量预载班次与时段
+        Set<Long> shiftIds = new LinkedHashSet<>();
+        for (AttSchedule schedule : schedules) {
+            if (schedule.getShiftId() != null) {
+                shiftIds.add(schedule.getShiftId());
+            }
+        }
+        var shiftMap = shiftIds.isEmpty() ? java.util.Map.<Long, AttShift>of()
+                : shiftMapper.selectBatchIds(shiftIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(AttShift::getId, s -> s, (a, b) -> a));
+        var periodsMap = new java.util.HashMap<Long, List<AttShiftPeriod>>();
+        if (!shiftIds.isEmpty()) {
+            for (AttShiftPeriod period : shiftPeriodMapper.selectList(new LambdaQueryWrapper<AttShiftPeriod>()
+                    .in(AttShiftPeriod::getShiftId, shiftIds)
+                    .orderByAsc(AttShiftPeriod::getSortOrder))) {
+                periodsMap.computeIfAbsent(period.getShiftId(), k -> new ArrayList<>()).add(period);
+            }
+        }
+
+        // 4. 批量预载组织链（公司归属）：从员工部门逐级向上补齐
+        var orgCache = new java.util.HashMap<Long, OrgUnit>();
+        Set<Long> pendingOrgIds = new LinkedHashSet<>();
+        for (HrEmployee emp : employees) {
+            if (emp.getDeptId() != null) {
+                pendingOrgIds.add(emp.getDeptId());
+            }
+        }
+        while (!pendingOrgIds.isEmpty()) {
+            List<Long> toLoad = pendingOrgIds.stream().filter(id -> !orgCache.containsKey(id)).toList();
+            pendingOrgIds.clear();
+            if (toLoad.isEmpty()) {
+                break;
+            }
+            for (OrgUnit unit : orgUnitMapper.selectBatchIds(toLoad)) {
+                orgCache.put(unit.getId(), unit);
+                if (unit.getParentId() != null && unit.getParentId() != 0) {
+                    pendingOrgIds.add(unit.getParentId());
+                }
+            }
+        }
+
+        // 5. 批量预载假日规则（按公司）
+        Set<Long> companyIds = new LinkedHashSet<>();
+        for (HrEmployee emp : employees) {
+            Long companyId = resolveCompanyIdFromCache(emp.getDeptId(), orgCache);
+            if (companyId != null) {
+                companyIds.add(companyId);
+            }
+        }
+        List<AttCalendarRule> rules = companyIds.isEmpty() ? List.of()
+                : calendarRuleMapper.selectList(new LambdaQueryWrapper<AttCalendarRule>()
+                        .in(AttCalendarRule::getCompanyId, companyIds));
+
+        // 6. 批量预载打卡记录（跨天班次窗口扩一天）
+        LocalDateTime clockWindowStart = startDate.atStartOfDay().minusHours(2);
+        LocalDateTime clockWindowEnd = endDate.plusDays(1).atTime(LocalTime.MAX);
+        var clockMap = new java.util.HashMap<Long, List<AttClockRecord>>();
+        for (AttClockRecord record : clockRecordMapper.selectList(new LambdaQueryWrapper<AttClockRecord>()
+                .in(AttClockRecord::getEmployeeId, empIds)
+                .between(AttClockRecord::getClockTime, clockWindowStart, clockWindowEnd)
+                .orderByAsc(AttClockRecord::getClockTime))) {
+            clockMap.computeIfAbsent(record.getEmployeeId(), k -> new ArrayList<>()).add(record);
+        }
+
+        // 7. 批量预载已审批的请假/出差单
+        var absenceMap = new java.util.HashMap<Long, List<HrApplication>>();
+        for (HrApplication app : applicationMapper.selectList(new LambdaQueryWrapper<HrApplication>()
+                .in(HrApplication::getEmployeeId, empIds)
+                .eq(HrApplication::getStatus, 1)
+                .in(HrApplication::getAppType, "leave", "business")
+                .le(HrApplication::getStartTime, endDate.atTime(LocalTime.MAX))
+                .ge(HrApplication::getEndTime, startDate.atStartOfDay()))) {
+            absenceMap.computeIfAbsent(app.getEmployeeId(), k -> new ArrayList<>()).add(app);
+        }
+
+        // 8. 批量预载已有日考勤记录（复用更新，识别锁定）
+        var existingMap = new java.util.HashMap<String, AttDailyRecord>();
+        for (AttDailyRecord record : dailyRecordMapper.selectList(new LambdaQueryWrapper<AttDailyRecord>()
+                .in(AttDailyRecord::getEmployeeId, empIds)
+                .between(AttDailyRecord::getAttDate, startDate, endDate))) {
+            existingMap.put(record.getEmployeeId() + "|" + record.getAttDate() + "|"
+                    + (record.getPeriodId() == null ? "" : record.getPeriodId()), record);
+        }
+
+        // 9. 纯内存计算
         LocalDate currentDate = startDate;
         while (!currentDate.isAfter(endDate)) {
             for (HrEmployee emp : employees) {
-                calculateEmployeeDailyAttendance(emp, currentDate);
+                calculateEmployeeDailyAttendance(emp, currentDate, scheduleMap, shiftMap, periodsMap, orgCache,
+                        rules, clockMap, absenceMap, existingMap);
             }
             currentDate = currentDate.plusDays(1);
         }
     }
 
     /**
-     * 计算单个员工某天的考勤（按时段）
+     * 计算单个员工某天的考勤（内存数据版，不再查库）
      */
-    private void calculateEmployeeDailyAttendance(HrEmployee emp, LocalDate date) {
+    private void calculateEmployeeDailyAttendance(HrEmployee emp, LocalDate date,
+            java.util.Map<String, AttSchedule> scheduleMap, java.util.Map<Long, AttShift> shiftMap,
+            java.util.Map<Long, List<AttShiftPeriod>> periodsMap, java.util.Map<Long, OrgUnit> orgCache,
+            List<AttCalendarRule> rules, java.util.Map<Long, List<AttClockRecord>> clockMap,
+            java.util.Map<Long, List<HrApplication>> absenceMap, java.util.Map<String, AttDailyRecord> existingMap) {
         // 1. 检查是否是休息日（考勤日历规则挂在公司上）
-        Long companyId = resolveCompanyId(emp.getDeptId());
-        if (isRestDay(companyId, date)) {
+        Long companyId = resolveCompanyIdFromCache(emp.getDeptId(), orgCache);
+        if (isRestDay(companyId, date, rules)) {
             return; // 休息日不生成考勤记录
         }
 
         // 2. 获取员工排班
-        AttSchedule schedule = scheduleMapper.selectOne(
-                new LambdaQueryWrapper<AttSchedule>()
-                        .eq(AttSchedule::getEmployeeId, emp.getId())
-                        .eq(AttSchedule::getScheduleDate, date));
-
+        AttSchedule schedule = scheduleMap.get(emp.getId() + "|" + date);
         if (schedule == null || schedule.getShiftId() == null) {
             return; // 没有排班不生成考勤
         }
 
         // 3. 获取班次信息
-        AttShift shift = shiftMapper.selectById(schedule.getShiftId());
+        AttShift shift = shiftMap.get(schedule.getShiftId());
         if (shift == null) {
             return;
         }
 
         // 4. 获取班次时段
-        List<AttShiftPeriod> periods = shiftPeriodMapper.selectList(
-                new LambdaQueryWrapper<AttShiftPeriod>()
-                        .eq(AttShiftPeriod::getShiftId, shift.getId())
-                        .orderByAsc(AttShiftPeriod::getSortOrder));
+        List<AttShiftPeriod> periods = periodsMap.getOrDefault(shift.getId(), List.of());
 
         List<ShiftPeriodPlan> periodPlans = buildPeriodPlans(date, shift, periods);
         if (periodPlans.isEmpty()) {
@@ -317,12 +440,13 @@ public class AttendanceService {
                 .orElse(date.plusDays(1).atStartOfDay())
                 .plusHours(1);
 
-        // 5. 获取班次窗口内的打卡记录，支持跨天班次
-        List<AttClockRecord> clockRecords = clockRecordMapper.selectList(
-                new LambdaQueryWrapper<AttClockRecord>()
-                        .eq(AttClockRecord::getEmployeeId, emp.getId())
-                        .between(AttClockRecord::getClockTime, queryStart, queryEnd)
-                        .orderByAsc(AttClockRecord::getClockTime));
+        // 5. 班次窗口内的打卡记录（内存过滤，支持跨天班次）
+        List<AttClockRecord> empClocks = clockMap.getOrDefault(emp.getId(), List.of());
+        List<AttClockRecord> clockRecords = empClocks.stream()
+                .filter(r -> r.getClockTime() != null
+                        && !r.getClockTime().isBefore(queryStart)
+                        && !r.getClockTime().isAfter(queryEnd))
+                .toList();
 
         LocalDateTime shiftActualIn = clockRecords.stream()
                 .filter(record -> record.getClockType() != null && record.getClockType() == 1)
@@ -334,32 +458,26 @@ public class AttendanceService {
                 .map(AttClockRecord::getClockTime)
                 .max(Comparator.naturalOrder())
                 .orElse(null);
-        Integer approvedAbsenceStatus = resolveApprovedAbsenceStatus(emp.getId(), date);
+        Integer approvedAbsenceStatus = resolveApprovedAbsenceStatus(emp.getId(), date,
+                absenceMap.getOrDefault(emp.getId(), List.of()));
 
         for (ShiftPeriodPlan plan : periodPlans) {
             calculateSinglePeriod(emp, date, shift, plan, clockRecords, shiftActualIn, shiftActualOut,
-                    approvedAbsenceStatus);
+                    approvedAbsenceStatus, existingMap);
         }
     }
 
     /**
-     * 计算单个时段的考勤
+     * 计算单个时段的考勤（记录复用自预载缓存）
      */
     private void calculateSinglePeriod(HrEmployee emp, LocalDate date, AttShift shift, ShiftPeriodPlan plan,
             List<AttClockRecord> clockRecords, LocalDateTime shiftActualIn, LocalDateTime shiftActualOut,
-            Integer approvedAbsenceStatus) {
+            Integer approvedAbsenceStatus, java.util.Map<String, AttDailyRecord> existingMap) {
 
-        // 查找或创建该时段的考勤记录
-        LambdaQueryWrapper<AttDailyRecord> wrapper = new LambdaQueryWrapper<AttDailyRecord>()
-                .eq(AttDailyRecord::getEmployeeId, emp.getId())
-                .eq(AttDailyRecord::getAttDate, date);
-        if (plan.periodId() != null) {
-            wrapper.eq(AttDailyRecord::getPeriodId, plan.periodId());
-        } else {
-            wrapper.isNull(AttDailyRecord::getPeriodId);
-        }
-
-        AttDailyRecord dailyRecord = dailyRecordMapper.selectOne(wrapper);
+        // 查找该时段的已有考勤记录
+        String recordKey = emp.getId() + "|" + date + "|"
+                + (plan.periodId() == null ? "" : plan.periodId());
+        AttDailyRecord dailyRecord = existingMap.get(recordKey);
 
         // 如果已锁定，跳过计算
         if (dailyRecord != null && dailyRecord.getLocked() != null && dailyRecord.getLocked() == 1) {
@@ -550,22 +668,24 @@ public class AttendanceService {
         return BigDecimal.valueOf(actualMinutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
     }
 
-    private Integer resolveApprovedAbsenceStatus(Long employeeId, LocalDate date) {
+    /**
+     * 从预载的申请单中判定请假(5)/出差(6)状态
+     */
+    private Integer resolveApprovedAbsenceStatus(Long employeeId, LocalDate date, List<HrApplication> applications) {
         LocalDateTime dayStart = date.atStartOfDay();
         LocalDateTime dayEnd = date.atTime(LocalTime.MAX);
-        List<HrApplication> applications = applicationMapper.selectList(
-                new LambdaQueryWrapper<HrApplication>()
-                        .eq(HrApplication::getEmployeeId, employeeId)
-                        .eq(HrApplication::getStatus, 1)
-                        .in(HrApplication::getAppType, "leave", "business")
-                        .le(HrApplication::getStartTime, dayEnd)
-                        .ge(HrApplication::getEndTime, dayStart));
 
-        boolean hasBusiness = applications.stream().anyMatch(app -> "business".equals(app.getAppType()));
+        boolean hasBusiness = applications.stream()
+                .filter(app -> app.getStartTime() != null && app.getEndTime() != null)
+                .filter(app -> !app.getStartTime().isAfter(dayEnd) && !app.getEndTime().isBefore(dayStart))
+                .anyMatch(app -> "business".equals(app.getAppType()));
         if (hasBusiness) {
             return 6;
         }
-        boolean hasLeave = applications.stream().anyMatch(app -> "leave".equals(app.getAppType()));
+        boolean hasLeave = applications.stream()
+                .filter(app -> app.getStartTime() != null && app.getEndTime() != null)
+                .filter(app -> !app.getStartTime().isAfter(dayEnd) && !app.getEndTime().isBefore(dayStart))
+                .anyMatch(app -> "leave".equals(app.getAppType()));
         return hasLeave ? 5 : null;
     }
 
@@ -588,16 +708,22 @@ public class AttendanceService {
         return new ArrayList<>(expanded);
     }
 
-    private Long resolveCompanyId(Long unitId) {
-        OrgUnit current = unitId == null ? null : orgUnitMapper.selectById(unitId);
-        while (current != null) {
+    /**
+     * 从预载的组织缓存中逐级向上找公司
+     */
+    private Long resolveCompanyIdFromCache(Long unitId, java.util.Map<Long, OrgUnit> orgCache) {
+        Long currentId = unitId;
+        int depth = 0;
+        while (currentId != null && depth < 20) {
+            OrgUnit current = orgCache.get(currentId);
+            if (current == null) {
+                return null;
+            }
             if (current.getUnitType() != null && current.getUnitType() == OrgUnit.TYPE_COMPANY) {
                 return current.getId();
             }
-            if (current.getParentId() == null || current.getParentId() == 0) {
-                break;
-            }
-            current = orgUnitMapper.selectById(current.getParentId());
+            currentId = current.getParentId();
+            depth++;
         }
         return null;
     }
@@ -608,41 +734,35 @@ public class AttendanceService {
     }
 
     /**
-     * 判断是否是休息日
+     * 判断是否是休息日（基于预载的规则列表）
      */
-    private boolean isRestDay(Long companyId, LocalDate date) {
+    private boolean isRestDay(Long companyId, LocalDate date, List<AttCalendarRule> rules) {
         if (companyId == null) {
             return false;
         }
 
         // 1. 检查是否是调休上班日（优先级最高）
-        AttCalendarRule workDay = calendarRuleMapper.selectOne(
-                new LambdaQueryWrapper<AttCalendarRule>()
-                        .eq(AttCalendarRule::getCompanyId, companyId)
-                        .eq(AttCalendarRule::getRuleType, 5) // 调休上班
-                        .le(AttCalendarRule::getStartDate, date)
-                        .ge(AttCalendarRule::getEndDate, date));
-        if (workDay != null) {
+        boolean workDay = rules.stream().anyMatch(rule -> companyId.equals(rule.getCompanyId())
+                && rule.getRuleType() != null && rule.getRuleType() == 5
+                && !date.isBefore(rule.getStartDate()) && !date.isAfter(rule.getEndDate()));
+        if (workDay) {
             return false; // 调休上班，不是休息日
         }
 
         // 2. 检查是否是法定假日
-        AttCalendarRule holiday = calendarRuleMapper.selectOne(
-                new LambdaQueryWrapper<AttCalendarRule>()
-                        .eq(AttCalendarRule::getCompanyId, companyId)
-                        .eq(AttCalendarRule::getRuleType, 4) // 法定假日
-                        .le(AttCalendarRule::getStartDate, date)
-                        .ge(AttCalendarRule::getEndDate, date));
-        if (holiday != null) {
+        boolean holiday = rules.stream().anyMatch(rule -> companyId.equals(rule.getCompanyId())
+                && rule.getRuleType() != null && rule.getRuleType() == 4
+                && !date.isBefore(rule.getStartDate()) && !date.isAfter(rule.getEndDate()));
+        if (holiday) {
             return true; // 法定假日是休息日
         }
 
         // 3. 检查公司休息规则
-        AttCalendarRule restRule = calendarRuleMapper.selectOne(
-                new LambdaQueryWrapper<AttCalendarRule>()
-                        .eq(AttCalendarRule::getCompanyId, companyId)
-                        .in(AttCalendarRule::getRuleType, 1, 2, 3) // 单休周日、双休、单休周六
-        );
+        AttCalendarRule restRule = rules.stream()
+                .filter(rule -> companyId.equals(rule.getCompanyId()) && rule.getRuleType() != null
+                        && (rule.getRuleType() == 1 || rule.getRuleType() == 2 || rule.getRuleType() == 3))
+                .findFirst()
+                .orElse(null);
 
         if (restRule != null) {
             DayOfWeek dayOfWeek = date.getDayOfWeek();

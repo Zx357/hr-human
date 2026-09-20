@@ -86,7 +86,7 @@ const props = defineProps({
   // 默认头像
   defaultAvatar: {
     type: String,
-    default: 'https://resource.tuniaokj.com/images/simple/image2.jpg'
+    default: '/static/author.jpg'
   },
   // 自定义索引列表
   indexList: {

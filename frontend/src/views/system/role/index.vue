@@ -211,20 +211,11 @@ async function handleSubmit() {
   const halfCheckedKeys = menuTreeRef.value?.getHalfCheckedKeys() || [];
   const menuIds = [...checkedKeys, ...halfCheckedKeys];
 
-  console.log('提交角色数据:', {
-    formData: { ...formData },
-    checkedKeys,
-    halfCheckedKeys,
-    menuIds
-  });
-
-  const { error, data } = await request({
+  const { error } = await request({
     url,
     method,
     data: { ...formData, menuIds }
   });
-
-  console.log('提交结果:', { error, data });
 
   if (!error) {
     ElMessage.success(isEdit ? '更新成功' : '新增成功');
@@ -240,13 +231,10 @@ async function handleDelete(row: any) {
       type: 'warning'
     });
 
-    console.log('删除角色请求:', row.id);
-    const { error, data } = await request({
+    const { error } = await request({
       url: `/system/role/${row.id}`,
       method: 'delete'
     });
-
-    console.log('删除角色响应:', { error, data });
 
     if (!error) {
       ElMessage.success('删除成功');
@@ -256,7 +244,7 @@ async function handleDelete(row: any) {
     }
   } catch {
     // 用户取消删除
-    console.log('用户取消删除');
+    // 用户取消删除
   }
 }
 
@@ -345,7 +333,7 @@ onMounted(() => {
     <!-- 表格区域 -->
     <ElCard class="table-card">
       <template #header>
-        <div class="flex justify-between items-center">
+        <div class="flex items-center justify-between">
           <span>角色列表</span>
           <ElButton v-permission="'system:role:add'" type="primary" @click="handleAdd">
             <template #icon><icon-ep-plus /></template>
@@ -356,42 +344,39 @@ onMounted(() => {
 
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="tableData" border stripe height="100%">
-        <ElTableColumn prop="id" label="ID" width="80" />
-        <ElTableColumn prop="roleCode" label="角色编码" width="120" />
-        <ElTableColumn prop="roleName" label="角色名称" width="120" />
-        <ElTableColumn prop="dataScope" label="数据权限" width="140">
-          <template #default="{ row }">
-            <ElTag :type="row.dataScope === 1 ? 'success' : row.dataScope === 5 ? 'warning' : 'primary'">
-              {{ dataScopeOptions.find(o => o.value === row.dataScope)?.label || '全部数据' }}
-            </ElTag>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="description" label="描述" min-width="150" />
-        <ElTableColumn prop="sortOrder" label="排序" width="80" />
-        <ElTableColumn prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <ElSwitch
-              v-model="row.status"
-              :active-value="1"
-              :inactive-value="0"
-              @change="handleStatusChange(row)"
-            />
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="createdTime" label="创建时间" width="180" />
-        <ElTableColumn label="操作" width="150" fixed="right">
-          <template #default="{ row }">
-            <ElButton v-permission="'system:role:edit'" type="primary" link @click="handleEdit(row)">编辑</ElButton>
-            <ElButton
-              v-if="row.roleCode !== 'ROLE_ADMIN'"
-              v-permission="'system:role:delete'"
-              type="danger"
-              link
-              @click="handleDelete(row)"
-            >删除</ElButton>
-          </template>
-        </ElTableColumn>
-      </ElTable>
+          <ElTableColumn prop="id" label="ID" width="80" />
+          <ElTableColumn prop="roleCode" label="角色编码" width="120" />
+          <ElTableColumn prop="roleName" label="角色名称" width="120" />
+          <ElTableColumn prop="dataScope" label="数据权限" width="140">
+            <template #default="{ row }">
+              <ElTag :type="row.dataScope === 1 ? 'success' : row.dataScope === 5 ? 'warning' : 'primary'">
+                {{ dataScopeOptions.find(o => o.value === row.dataScope)?.label || '全部数据' }}
+              </ElTag>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn prop="description" label="描述" min-width="150" />
+          <ElTableColumn prop="sortOrder" label="排序" width="80" />
+          <ElTableColumn prop="status" label="状态" width="100">
+            <template #default="{ row }">
+              <ElSwitch v-model="row.status" :active-value="1" :inactive-value="0" @change="handleStatusChange(row)" />
+            </template>
+          </ElTableColumn>
+          <ElTableColumn prop="createdTime" label="创建时间" width="180" />
+          <ElTableColumn label="操作" width="150" fixed="right">
+            <template #default="{ row }">
+              <ElButton v-permission="'system:role:edit'" type="primary" link @click="handleEdit(row)">编辑</ElButton>
+              <ElButton
+                v-if="row.roleCode !== 'ROLE_ADMIN'"
+                v-permission="'system:role:delete'"
+                type="danger"
+                link
+                @click="handleDelete(row)"
+              >
+                删除
+              </ElButton>
+            </template>
+          </ElTableColumn>
+        </ElTable>
       </div>
 
       <div class="mt-16px flex justify-end">
@@ -439,12 +424,7 @@ onMounted(() => {
         </ElRow>
         <ElFormItem label="数据权限">
           <ElSelect v-model="formData.dataScope" placeholder="请选择数据权限" style="width: 100%">
-            <ElOption
-              v-for="item in dataScopeOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
+            <ElOption v-for="item in dataScopeOptions" :key="item.value" :label="item.label" :value="item.value" />
           </ElSelect>
         </ElFormItem>
         <ElFormItem label="描述">
@@ -456,7 +436,7 @@ onMounted(() => {
             <ElCheckbox v-model="menuCheckAll" @change="handleCheckAll">全选/全不选</ElCheckbox>
             <ElCheckbox v-model="menuCheckStrictly">父子联动</ElCheckbox>
           </div>
-          <div class="w-full border border-gray-200 rounded p-8px max-h-300px overflow-auto">
+          <div class="max-h-300px w-full overflow-auto border border-gray-200 rounded p-8px">
             <ElTree
               ref="menuTreeRef"
               :data="menuTreeData"

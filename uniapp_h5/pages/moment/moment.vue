@@ -24,14 +24,14 @@
         <view class="tn-flex tn-flex-col-center tn-bg-gray--light" style="border-radius: 100rpx;" @click="tn('/momentPages/message')">
           <view class="" style="padding: 10rpx;">
             <view class="message-pic">
-              <view class="message-image" style="background-image:url('https://cdn.nlark.com/yuque/0/2022/jpeg/280373/1671437658295-assets/web-upload/05620a1f-452e-4a14-9d30-f6c66ee4be1c.jpeg');width: 50rpx;height: 50rpx;background-size: cover;">
+              <view class="message-image" style="background-image:url('/static/author.jpg');width: 50rpx;height: 50rpx;background-size: cover;">
               </view>
             </view>
           </view>
           <view class="" style="padding: 10rpx 30rpx 10rpx 10rpx;">
             <view class="tn-flex tn-flex-row-between tn-flex-col-between">
               <view class="justify-content-item">
-            <text class="tn-color-bdhook tn-text-df">{{ messageCount }} 条新消息</text>
+            <text class="tn-color-bdhook tn-text-df">{{ messageCount > 0 ? messageCount + ' 条新消息' : '暂无新消息' }}</text>
               </view>
             </view>
           </view>
@@ -44,7 +44,7 @@
         <block v-for="(item,index) in currentContent" :key="item.id || index">
           <view class="blogger__item tn-margin-bottom-sm tn-margin-top-sm">
             <view class="blogger__author tn-flex tn-flex-row-between tn-flex-col-center">
-              <view class="justify__author__info" @click="tn('/momentPages/blogger_other')">
+              <view class="justify__author__info" @click="goUser(item)">
                 <view class="tn-flex tn-flex-row-center">
                   <view class="tn-flex tn-flex-row-center tn-flex-col-center">
                     <view class="logo-pic">
@@ -130,93 +130,13 @@
         
         <!-- 边距间隔 -->
         <view class="tn-strip-bottom-min"></view>
-        
-        <!-- 图文信息 -->
-        <block v-for="(item,index) in currentContent" :key="'second-' + (item.id || index)">
-          <view class="blogger__item tn-margin-bottom-sm tn-margin-top-sm">
-            <view class="blogger__author tn-flex tn-flex-row-between tn-flex-col-center">
-              <view class="justify__author__info" @click="tn('/momentPages/blogger_other')">
-                <view class="tn-flex tn-flex-row-center">
-                  <view class="tn-flex tn-flex-row-center tn-flex-col-center">
-                    <view class="logo-pic">
-                      <view class="logo-image" :style="'background-image:url(' + item.userAvatar + ');width: 70rpx;height: 70rpx;background-size: cover;'">
-                      </view>
-                    </view>
-                    
-                    <view class="tn-padding-right tn-text-ellipsis">
-                      <view class="tn-padding-right tn-padding-left-sm tn-text-bold tn-text-lg">{{ item.userName }}</view>
-                      <view class="tn-padding-right tn-padding-left-sm tn-padding-top-xs tn-color-gray tn-text-xs">{{ item.post }}</view>
-                    </view>
-                  </view>
-                </view>
-              </view>
-              <view class="blogger__author__btn justify-content-item tn-flex-col-center tn-flex-row-center">
-                <text class="tn-icon-more-vertical tn-color-gray tn-text-bold tn-text-xxl"></text>
-              </view>
-            </view>
-            
-            <view class="" style="margin-left: 90rpx;">
-           
-              <view class="blogger__desc tn-margin-top-sm tn-margin-bottom-sm tn-text-justify tn-flex-col-center tn-flex-row-left" @click="goDetail(item)">
-                <view v-for="(label_item,label_index) in item.label" :key="'label-' + label_index" class="blogger__desc__label tn-float-left tn-margin-right">
-                  <text class="blogger__desc__label--prefix tn-icon-topics-fill"></text> 
-                  <text class="tn-text-df">{{ label_item }}</text>
-                </view>
-                <text v-if="!item.label || item.label.length < 4" class="blogger__desc__content tn-flex-1 tn-text-justify tn-text-df">{{ item.desc }}</text>  
-              </view>
-              
-              <block v-if="item.mainImage">
-                <view v-if="[1,2,4].indexOf(item.mainImage.length) != -1" class="tn-padding-top-xs" @click="goDetail(item)">
-                  <image v-for="(image_item,image_index) in item.mainImage" :key="'img-' + image_index" 
-                    class="blogger__main-image"
-                    :class="{
-                      'blogger__main-image--1 tn-margin-bottom-sm': item.mainImage.length === 1,
-                      'blogger__main-image--2 tn-margin-right-sm tn-margin-bottom-sm': item.mainImage.length === 2 || item.mainImage.length === 4
-                    }"
-                    :src="image_item"
-                    mode="aspectFill"
-                  ></image>
-                </view>
-                <view v-else class="tn-padding-top-xs" style="" @click="goDetail(item)">
-                  <view class="blogger__grid-image">
-                    <block v-for="(image_item,image_index) in item.mainImage" :key="'img-grid-' + image_index">
-                      <image
-                        class="blogger__main-image blogger__main-image--3"
-                        :src="image_item"
-                        mode="aspectFill"
-                      ></image>
-                    </block>
-                  </view>
-                </view>
-              </block>
-             
-              <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-margin-top-xs">
-                <view class="justify-content-item tn-flex tn-flex-col-center">
-                  <text class="tn-color-gray">{{ item.date }}</text>
-                </view>
-                <view class="justify-content-item tn-color-gray tn-text-center" style="padding-top: 5rpx;">
-                  <text class="tn-icon-message tn-text-lg" style="padding-right: 5rpx;"></text>
-                  <text class="tn-padding-right tn-text-df">{{ item.commentCount }}</text>
-                  <text
-                    :class="item.liked ? 'tn-icon-like-fill' : 'tn-icon-like-lack'"
-                    class="tn-text-lg"
-                    style="padding-right: 5rpx;"
-                    @click.stop="toggleLike(item)"
-                  ></text>
-                  <text class="tn-text-df">{{ item.likeCount }}</text>
-                </view>
-        
-              </view>
-            
-            </view>
-            
-          </view>
-          
-          <!-- 边距间隔 -->
-          <view class="tn-strip-bottom-min" v-if="index != currentContent.length - 1"></view>
-        </block>
-         
-            
+
+        <!-- 加载更多状态 -->
+        <view class="load-more-state">
+          <text v-if="loadingMore" class="tn-color-gray tn-text-sm">加载中...</text>
+          <text v-else-if="finished && currentContent.length" class="tn-color-gray--disabled tn-text-sm">没有更多了</text>
+        </view>
+
       </view>
       
       <view class="tn-flex tn-flex-direction-column tn-margin-top-sm tn-margin-bottom" v-if="!currentContent.length">
@@ -246,10 +166,12 @@
 </template>
 
 <script setup>
-  import { computed, ref } from 'vue'
-  import { onShow } from '@dcloudio/uni-app'
+  import { computed, onMounted, ref } from 'vue'
+  import { useStore } from 'vuex'
   import config from '@/config'
   import { getMomentMessages, getMomentPosts, toggleMomentLike } from '@/api/moment'
+
+  const store = useStore()
  
   // 当前tab索引
 const current = ref(0)
@@ -275,7 +197,7 @@ const messageCount = computed(() => messageSummary.value.unreadCount || 0)
 
 const currentContent = computed(() => {
   if (current.value === 1) {
-    return content.value.filter((item, index) => item.mainImage?.length || index % 2 === 0)
+    return content.value.filter((item) => item.mainImage && item.mainImage.length > 0)
   }
   if (current.value === 2) {
     return [...content.value].sort((a, b) => b.likeCount - a.likeCount)
@@ -302,7 +224,7 @@ const splitField = (value) => {
 }
 
 const formatAvatar = (avatar) => {
-  if (!avatar) return 'https://resource.tuniaokj.com/images/blogger/avatar_1.jpeg'
+  if (!avatar) return '/static/author.jpg'
   if (/^https?:\/\//.test(avatar) || avatar.startsWith('/static')) return avatar
   return config.baseUrl + avatar
 }
@@ -334,21 +256,62 @@ const normalizePost = (item) => {
     commentCount: Number(item.commentCount || 0),
     likeCount: Number(item.likeCount || 0),
     liked: !!item.liked,
+    employeeId: item.employeeId,
     raw: item
   }
 }
 
+// 分页状态
+const pageSize = 10
+const pageNum = ref(1)
+const loadingMore = ref(false)
+const finished = ref(false)
+
 const loadMoments = async () => {
+  // 记录请求发起时的 tab,响应回来时若已切换 tab 则丢弃,避免旧响应覆盖新列表
+  const requestTab = current.value
+  pageNum.value = 1
+  finished.value = false
   try {
     const res = await getMomentPosts({
-      pageNum: 1,
-      pageSize: 20,
+      pageNum: pageNum.value,
+      pageSize,
       tab: getTabKey()
     })
+    if (current.value !== requestTab) return
     const list = normalizeList(res.data)
     content.value = list.map(normalizePost)
+    if (list.length < pageSize) finished.value = true
   } catch (error) {
     console.log('加载时光动态失败', error)
+    uni.showToast({ icon: 'none', title: '加载动态失败' })
+  }
+}
+
+// 触底加载更多
+const loadMoreMoments = async () => {
+  if (loadingMore.value || finished.value) return
+  loadingMore.value = true
+  // 记录请求发起时的 tab,响应回来时若已切换 tab 则丢弃,避免旧数据 concat 进新列表
+  const requestTab = current.value
+  const nextPage = pageNum.value + 1
+  try {
+    const res = await getMomentPosts({
+      pageNum: nextPage,
+      pageSize,
+      tab: getTabKey()
+    })
+    if (current.value !== requestTab) return
+    const list = normalizeList(res.data).map(normalizePost)
+    const seen = new Set(content.value.map((item) => String(item.id)))
+    content.value = content.value.concat(list.filter((item) => !seen.has(String(item.id))))
+    pageNum.value = nextPage
+    if (list.length < pageSize) finished.value = true
+  } catch (error) {
+    console.log('加载更多动态失败', error)
+    uni.showToast({ icon: 'none', title: '加载失败，请重试' })
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -359,6 +322,8 @@ const loadMomentMessages = async () => {
       ...messageSummary.value,
       ...(res.data || {})
     }
+    // 同步时光未读数到 tabbar 角标
+    store.commit('SET_UNREAD_BADGE', { momentUnread: Number(res.data?.unreadCount || 0) })
   } catch (error) {
     console.log('加载时光消息失败', error)
   }
@@ -404,10 +369,26 @@ const goDetail = (item) => {
   })
 }
 
-// tab 页常驻内存,每次切到时光都刷新
-onShow(() => {
+// 作者主页 → 跳转真实同事详情页
+const goUser = (item) => {
+  if (!item || !item.employeeId) return
+  uni.navigateTo({
+    url: `/partnerPages/user?id=${item.employeeId}`
+  })
+}
+
+// tab 页常驻内存,首次挂载加载数据,后续由父页面切换/下拉时刷新
+onMounted(() => {
   loadMoments()
   loadMomentMessages()
+})
+
+// 供 pages/index.vue 调用:刷新 / 触底加载更多
+defineExpose({
+  refresh: async () => {
+    await Promise.allSettled([loadMoments(), loadMomentMessages()])
+  },
+  loadMore: loadMoreMoments
 })
 </script>
 

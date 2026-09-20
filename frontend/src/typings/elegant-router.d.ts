@@ -61,6 +61,7 @@ declare module "@elegant-router/types" {
     "system_menu": "/system/menu";
     "system_mobile-menu": "/system/mobile-menu";
     "system_notice": "/system/notice";
+    "system_oper-log": "/system/oper-log";
     "system_role": "/system/role";
     "system_user": "/system/user";
     "user-center": "/user-center";
@@ -162,6 +163,7 @@ declare module "@elegant-router/types" {
     | "system_menu"
     | "system_mobile-menu"
     | "system_notice"
+    | "system_oper-log"
     | "system_role"
     | "system_user"
     | "user-center"

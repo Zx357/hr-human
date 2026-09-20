@@ -4,6 +4,8 @@ import { ElMessage } from 'element-plus';
 import { fetchEmployeePage } from '@/service/api/hr';
 import { fetchCompanyList, fetchDepartmentTree } from '@/service/api/organization';
 import { fetchDictDataByCode } from '@/service/api/system';
+import { type EmployeeReportSummary, fetchEmployeeReportSummary } from '@/service/api/report';
+import { useEcharts } from '@/hooks/common/echarts';
 import { getDictLabelByValue } from '@/utils/dict';
 import { downloadCsv, resolveOrgIds } from '@/utils/report';
 
@@ -75,47 +77,116 @@ const selectedOrgIds = computed<number[] | undefined>(() => {
   return resolveOrgIds(departments.value, searchParams.value.deptId);
 });
 
-const totalEmployees = computed(() => employees.value.length);
+/** 后端统计接口数据：优先使用，接口失败或返回空时回退到前端全量计算 */
+const employeeSummary = ref<EmployeeReportSummary | null>(null);
+
+const totalEmployees = computed(() => {
+  if (employeeSummary.value?.totals) {
+    return Number(employeeSummary.value.totals.total || 0);
+  }
+  return employees.value.length;
+});
 
 const summaryCards = computed<StatCard[]>(() => {
+  const currentMonth = getCurrentMonthKey();
+  const newThisMonthLocal = employees.value.filter(item => isInMonth(item.entryDate, currentMonth)).length;
+  const resignedThisMonthLocal = employees.value.filter(item => isInMonth(item.leaveDate, currentMonth)).length;
+  const averageAge = getAverageAge(employees.value);
+
+  // 优先使用后端统计接口数据
+  const api = employeeSummary.value;
+  if (api?.totals) {
+    const apiTrend = api.monthlyTrend?.find(item => item.month === currentMonth);
+    return [
+      { label: '员工总数', value: Number(api.totals.total || 0), hint: '当前筛选条件下的员工数量', tone: 'primary' },
+      { label: '在职人数', value: Number(api.totals.active || 0), hint: '状态为在职的员工', tone: 'success' },
+      { label: '试用期人数', value: Number(api.totals.probation || 0), hint: '状态为试用期的员工', tone: 'info' },
+      { label: '离职人数', value: Number(api.totals.resigned || 0), hint: '状态为离职的员工', tone: 'warning' },
+      {
+        label: '本月入职',
+        value: apiTrend ? Number(apiTrend.entry || 0) : newThisMonthLocal,
+        hint: '按入职日期统计',
+        tone: 'primary'
+      },
+      {
+        label: '本月离职',
+        value: apiTrend ? Number(apiTrend.exit || 0) : resignedThisMonthLocal,
+        hint: '按离职日期统计',
+        tone: 'danger'
+      },
+      {
+        label: '平均年龄',
+        value: averageAge > 0 ? `${averageAge.toFixed(1)} 岁` : '-',
+        hint: '基于已填写生日的员工',
+        tone: 'primary'
+      }
+    ];
+  }
+
+  // 回退：前端全量计算
   const onJobCount = employees.value.filter(item => item.status === 1).length;
   const resignedCount = employees.value.filter(item => item.status === 2).length;
-  const currentMonth = getCurrentMonthKey();
-  const newThisMonth = employees.value.filter(item => isInMonth(item.entryDate, currentMonth)).length;
-  const resignedThisMonth = employees.value.filter(item => isInMonth(item.leaveDate, currentMonth)).length;
-  const averageAge = getAverageAge(employees.value);
 
   return [
     { label: '员工总数', value: totalEmployees.value, hint: '当前筛选条件下的员工数量', tone: 'primary' },
     { label: '在职人数', value: onJobCount, hint: '状态为在职的员工', tone: 'success' },
     { label: '离职人数', value: resignedCount, hint: '状态为离职的员工', tone: 'warning' },
-    { label: '本月入职', value: newThisMonth, hint: '按入职日期统计', tone: 'info' },
-    { label: '本月离职', value: resignedThisMonth, hint: '按离职日期统计', tone: 'danger' },
-    { label: '平均年龄', value: averageAge > 0 ? `${averageAge.toFixed(1)} 岁` : '-', hint: '基于已填写生日的员工', tone: 'primary' }
+    { label: '本月入职', value: newThisMonthLocal, hint: '按入职日期统计', tone: 'info' },
+    { label: '本月离职', value: resignedThisMonthLocal, hint: '按离职日期统计', tone: 'danger' },
+    {
+      label: '平均年龄',
+      value: averageAge > 0 ? `${averageAge.toFixed(1)} 岁` : '-',
+      hint: '基于已填写生日的员工',
+      tone: 'primary'
+    }
   ];
 });
 
-const departmentDistribution = computed(() =>
-  buildDistribution(
+function fromNameValue(items?: { name: string; value: number }[]): Record<string, number> {
+  const record: Record<string, number> = {};
+  for (const item of items || []) {
+    if (item?.name !== undefined && item?.name !== null) {
+      record[item.name] = Number(item.value || 0);
+    }
+  }
+  return record;
+}
+
+const departmentDistribution = computed(() => {
+  // 优先使用后端统计接口数据
+  if (employeeSummary.value?.deptDistribution?.length) {
+    return buildDistribution(fromNameValue(employeeSummary.value.deptDistribution));
+  }
+
+  // 回退：前端全量计算
+  return buildDistribution(
     employees.value.reduce<Record<string, number>>((acc, item) => {
       const name = item.deptName || '未分配部门';
       acc[name] = (acc[name] || 0) + 1;
 
       return acc;
     }, {})
-  )
-);
+  );
+});
 
-const educationDistribution = computed(() =>
-  buildDistribution(
+const educationDistribution = computed(() => {
+  // 优先使用后端统计接口数据（名称已是文案）
+  if (employeeSummary.value?.education?.length) {
+    return buildDistribution(fromNameValue(employeeSummary.value.education));
+  }
+
+  // 回退：前端全量计算
+  return buildDistribution(
     employees.value.reduce<Record<string, number>>((acc, item) => {
-      const name = item.highestEducation ? getDictLabelByValue(educationOptions.value, item.highestEducation) : '未填写';
+      const name = item.highestEducation
+        ? getDictLabelByValue(educationOptions.value, item.highestEducation)
+        : '未填写';
       acc[name] = (acc[name] || 0) + 1;
 
       return acc;
     }, {})
-  )
-);
+  );
+});
 
 const employeeTypeDistribution = computed(() =>
   buildDistribution(
@@ -129,6 +200,12 @@ const employeeTypeDistribution = computed(() =>
 );
 
 const ageDistribution = computed(() => {
+  // 优先使用后端统计接口数据
+  if (employeeSummary.value?.ageBuckets?.length) {
+    return buildDistribution(fromNameValue(employeeSummary.value.ageBuckets));
+  }
+
+  // 回退：前端全量计算
   const bucketMap: Record<string, number> = {
     '24岁及以下': 0,
     '25-29岁': 0,
@@ -136,7 +213,7 @@ const ageDistribution = computed(() => {
     '35-39岁': 0,
     '40-44岁': 0,
     '45岁及以上': 0,
-    '未填写': 0
+    未填写: 0
   };
 
   for (const item of employees.value) {
@@ -163,6 +240,17 @@ const ageDistribution = computed(() => {
 });
 
 const entryTrend = computed<TrendRow[]>(() => {
+  // 优先使用后端统计接口数据
+  if (employeeSummary.value?.monthlyTrend?.length) {
+    return employeeSummary.value.monthlyTrend.map(item => {
+      const entry = Number(item.entry || 0);
+      const resign = Number(item.exit || 0);
+
+      return { month: item.month, entry, resign, net: entry - resign };
+    });
+  }
+
+  // 回退：前端全量计算
   return getRecentMonths(12).map(month => {
     const entry = employees.value.filter(item => isInMonth(item.entryDate, month)).length;
     const resign = employees.value.filter(item => isInMonth(item.leaveDate, month)).length;
@@ -181,6 +269,119 @@ const pagedEmployees = computed(() => {
 
   return employees.value.slice(start, start + pagination.value.pageSize);
 });
+
+// ==================== 图表 ====================
+
+/** 近 12 个月入离职趋势 - 折线图 */
+const { domRef: trendChartRef, updateOptions: updateTrendOptions } = useEcharts(() => ({
+  tooltip: { trigger: 'axis' },
+  legend: { data: ['入职人数', '离职人数', '净增长'], top: 0 },
+  grid: { left: '2%', right: '2%', bottom: '3%', top: '40px', containLabel: true },
+  xAxis: {
+    type: 'category',
+    boundaryGap: false,
+    data: [] as string[],
+    axisLabel: { color: '#9ca3af', fontSize: 12 }
+  },
+  yAxis: {
+    type: 'value',
+    minInterval: 1,
+    splitLine: { lineStyle: { color: '#f3f4f6', type: 'dashed' } },
+    axisLabel: { color: '#9ca3af', fontSize: 12 }
+  },
+  series: [
+    {
+      name: '入职人数',
+      type: 'line',
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 6,
+      itemStyle: { color: '#10b981' },
+      data: [] as number[]
+    },
+    {
+      name: '离职人数',
+      type: 'line',
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 6,
+      itemStyle: { color: '#ef4444' },
+      data: [] as number[]
+    },
+    {
+      name: '净增长',
+      type: 'line',
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 6,
+      itemStyle: { color: '#6366f1' },
+      lineStyle: { type: 'dashed' },
+      data: [] as number[]
+    }
+  ]
+}));
+
+/** 年龄分布 - 环形图 */
+const { domRef: ageChartRef, updateOptions: updateAgeOptions } = useEcharts(() => ({
+  tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
+  legend: { orient: 'vertical', right: 0, top: 'middle', textStyle: { color: '#6b7280' } },
+  series: [
+    {
+      name: '年龄分布',
+      type: 'pie',
+      radius: ['42%', '68%'],
+      center: ['38%', '50%'],
+      avoidLabelOverlap: true,
+      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+      label: { show: false },
+      emphasis: {
+        label: { show: true, fontSize: 14, fontWeight: 'bold' }
+      },
+      data: [] as { name: string; value: number }[]
+    }
+  ]
+}));
+
+/** 学历分布 - 环形图 */
+const { domRef: educationChartRef, updateOptions: updateEducationOptions } = useEcharts(() => ({
+  tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
+  legend: { orient: 'vertical', right: 0, top: 'middle', textStyle: { color: '#6b7280' } },
+  series: [
+    {
+      name: '学历分布',
+      type: 'pie',
+      radius: ['42%', '68%'],
+      center: ['38%', '50%'],
+      avoidLabelOverlap: true,
+      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+      label: { show: false },
+      emphasis: {
+        label: { show: true, fontSize: 14, fontWeight: 'bold' }
+      },
+      data: [] as { name: string; value: number }[]
+    }
+  ]
+}));
+
+function renderCharts() {
+  updateTrendOptions(opts => {
+    opts.xAxis.data = entryTrend.value.map(item => item.month);
+    opts.series[0].data = entryTrend.value.map(item => item.entry);
+    opts.series[1].data = entryTrend.value.map(item => item.resign);
+    opts.series[2].data = entryTrend.value.map(item => item.net);
+    return opts;
+  });
+
+  updateAgeOptions(opts => {
+    opts.series[0].data = ageDistribution.value.map(item => ({ name: item.name, value: item.value }));
+    return opts;
+  });
+
+  updateEducationOptions(opts => {
+    opts.series[0].data = educationDistribution.value.map(item => ({ name: item.name, value: item.value }));
+    return opts;
+  });
+}
 
 async function loadBaseData() {
   const [companyRes, educationRes, employeeTypeRes, genderRes] = await Promise.all([
@@ -238,12 +439,31 @@ async function fetchAllEmployees() {
   return records;
 }
 
+/** 加载后端统计接口（失败时置空，回退前端计算） */
+async function loadSummary() {
+  try {
+    const res = await fetchEmployeeReportSummary({
+      companyId: searchParams.value.companyId,
+      deptId: searchParams.value.deptId
+    });
+    employeeSummary.value = res.data && res.data.totals ? res.data : null;
+  } catch {
+    employeeSummary.value = null;
+  }
+}
+
 async function loadData() {
   loading.value = true;
 
   try {
-    employees.value = await fetchAllEmployees();
+    await Promise.all([
+      loadSummary(),
+      fetchAllEmployees().then(records => {
+        employees.value = records;
+      })
+    ]);
     pagination.value.current = 1;
+    renderCharts();
   } finally {
     loading.value = false;
   }
@@ -468,7 +688,13 @@ onMounted(async () => {
     </ElCard>
 
     <div class="summary-grid grid grid-cols-6 gap-16px lt-lg:grid-cols-3 lt-sm:grid-cols-2">
-      <ElCard v-for="card in summaryCards" :key="card.label" shadow="hover" class="stat-card" :class="`stat-card--${card.tone}`">
+      <ElCard
+        v-for="card in summaryCards"
+        :key="card.label"
+        shadow="hover"
+        class="stat-card"
+        :class="`stat-card--${card.tone}`"
+      >
         <div class="stat-card__label">{{ card.label }}</div>
         <div class="stat-card__value">{{ card.value }}</div>
         <div class="stat-card__hint">{{ card.hint }}</div>
@@ -484,7 +710,14 @@ onMounted(async () => {
           </div>
         </template>
         <div class="table-wrapper">
-          <ElTable :data="departmentDistribution" border stripe size="small" max-height="320" class="table-content table-content--distribution">
+          <ElTable
+            :data="departmentDistribution"
+            border
+            stripe
+            size="small"
+            max-height="320"
+            class="table-content table-content--distribution"
+          >
             <ElTableColumn type="index" label="#" width="54" align="center" />
             <ElTableColumn prop="name" label="部门" min-width="180" show-overflow-tooltip />
             <ElTableColumn prop="value" label="人数" width="90" align="center" />
@@ -504,8 +737,16 @@ onMounted(async () => {
             <span class="card-header__meta">共 {{ totalEmployees }} 人</span>
           </div>
         </template>
+        <div ref="educationChartRef" class="h-300px overflow-hidden"></div>
         <div class="table-wrapper">
-          <ElTable :data="educationDistribution" border stripe size="small" max-height="320" class="table-content table-content--distribution">
+          <ElTable
+            :data="educationDistribution"
+            border
+            stripe
+            size="small"
+            max-height="320"
+            class="table-content table-content--distribution"
+          >
             <ElTableColumn type="index" label="#" width="54" align="center" />
             <ElTableColumn prop="name" label="学历" min-width="180" />
             <ElTableColumn prop="value" label="人数" width="90" align="center" />
@@ -526,7 +767,14 @@ onMounted(async () => {
           </div>
         </template>
         <div class="table-wrapper">
-          <ElTable :data="employeeTypeDistribution" border stripe size="small" max-height="320" class="table-content table-content--distribution">
+          <ElTable
+            :data="employeeTypeDistribution"
+            border
+            stripe
+            size="small"
+            max-height="320"
+            class="table-content table-content--distribution"
+          >
             <ElTableColumn type="index" label="#" width="54" align="center" />
             <ElTableColumn prop="name" label="员工类别" min-width="180" />
             <ElTableColumn prop="value" label="人数" width="90" align="center" />
@@ -546,8 +794,16 @@ onMounted(async () => {
             <span class="card-header__meta">共 {{ totalEmployees }} 人</span>
           </div>
         </template>
+        <div ref="ageChartRef" class="h-300px overflow-hidden"></div>
         <div class="table-wrapper">
-          <ElTable :data="ageDistribution" border stripe size="small" max-height="320" class="table-content table-content--distribution">
+          <ElTable
+            :data="ageDistribution"
+            border
+            stripe
+            size="small"
+            max-height="320"
+            class="table-content table-content--distribution"
+          >
             <ElTableColumn type="index" label="#" width="54" align="center" />
             <ElTableColumn prop="name" label="年龄段" min-width="180" />
             <ElTableColumn prop="value" label="人数" width="90" align="center" />
@@ -568,6 +824,7 @@ onMounted(async () => {
           <span class="card-header__meta">按当前筛选范围统计</span>
         </div>
       </template>
+      <div ref="trendChartRef" class="h-320px overflow-hidden"></div>
       <div class="table-wrapper">
         <ElTable :data="entryTrend" border stripe size="small" class="table-content table-content--trend">
           <ElTableColumn prop="month" label="月份" width="120" />
@@ -592,7 +849,7 @@ onMounted(async () => {
       </div>
     </ElCard>
 
-    <ElCard v-if="false" class="data-card">
+    <ElCard class="data-card">
       <template #header>
         <div class="card-header">
           <span>员工明细</span>
@@ -601,7 +858,14 @@ onMounted(async () => {
       </template>
 
       <div class="table-wrapper">
-        <ElTable v-loading="loading" :data="pagedEmployees" border stripe size="small" class="table-content table-content--detail">
+        <ElTable
+          v-loading="loading"
+          :data="pagedEmployees"
+          border
+          stripe
+          size="small"
+          class="table-content table-content--detail"
+        >
           <ElTableColumn prop="companyName" label="公司" width="150" show-overflow-tooltip />
           <ElTableColumn prop="deptName" label="部门" width="160" show-overflow-tooltip />
           <ElTableColumn prop="employeeNo" label="工号" width="110" />

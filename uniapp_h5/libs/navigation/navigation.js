@@ -7,11 +7,6 @@ export default {
       backgroundColor: 'tn-cool-bg-color-1',
       list: [{
           icon: 'code',
-          title: '图鸟品牌',
-          url: '/homePages/about',
-          author: '图鸟北北'
-        },{
-          icon: 'code',
           title: '全局搜索',
           url: '/homePages/search',
           author: '图鸟北北'
@@ -48,20 +43,8 @@ export default {
         },
         {
           icon: 'code',
-          title: '行业资讯',
-          url: '/homePages/article',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
           title: '应用消息',
           url: '/homePages/application',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '企业认证',
-          url: '/homePages/certification',
           author: '图鸟北北'
         }
       ]
@@ -83,62 +66,8 @@ export default {
         },
         {
           icon: 'code',
-          title: '个人主页',
-          url: '/momentPages/blogger',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: 'Ta的主页',
-          url: '/momentPages/blogger_other',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
           title: '发布详情',
           url: '/momentPages/details',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '商研学院',
-          url: '/momentPages/institute',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '每日词条',
-          url: '/momentPages/dictionary',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '词条目录',
-          url: '/momentPages/catalog',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '新人融入',
-          url: '/momentPages/blend',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '学海无涯',
-          url: '/momentPages/ocean',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '积分兑换',
-          url: '/momentPages/gift',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '兑换结果',
-          url: '/momentPages/convert',
           author: '图鸟北北'
         }
       ]
@@ -148,48 +77,6 @@ export default {
       backgroundColor: 'tn-cool-bg-color-1',
       list: [{
           icon: 'code',
-          title: '企业文化',
-          url: '/workPages/culture',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '发展历程',
-          url: '/workPages/history',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '集体相册',
-          url: '/workPages/photo',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '宣传短片',
-          url: '/workPages/video',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '荣誉证书',
-          url: '/workPages/honor',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '公司地址',
-          url: '/workPages/map',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '统计图表',
-          url: '/workPages/charts',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
           title: '请假申请',
           url: '/workPages/leave',
           author: '图鸟北北'
@@ -198,12 +85,6 @@ export default {
           icon: 'code',
           title: '请假记录',
           url: '/workPages/leave-record',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '日月周报',
-          url: '/workPages/report',
           author: '图鸟北北'
         },
         {
@@ -250,44 +131,8 @@ export default {
         },
         {
           icon: 'code',
-          title: '工单详情',
-          url: '/workPages/details',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '客户列表',
-          url: '/workPages/client',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '客户画像',
-          url: '/workPages/portrait',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '仪器维护',
-          url: '/workPages/machine',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '问卷调查',
-          url: '/workPages/question',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '硬件管理',
-          url: '/workPages/apparatus',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '硬件操作',
-          url: '/workPages/operate',
+          title: '考勤日历',
+          url: '/workPages/calendar',
           author: '图鸟北北'
         }
       ]
@@ -332,12 +177,6 @@ export default {
       backgroundColor: 'tn-cool-bg-color-1',
       list: [{
           icon: 'code',
-          title: '文件助手',
-          url: '/minePages/file',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
           title: '文件上传',
           url: '/minePages/upload',
           author: '图鸟北北'
@@ -350,32 +189,8 @@ export default {
         },
         {
           icon: 'code',
-          title: '公众号',
-          url: '/minePages/public',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
           title: '信息设置',
           url: '/minePages/set',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '退出登录',
-          url: '/minePages/start',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '登录注册',
-          url: '/minePages/login',
-          author: '图鸟北北'
-        },
-        {
-          icon: 'code',
-          title: '富文本',
-          url: '/minePages/content',
           author: '图鸟北北'
         },
         {

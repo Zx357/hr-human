@@ -2,8 +2,10 @@ package com.kadmin.framework.config;
 
 import com.kadmin.framework.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -36,15 +38,14 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     /**
-     * 白名单路径
+     * 白名单路径（无需登录）
+     * 注意：员工证件照等敏感文件目录已移出白名单，文件名使用UUID防枚举；
+     * /uploads/** 为动态图片等公开上传内容
      */
     private static final String[] WHITE_LIST = {
             "/auth/login",
             "/auth/mobile/login",
-            "/auth/register",
-            "/auth/captcha",
-            "/auth/refresh",
-            "/auth/logout",
+            "/auth/refreshToken",
             "/system/mobile-menu/mobile/list",
             "/doc.html",
             "/swagger-ui/**",
@@ -62,6 +63,9 @@ public class SecurityConfig {
             "/cert_photo/**"
     };
 
+    @Value("${security.cors.allowed-origins:http://localhost:9527,http://127.0.0.1:9527,http://localhost:5173,http://127.0.0.1:5173}")
+    private List<String> allowedOrigins;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -71,9 +75,28 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 // 禁用Session
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // 配置请求授权
+                // 配置请求授权：移动端员工与管理员接口隔离
+                // 注意顺序：精确规则在前，/xx/** 的 ADMIN 兜底规则在后
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(WHITE_LIST).permitAll()
+                        // ===== 移动端员工需要共用的接口（登录即可） =====
+                        .requestMatchers(HttpMethod.GET, "/employee/list", "/employee/current").authenticated()
+                        // 仅匹配数字ID，避免单段通配遮蔽 /employee/page、/employee/export 等管理接口
+                        .requestMatchers(HttpMethod.GET, "/employee/{id:[0-9]+}").authenticated()
+                        .requestMatchers("/mobile/**").authenticated()
+                        .requestMatchers("/hr/application/**").authenticated()
+                        // 组织架构移动端只读，写操作归管理员
+                        .requestMatchers(HttpMethod.GET, "/org-unit/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/file/upload/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/system/notice/list", "/system/notice/{id:[0-9]+}",
+                                "/system/feedback/my")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.POST, "/system/feedback").authenticated()
+                        // ===== PC管理端接口（仅管理员） =====
+                        .requestMatchers("/system/**", "/organization/**", "/calendar/**",
+                                "/attendance/**", "/employee/**", "/hr/**", "/org-unit/**", "/file/**",
+                                "/reminder/**", "/report/**")
+                        .hasRole("ADMIN")
                         .anyRequest().authenticated())
                 // 认证失败处理：返回JSON而非默认403页面
                 .exceptionHandling(ex -> ex
@@ -81,6 +104,11 @@ public class SecurityConfig {
                             response.setContentType("application/json;charset=UTF-8");
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                             response.getWriter().write("{\"code\":\"8888\",\"msg\":\"请先登录\",\"data\":null}");
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.getWriter().write("{\"code\":\"403\",\"msg\":\"没有操作权限\",\"data\":null}");
                         }))
                 // 添加JWT过滤器
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -105,12 +133,12 @@ public class SecurityConfig {
     }
 
     /**
-     * CORS配置
+     * CORS配置（来源可通过 security.cors.allowed-origins 配置，生产环境应收敛为实际域名）
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedOriginPatterns(allowedOrigins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

@@ -2,9 +2,9 @@
   <view class="search-page tn-safe-area-inset-bottom">
     <!-- 顶部自定义导航 -->
     <tn-navbar fixed bg-color="#FFFFFF" home-icon="" :bottom-shadow="false" :placeholder="false">
-      <view slot="back" class='tn-custom-nav-bar__back' @click="goBack">
+      <template #back><view class='tn-custom-nav-bar__back' @click="goBack">
         <tn-icon class='icon' name="left-arrow"></tn-icon>
-      </view>
+      </view></template>
       <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
         <text class="tn-text-bold tn-text-xl tn-color-black">全局搜索</text>
       </view>

@@ -631,5 +631,41 @@ declare namespace Api {
       status?: number;
       remark?: string;
     }
+
+    /** 操作日志记录 */
+    interface OperLogRecord {
+      id: number;
+      /** 操作模块 */
+      module: string;
+      /** 操作类型 */
+      action?: string;
+      /** 请求方式+路径 */
+      requestUri?: string;
+      /** 操作人用户ID */
+      userId?: number;
+      /** 操作人用户名 */
+      username?: string;
+      /** 操作人IP */
+      ip?: string;
+      /** 请求参数（脱敏截断） */
+      requestParams?: string;
+      /** 操作结果：0-失败，1-成功 */
+      status: number;
+      /** 错误信息（失败时记录） */
+      errorMsg?: string;
+      /** 耗时(毫秒) */
+      costMs?: number;
+      /** 操作时间 */
+      createdTime?: string;
+    }
+
+    /** 操作日志搜索参数 */
+    interface OperLogSearchParams {
+      pageNum?: number;
+      pageSize?: number;
+      module?: string;
+      username?: string;
+      status?: number;
+    }
   }
 }

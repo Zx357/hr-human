@@ -4,11 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.kadmin.common.event.UserSessionEvictEvent;
 import com.kadmin.system.domain.SysRole;
 import com.kadmin.system.domain.SysUser;
 import com.kadmin.system.mapper.SysRoleMapper;
 import com.kadmin.system.mapper.SysUserMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +28,7 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
 
     private final PasswordEncoder passwordEncoder;
     private final SysRoleMapper roleMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 获取用户列表（不分页）
@@ -127,7 +130,8 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
     @Transactional
     public boolean updateUser(SysUser user, List<Long> roleIds) {
         // 如果密码不为空，则加密
-        if (StringUtils.hasText(user.getPassword())) {
+        boolean passwordChanged = StringUtils.hasText(user.getPassword());
+        if (passwordChanged) {
             user.setPassword(passwordEncoder.encode(user.getPassword()));
         } else {
             user.setPassword(null); // 不更新密码
@@ -141,6 +145,11 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
             if (!roleIds.isEmpty()) {
                 baseMapper.insertUserRoleBatch(user.getId(), roleIds);
             }
+        }
+
+        // 密码或角色变更后吊销会话，强制重新登录（角色权限随会话缓存）
+        if (success && (passwordChanged || roleIds != null)) {
+            eventPublisher.publishEvent(new UserSessionEvictEvent(user.getId()));
         }
 
         return success;
@@ -161,7 +170,11 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
         baseMapper.deleteUserRoleByUserId(id);
 
         // 使用 MyBatis Plus 的 removeById，会自动处理逻辑删除
-        return removeById(id);
+        boolean success = removeById(id);
+        if (success) {
+            eventPublisher.publishEvent(new UserSessionEvictEvent(id));
+        }
+        return success;
     }
 
     /**
@@ -171,7 +184,11 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
         SysUser user = new SysUser();
         user.setId(id);
         user.setPassword(passwordEncoder.encode(newPassword));
-        return updateById(user);
+        boolean success = updateById(user);
+        if (success) {
+            eventPublisher.publishEvent(new UserSessionEvictEvent(id));
+        }
+        return success;
     }
 
     /**
@@ -181,6 +198,11 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
         SysUser user = new SysUser();
         user.setId(id);
         user.setStatus(status);
-        return updateById(user);
+        boolean success = updateById(user);
+        // 禁用用户立即失去访问权限
+        if (success && status != null && status != 1) {
+            eventPublisher.publishEvent(new UserSessionEvictEvent(id));
+        }
+        return success;
     }
 }

@@ -116,15 +116,38 @@ const menuGroupOptions = [
 
 // 图标选项
 const iconOptions = [
-  'calendar', 'clock', 'checkbox', 'location', 'auth', 'redo', 
-  'closeempty', 'refreshempty', 'person', 'settings', 'home',
-  'chat', 'email', 'phone', 'camera', 'image', 'folder', 'star'
+  'calendar',
+  'clock',
+  'checkbox',
+  'location',
+  'auth',
+  'redo',
+  'closeempty',
+  'refreshempty',
+  'person',
+  'settings',
+  'home',
+  'chat',
+  'email',
+  'phone',
+  'camera',
+  'image',
+  'folder',
+  'star'
 ];
 
 // 颜色选项
 const colorOptions = [
-  '#2d8cf0', '#5cadff', '#19be6b', '#ff9900', '#ed4014',
-  '#9254de', '#f5222d', '#fa8c16', '#13c2c2', '#722ed1'
+  '#2d8cf0',
+  '#5cadff',
+  '#19be6b',
+  '#ff9900',
+  '#ed4014',
+  '#9254de',
+  '#f5222d',
+  '#fa8c16',
+  '#13c2c2',
+  '#722ed1'
 ];
 
 function resetForm() {
@@ -188,8 +211,8 @@ async function handleToggleStatus(row: MobileMenu) {
 
 async function submitForm() {
   if (!formRef.value) return;
-  
-  await formRef.value.validate(async (valid) => {
+
+  await formRef.value.validate(async valid => {
     if (valid) {
       loading.value = true;
       try {
@@ -232,7 +255,7 @@ function isLast(row: MobileMenu) {
 async function handleMoveUp(row: MobileMenu) {
   const index = tableData.value.findIndex(item => item.id === row.id);
   if (index <= 0) return;
-  
+
   const prevRow = tableData.value[index - 1];
   await swapSort(row, prevRow);
 }
@@ -241,7 +264,7 @@ async function handleMoveUp(row: MobileMenu) {
 async function handleMoveDown(row: MobileMenu) {
   const index = tableData.value.findIndex(item => item.id === row.id);
   if (index >= tableData.value.length - 1) return;
-  
+
   const nextRow = tableData.value[index + 1];
   await swapSort(row, nextRow);
 }
@@ -252,21 +275,21 @@ async function swapSort(row1: MobileMenu, row2: MobileMenu) {
   try {
     // 交换排序号
     const tempSort = row1.sortOrder;
-    
+
     // 更新第一个
     await request({
       url: '/system/mobile-menu',
       method: 'put',
       data: { ...row1, sortOrder: row2.sortOrder }
     });
-    
+
     // 更新第二个
     await request({
       url: '/system/mobile-menu',
       method: 'put',
       data: { ...row2, sortOrder: tempSort }
     });
-    
+
     loadData();
   } finally {
     loading.value = false;
@@ -280,7 +303,13 @@ async function swapSort(row1: MobileMenu, row2: MobileMenu) {
     <ElCard shadow="never">
       <ElForm :model="queryForm" inline>
         <ElFormItem label="菜单名称">
-          <ElInput v-model="queryForm.menuName" placeholder="请输入菜单名称" clearable style="width: 200px" @keyup.enter="handleQuery" />
+          <ElInput
+            v-model="queryForm.menuName"
+            placeholder="请输入菜单名称"
+            clearable
+            style="width: 200px"
+            @keyup.enter="handleQuery"
+          />
         </ElFormItem>
         <ElFormItem label="状态">
           <ElSelect v-model="queryForm.status" placeholder="菜单状态" clearable style="width: 200px">
@@ -312,59 +341,59 @@ async function swapSort(row1: MobileMenu, row2: MobileMenu) {
 
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="tableData" border height="100%">
-        <ElTableColumn prop="menuName" label="菜单名称" min-width="120" />
-        <ElTableColumn prop="menuCode" label="菜单编码" min-width="100" />
-        <ElTableColumn prop="icon" label="图标" width="80" align="center">
-          <template #default="{ row }">
-            <view class="icon-preview" :style="{ backgroundColor: row.iconBgColor }">
-              <uni-icons :type="row.icon" size="16" color="#fff" />
-            </view>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="path" label="路由路径" min-width="200" show-overflow-tooltip />
-        <ElTableColumn prop="menuGroup" label="分组" width="100" align="center">
-          <template #default="{ row }">
-            <ElTag :type="row.menuGroup === 'quick' ? 'success' : 'primary'" size="small">
-              {{ row.menuGroup === 'quick' ? '快捷功能' : '申请中心' }}
-            </ElTag>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="sortOrder" label="排序" width="120" align="center">
-          <template #default="{ row }">
-            <div class="sort-actions">
-              <ElButton type="primary" link size="small" @click="handleMoveUp(row)" :disabled="isFirst(row)">
-                <icon-ep-top />
-              </ElButton>
-              <span class="sort-num">{{ row.sortOrder }}</span>
-              <ElButton type="primary" link size="small" @click="handleMoveDown(row)" :disabled="isLast(row)">
-                <icon-ep-bottom />
-              </ElButton>
-            </div>
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="status" label="状态" width="100" align="center">
-          <template #default="{ row }">
-            <ElSwitch 
-              :model-value="row.status === 1" 
-              @change="handleToggleStatus(row)"
-              inline-prompt
-              active-text="启用"
-              inactive-text="禁用"
-            />
-          </template>
-        </ElTableColumn>
-        <ElTableColumn prop="createdTime" label="创建时间" width="160" align="center" />
-        <ElTableColumn label="操作" width="150" align="center" fixed="right">
-          <template #default="{ row }">
-            <ElButton type="primary" link size="small" @click="handleEdit(row)">编辑</ElButton>
-            <ElPopconfirm title="确认删除该菜单吗？" @confirm="handleDelete(row.id)">
-              <template #reference>
-                <ElButton type="danger" link size="small">删除</ElButton>
-              </template>
-            </ElPopconfirm>
-          </template>
-        </ElTableColumn>
-      </ElTable>
+          <ElTableColumn prop="menuName" label="菜单名称" min-width="120" />
+          <ElTableColumn prop="menuCode" label="菜单编码" min-width="100" />
+          <ElTableColumn prop="icon" label="图标" width="80" align="center">
+            <template #default="{ row }">
+              <view class="icon-preview" :style="{ backgroundColor: row.iconBgColor }">
+                <UniIcons :type="row.icon" size="16" color="#fff" />
+              </view>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn prop="path" label="路由路径" min-width="200" show-overflow-tooltip />
+          <ElTableColumn prop="menuGroup" label="分组" width="100" align="center">
+            <template #default="{ row }">
+              <ElTag :type="row.menuGroup === 'quick' ? 'success' : 'primary'" size="small">
+                {{ row.menuGroup === 'quick' ? '快捷功能' : '申请中心' }}
+              </ElTag>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn prop="sortOrder" label="排序" width="120" align="center">
+            <template #default="{ row }">
+              <div class="sort-actions">
+                <ElButton type="primary" link size="small" :disabled="isFirst(row)" @click="handleMoveUp(row)">
+                  <icon-ep-top />
+                </ElButton>
+                <span class="sort-num">{{ row.sortOrder }}</span>
+                <ElButton type="primary" link size="small" :disabled="isLast(row)" @click="handleMoveDown(row)">
+                  <icon-ep-bottom />
+                </ElButton>
+              </div>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn prop="status" label="状态" width="100" align="center">
+            <template #default="{ row }">
+              <ElSwitch
+                :model-value="row.status === 1"
+                inline-prompt
+                active-text="启用"
+                inactive-text="禁用"
+                @change="handleToggleStatus(row)"
+              />
+            </template>
+          </ElTableColumn>
+          <ElTableColumn prop="createdTime" label="创建时间" width="160" align="center" />
+          <ElTableColumn label="操作" width="150" align="center" fixed="right">
+            <template #default="{ row }">
+              <ElButton type="primary" link size="small" @click="handleEdit(row)">编辑</ElButton>
+              <ElPopconfirm title="确认删除该菜单吗？" @confirm="handleDelete(row.id)">
+                <template #reference>
+                  <ElButton type="danger" link size="small">删除</ElButton>
+                </template>
+              </ElPopconfirm>
+            </template>
+          </ElTableColumn>
+        </ElTable>
       </div>
 
       <div class="mt-16px flex justify-end">
@@ -398,9 +427,9 @@ async function swapSort(row1: MobileMenu, row2: MobileMenu) {
         </ElFormItem>
         <ElFormItem label="图标背景色">
           <div class="color-picker">
-            <div 
-              v-for="color in colorOptions" 
-              :key="color" 
+            <div
+              v-for="color in colorOptions"
+              :key="color"
               class="color-item"
               :class="{ active: formData.iconBgColor === color }"
               :style="{ backgroundColor: color }"

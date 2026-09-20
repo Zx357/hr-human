@@ -1,12 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
+import dayjs from 'dayjs';
 import { useAppStore } from '@/store/modules/app';
 import { useAuthStore } from '@/store/modules/auth';
-import { $t } from '@/locales';
-import dayjs from 'dayjs';
-import { fetchEmployeePage } from '@/service/api/hr';
-import { fetchPendingPage } from '@/service/api/application';
-import { fetchDailyRecordPage } from '@/service/api/attendance';
+import { useHomeStats } from './use-home-stats';
 
 defineOptions({ name: 'HeaderBanner' });
 
@@ -15,10 +12,7 @@ const authStore = useAuthStore();
 
 const gap = computed(() => (appStore.isMobile ? 0 : 16));
 
-const loading = ref(false);
-const employeeTotal = ref<number>(0);
-const pendingTotal = ref<number>(0);
-const todayAbnormal = ref<number>(0);
+const { loading, stats, load } = useHomeStats();
 
 const timeGreeting = computed(() => {
   const hour = dayjs().hour();
@@ -32,41 +26,36 @@ const timeGreeting = computed(() => {
 const todayStr = computed(() => dayjs().format('YYYY年M月D日 dddd'));
 
 const statisticData = computed(() => [
-  { id: 'employeeTotal', title: '在职员工', value: employeeTotal.value, icon: 'mdi:account-group', color: '#6366f1' },
-  { id: 'pendingTotal', title: '待审批', value: pendingTotal.value, icon: 'mdi:file-clock-outline', color: '#f59e0b' },
-  { id: 'todayAbnormal', title: '今日异常', value: todayAbnormal.value, icon: 'mdi:alert-decagram-outline', color: '#ef4444' }
+  {
+    id: 'employeeTotal',
+    title: '在职员工',
+    value: stats.value.employeeTotal,
+    icon: 'mdi:account-group',
+    color: '#6366f1'
+  },
+  {
+    id: 'pendingTotal',
+    title: '待审批',
+    value: stats.value.pendingTotal,
+    icon: 'mdi:file-clock-outline',
+    color: '#f59e0b'
+  },
+  {
+    id: 'todayAbnormal',
+    title: '今日异常',
+    value: stats.value.todayAbnormal,
+    icon: 'mdi:alert-decagram-outline',
+    color: '#ef4444'
+  }
 ]);
 
-async function loadTopStats() {
-  loading.value = true;
-  try {
-    const today = dayjs().format('YYYY-MM-DD');
-
-    const [empRes, pendingRes, dailyRes] = await Promise.all([
-      fetchEmployeePage({ pageNum: 1, pageSize: 1, status: 1 }),
-      fetchPendingPage({ pageNum: 1, pageSize: 1 }),
-      fetchDailyRecordPage({ page: 1, size: 2000, startDate: today, endDate: today })
-    ]);
-
-    employeeTotal.value = empRes?.data?.total ?? 0;
-    pendingTotal.value = pendingRes?.data?.total ?? 0;
-
-    const records = dailyRes?.data?.records ?? [];
-    todayAbnormal.value = records.filter(r => r.status !== 1).length;
-  } catch {
-    // ignore: keep zeroes for dashboard
-  } finally {
-    loading.value = false;
-  }
-}
-
 onMounted(() => {
-  loadTopStats();
+  load();
 });
 </script>
 
 <template>
-  <div class="header-banner mb-18px" v-loading="loading">
+  <div v-loading="loading" class="header-banner mb-18px">
     <div class="banner-bg">
       <div class="banner-content">
         <ElRow :gutter="gap" class="w-full items-center">
@@ -76,10 +65,12 @@ onMounted(() => {
                 <img src="@/assets/imgs/avatar.svg" class="size-full" />
               </div>
               <div class="pl-20px">
-                <h2 class="text-22px font-bold mb-4px" style="color: var(--el-text-color-primary)">
+                <h2 class="mb-4px text-22px font-bold" style="color: var(--el-text-color-primary)">
                   {{ timeGreeting }}，{{ authStore.userInfo.userName }}
                 </h2>
-                <p class="text-14px" style="color: var(--el-text-color-secondary)">{{ todayStr }} · 欢迎回到人资管理工作台</p>
+                <p class="text-14px" style="color: var(--el-text-color-secondary)">
+                  {{ todayStr }} · 欢迎回到人资管理工作台
+                </p>
               </div>
             </div>
           </ElCol>
@@ -88,7 +79,7 @@ onMounted(() => {
               <div v-for="item in statisticData" :key="item.id" class="stat-item">
                 <div class="stat-value">{{ item.value }}</div>
                 <div class="stat-label">
-                  <SvgIcon :icon="item.icon" class="text-14px mr-4px" />
+                  <SvgIcon :icon="item.icon" class="mr-4px text-14px" />
                   {{ item.title }}
                 </div>
               </div>

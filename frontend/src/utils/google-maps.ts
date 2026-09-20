@@ -71,7 +71,7 @@ export function loadGoogleMapsApi(options: LoadGoogleMapsOptions) {
 
       const runtimeWindow = window as unknown as Window & Record<string, unknown>;
       if (runtimeWindow[callbackName]) {
-        delete runtimeWindow[callbackName];
+        Reflect.deleteProperty(runtimeWindow, callbackName);
       }
     };
 

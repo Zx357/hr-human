@@ -70,6 +70,17 @@
         "router" : {
             "mode" : "hash",
             "base" : "/h5/"
+        },
+        /* H5 端 map 组件使用高德地图 SDK:key 请在高德开放平台申请(Web端 JS API),
+           与 config.local.js / config.server.js 的 amap.key 保持一致,并同步替换下方的 YOUR_AMAP_KEY 占位;
+           未配置 key 时打卡页(workPages/time)自动降级为坐标示意卡片,不显示地图 */
+        "sdkConfigs" : {
+            "maps" : {
+                "amap" : {
+                    "key" : "YOUR_AMAP_KEY",
+                    "securityJsCode" : ""
+                }
+            }
         }
     },
     "uniStatistics" : {

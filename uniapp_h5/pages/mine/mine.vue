@@ -33,9 +33,9 @@
       </view>
 
       <view class="quick-grid">
-        <view class="quick-item" @click="go('/minePages/file')">
-          <view class="quick-icon blue"><tn-icon name="folder-upload-fill"></tn-icon></view>
-          <text>文件助手</text>
+        <view class="quick-item" @click="go('/homePages/pending')">
+          <view class="quick-icon blue"><tn-icon name="flag-fill"></tn-icon></view>
+          <text>待办事项</text>
         </view>
         <view class="quick-item" @click="go('/minePages/nav')">
           <view class="quick-icon cyan"><tn-icon name="task-fill"></tn-icon></view>
@@ -102,9 +102,8 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useStore } from 'vuex'
-import { onShow } from '@dcloudio/uni-app'
 import { getMonthAttendance } from '@/api/attendance'
 import { getMyApplications } from '@/api/application'
 import { getNoticeList } from '@/api/system/notice'
@@ -158,9 +157,18 @@ const displaySubtitle = computed(() => {
   return [job, dept].filter(Boolean).join(' · ') || '员工档案'
 })
 
-onShow(() => {
+// 首次挂载加载数据,后续由父页面切换/下拉时刷新
+onMounted(() => {
   store.dispatch('GetInfo')
   loadMyStats()
+})
+
+// 供 pages/index.vue 调用:刷新
+defineExpose({
+  refresh: async () => {
+    store.dispatch('GetInfo')
+    loadMyStats()
+  }
 })
 
 function pick(...values) {

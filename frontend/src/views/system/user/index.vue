@@ -188,13 +188,10 @@ async function handleDelete(row: any) {
       type: 'warning'
     });
 
-    console.log('删除用户请求:', row.id);
-    const { error, data } = await request({
+    const { error } = await request({
       url: `/system/user/${row.id}`,
       method: 'delete'
     });
-
-    console.log('删除用户响应:', { error, data });
 
     if (!error) {
       ElMessage.success('删除成功');
@@ -204,7 +201,6 @@ async function handleDelete(row: any) {
     }
   } catch {
     // 用户取消删除
-    console.log('用户取消删除');
   }
 }
 
@@ -301,7 +297,7 @@ onMounted(() => {
     <!-- 表格区域 -->
     <ElCard class="table-card">
       <template #header>
-        <div class="flex justify-between items-center">
+        <div class="flex items-center justify-between">
           <span>用户列表</span>
           <ElButton v-permission="'system:user:add'" type="primary" @click="handleAdd">
             <template #icon><icon-ep-plus /></template>
@@ -333,19 +329,33 @@ onMounted(() => {
           <ElTableColumn label="操作" width="200" fixed="right">
             <template #default="{ row }">
               <ElButton v-permission="'system:user:edit'" type="primary" link @click="handleEdit(row)">编辑</ElButton>
-              <ElButton v-permission="'system:user:reset'" type="warning" link @click="handleResetPwd(row)">重置密码
+              <ElButton v-permission="'system:user:reset'" type="warning" link @click="handleResetPwd(row)">
+                重置密码
               </ElButton>
-              <ElButton v-if="row.username !== 'admin'" v-permission="'system:user:delete'" type="danger" link
-                @click="handleDelete(row)">删除</ElButton>
+              <ElButton
+                v-if="row.username !== 'admin'"
+                v-permission="'system:user:delete'"
+                type="danger"
+                link
+                @click="handleDelete(row)"
+              >
+                删除
+              </ElButton>
             </template>
           </ElTableColumn>
         </ElTable>
       </div>
 
       <div class="mt-16px flex justify-end">
-        <ElPagination v-model:current-page="queryParams.current" v-model:page-size="queryParams.size" :total="total"
-          :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper"
-          @current-change="handlePageChange" @size-change="handleSizeChange" />
+        <ElPagination
+          v-model:current-page="queryParams.current"
+          v-model:page-size="queryParams.size"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
+        />
       </div>
     </ElCard>
 

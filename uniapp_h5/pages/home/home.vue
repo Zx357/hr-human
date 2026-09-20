@@ -53,10 +53,10 @@
 
 <script setup>
   import { computed, onMounted, ref } from 'vue'
-  import { onShow } from '@dcloudio/uni-app'
   import { useStore } from 'vuex'
   import { getHomeStats, getHomeMessages } from '@/api/home'
   import { getMomentMessages } from '@/api/moment'
+  import { getUnreadTotal } from '@/api/chat'
   import { getNoticeList } from '@/api/system/notice'
   
   const store = useStore()
@@ -85,11 +85,11 @@
     return count > 99 ? '99+' : count
   }
 
-  const momentBadgeCount = computed(() => {
-    const summary = momentSummary.value
-    return Number(summary.likeCount || 0) + Number(summary.commentCount || 0) +
-      Number(summary.mentionCount || 0) + Number(summary.unreadCount || 0)
-  })
+  // 时光互动未读角标:后端 unreadCount 即点赞+评论合计,直接使用,避免重复累加导致角标翻倍
+  const momentBadgeCount = computed(() => Number(momentSummary.value.unreadCount || 0))
+
+  // 聊天未读总数(会话列表角标),进入会话/标记已读后由后端清零
+  const chatUnreadCount = computed(() => Number(store.state.unreadBadge?.chatUnread || 0))
 
   const hexToBg = (hex, alpha = 0.12) => {
     const v = String(hex || '#4B98FE').replace('#', '')
@@ -102,31 +102,38 @@
 
   const shortcutList = computed(() => [
     {
+      title: '消息',
+      icon: 'chat',
+      chipColor: shortcutColors[0],
+      badge: formatBadge(chatUnreadCount.value),
+      url: '/homePages/chat'
+    },
+    {
       title: '互动',
       icon: 'topics-fill',
-      chipColor: shortcutColors[0],
+      chipColor: shortcutColors[1],
       badge: formatBadge(momentBadgeCount.value),
       url: '/momentPages/message'
     },
     {
       title: '待办',
       icon: 'flag-fill',
-      chipColor: shortcutColors[1],
+      chipColor: shortcutColors[2],
       badge: formatBadge(stats.value.pendingCount),
       url: '/homePages/pending'
     },
     {
       title: '审批',
       icon: 'seal',
-      chipColor: shortcutColors[2],
+      chipColor: shortcutColors[3],
       badge: formatBadge(stats.value.approvalCount),
       url: '/homePages/approval'
     },
     {
       title: '系统',
       icon: 'notice-fill',
-      chipColor: shortcutColors[3],
-      badge: formatBadge(stats.value.noticeCount ?? notices.value.length),
+      chipColor: shortcutColors[0],
+      badge: formatBadge(stats.value.noticeCount ?? 0),
       url: '/homePages/notice'
     }
   ])
@@ -177,11 +184,12 @@
 
   const loadHomeData = async () => {
     try {
-      const [statsResult, messageResult, noticeResult, momentResult] = await Promise.allSettled([
+      const [statsResult, messageResult, noticeResult, momentResult, chatUnreadResult] = await Promise.allSettled([
         getHomeStats(),
         getHomeMessages(),
         getNoticeList({ status: 1 }),
-        getMomentMessages()
+        getMomentMessages(),
+        getUnreadTotal()
       ])
       if (statsResult.status === 'fulfilled') {
         stats.value = {
@@ -198,11 +206,16 @@
       if (momentResult.status === 'fulfilled') {
         momentSummary.value = { ...momentSummary.value, ...(momentResult.value.data || {}) }
       }
+      if (chatUnreadResult.status === 'fulfilled') {
+        // 聊天未读总数同步到 vuex,供首页快捷入口与 tabbar 角标使用
+        store.commit('SET_UNREAD_BADGE', { chatUnread: Number(chatUnreadResult.value.data || 0) })
+      }
     } catch (error) {
       console.log('加载首页数据失败', error)
+      uni.showToast({ icon: 'none', title: '首页数据加载失败' })
     }
   }
-  
+
   // 跳转方法
   const tn = (e) => {
     if (!e) return
@@ -211,12 +224,14 @@
     })
   }
 
-  onShow(() => {
+  // 首次挂载加载数据,后续由父页面切换/下拉时刷新
+  onMounted(() => {
     loadHomeData()
   })
 
-  onMounted(() => {
-    loadHomeData()
+  // 供 pages/index.vue 调用:刷新
+  defineExpose({
+    refresh: loadHomeData
   })
 </script>
 
@@ -274,7 +289,7 @@
     border-radius: 16rpx;
     border: 1rpx solid #EEF0F4;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     padding: 28rpx 10rpx;
   }
 

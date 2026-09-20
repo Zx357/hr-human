@@ -38,20 +38,22 @@ public class JwtUtils {
     /**
      * 生成Token
      */
-    public String generateToken(Long userId, String username) {
+    public String generateToken(Long userId, String username, String uuid) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);
+        claims.put("jti", uuid);
         return createToken(claims, expiration);
     }
 
     /**
      * 生成刷新Token
      */
-    public String generateRefreshToken(Long userId, String username) {
+    public String generateRefreshToken(Long userId, String username, String uuid) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);
+        claims.put("jti", uuid);
         claims.put("refresh", true);
         return createToken(claims, refreshExpiration);
     }
@@ -104,6 +106,14 @@ public class JwtUtils {
     public String getUsernameFromToken(String token) {
         Claims claims = parseToken(token);
         return claims.get("username", String.class);
+    }
+
+    /**
+     * 从Token中获取会话标识（用于定位Redis中的登录会话）
+     */
+    public String getUuidFromToken(String token) {
+        Claims claims = parseToken(token);
+        return claims.get("jti", String.class);
     }
 
     /**

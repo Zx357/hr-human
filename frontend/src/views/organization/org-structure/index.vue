@@ -9,7 +9,6 @@ import {
   fetchAllOrgStatistics,
   fetchOrgStatistics,
   fetchOrgTreeWithCount,
-  fetchOrgUnitById,
   updateOrgUnit
 } from '@/service/api/organization';
 import { fetchEmployeePage } from '@/service/api/hr';
@@ -795,7 +794,6 @@ onBeforeUnmount(() => {
         </ElButton>
       </template>
     </ElDialog>
-
   </div>
 </template>
 

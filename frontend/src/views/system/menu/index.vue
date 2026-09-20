@@ -134,15 +134,9 @@ const formData = reactive<Api.System.MenuForm>({
 
 // 表单验证规则
 const rules: FormRules = {
-  menuCode: [
-    { required: true, message: '请输入菜单编码', trigger: 'blur' }
-  ],
-  menuName: [
-    { required: true, message: '请输入菜单名称', trigger: 'blur' }
-  ],
-  sortOrder: [
-    { required: true, message: '请输入显示排序', trigger: 'blur' }
-  ]
+  menuCode: [{ required: true, message: '请输入菜单编码', trigger: 'blur' }],
+  menuName: [{ required: true, message: '请输入菜单名称', trigger: 'blur' }],
+  sortOrder: [{ required: true, message: '请输入显示排序', trigger: 'blur' }]
 };
 
 // 菜单类型选项
@@ -240,7 +234,7 @@ async function handleDelete(id: number) {
 async function submitForm() {
   if (!formRef.value) return;
 
-  await formRef.value.validate(async (valid) => {
+  await formRef.value.validate(async valid => {
     if (valid) {
       loading.value = true;
       try {
@@ -372,9 +366,9 @@ function selectIcon(icon: string) {
     </ElCard>
 
     <!-- 表格区域 -->
-    <ElCard shadow="never" class="flex-1 flex flex-col overflow-hidden">
+    <ElCard shadow="never" class="flex flex-col flex-1 overflow-hidden">
       <!-- 工具栏 -->
-      <div class="mb-16px flex items-center justify-between flex-shrink-0">
+      <div class="mb-16px flex flex-shrink-0 items-center justify-between">
         <div>
           <ElButton v-permission="'system:menu:add'" type="primary" @click="handleAdd(0)">
             <template #icon><icon-ep-plus /></template>
@@ -499,14 +493,9 @@ function selectIcon(icon: string) {
               </ElRadioGroup>
             </ElFormItem>
           </ElCol>
-          <ElCol :span="24" v-if="formData.menuType !== 3">
+          <ElCol v-if="formData.menuType !== 3" :span="24">
             <ElFormItem label="菜单图标">
-              <ElPopover
-                v-model:visible="showIconPicker"
-                placement="bottom-start"
-                :width="400"
-                trigger="click"
-              >
+              <ElPopover v-model:visible="showIconPicker" placement="bottom-start" :width="400" trigger="click">
                 <template #reference>
                   <ElInput v-model="formData.icon" placeholder="点击选择图标" readonly>
                     <template #prefix>
@@ -543,7 +532,13 @@ function selectIcon(icon: string) {
           </ElCol>
           <ElCol :span="12">
             <ElFormItem label="显示排序" prop="sortOrder">
-              <ElInputNumber v-model="formData.sortOrder" :min="0" :max="9999" controls-position="right" style="width: 100%" />
+              <ElInputNumber
+                v-model="formData.sortOrder"
+                :min="0"
+                :max="9999"
+                controls-position="right"
+                style="width: 100%"
+              />
             </ElFormItem>
           </ElCol>
           <ElCol :span="12">
@@ -556,24 +551,24 @@ function selectIcon(icon: string) {
               <ElInput v-model="formData.menuNameEn" placeholder="请输入菜单名称（英文）" />
             </ElFormItem>
           </ElCol>
-          <ElCol :span="12" v-if="formData.menuType !== 3">
+          <ElCol v-if="formData.menuType !== 3" :span="12">
             <ElFormItem label="路由地址">
               <ElInput v-model="formData.path" placeholder="请输入路由地址" />
             </ElFormItem>
           </ElCol>
-          <ElCol :span="12" v-if="formData.menuType === 2">
+          <ElCol v-if="formData.menuType === 2" :span="12">
             <ElFormItem label="组件路径">
               <ElInput v-model="formData.component" placeholder="请输入组件路径">
                 <template #prepend>view.</template>
               </ElInput>
             </ElFormItem>
           </ElCol>
-          <ElCol :span="12" v-if="formData.menuType === 3">
+          <ElCol v-if="formData.menuType === 3" :span="12">
             <ElFormItem label="权限标识">
               <ElInput v-model="formData.permission" placeholder="请输入权限标识" />
             </ElFormItem>
           </ElCol>
-          <ElCol :span="12" v-if="formData.menuType !== 3">
+          <ElCol v-if="formData.menuType !== 3" :span="12">
             <ElFormItem label="显示状态">
               <ElRadioGroup v-model="formData.visible">
                 <ElRadio :value="1">显示</ElRadio>

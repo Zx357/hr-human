@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import dayjs from 'dayjs';
-import { fetchPendingPage, type Application } from '@/service/api/application';
+import { type Application, fetchPendingPage } from '@/service/api/application';
 
 defineOptions({ name: 'ProjectNews' });
 
@@ -52,7 +52,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <ElCard class="news-card" v-loading="loading">
+  <ElCard v-loading="loading" class="news-card">
     <template #header>
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-8px">
@@ -62,32 +62,35 @@ onMounted(() => {
         </div>
         <ElButton link type="primary" @click="goPending">
           查看全部
-          <SvgIcon icon="mdi:chevron-right" class="text-16px ml-2px" />
+          <SvgIcon icon="mdi:chevron-right" class="ml-2px text-16px" />
         </ElButton>
       </div>
     </template>
 
     <div v-if="!list.length" class="empty-state">
-      <SvgIcon icon="mdi:check-circle-outline" class="text-48px text-#d1d5db mb-12px" />
-      <p class="text-#9ca3af text-14px">暂无待审批事项，一切顺利！</p>
+      <SvgIcon icon="mdi:check-circle-outline" class="mb-12px text-48px text-#d1d5db" />
+      <p class="text-14px text-#9ca3af">暂无待审批事项，一切顺利！</p>
     </div>
 
     <div v-else class="approval-list">
       <div v-for="item in list" :key="item.id" class="approval-item">
         <div class="item-left">
-          <div class="type-badge" :style="{ background: getTypeInfo(item.appType).color + '15', color: getTypeInfo(item.appType).color }">
+          <div
+            class="type-badge"
+            :style="{ background: getTypeInfo(item.appType).color + '15', color: getTypeInfo(item.appType).color }"
+          >
             {{ getTypeInfo(item.appType).label }}
           </div>
           <div class="item-info">
             <div class="item-title">
               <span class="font-medium">{{ item.employeeName || '-' }}</span>
-              <span class="text-#9ca3af mx-6px">·</span>
-              <span class="text-#9ca3af text-13px">{{ item.deptName || '-' }}</span>
+              <span class="mx-6px text-#9ca3af">·</span>
+              <span class="text-13px text-#9ca3af">{{ item.deptName || '-' }}</span>
             </div>
-            <div class="text-13px text-#6b7280 mt-4px truncate">{{ item.reason || item.title || '—' }}</div>
+            <div class="mt-4px truncate text-13px text-#6b7280">{{ item.reason || item.title || '—' }}</div>
           </div>
         </div>
-        <div class="item-time text-12px text-#9ca3af whitespace-nowrap">
+        <div class="item-time whitespace-nowrap text-12px text-#9ca3af">
           {{ item.createdTime ? dayjs(item.createdTime).format('MM-DD HH:mm') : '' }}
         </div>
       </div>

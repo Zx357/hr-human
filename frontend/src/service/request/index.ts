@@ -12,10 +12,7 @@ const { baseURL, otherBaseURL } = getServiceBaseURL(import.meta.env, isHttpProxy
 
 export const request = createFlatRequest(
   {
-    baseURL,
-    headers: {
-      apifoxToken: 'XL299LiMEDZ0H5h3A29PxwQXdMJqWyY2'
-    }
+    baseURL
   },
   {
     defaultState: {
@@ -94,6 +91,10 @@ export const request = createFlatRequest(
         }
       }
 
+      // 其它业务失败码：统一弹出后端错误消息
+      // onError 中对同一消息也会调用 showErrorMsg，errMsgStack 会去重，避免重复弹窗
+      showErrorMsg(request.state, response.data.msg || '操作失败');
+
       return null;
     },
     onError(error) {
@@ -104,7 +105,7 @@ export const request = createFlatRequest(
 
       // get backend error message and code
       if (error.code === BACKEND_ERROR_CODE) {
-        message = error.response?.data?.msg || message;
+        message = error.response?.data?.msg || '操作失败';
         backendErrorCode = String(error.response?.data?.code || '');
       }
 

@@ -48,17 +48,10 @@
 	      }
 	    },
 	    {
-	      "path": "about",
-	      "style": {
-	        "navigationBarTitleText": "图鸟品牌",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
 	      "path": "chat",
 	      "style": {
 	        "navigationBarTitleText": "沟通交流",
-	        "enablePullDownRefresh": false
+	        "enablePullDownRefresh": true
 	      }
 	    },
 	    {
@@ -90,23 +83,9 @@
 	      }
 	    },
 	    {
-	      "path": "article",
-	      "style": {
-	        "navigationBarTitleText": "行业资讯",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
 	      "path": "application",
 	      "style": {
 	        "navigationBarTitleText": "应用消息",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "certification",
-	      "style": {
-	        "navigationBarTitleText": "企业认证",
 	        "enablePullDownRefresh": false
 	      }
 	    }]
@@ -127,134 +106,15 @@
 	      }
 	    },
 	    {
-	      "path": "blogger",
-	      "style": {
-	        "navigationBarTitleText": "个人主页",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "blogger_other",
-	      "style": {
-	        "navigationBarTitleText": "Ta的主页",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
 	      "path": "details",
 	      "style": {
 	        "navigationBarTitleText": "发布详情",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "advertise",
-	      "style": {
-	        "navigationBarTitleText": "积分兑换",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "institute",
-	      "style": {
-	        "navigationBarTitleText": "商研学院",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "dictionary",
-	      "style": {
-	        "navigationBarTitleText": "每日词条",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "catalog",
-	      "style": {
-	        "navigationBarTitleText": "词条目录",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "blend",
-	      "style": {
-	        "navigationBarTitleText": "新人融入",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "ocean",
-	      "style": {
-	        "navigationBarTitleText": "学海无涯",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "gift",
-	      "style": {
-	        "navigationBarTitleText": "积分兑换",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "convert",
-	      "style": {
-	        "navigationBarTitleText": "兑换结果",
 	        "enablePullDownRefresh": false
 	      }
 	    }]
 	}, {
 	  "root":"workPages",
 	  "pages": [{
-	      "path": "culture",
-	      "style": {
-	        "navigationBarTitleText": "企业文化",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "history",
-	      "style": {
-	        "navigationBarTitleText": "发展历程",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "photo",
-	      "style": {
-	        "navigationBarTitleText": "集体相册",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "video",
-	      "style": {
-	        "navigationBarTitleText": "宣传短片",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "honor",
-	      "style": {
-	        "navigationBarTitleText": "荣誉证书",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "map",
-	      "style": {
-	        "navigationBarTitleText": "公司地址",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "charts",
-	      "style": {
-	        "navigationBarTitleText": "统计图表",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
 	      "path": "leave",
 	      "style": {
 	        "navigationBarTitleText": "请假申请",
@@ -269,17 +129,10 @@
 	      }
 	    },
 	    {
-	      "path": "report",
-	      "style": {
-	        "navigationBarTitleText": "日月周报",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
 	      "path": "time",
 	      "style": {
 	        "navigationBarTitleText": "考勤打卡",
-	        "enablePullDownRefresh": false
+	        "enablePullDownRefresh": true
 	      }
 	    },
 	    {
@@ -331,74 +184,18 @@
 	        "enablePullDownRefresh": false
 	      }
 	    },
-	    {
-	      "path": "prompt",
-	      "style": {
-	        "navigationBarTitleText": "提交结果",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "details",
-	      "style": {
-	        "navigationBarTitleText": "工单详情",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "calendar",
+    {
+      "path": "prompt",
+      "style": {
+        "navigationBarTitleText": "提交结果",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "calendar",
 	      "style": {
 	        "navigationBarTitleText": "考勤日历",
 	        "enablePullDownRefresh": true
-	      }
-	    },
-	    {
-	      "path": "client",
-	      "style": {
-	        "navigationBarTitleText": "客户列表",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "portrait",
-	      "style": {
-	        "navigationBarTitleText": "客户画像",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "machine",
-	      "style": {
-	        "navigationBarTitleText": "仪器维护",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "questionnaire",
-	      "style": {
-	        "navigationBarTitleText": "问卷调查",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "question",
-	      "style": {
-	        "navigationBarTitleText": "问卷详情",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "apparatus",
-	      "style": {
-	        "navigationBarTitleText": "硬件管理",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "operate",
-	      "style": {
-	        "navigationBarTitleText": "硬件操作",
-	        "enablePullDownRefresh": false
 	      }
 	    }]
 	}, {
@@ -455,13 +252,6 @@
 	}, {
 	  "root":"minePages",
 	  "pages": [{
-	      "path": "file",
-	      "style": {
-	        "navigationBarTitleText": "文件助手",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
 	      "path": "upload",
 	      "style": {
 	        "navigationBarTitleText": "文件上传",
@@ -472,13 +262,6 @@
 	      "path": "nav",
 	      "style": {
 	        "navigationBarTitleText": "快捷导航",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "public",
-	      "style": {
-	        "navigationBarTitleText": "系统公告",
 	        "enablePullDownRefresh": false
 	      }
 	    },
@@ -500,27 +283,6 @@
 	      "path": "help",
 	      "style": {
 	      "navigationBarTitleText": "帮助中心",
-	      "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "start",
-	      "style": {
-	        "navigationBarTitleText": "退出登录",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "login",
-	      "style": {
-	        "navigationBarTitleText": "登录注册",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "content",
-	      "style": {
-	      "navigationBarTitleText": "富文本",
 	      "enablePullDownRefresh": false
 	      }
 	    },

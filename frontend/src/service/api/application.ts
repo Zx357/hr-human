@@ -41,7 +41,7 @@ export interface Application {
   lastWorkDate?: string;
   handoverTo?: number;
   handoverToName?: string;
-  
+
   status?: number;
   approveBy?: number;
   approveTime?: string;
@@ -50,11 +50,27 @@ export interface Application {
   createdTime?: string;
 }
 
-export function fetchApplicationPage(params: { pageNum?: number; pageSize?: number; employeeName?: string; employeeNo?: string; appType?: string; status?: number; employeeId?: number; transferType?: string; resignType?: string }) {
+export function fetchApplicationPage(params: {
+  pageNum?: number;
+  pageSize?: number;
+  employeeName?: string;
+  employeeNo?: string;
+  appType?: string;
+  status?: number;
+  employeeId?: number;
+  transferType?: string;
+  resignType?: string;
+}) {
   return request<Api.Common.PageResult<Application>>({ url: '/hr/application/page', method: 'get', params });
 }
 
-export function fetchPendingPage(params: { pageNum?: number; pageSize?: number; employeeName?: string; employeeNo?: string; appType?: string }) {
+export function fetchPendingPage(params: {
+  pageNum?: number;
+  pageSize?: number;
+  employeeName?: string;
+  employeeNo?: string;
+  appType?: string;
+}) {
   return request<Api.Common.PageResult<Application>>({ url: '/hr/application/pending', method: 'get', params });
 }
 
@@ -78,10 +94,31 @@ export function cancelApplication(id: number) {
   return request<boolean>({ url: `/hr/application/cancel/${id}`, method: 'post' });
 }
 
+export interface ApprovalRecord {
+  nodeName?: string;
+  approverName?: string;
+  status?: number; // 0-待审批 1-通过 2-拒绝
+  comment?: string;
+  createTime?: string;
+}
+
+/** 获取申请的审批进度记录 */
+export function fetchApprovalRecords(id: number) {
+  return request<ApprovalRecord[]>({ url: `/hr/application/approval-records/${id}`, method: 'get' });
+}
+
 export function calculateLeaveHours(employeeId: number, startTime: string, endTime: string) {
-  return request<number>({ url: '/hr/application/calculate-leave-hours', method: 'get', params: { employeeId, startTime, endTime } });
+  return request<number>({
+    url: '/hr/application/calculate-leave-hours',
+    method: 'get',
+    params: { employeeId, startTime, endTime }
+  });
 }
 
 export function calculateOvertimeHours(employeeId: number, startTime: string, endTime: string) {
-  return request<number>({ url: '/hr/application/calculate-overtime-hours', method: 'get', params: { employeeId, startTime, endTime } });
+  return request<number>({
+    url: '/hr/application/calculate-overtime-hours',
+    method: 'get',
+    params: { employeeId, startTime, endTime }
+  });
 }

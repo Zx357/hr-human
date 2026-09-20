@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useAppStore } from '@/store/modules/app';
 import HeaderBanner from './modules/header-banner.vue';
 import CardData from './modules/card-data.vue';
+import ReminderCard from './modules/reminder-card.vue';
 import LineChart from './modules/line-chart.vue';
 import PieChart from './modules/pie-chart.vue';
 import EducationChart from './modules/education-chart.vue';
@@ -17,6 +18,11 @@ const gap = computed(() => (appStore.isMobile ? 0 : 18));
 <template>
   <div class="home-page">
     <HeaderBanner />
+    <ElRow :gutter="gap" class="mb-18px w-full">
+      <ElCol :span="24">
+        <ReminderCard />
+      </ElCol>
+    </ElRow>
     <CardData />
     <div class="mb-18px">
       <LineChart />

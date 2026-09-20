@@ -9,16 +9,19 @@ import com.kadmin.hr.domain.HrEducation;
 import com.kadmin.hr.domain.HrEmployee;
 import com.kadmin.hr.domain.HrEmployeeExtra;
 import com.kadmin.hr.domain.HrFamilyMember;
+import com.kadmin.hr.domain.HrMobileApprover;
 import com.kadmin.hr.domain.HrWorkExperience;
 import com.kadmin.hr.mapper.EmployeeMapper;
 import com.kadmin.hr.mapper.HrCertificateMapper;
 import com.kadmin.hr.mapper.HrEducationMapper;
 import com.kadmin.hr.mapper.HrEmployeeExtraMapper;
 import com.kadmin.hr.mapper.HrFamilyMemberMapper;
+import com.kadmin.hr.mapper.HrMobileApproverMapper;
 import com.kadmin.hr.mapper.HrWorkExperienceMapper;
 import com.kadmin.organization.domain.OrgUnit;
 import com.kadmin.organization.mapper.OrgUnitMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +40,9 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
     private final HrWorkExperienceMapper workExperienceMapper;
     private final HrCertificateMapper certificateMapper;
     private final HrEmployeeExtraMapper employeeExtraMapper;
+    private final HrMobileApproverMapper mobileApproverMapper;
     private final OrgUnitMapper orgUnitMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 分页查询员工
@@ -104,9 +109,7 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
     public HrEmployee getEmployeeDetail(Long id, boolean includeMiniAppPassword) {
         HrEmployee employee = getById(id);
         if (employee != null) {
-            if (includeMiniAppPassword) {
-                employee.setMiniAppPassword(employee.getPassword());
-            }
+            // 密码不回显（miniAppPassword 为只写字段，仅用于管理端提交新密码）
 
             // 加载教育经历
             employee.setEducationList(educationMapper.selectList(
@@ -298,10 +301,21 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
     }
 
     /**
-     * 删除员工（真删除）
+     * 删除员工（真删除，级联清理子表数据；关联系统用户与会话由框架层事件监听清理）
      */
     @Transactional
     public boolean deleteEmployee(Long id) {
+        // 级联清理子表（打卡/考勤/申请等历史记录保留）
+        educationMapper.delete(new LambdaQueryWrapper<HrEducation>().eq(HrEducation::getEmployeeId, id));
+        familyMemberMapper.delete(new LambdaQueryWrapper<HrFamilyMember>().eq(HrFamilyMember::getEmployeeId, id));
+        workExperienceMapper.delete(new LambdaQueryWrapper<HrWorkExperience>().eq(HrWorkExperience::getEmployeeId, id));
+        certificateMapper.delete(new LambdaQueryWrapper<HrCertificate>().eq(HrCertificate::getEmployeeId, id));
+        employeeExtraMapper.delete(new LambdaQueryWrapper<HrEmployeeExtra>().eq(HrEmployeeExtra::getEmployeeId, id));
+        mobileApproverMapper.delete(new LambdaQueryWrapper<HrMobileApprover>().eq(HrMobileApprover::getEmployeeId, id));
+
+        // 通知框架层清理关联系统用户与全部会话
+        eventPublisher.publishEvent(new com.kadmin.common.event.EmployeeDeletedEvent(id));
+
         return removeById(id);
     }
 
@@ -337,7 +351,12 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
 
     private void normalizePassword(HrEmployee employee) {
         if (employee.getPassword() != null && employee.getPassword().trim().isEmpty()) {
+            // 空密码表示不修改，置空避免覆盖
             employee.setPassword(null);
+        } else if (employee.getPassword() != null && !employee.getPassword().startsWith("$2")) {
+            // 非BCrypt密文一律加密存储
+            employee.setPassword(
+                    new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(employee.getPassword()));
         }
     }
 }

@@ -10,7 +10,12 @@ export interface MobileApprover {
   createdTime?: string;
 }
 
-export function fetchMobileApproverPage(params: { pageNum: number; pageSize: number; employeeName?: string; employeeNo?: string }) {
+export function fetchMobileApproverPage(params: {
+  pageNum: number;
+  pageSize: number;
+  employeeName?: string;
+  employeeNo?: string;
+}) {
   return request<Api.Common.PaginatingQueryRecord<MobileApprover>>({
     url: '/hr/mobile-approver/page',
     method: 'get',

@@ -369,12 +369,22 @@ onMounted(() => {
             <ElRow :gutter="16">
               <ElCol :md="8" :sm="24">
                 <ElFormItem label="当前密码" prop="oldPassword">
-                  <ElInput v-model="passwordForm.oldPassword" type="password" show-password placeholder="请输入当前密码" />
+                  <ElInput
+                    v-model="passwordForm.oldPassword"
+                    type="password"
+                    show-password
+                    placeholder="请输入当前密码"
+                  />
                 </ElFormItem>
               </ElCol>
               <ElCol :md="8" :sm="24">
                 <ElFormItem label="新密码" prop="newPassword">
-                  <ElInput v-model="passwordForm.newPassword" type="password" show-password placeholder="请输入新密码" />
+                  <ElInput
+                    v-model="passwordForm.newPassword"
+                    type="password"
+                    show-password
+                    placeholder="请输入新密码"
+                  />
                 </ElFormItem>
               </ElCol>
               <ElCol :md="8" :sm="24">

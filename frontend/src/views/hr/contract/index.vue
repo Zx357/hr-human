@@ -2,17 +2,25 @@
 import { computed, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import type { UploadProps } from 'element-plus';
+import dayjs from 'dayjs';
 import { Plus } from '@element-plus/icons-vue';
-import { type Contract, createContract, deleteContract, fetchContractPage, updateContract } from '@/service/api/contract';
+import {
+  type Contract,
+  createContract,
+  deleteContract,
+  fetchContractPage,
+  updateContract
+} from '@/service/api/contract';
 import { getFileUrl, uploadContractPhoto } from '@/service/api/file';
-import { fetchEmployeePage } from '@/service/api/hr';
-import { fetchOrgTree } from '@/service/api/organization';
-import { fetchDictDataByCode } from '@/service/api/system';
+import { useDictOptions } from '@/composables/use-dict-options';
+import { downloadFile } from '@/utils/download';
+import EmployeePickerDialog from '@/components/common/EmployeePickerDialog.vue';
 
 defineOptions({ name: 'ContractManage' });
 
 // 数据
 const loading = ref(false);
+const exporting = ref(false);
 const data = ref<Contract[]>([]);
 const total = ref(0);
 const currentPage = ref(1);
@@ -20,23 +28,16 @@ const pageSize = ref(10);
 
 // 员工选择弹窗相关
 const employeeDialogVisible = ref(false);
-const employeeDialogLoading = ref(false);
-const employeeDialogData = ref<Api.Hr.Employee[]>([]);
-const employeeDialogTotal = ref(0);
-const employeeDialogPage = ref(1);
-const employeeDialogPageSize = ref(10);
-const employeeDialogSearch = ref({ name: '', employeeNo: '', orgIds: [] as number[] });
-const orgTreeOptions = ref<Api.Organization.OrgUnit[]>([]);
-const cascadeSelect = ref(false);
 const selectedEmployee = ref<Api.Hr.Employee | null>(null);
 
 // 字典数据
-const contractTypeOptions = ref<Api.System.DictData[]>([]);
-const genderOptions = ref<Api.System.DictData[]>([]);
+const { options: contractTypeOptions, getDictLabel: getContractTypeLabel } = useDictOptions('contract_type');
 
 const drawerVisible = ref(false);
 const operateType = ref<'add' | 'edit'>('add');
-const editingData = ref<Contract & { dateRange?: [string, string]; companyName?: string; employeeName?: string; employeeNo?: string }>({
+const editingData = ref<
+  Contract & { dateRange?: [string, string]; companyName?: string; employeeName?: string; employeeNo?: string }
+>({
   contractNo: '',
   employeeId: undefined as any,
   contractType: '',
@@ -65,31 +66,6 @@ const searchParams = ref({
   contractType: undefined as string | undefined,
   status: undefined as number | undefined
 });
-
-// 加载字典数据
-async function loadDictData() {
-  try {
-    const [contractRes, genderRes] = await Promise.all([
-      fetchDictDataByCode('contract_type'),
-      fetchDictDataByCode('gender')
-    ]);
-    contractTypeOptions.value = contractRes.data || [];
-    genderOptions.value = genderRes.data || [];
-  } catch (error) {
-    console.error('加载字典数据失败:', error);
-  }
-}
-
-// 加载组织架构树
-async function loadOrgTree() {
-  try {
-    const res = await fetchOrgTree();
-    orgTreeOptions.value = res.data || [];
-  } catch (error) {
-    console.error('加载组织架构失败:', error);
-  }
-}
-
 // 加载合同数据
 async function loadData() {
   loading.value = true;
@@ -107,39 +83,13 @@ async function loadData() {
       data.value = res.data.records || [];
       total.value = res.data.total || 0;
     }
-  } catch (error) {
-    console.error('加载合同列表失败:', error);
+  } catch {
+    // 请求层已统一弹错
   } finally {
     loading.value = false;
   }
 }
-
-// 加载员工弹窗数据
-async function loadEmployeeDialogData() {
-  employeeDialogLoading.value = true;
-  try {
-    const res = await fetchEmployeePage({
-      pageNum: employeeDialogPage.value,
-      pageSize: employeeDialogPageSize.value,
-      name: employeeDialogSearch.value.name || undefined,
-      employeeNo: employeeDialogSearch.value.employeeNo || undefined,
-      orgIds: employeeDialogSearch.value.orgIds.length > 0 ? employeeDialogSearch.value.orgIds.join(',') : undefined,
-      status: 1
-    });
-    if (res.data) {
-      employeeDialogData.value = res.data.records || [];
-      employeeDialogTotal.value = res.data.total || 0;
-    }
-  } catch (error) {
-    console.error('加载员工列表失败:', error);
-  } finally {
-    employeeDialogLoading.value = false;
-  }
-}
-
 onMounted(() => {
-  loadDictData();
-  loadOrgTree();
   loadData();
 });
 
@@ -180,7 +130,9 @@ function handleEdit(row: Contract) {
     employeeName: (row as any).employeeName || '',
     employeeNo: (row as any).employeeNo || ''
   };
-  employeeDisplayName.value = editingData.value.employeeName ? `${editingData.value.employeeName} (${editingData.value.employeeNo})` : '';
+  employeeDisplayName.value = editingData.value.employeeName
+    ? `${editingData.value.employeeName} (${editingData.value.employeeNo})`
+    : '';
   // 解析合同图片
   contractImageList.value = row.contractImages ? row.contractImages.split(',').filter(img => img) : [];
   drawerVisible.value = true;
@@ -191,8 +143,7 @@ async function handleDelete(id: number) {
     await deleteContract(id);
     ElMessage.success('删除成功');
     loadData();
-  } catch (error) {
-    console.error('删除失败:', error);
+  } catch {
     ElMessage.error('删除失败');
   }
 }
@@ -216,6 +167,27 @@ function handleSearch() {
   loadData();
 }
 
+/** 导出合同列表 */
+async function handleExport() {
+  exporting.value = true;
+  try {
+    // clearable 的 ElSelect 清空后值为 ''，跳过空串
+    const params = searchParams.value;
+    await downloadFile('/hr/contract/export', `合同列表_${dayjs().format('YYYYMMDD')}.xlsx`, {
+      employeeName: params.employeeName || undefined,
+      employeeNo: params.employeeNo || undefined,
+      contractNo: params.contractNo || undefined,
+      contractType: params.contractType || undefined,
+      status: params.status === undefined || (params.status as unknown) === '' ? undefined : params.status
+    });
+    ElMessage.success('导出成功');
+  } catch {
+    ElMessage.error('导出失败');
+  } finally {
+    exporting.value = false;
+  }
+}
+
 function handleReset() {
   searchParams.value = {
     employeeName: '',
@@ -237,43 +209,11 @@ function handleSizeChange(size: number) {
   pageSize.value = size;
   currentPage.value = 1;
   loadData();
-}
+} // 员工弹窗重置// 员工弹窗分页// 选择员工
+async function handleConfirmEmployee(selected: Api.Hr.Employee[]) {
+  const row = selected[0];
+  if (!row?.id) return;
 
-// 打开员工选择弹窗
-function openEmployeeDialog() {
-  employeeDialogVisible.value = true;
-  employeeDialogPage.value = 1;
-  employeeDialogSearch.value = { name: '', employeeNo: '', orgIds: [] };
-  loadEmployeeDialogData();
-}
-
-// 员工弹窗搜索
-function handleEmployeeDialogSearch() {
-  employeeDialogPage.value = 1;
-  loadEmployeeDialogData();
-}
-
-// 员工弹窗重置
-function handleEmployeeDialogReset() {
-  employeeDialogSearch.value = { name: '', employeeNo: '', orgIds: [] };
-  employeeDialogPage.value = 1;
-  loadEmployeeDialogData();
-}
-
-// 员工弹窗分页
-function handleEmployeeDialogPageChange(page: number) {
-  employeeDialogPage.value = page;
-  loadEmployeeDialogData();
-}
-
-function handleEmployeeDialogSizeChange(size: number) {
-  employeeDialogPageSize.value = size;
-  employeeDialogPage.value = 1;
-  loadEmployeeDialogData();
-}
-
-// 选择员工
-async function handleSelectEmployee(row: Api.Hr.Employee) {
   selectedEmployee.value = row;
   editingData.value.employeeId = row.id!;
   editingData.value.employeeName = row.name;
@@ -285,8 +225,6 @@ async function handleSelectEmployee(row: Api.Hr.Employee) {
   if (operateType.value === 'add') {
     await calculateContractCount(row.id!);
   }
-
-  employeeDialogVisible.value = false;
 }
 
 // 自动计算合同次数
@@ -301,8 +239,7 @@ async function calculateContractCount(employeeId: number) {
       // 合同次数 = 该员工现有合同数 + 1
       editingData.value.contractCount = (res.data.total || 0) + 1;
     }
-  } catch (error) {
-    console.error('计算合同次数失败:', error);
+  } catch {
     editingData.value.contractCount = 1;
   }
 }
@@ -339,8 +276,7 @@ async function handleSubmit() {
     }
     drawerVisible.value = false;
     loadData();
-  } catch (error) {
-    console.error('保存失败:', error);
+  } catch {
     ElMessage.error('保存失败');
   } finally {
     submitLoading.value = false;
@@ -348,7 +284,7 @@ async function handleSubmit() {
 }
 
 // 图片上传相关
-const beforeImageUpload: UploadProps['beforeUpload'] = (rawFile) => {
+const beforeImageUpload: UploadProps['beforeUpload'] = rawFile => {
   const isImage = rawFile.type.startsWith('image/');
   const isLt5M = rawFile.size / 1024 / 1024 < 5;
   if (!isImage) {
@@ -375,8 +311,7 @@ async function handleContractImageUpload(file: File): Promise<boolean> {
       return true;
     }
     return false;
-  } catch (error) {
-    console.error('上传失败:', error);
+  } catch {
     ElMessage.error('上传失败');
     return false;
   }
@@ -384,13 +319,6 @@ async function handleContractImageUpload(file: File): Promise<boolean> {
 
 function handleRemoveContractImage(index: number) {
   contractImageList.value.splice(index, 1);
-}
-
-function getDictLabel(options: Api.System.DictData[], value?: string | number): string {
-  if (value === undefined || value === null) return '';
-  const strValue = String(value);
-  const item = options.find(o => o.dictValue === strValue);
-  return item?.dictLabel || strValue;
 }
 
 const statusMap: Record<number, { label: string; type: string }> = {
@@ -420,7 +348,7 @@ const statusMap: Record<number, { label: string; type: string }> = {
             <ElOption
               v-for="item in contractTypeOptions"
               :key="item.dictValue"
-              :label="item.dictLabel"
+              :label="getContractTypeLabel(item.dictValue)"
               :value="item.dictValue"
             />
           </ElSelect>
@@ -451,10 +379,16 @@ const statusMap: Record<number, { label: string; type: string }> = {
       <template #header>
         <div class="flex items-center justify-between">
           <span>合同列表</span>
-          <ElButton v-permission="'hr:contract:add'" type="primary" @click="handleAdd">
-            <template #icon><icon-ep-plus /></template>
-            新增合同
-          </ElButton>
+          <div class="flex items-center gap-8px">
+            <ElButton :loading="exporting" @click="handleExport">
+              <template #icon><icon-ep-download /></template>
+              导出
+            </ElButton>
+            <ElButton v-permission="'hr:contract:add'" type="primary" @click="handleAdd">
+              <template #icon><icon-ep-plus /></template>
+              新增合同
+            </ElButton>
+          </div>
         </div>
       </template>
 
@@ -466,7 +400,7 @@ const statusMap: Record<number, { label: string; type: string }> = {
         <ElTableColumn prop="employeeName" label="员工姓名" min-width="100" />
         <ElTableColumn prop="contractType" label="合同类型" min-width="100" align="center">
           <template #default="{ row }">
-            {{ getDictLabel(contractTypeOptions, row.contractType) }}
+            {{ getContractTypeLabel(row.contractType) }}
           </template>
         </ElTableColumn>
         <ElTableColumn prop="startDate" label="开始日期" min-width="110" />
@@ -482,7 +416,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
         <ElTableColumn label="操作" width="180" align="center" fixed="right">
           <template #default="{ row }">
             <ElButton type="primary" link size="small" @click="handleView(row)">查看</ElButton>
-            <ElButton v-permission="'hr:contract:edit'" type="primary" link size="small" @click="handleEdit(row)">编辑</ElButton>
+            <ElButton v-permission="'hr:contract:edit'" type="primary" link size="small" @click="handleEdit(row)">
+              编辑
+            </ElButton>
             <ElPopconfirm title="确定删除该合同吗？" @confirm="handleDelete(row.id)">
               <template #reference>
                 <ElButton v-permission="'hr:contract:delete'" type="danger" link size="small">删除</ElButton>
@@ -521,9 +457,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
           <ElInput v-model="editingData.contractNo" placeholder="请输入合同编号" />
         </ElFormItem>
         <ElFormItem label="员工" required>
-          <div class="flex gap-8px w-full">
+          <div class="w-full flex gap-8px">
             <ElInput v-model="employeeDisplayName" disabled placeholder="请选择员工" class="flex-1" />
-            <ElButton type="primary" @click="openEmployeeDialog">选择员工</ElButton>
+            <ElButton type="primary" @click="employeeDialogVisible = true">选择员工</ElButton>
           </div>
         </ElFormItem>
         <ElFormItem v-if="editingData.contractCount" label="合同次数">
@@ -534,7 +470,7 @@ const statusMap: Record<number, { label: string; type: string }> = {
             <ElOption
               v-for="item in contractTypeOptions"
               :key="item.dictValue"
-              :label="item.dictLabel"
+              :label="getContractTypeLabel(item.dictValue)"
               :value="item.dictValue"
             />
           </ElSelect>
@@ -562,14 +498,23 @@ const statusMap: Record<number, { label: string; type: string }> = {
           </template>
         </ElFormItem>
         <ElFormItem label="签订日期">
-          <ElDatePicker v-model="editingData.signDate" type="date" placeholder="选择日期" style="width: 100%" value-format="YYYY-MM-DD" />
+          <ElDatePicker
+            v-model="editingData.signDate"
+            type="date"
+            placeholder="选择日期"
+            style="width: 100%"
+            value-format="YYYY-MM-DD"
+          />
         </ElFormItem>
         <ElFormItem label="合同图片">
           <div class="w-full">
-            <div class="flex flex-wrap gap-8px mb-8px">
+            <div class="mb-8px flex flex-wrap gap-8px">
               <div v-for="(img, index) in contractImageList" :key="index" class="relative">
-                <ElImage :src="getFileUrl(img)" fit="cover" class="w-100px h-100px rounded border" />
-                <ElIcon class="absolute top-2px right-2px cursor-pointer bg-red-500 text-white rounded-full p-2px" @click="handleRemoveContractImage(index)">
+                <ElImage :src="getFileUrl(img)" fit="cover" class="h-100px w-100px border rounded" />
+                <ElIcon
+                  class="absolute right-2px top-2px cursor-pointer rounded-full bg-red-500 p-2px text-white"
+                  @click="handleRemoveContractImage(index)"
+                >
                   <icon-ep-close />
                 </ElIcon>
               </div>
@@ -580,7 +525,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
                 :before-upload="beforeImageUpload"
                 :http-request="({ file }) => handleContractImageUpload(file as File)"
               >
-                <div class="w-100px h-100px rounded bg-gray-100 flex items-center justify-center border border-dashed border-gray-300 cursor-pointer hover:border-primary">
+                <div
+                  class="h-100px w-100px flex cursor-pointer items-center justify-center border border-gray-300 rounded border-dashed bg-gray-100 hover:border-primary"
+                >
                   <ElIcon :size="24" class="text-gray-400">
                     <Plus />
                   </ElIcon>
@@ -600,73 +547,7 @@ const statusMap: Record<number, { label: string; type: string }> = {
       </template>
     </ElDialog>
 
-    <!-- 员工选择弹窗 -->
-    <ElDialog v-model="employeeDialogVisible" title="选择员工" width="900px" destroy-on-close append-to-body>
-      <div class="mb-16px">
-        <ElForm inline :model="employeeDialogSearch">
-          <ElFormItem label="姓名">
-            <ElInput v-model="employeeDialogSearch.name" placeholder="请输入姓名" clearable style="width: 120px" />
-          </ElFormItem>
-          <ElFormItem label="工号">
-            <ElInput v-model="employeeDialogSearch.employeeNo" placeholder="请输入工号" clearable style="width: 120px" />
-          </ElFormItem>
-          <ElFormItem label="组织">
-            <ElTreeSelect
-              v-model="employeeDialogSearch.orgIds"
-              :data="orgTreeOptions"
-              :props="{ children: 'children', label: 'unitName', value: 'id' }"
-              node-key="id"
-              placeholder="请选择组织"
-              clearable
-              multiple
-              :check-strictly="!cascadeSelect"
-              show-checkbox
-              collapse-tags
-              :max-collapse-tags="1"
-              style="width: 180px"
-              :render-after-expand="false"
-              filterable
-            >
-              <template #header>
-                <div class="px-12px py-8px border-b border-gray-200">
-                  <ElCheckbox v-model="cascadeSelect" size="small">联动选择</ElCheckbox>
-                </div>
-              </template>
-            </ElTreeSelect>
-          </ElFormItem>
-          <ElFormItem>
-            <ElButton type="primary" @click="handleEmployeeDialogSearch">搜索</ElButton>
-            <ElButton @click="handleEmployeeDialogReset">重置</ElButton>
-          </ElFormItem>
-        </ElForm>
-      </div>
-      <ElTable v-loading="employeeDialogLoading" :data="employeeDialogData" border stripe max-height="400px">
-        <ElTableColumn prop="employeeNo" label="工号" width="100" />
-        <ElTableColumn prop="name" label="姓名" width="80" />
-        <ElTableColumn prop="gender" label="性别" width="60" align="center">
-          <template #default="{ row }">{{ getDictLabel(genderOptions, row.gender) }}</template>
-        </ElTableColumn>
-        <ElTableColumn prop="companyName" label="公司" min-width="120" show-overflow-tooltip />
-        <ElTableColumn prop="deptName" label="部门" min-width="100" />
-        <ElTableColumn prop="phone" label="电话" width="120" />
-        <ElTableColumn label="操作" width="80" align="center" fixed="right">
-          <template #default="{ row }">
-            <ElButton type="primary" link size="small" @click="handleSelectEmployee(row)">选择</ElButton>
-          </template>
-        </ElTableColumn>
-      </ElTable>
-      <div class="mt-16px flex justify-end">
-        <ElPagination
-          v-model:current-page="employeeDialogPage"
-          v-model:page-size="employeeDialogPageSize"
-          :total="employeeDialogTotal"
-          :page-sizes="[10, 20, 50]"
-          layout="total, sizes, prev, pager, next"
-          @current-change="handleEmployeeDialogPageChange"
-          @size-change="handleEmployeeDialogSizeChange"
-        />
-      </div>
-    </ElDialog>
+    <EmployeePickerDialog v-model="employeeDialogVisible" @confirm="handleConfirmEmployee" />
   </div>
 </template>
 

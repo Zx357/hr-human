@@ -207,6 +207,7 @@ const routeMap: RouteMap = {
   "system_menu": "/system/menu",
   "system_mobile-menu": "/system/mobile-menu",
   "system_notice": "/system/notice",
+  "system_oper-log": "/system/oper-log",
   "system_role": "/system/role",
   "system_user": "/system/user",
   "user-center": "/user-center"

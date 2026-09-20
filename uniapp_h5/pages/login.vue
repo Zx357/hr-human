@@ -12,15 +12,9 @@
     </tn-navbar>
     
     <view class="login login-fixed">
-      <!-- 顶部背景图片-->
-      <!-- <view class="login__bg login__bg--top">
-        <image class="bg" src="https://resource.tuniaokj.com/images/login/2/login-top2.png" mode="widthFix"></image>
-      </view> -->
-      <!-- <view class="login__bg login__bg--top">
-        <image class="rocket login-sussuspension" src="https://resource.tuniaokj.com/images/login/1/login_top3.png" mode="widthFix"></image>
-      </view> -->
+      <!-- 顶部背景装饰:使用本地静态资源,避免外链图床不可达 -->
       <view class="login__bg login__bg--top">
-        <image class="rocket login-sussuspension" src="https://cdn.nlark.com/yuque/0/2023/png/280373/1679469229310-assets/web-upload/bb996531-e579-47a2-8f50-7209f6d655a4.png" mode="widthFix"></image>
+        <image class="rocket login-sussuspension" src="/static/logo.png" mode="widthFix"></image>
       </view>
 
       <view class="login__wrapper">
@@ -186,82 +180,17 @@
               <view class="tn-color-gray" @tap.stop="modeSwitch(0)">已有账号？前往登录</view>
             </view>
           </view>
-          <view v-if="currentModeIndex === 0" :class="[{'login__info__item__tips': currentModeIndex === 1}]">
-            <view class="tn-flex tn-flex-row-between tn-padding-xl">
-              <view class="tn-padding-right tn-color-gray" @tap.stop="modeSwitch(1)">新账号注册</view>
-              <view class="tn-padding-left-lg tn-color-gray" @click="emptyFeature('找回密码')">忘记密码？</view>
-            </view>
-          </view>
           
         </view>
         
         
-        <view class="tn-footerfixed">
-          
-          <view class="tn-flex tn-flex-col-center tn-flex-row-center tn-text-center">
-            <view class="" style="border-bottom: 1rpx solid #F8F7F8;width: 160rpx;"></view>
-            <view class="tn-padding tn-text-sm tn-color-gray--disabled">快捷登录方式</view>
-            <view class="" style="border-bottom: 1rpx solid #F8F7F8;width: 160rpx;"></view>
-          </view>
-          
-          <!-- 方式13 start-->
-          <view class="tn-flex tn-flex-row-center">
-            <view class="tn-padding-sm tn-margin-sm tn-radius">
-              <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-                <view class="icon13__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-shadow-blur tn-main-gradient-green--light tn-color-green">
-                  <tn-icon name="wechat-fill" class="tn-three"></tn-icon>
-                </view>  
-                <!-- <view class="tn-color-gray tn-text-center">
-                  <text class="tn-text-ellipsis">微 信</text>
-                </view> -->
-              </view>
-            </view>
-            <view class="tn-padding-sm tn-margin-sm tn-radius">
-              <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-                <view class="icon13__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-shadow-blur tn-main-gradient-blue--light tn-color-blue">
-                  <tn-icon name="qq" class="tn-three"></tn-icon>
-                </view>  
-                <!-- <view class="tn-color-gray tn-text-center">
-                  <text class="tn-text-ellipsis">企 鹅</text>
-                </view> -->
-              </view>
-            </view>
-            <view class="tn-padding-sm tn-margin-sm tn-radius">
-              <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-                <view class="icon13__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-shadow-blur tn-main-gradient-red--light tn-color-red">
-                  <tn-icon name="huawei" class="tn-three"></tn-icon>
-                </view>  
-                <!-- <view class="tn-color-gray tn-text-center">
-                  <text class="tn-text-ellipsis">华 为</text>
-                </view> -->
-              </view>
-            </view>
-            <view class="tn-padding-sm tn-margin-sm tn-radius">
-              <view class="tn-flex tn-flex-direction-column tn-flex-row-center tn-flex-col-center">
-                <view class="icon13__item--icon tn-flex tn-flex-row-center tn-flex-col-center tn-shadow-blur tn-main-gradient-cyan--light tn-color-cyan">
-                  <tn-icon name="phone-fill" class="tn-three"></tn-icon>
-                </view>  
-                <!-- <view class="tn-color-gray tn-text-center">
-                  <text class="tn-text-ellipsis">手 机</text>
-                </view> -->
-              </view>
-            </view>
-          </view>
-          <!-- 方式13 end-->
-          
-        </view>
         
         
         
         
         
       </view>
-      
-      <!-- 底部背景图片-->
-      <!-- <view class="login__bg login__bg--bottom">
-        <image src="https://resource.tuniaokj.com/images/login/2/login-bottom2.png" mode="widthFix"></image>
-      </view> -->
-  
+
     </view>
     
     <!-- 验证码倒计时 TODO -->
@@ -627,75 +556,7 @@ async function handleLogin() {
     
   }
   
-  .tn-three{
-      position: absolute;
-      top: 50%;
-      right: 50%;
-      bottom: 50%;
-      left: 50%;
-      transform: translate(-32rpx, -18rpx) rotateX(30deg) rotateY(20deg) rotateZ(-30deg);
-      text-shadow: -1rpx 2rpx 0 #f0f0f0, -2rpx 4rpx 0 #f0f0f0, -10rpx 20rpx 30rpx rgba(0, 0, 0, 0.2);
-  }
   
-  
-  /* 图标容器13 start */
-  .icon13 {
-    &__item {
-      width: 30%;
-      background-color: #FFFFFF;
-      border-radius: 10rpx;
-      padding: 30rpx;
-      margin: 20rpx 10rpx;
-      transform: scale(1);
-      transition: transform 0.3s linear;
-      transform-origin: center center;
-      
-      &--icon {
-        width: 90rpx;
-        height: 90rpx;
-        font-size: 50rpx;
-        border-radius: 50%;
-        margin-bottom: 18rpx;
-        position: relative;
-        z-index: 1;
-        
-        &::after {
-          content: " ";
-          position: absolute;
-          z-index: -1;
-          width: 100%;
-          height: 100%;
-          left: 0;
-          bottom: 0;
-          border-radius: inherit;
-          opacity: 1;
-          transform: scale(1, 1);
-          background-size: 100% 100%;
-          background-image: url(https://resource.tuniaokj.com/images/cool_bg_image/icon_bg.png);
-  
-            
-        }
-      }
-    }
-  }
-  
-  /* 底部悬浮按钮 start*/
-  .tn-tabbar-height {
-  	min-height: 160rpx;
-  	height: calc(180rpx + env(safe-area-inset-bottom) / 2);
-    height: calc(180rpx + constant(safe-area-inset-bottom));
-  }
-  .tn-footerfixed {
-    max-width: 640px;
-    margin: 0 auto;
-    position: fixed;
-    width: 100%;
-    bottom: calc(30rpx + env(safe-area-inset-bottom));
-    z-index: 1024;
-    box-shadow: 0 1rpx 6rpx rgba(0, 0, 0, 0);
-    
-  }
-  /* 底部悬浮按钮 end*/
   
   :deep(.input-placeholder) {
     font-size: 32rpx;

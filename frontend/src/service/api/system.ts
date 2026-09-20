@@ -130,11 +130,39 @@ export function fetchUserList(params?: { username?: string; realName?: string; s
   });
 }
 
+// 获取用户详情（含关联员工ID）
+export function fetchGetUserById(id: number) {
+  return request<{ user: Api.System.User; roleIds: number[] }>({
+    url: `/system/user/${id}`,
+    method: 'get'
+  });
+}
+
 /** 角色管理API */
 
 // 获取所有启用的角色列表
 export function fetchRoleList() {
   return request<Api.System.Role[]>({
     url: '/system/role/list'
+  });
+}
+
+/** 操作日志API */
+
+// 分页查询操作日志
+export function fetchOperLogPage(params?: Api.System.OperLogSearchParams) {
+  return request<Api.Common.PageResult<Api.System.OperLogRecord>>({
+    url: '/system/oper-log/page',
+    method: 'get',
+    params
+  });
+}
+
+// 清理N天前的操作日志
+export function cleanOperLogs(days: number) {
+  return request<boolean>({
+    url: '/system/oper-log/clean',
+    method: 'delete',
+    params: { days }
   });
 }

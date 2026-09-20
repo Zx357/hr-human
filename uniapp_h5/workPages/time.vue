@@ -10,18 +10,9 @@
     </tn-navbar>
 
     <view class="map-section">
-      <!-- #ifdef H5 -->
-      <view class="attendance-map google-map-shell">
-        <view ref="googleMapCanvas" class="google-map-canvas"></view>
-        <view v-if="googleMapLoading || googleMapError" class="google-map-state">
-          <text v-if="googleMapLoading">地图加载中...</text>
-          <text v-else>{{ googleMapError }}</text>
-        </view>
-      </view>
-      <!-- #endif -->
-
-      <!-- #ifndef H5 -->
+      <!-- 打卡地图:微信小程序端为原生腾讯地图(免 key);H5 端由 manifest.json 的 h5.sdkConfigs.maps.amap 提供高德 key -->
       <map
+        v-if="!IS_H5 || hasAmapKey"
         class="attendance-map"
         :latitude="mapLatitude"
         :longitude="mapLongitude"
@@ -33,7 +24,23 @@
         show-compass
         @click="openCompanyLocation"
       />
-      <!-- #endif -->
+      <!-- H5 端未配置高德 Key 时降级:只显示打卡点半径示意信息(经纬度文字+距离),不展示报错 -->
+      <view v-else class="map-fallback-card">
+        <view class="map-fallback-name">{{ companyName || '未配置打卡点' }}</view>
+        <view class="map-fallback-row">
+          <text class="map-fallback-label">打卡点坐标</text>
+          <text class="map-fallback-value">{{ clockPointText }}</text>
+        </view>
+        <view class="map-fallback-row">
+          <text class="map-fallback-label">当前距离</text>
+          <text class="map-fallback-value">{{ distanceDisplay }}</text>
+        </view>
+        <view class="map-fallback-row">
+          <text class="map-fallback-label">允许半径</text>
+          <text class="map-fallback-value">{{ rangeDisplay }}</text>
+        </view>
+        <view class="map-fallback-tip">未配置高德地图 Key，暂时无法展示地图。可在 manifest.json 的 h5.sdkConfigs.maps.amap 与 config.local.js 中配置后启用。</view>
+      </view>
 
       <view class="location-badge" :class="attendanceStatusClass">{{ locationBadgeText }}</view>
 
@@ -127,11 +134,10 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onUnmounted, ref } from 'vue'
-import { onLoad, onPullDownRefresh, onReady, onShow, onUnload } from '@dcloudio/uni-app'
+import { computed, onUnmounted, ref } from 'vue'
+import { onLoad, onPullDownRefresh, onShow, onUnload } from '@dcloudio/uni-app'
 import { clock, getClockInfo } from '@/api/attendance'
 import config from '@/config'
-import { loadGoogleMapsApi } from '@/utils/google-maps'
 
 const DEFAULT_MAP_POINT = {
   latitude: 39.9042,
@@ -146,17 +152,11 @@ isH5Platform = true
 // #endif
 const IS_H5 = isH5Platform
 
-const googleMapCanvas = ref(null)
-const googleMapLoading = ref(IS_H5)
-const googleMapReady = ref(false)
-const googleMapError = ref('')
-const googleMapRuntime = {
-  map: null,
-  companyRangeCircle: null,
-  companyPointCircle: null,
-  userAccuracyCircle: null,
-  userPointCircle: null
-}
+// 高德地图配置(H5 端 <map> 组件渲染使用;微信小程序端为原生腾讯地图,无需 key)
+// 兼容读取旧的 googleMaps 配置项
+const amapConfig = config ? (config.amap || config.googleMaps) || {} : {}
+// H5 端是否已配置高德 Key(与 manifest.json 的 h5.sdkConfigs.maps.amap 需同时配置)
+const hasAmapKey = !!(amapConfig.key || amapConfig.apiKey)
 
 const mapLatitude = ref(DEFAULT_MAP_POINT.latitude)
 const mapLongitude = ref(DEFAULT_MAP_POINT.longitude)
@@ -276,12 +276,6 @@ onLoad(() => {
   refreshPage(false)
 })
 
-onReady(() => {
-  if (IS_H5) {
-    initGoogleMap()
-  }
-})
-
 onShow(() => {
   loadClockInfo()
 })
@@ -294,7 +288,6 @@ onPullDownRefresh(() => {
 
 onUnload(() => {
   stopTimer()
-  disposeGoogleMap()
 })
 onUnmounted(stopTimer)
 
@@ -623,182 +616,6 @@ function refreshMapData() {
   circles.value = buildCircles()
   includePoints.value = buildIncludePoints()
   refreshMapCenter()
-  refreshGoogleMap()
-}
-
-async function initGoogleMap() {
-  if (!IS_H5) return
-
-  const googleMapConfig = (config && config.googleMaps) || {}
-  if (!googleMapConfig.apiKey) {
-    googleMapLoading.value = false
-    googleMapReady.value = false
-    googleMapError.value = '未配置 Google Maps API Key'
-    return
-  }
-
-  googleMapLoading.value = true
-  googleMapError.value = ''
-
-  await nextTick()
-  const mapElement = googleMapCanvas.value && (googleMapCanvas.value.$el || googleMapCanvas.value)
-  if (!mapElement) {
-    googleMapLoading.value = false
-    googleMapReady.value = false
-    googleMapError.value = '地图容器初始化失败'
-    return
-  }
-
-  try {
-    await loadGoogleMapsApi({
-      apiKey: googleMapConfig.apiKey,
-      language: googleMapConfig.language || 'zh-CN',
-      region: googleMapConfig.region || 'CN'
-    })
-
-    googleMapRuntime.map = new window.google.maps.Map(mapElement, {
-      center: { lat: DEFAULT_MAP_POINT.latitude, lng: DEFAULT_MAP_POINT.longitude },
-      zoom: 15,
-      disableDefaultUI: true,
-      zoomControl: true,
-      fullscreenControl: false,
-      streetViewControl: false,
-      mapTypeControl: false,
-      gestureHandling: 'greedy'
-    })
-
-    googleMapReady.value = true
-    googleMapLoading.value = false
-    refreshGoogleMap()
-  } catch (error) {
-    console.log('Google Maps 初始化失败', error)
-    googleMapReady.value = false
-    googleMapLoading.value = false
-    googleMapError.value = '地图加载失败，请检查网络或 Google Maps 配置'
-  }
-}
-
-function refreshGoogleMap() {
-  if (!IS_H5 || !googleMapReady.value || !googleMapRuntime.map || !window.google || !window.google.maps) {
-    return
-  }
-
-  const companyPoint = getGoogleMapCompanyPoint()
-  const userPoint = getGoogleMapUserPoint()
-
-  syncGoogleCircle('companyRangeCircle', companyPoint, {
-    radius: clockRange.value || 0,
-    strokeColor: '#5868FF',
-    strokeOpacity: 0.95,
-    strokeWeight: 2,
-    fillColor: '#5868FF',
-    fillOpacity: 0.14
-  }, !!(companyPoint && clockRange.value))
-
-  syncGoogleCircle('companyPointCircle', companyPoint, {
-    radius: 12,
-    strokeColor: '#3347FF',
-    strokeOpacity: 1,
-    strokeWeight: 2,
-    fillColor: '#526FA6',
-    fillOpacity: 1
-  }, !!companyPoint)
-
-  syncGoogleCircle('userAccuracyCircle', userPoint, {
-    radius: Math.max(Number(locationAccuracy.value) || 0, 20),
-    strokeColor: '#20B486',
-    strokeOpacity: 0.65,
-    strokeWeight: 1,
-    fillColor: '#20B486',
-    fillOpacity: 0.08
-  }, !!(userPoint && Number.isFinite(Number(locationAccuracy.value))))
-
-  syncGoogleCircle('userPointCircle', userPoint, {
-    radius: 12,
-    strokeColor: '#0D8F67',
-    strokeOpacity: 1,
-    strokeWeight: 2,
-    fillColor: '#20B486',
-    fillOpacity: 1
-  }, !!userPoint)
-
-  fitGoogleMapViewport(companyPoint, userPoint)
-}
-
-function syncGoogleCircle(key, point, styleOptions, shouldShow) {
-  if (!googleMapRuntime[key]) {
-    googleMapRuntime[key] = new window.google.maps.Circle({
-      strokeOpacity: 0,
-      strokeWeight: 0,
-      fillOpacity: 0
-    })
-  }
-
-  const overlay = googleMapRuntime[key]
-  if (!shouldShow || !point) {
-    overlay.setMap(null)
-    return
-  }
-
-  overlay.setOptions({
-    ...styleOptions,
-    center: point,
-    map: googleMapRuntime.map
-  })
-}
-
-function fitGoogleMapViewport(companyPoint, userPoint) {
-  if (!googleMapRuntime.map) return
-
-  if (companyPoint && userPoint) {
-    const bounds = new window.google.maps.LatLngBounds()
-    bounds.extend(companyPoint)
-    bounds.extend(userPoint)
-    googleMapRuntime.map.fitBounds(bounds, 60)
-    return
-  }
-
-  if (companyPoint) {
-    googleMapRuntime.map.setCenter(companyPoint)
-    googleMapRuntime.map.setZoom(getScaleByDistance(clockRange.value || 300))
-    return
-  }
-
-  if (userPoint) {
-    googleMapRuntime.map.setCenter(userPoint)
-    googleMapRuntime.map.setZoom(16)
-    return
-  }
-
-  googleMapRuntime.map.setCenter({ lat: DEFAULT_MAP_POINT.latitude, lng: DEFAULT_MAP_POINT.longitude })
-  googleMapRuntime.map.setZoom(12)
-}
-
-function getGoogleMapCompanyPoint() {
-  if (!hasCompanyLocation.value) return null
-  const [lat, lng] = gcj02ToWgs84(companyLat.value, companyLng.value)
-  return { lat, lng }
-}
-
-function getGoogleMapUserPoint() {
-  if (Number.isFinite(rawLatitude.value) && Number.isFinite(rawLongitude.value)) {
-    return { lat: rawLatitude.value, lng: rawLongitude.value }
-  }
-
-  if (!hasLocation.value) return null
-  const [lat, lng] = gcj02ToWgs84(latitude.value, longitude.value)
-  return { lat, lng }
-}
-
-function disposeGoogleMap() {
-  if (!IS_H5) return
-  ;['companyRangeCircle', 'companyPointCircle', 'userAccuracyCircle', 'userPointCircle'].forEach(key => {
-    if (googleMapRuntime[key]) {
-      googleMapRuntime[key].setMap(null)
-      googleMapRuntime[key] = null
-    }
-  })
-  googleMapRuntime.map = null
 }
 
 function buildMarkers() {
@@ -1033,12 +850,6 @@ function wgs84ToGcj02(lat, lng) {
   return [lat + deltaLat, lng + deltaLng]
 }
 
-function gcj02ToWgs84(lat, lng) {
-  if (isOutOfChina(lat, lng)) return [lat, lng]
-  const [gcjLat, gcjLng] = wgs84ToGcj02(lat, lng)
-  return [lat * 2 - gcjLat, lng * 2 - gcjLng]
-}
-
 function isOutOfChina(lat, lng) {
   return lng < 72.004 || lng > 137.8347 || lat < 0.8293 || lat > 55.8271
 }
@@ -1103,28 +914,48 @@ export default {
   height: 100%;
 }
 
-.google-map-shell {
-  position: relative;
-  overflow: hidden;
-}
-
-.google-map-canvas {
-  width: 100%;
+/* H5 未配置高德 Key 时的打卡点半径示意卡片 */
+.map-fallback-card {
   height: 100%;
+  padding: 30rpx 32rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: linear-gradient(135deg, #DDEAF8 0%, #E8F3FC 55%, #E4F5EE 100%);
 }
 
-.google-map-state {
-  position: absolute;
-  inset: 0;
+.map-fallback-name {
+  color: #14213D;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.map-fallback-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 32rpx;
-  text-align: center;
-  color: #223554;
+  justify-content: space-between;
+  margin-top: 18rpx;
+}
+
+.map-fallback-label {
+  color: #56657A;
+  font-size: 24rpx;
+}
+
+.map-fallback-value {
+  color: #172642;
   font-size: 25rpx;
+  font-weight: 800;
+}
+
+.map-fallback-tip {
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid rgba(34, 53, 84, 0.12);
+  color: #7C8AA0;
+  font-size: 22rpx;
   line-height: 1.5;
-  background: rgba(221, 234, 248, 0.88);
 }
 
 .location-badge {

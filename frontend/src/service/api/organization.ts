@@ -4,9 +4,9 @@ import { request } from '../request';
 
 /** 组织节点类型 */
 export const OrgUnitType = {
-  GROUP: 1,    // 集团
-  COMPANY: 2,  // 公司
-  DEPT: 3      // 部门
+  GROUP: 1, // 集团
+  COMPANY: 2, // 公司
+  DEPT: 3 // 部门
 } as const;
 
 /** 获取完整组织架构树 */

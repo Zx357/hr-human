@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import { useEcharts } from '@/hooks/common/echarts';
 import dayjs from 'dayjs';
 import { fetchEmployeeList } from '@/service/api/hr';
+import { useEcharts } from '@/hooks/common/echarts';
 
 defineOptions({ name: 'PieChart' });
 
@@ -73,9 +73,7 @@ async function loadData() {
       map.set(group, (map.get(group) ?? 0) + 1);
     });
 
-    const data = ageOrder
-      .filter(g => map.has(g))
-      .map(g => ({ name: g, value: map.get(g)! }));
+    const data = ageOrder.filter(g => map.has(g)).map(g => ({ name: g, value: map.get(g)! }));
 
     updateOptions(opts => {
       opts.series[0].data = data;

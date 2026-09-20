@@ -1,20 +1,29 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
-import { ElMessage } from 'element-plus';
-import { fetchDailyRecordPage, calculateDailyAttendance, lockDailyRecords, type AttDailyRecord } from '@/service/api/attendance';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import dayjs from 'dayjs';
+import {
+  type AttDailyRecord,
+  calculateDailyAttendance,
+  fetchDailyRecordPage,
+  lockDailyRecords
+} from '@/service/api/attendance';
 import { fetchCompanyList, fetchDepartmentTree } from '@/service/api/organization';
+import { resolveOrgIds } from '@/utils/report';
+import { downloadFile } from '@/utils/download';
 
 defineOptions({ name: 'DailyAttendance' });
 
 const loading = ref(false);
 const calculating = ref(false);
+const exporting = ref(false);
 const data = ref<AttDailyRecord[]>([]);
 const companies = ref<any[]>([]);
 const departments = ref<any[]>([]);
 const selectedRows = ref<AttDailyRecord[]>([]);
 
-// 默认日期范围为今天
-const today = new Date().toISOString().slice(0, 10);
+// 默认日期范围为今天（本地时区）
+const today = dayjs().format('YYYY-MM-DD');
 const searchParams = ref({
   dateRange: [today, today] as string[],
   companyId: undefined as number | undefined,
@@ -51,10 +60,13 @@ async function loadDepartments(companyId?: number) {
   departments.value = res.data || [];
 }
 
-watch(() => searchParams.value.companyId, (val) => {
-  searchParams.value.deptId = undefined;
-  loadDepartments(val);
-});
+watch(
+  () => searchParams.value.companyId,
+  val => {
+    searchParams.value.deptId = undefined;
+    loadDepartments(val);
+  }
+);
 
 async function loadData() {
   loading.value = true;
@@ -88,8 +100,15 @@ function handleSearch() {
 }
 
 function handleReset() {
-  const today = new Date().toISOString().slice(0, 10);
-  searchParams.value = { dateRange: [today, today], companyId: undefined, deptId: undefined, employeeNo: '', employeeName: '', status: undefined };
+  const todayStr = dayjs().format('YYYY-MM-DD');
+  searchParams.value = {
+    dateRange: [todayStr, todayStr],
+    companyId: undefined,
+    deptId: undefined,
+    employeeNo: '',
+    employeeName: '',
+    status: undefined
+  };
   departments.value = [];
   handleSearch();
 }
@@ -112,19 +131,20 @@ function handleSelectionChange(rows: AttDailyRecord[]) {
 const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
 function getWeekDay(dateStr: string) {
   if (!dateStr) return '';
-  const date = new Date(dateStr);
-  return '周' + weekDays[date.getDay()];
+  return `周${weekDays[dayjs(dateStr).day()]}`;
 }
 
 // 计算请假总时长
 function getTotalLeaveHours(row: AttDailyRecord): number {
-  return (row.annualLeaveDuration || 0) + 
-         (row.personalLeaveDuration || 0) + 
-         (row.sickLeaveDuration || 0) + 
-         (row.marriageLeaveDuration || 0) + 
-         (row.maternityLeaveDuration || 0) + 
-         (row.paternityLeaveDuration || 0) + 
-         (row.bereavementLeaveDuration || 0);
+  return (
+    (row.annualLeaveDuration || 0) +
+    (row.personalLeaveDuration || 0) +
+    (row.sickLeaveDuration || 0) +
+    (row.marriageLeaveDuration || 0) +
+    (row.maternityLeaveDuration || 0) +
+    (row.paternityLeaveDuration || 0) +
+    (row.bereavementLeaveDuration || 0)
+  );
 }
 
 // 计算按钮显示文案
@@ -182,13 +202,20 @@ async function handleCalculate() {
     ElMessage.warning('请选择日期范围');
     return;
   }
+  try {
+    await ElMessageBox.confirm(`${getCalculateTooltip().replace(/\n/g, ' ')}，确认执行考勤计算吗？`, '考勤计算确认', {
+      type: 'warning',
+      confirmButtonText: '确认计算',
+      cancelButtonText: '取消'
+    });
+  } catch {
+    return;
+  }
   calculating.value = true;
   try {
     // 获取选中的员工ID列表
-    const employeeIds = selectedRows.value.length > 0 
-      ? selectedRows.value.map(r => r.employeeId) 
-      : undefined;
-    
+    const employeeIds = selectedRows.value.length > 0 ? selectedRows.value.map(r => r.employeeId) : undefined;
+
     await calculateDailyAttendance({
       startDate: searchParams.value.dateRange[0],
       endDate: searchParams.value.dateRange[1],
@@ -200,6 +227,8 @@ async function handleCalculate() {
     });
     ElMessage.success('考勤计算完成');
     loadData();
+  } catch {
+    ElMessage.error('考勤计算失败');
   } finally {
     calculating.value = false;
   }
@@ -225,9 +254,59 @@ async function handleLock(lock: boolean) {
     ElMessage.warning('没有可操作的记录');
     return;
   }
-  await lockDailyRecords({ ids, lock });
-  ElMessage.success(lock ? '锁定成功' : '解锁成功');
-  loadData();
+  try {
+    await ElMessageBox.confirm(
+      `确认${lock ? '锁定' : '解锁'}选中的 ${selectedRows.value.length} 条考勤记录吗？`,
+      lock ? '锁定确认' : '解锁确认',
+      {
+        type: 'warning',
+        confirmButtonText: '确认',
+        cancelButtonText: '取消'
+      }
+    );
+  } catch {
+    return;
+  }
+  try {
+    await lockDailyRecords({ ids, lock });
+    ElMessage.success(lock ? '锁定成功' : '解锁成功');
+    loadData();
+  } catch {
+    ElMessage.error(lock ? '锁定失败' : '解锁失败');
+  }
+}
+
+/** 导出日考勤记录 */
+async function handleExport() {
+  if (!searchParams.value.dateRange?.[0] || !searchParams.value.dateRange?.[1]) {
+    ElMessage.warning('请选择日期范围');
+    return;
+  }
+  exporting.value = true;
+  try {
+    const startDate = searchParams.value.dateRange[0];
+    const endDate = searchParams.value.dateRange[1];
+    // 与列表查询保持一致：公司/部门解析为 orgIds（含子部门）
+    const { companyId, deptId } = searchParams.value;
+    let orgIds: number[] | undefined;
+    if (companyId || deptId) {
+      const resolved = resolveOrgIds(departments.value, deptId);
+      orgIds = resolved.length > 0 ? resolved : [deptId ?? companyId!];
+    }
+    await downloadFile('/attendance/daily/export', `日考勤记录_${startDate}_${endDate}.xlsx`, {
+      startDate,
+      endDate,
+      orgIds: orgIds?.join(','),
+      employeeNo: searchParams.value.employeeNo,
+      employeeName: searchParams.value.employeeName,
+      status: searchParams.value.status
+    });
+    ElMessage.success('导出成功');
+  } catch {
+    ElMessage.error('导出失败');
+  } finally {
+    exporting.value = false;
+  }
 }
 </script>
 
@@ -274,8 +353,14 @@ async function handleLock(lock: boolean) {
           </ElSelect>
         </ElFormItem>
         <ElFormItem>
-          <ElButton type="primary" @click="handleSearch"><icon-ep-search />搜索</ElButton>
-          <ElButton @click="handleReset"><icon-ep-refresh />重置</ElButton>
+          <ElButton type="primary" @click="handleSearch">
+            <icon-ep-search />
+            搜索
+          </ElButton>
+          <ElButton @click="handleReset">
+            <icon-ep-refresh />
+            重置
+          </ElButton>
         </ElFormItem>
       </ElForm>
     </ElCard>
@@ -299,12 +384,16 @@ async function handleLock(lock: boolean) {
               <template #icon><icon-ep-unlock /></template>
               解锁
             </ElButton>
-            <span class="text-xs text-gray-400">
-              提示: 勾选员工计算选中，或按搜索条件筛选计算
-            </span>
+            <ElButton type="primary" :loading="exporting" @click="handleExport">
+              <template #icon><icon-ep-download /></template>
+              导出
+            </ElButton>
+            <span class="text-xs text-gray-400">提示: 勾选员工计算选中，或按搜索条件筛选计算</span>
           </div>
           <div class="flex items-center gap-8px text-sm">
-            <ElTag v-for="(item, key) in statusMap" :key="key" :type="item.type as any" size="small">{{ item.label }}</ElTag>
+            <ElTag v-for="(item, key) in statusMap" :key="key" :type="item.type as any" size="small">
+              {{ item.label }}
+            </ElTag>
           </div>
         </div>
       </template>
@@ -323,13 +412,28 @@ async function handleLock(lock: boolean) {
         <ElTableColumn label="各时段打卡" min-width="400">
           <template #default="{ row }">
             <div class="flex flex-wrap gap-8px">
-              <div v-for="p in row.periods" :key="p.periodId" class="flex items-center gap-4px text-xs border rounded px-6px py-2px" :class="p.status === 1 ? 'border-green-300 bg-green-50' : p.status === 4 ? 'border-red-300 bg-red-50' : 'border-orange-300 bg-orange-50'">
+              <div
+                v-for="p in row.periods"
+                :key="p.periodId"
+                class="flex items-center gap-4px border rounded px-6px py-2px text-xs"
+                :class="
+                  p.status === 1
+                    ? 'border-green-300 bg-green-50'
+                    : p.status === 4
+                      ? 'border-red-300 bg-red-50'
+                      : 'border-orange-300 bg-orange-50'
+                "
+              >
                 <span class="font-medium">{{ p.periodName }}</span>
-                <span class="text-gray-400">{{ p.scheduledIn?.slice(0,5) }}-{{ p.scheduledOut?.slice(0,5) }}</span>
+                <span class="text-gray-400">{{ p.scheduledIn?.slice(0, 5) }}-{{ p.scheduledOut?.slice(0, 5) }}</span>
                 <span class="mx-2px">|</span>
-                <span :class="p.lateMinutes > 0 ? 'text-red-500' : 'text-green-600'">{{ p.actualIn?.slice(0,5) || '缺卡' }}</span>
+                <span :class="p.lateMinutes > 0 ? 'text-red-500' : 'text-green-600'">
+                  {{ p.actualIn?.slice(0, 5) || '缺卡' }}
+                </span>
                 <span>-</span>
-                <span :class="p.earlyMinutes > 0 ? 'text-red-500' : 'text-green-600'">{{ p.actualOut?.slice(0,5) || '缺卡' }}</span>
+                <span :class="p.earlyMinutes > 0 ? 'text-red-500' : 'text-green-600'">
+                  {{ p.actualOut?.slice(0, 5) || '缺卡' }}
+                </span>
               </div>
             </div>
           </template>
@@ -355,7 +459,7 @@ async function handleLock(lock: boolean) {
               <template #content>
                 <div>加班 {{ row.overtimeDuration }}h</div>
               </template>
-              <span class="text-blue-500 cursor-pointer">{{ row.overtimeDuration }}h</span>
+              <span class="cursor-pointer text-blue-500">{{ row.overtimeDuration }}h</span>
             </ElTooltip>
             <span v-else>-</span>
           </template>
@@ -374,7 +478,7 @@ async function handleLock(lock: boolean) {
                   <div v-if="row.bereavementLeaveDuration > 0">丧假: {{ row.bereavementLeaveDuration }}h</div>
                 </div>
               </template>
-              <span class="text-orange-500 cursor-pointer">{{ getTotalLeaveHours(row) }}h</span>
+              <span class="cursor-pointer text-orange-500">{{ getTotalLeaveHours(row) }}h</span>
             </ElTooltip>
             <span v-else>-</span>
           </template>
@@ -385,7 +489,7 @@ async function handleLock(lock: boolean) {
               <template #content>
                 <div>出差 {{ row.businessDuration }}h</div>
               </template>
-              <span class="text-purple-500 cursor-pointer">{{ row.businessDuration }}h</span>
+              <span class="cursor-pointer text-purple-500">{{ row.businessDuration }}h</span>
             </ElTooltip>
             <span v-else>-</span>
           </template>

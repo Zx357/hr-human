@@ -34,7 +34,6 @@ export const alova = createAlovaRequest(
     onRequest({ config }) {
       const Authorization = getAuthorization();
       config.headers.Authorization = Authorization;
-      config.headers.apifoxToken = 'XL299LiMEDZ0H5h3A29PxwQXdMJqWyY2';
     },
     tokenRefresher: {
       async isExpired(response) {

@@ -15,6 +15,7 @@ import com.kadmin.hr.domain.dto.WorkExperienceDTO;
 import com.kadmin.hr.domain.dto.CertificateDTO;
 import com.kadmin.hr.domain.dto.EmployeeExtraDTO;
 import com.kadmin.common.security.LoginUser;
+import com.kadmin.common.annotation.OperLog;
 import com.kadmin.hr.service.EmployeeService;
 import com.kadmin.common.utils.SecurityUtils;
 import jakarta.validation.Valid;
@@ -66,28 +67,53 @@ public class EmployeeController {
     }
 
     /**
-     * 获取员工列表（不分页）
+     * 获取员工列表（不分页，通讯录使用）
+     * 非管理员仅返回基础联系字段，敏感信息脱敏
      */
     @GetMapping("/list")
     public Result<List<HrEmployee>> list(
             @RequestParam(required = false) Long deptId,
             @RequestParam(required = false) Integer status) {
         List<HrEmployee> list = employeeService.getEmployeeList(deptId, status);
+        if (!SecurityUtils.isAdmin()) {
+            for (HrEmployee employee : list) {
+                employee.setPassword(null);
+                employee.setIdCard(null);
+                employee.setIdCardFront(null);
+                employee.setIdCardBack(null);
+            }
+        }
         return Result.success(list);
     }
 
     /**
      * 获取员工详情
+     * 管理员可看完整档案；普通员工仅能看自己完整档案或他人的基础信息（敏感字段脱敏）
      */
     @GetMapping("/{id}")
     public Result<HrEmployee> getDetail(@PathVariable Long id) {
         HrEmployee employee = employeeService.getEmployeeDetail(id, true);
+        LoginUser loginUser = SecurityUtils.getCurrentUser();
+        boolean self = loginUser != null && id != null && id.equals(loginUser.getEmployeeId());
+        if (employee != null && !SecurityUtils.isAdmin() && !self) {
+            employee.setPassword(null);
+            employee.setMiniAppPassword(null);
+            employee.setIdCard(null);
+            employee.setIdCardFront(null);
+            employee.setIdCardBack(null);
+            employee.setFamilyMemberList(null);
+            employee.setEducationList(null);
+            employee.setWorkExperienceList(null);
+            employee.setCertificateList(null);
+            employee.setExtraFieldList(null);
+        }
         return Result.success(employee);
     }
 
     /**
      * 新增员工
      */
+    @OperLog(module = "员工管理", action = "新增")
     @PostMapping
     public Result<Void> add(@Valid @RequestBody EmployeeDTO dto) {
         // 检查工号是否重复
@@ -104,6 +130,7 @@ public class EmployeeController {
     /**
      * 修改员工
      */
+    @OperLog(module = "员工管理", action = "修改")
     @PutMapping
     public Result<Void> update(@Valid @RequestBody EmployeeDTO dto) {
         // 检查工号是否重复（排除自己）
@@ -120,6 +147,7 @@ public class EmployeeController {
     /**
      * 删除员工
      */
+    @OperLog(module = "员工管理", action = "删除")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         employeeService.deleteEmployee(id);

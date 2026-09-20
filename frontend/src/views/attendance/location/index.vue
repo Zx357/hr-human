@@ -2,12 +2,12 @@
 import { computed, nextTick, onMounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import {
+  type AttLocation,
   createAttLocation,
   deleteAttLocation,
   fetchAttLocationDetail,
   fetchAttLocationPage,
-  updateAttLocation,
-  type AttLocation
+  updateAttLocation
 } from '@/service/api/attendance';
 import { fetchEmployeePage } from '@/service/api/hr';
 import { fetchOrgTree } from '@/service/api/organization';
@@ -104,7 +104,9 @@ async function loadLocations(keepSelected = true) {
     const nextSelected =
       (keepSelected && selectedLocation.value
         ? tableData.value.find(item => item.id === selectedLocation.value?.id)
-        : undefined) || tableData.value[0] || null;
+        : undefined) ||
+      tableData.value[0] ||
+      null;
 
     if (nextSelected) {
       await selectLocation(nextSelected);
@@ -372,9 +374,13 @@ async function removeEmployees(employees: Api.Hr.Employee[]) {
   }
 
   const names = employees.map(item => item.name || item.employeeNo).join('、');
-  await ElMessageBox.confirm(`确定从当前打卡地点移除 ${employees.length} 名员工吗？${names ? `（${names}）` : ''}`, '提示', {
-    type: 'warning'
-  });
+  await ElMessageBox.confirm(
+    `确定从当前打卡地点移除 ${employees.length} 名员工吗？${names ? `（${names}）` : ''}`,
+    '提示',
+    {
+      type: 'warning'
+    }
+  );
 
   const removeIds = new Set(employees.map(item => item.id));
   const employeeIds = currentEmployeeIds.value.filter(id => !removeIds.has(id));
@@ -566,18 +572,35 @@ function handleBatchRemoveEmployees() {
         </ElFormItem>
 
         <ElFormItem label="打卡地址" required>
-          <ElInput v-model="form.address" maxlength="255" show-word-limit placeholder="用于移动端展示，可手动补充楼栋楼层" />
+          <ElInput
+            v-model="form.address"
+            maxlength="255"
+            show-word-limit
+            placeholder="用于移动端展示，可手动补充楼栋楼层"
+          />
         </ElFormItem>
 
         <ElRow :gutter="12">
           <ElCol :span="12">
             <ElFormItem label="纬度" required>
-              <ElInputNumber v-model="form.latitude" class="w-full" :precision="6" :step="0.000001" controls-position="right" />
+              <ElInputNumber
+                v-model="form.latitude"
+                class="w-full"
+                :precision="6"
+                :step="0.000001"
+                controls-position="right"
+              />
             </ElFormItem>
           </ElCol>
           <ElCol :span="12">
             <ElFormItem label="经度" required>
-              <ElInputNumber v-model="form.longitude" class="w-full" :precision="6" :step="0.000001" controls-position="right" />
+              <ElInputNumber
+                v-model="form.longitude"
+                class="w-full"
+                :precision="6"
+                :step="0.000001"
+                controls-position="right"
+              />
             </ElFormItem>
           </ElCol>
         </ElRow>
@@ -585,7 +608,14 @@ function handleBatchRemoveEmployees() {
         <ElRow :gutter="12">
           <ElCol :span="12">
             <ElFormItem label="打卡半径" required>
-              <ElInputNumber v-model="form.clockRange" class="w-full" :min="1" :max="5000" :step="10" controls-position="right" />
+              <ElInputNumber
+                v-model="form.clockRange"
+                class="w-full"
+                :min="1"
+                :max="5000"
+                :step="10"
+                controls-position="right"
+              />
             </ElFormItem>
           </ElCol>
           <ElCol :span="12">
@@ -631,7 +661,12 @@ function handleBatchRemoveEmployees() {
             <ElInput v-model="assignEmployeeSearch.name" placeholder="请输入姓名" clearable style="width: 120px" />
           </ElFormItem>
           <ElFormItem label="工号">
-            <ElInput v-model="assignEmployeeSearch.employeeNo" placeholder="请输入工号" clearable style="width: 120px" />
+            <ElInput
+              v-model="assignEmployeeSearch.employeeNo"
+              placeholder="请输入工号"
+              clearable
+              style="width: 120px"
+            />
           </ElFormItem>
           <ElFormItem label="组织">
             <ElTreeSelect
