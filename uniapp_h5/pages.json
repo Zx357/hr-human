@@ -215,13 +215,6 @@
 	      }
 	    },
 	    {
-	      "path": "add",
-	      "style": {
-	        "navigationBarTitleText": "添加同事",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
 	      "path": "create",
 	      "style": {
 	        "navigationBarTitleText": "发起群聊",
@@ -229,17 +222,10 @@
 	      }
 	    },
 	    {
-	      "path": "apply",
-	      "style": {
-	        "navigationBarTitleText": "好友申请",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
 	      "path": "dept-members",
 	      "style": {
 	        "navigationBarTitleText": "部门成员",
-	        "enablePullDownRefresh": false
+	        "enablePullDownRefresh": true
 	      }
 	    },
 	    {
@@ -252,13 +238,6 @@
 	}, {
 	  "root":"minePages",
 	  "pages": [{
-	      "path": "upload",
-	      "style": {
-	        "navigationBarTitleText": "文件上传",
-	        "enablePullDownRefresh": false
-	      }
-	    },
-	    {
 	      "path": "nav",
 	      "style": {
 	        "navigationBarTitleText": "快捷导航",
@@ -280,6 +259,13 @@
 	      }
 	    },
 	    {
+	      "path": "password",
+	      "style": {
+	        "navigationBarTitleText": "修改密码",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
 	      "path": "help",
 	      "style": {
 	      "navigationBarTitleText": "帮助中心",
@@ -289,7 +275,7 @@
 	    {
 	      "path": "navigation",
 	      "style": {
-	      "navigationBarTitleText": "所有页面",
+	      "navigationBarTitleText": "功能导航",
 	      "enablePullDownRefresh": false
 	      }
 	    }

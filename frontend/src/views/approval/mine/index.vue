@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { type Application, fetchApplicationPage } from '@/service/api/application';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { type Application, cancelApplication, fetchApplicationPage } from '@/service/api/application';
 import { fetchGetUserById } from '@/service/api/system';
 import { useAuthStore } from '@/store/modules/auth';
+import ApplicationDetailDrawer from '@/components/business/application-detail-drawer.vue';
 
 defineOptions({ name: 'ApprovalMine' });
 
@@ -18,6 +20,36 @@ const currentEmployeeId = ref<number | undefined>(undefined);
 const noEmployee = ref(false);
 
 const searchParams = ref({ appType: undefined as string | undefined, status: undefined as number | undefined });
+
+// 详情抽屉
+const detailVisible = ref(false);
+const currentApplication = ref<Application | null>(null);
+
+function handleViewDetail(row: Application) {
+  currentApplication.value = row;
+  detailVisible.value = true;
+}
+
+/** 撤销待审批的申请 */
+async function handleCancel(row: Application) {
+  if (!row.id) return;
+  try {
+    await ElMessageBox.confirm('确定撤销该申请吗？撤销后不可恢复', '撤销确认', {
+      type: 'warning',
+      confirmButtonText: '确认撤销',
+      cancelButtonText: '取消'
+    });
+  } catch {
+    return;
+  }
+  try {
+    await cancelApplication(row.id);
+    ElMessage.success('已撤销');
+    loadData();
+  } catch {
+    ElMessage.error('撤销失败');
+  }
+}
 
 /** 获取当前登录用户关联的员工ID：优先用登录信息自带的 employeeId，否则查用户详情 */
 async function loadCurrentEmployeeId() {
@@ -168,6 +200,14 @@ const statusMap: Record<number, { label: string; type: string }> = {
             </ElTableColumn>
             <ElTableColumn prop="approveRemark" label="审批意见" width="150" show-overflow-tooltip />
             <ElTableColumn prop="createdTime" label="申请时间" width="170" />
+            <ElTableColumn label="操作" width="130" align="center" fixed="right">
+              <template #default="{ row }">
+                <ElButton type="primary" link size="small" @click="handleViewDetail(row)">详情</ElButton>
+                <ElButton v-if="row.status === 0" type="warning" link size="small" @click="handleCancel(row)">
+                  撤销
+                </ElButton>
+              </template>
+            </ElTableColumn>
           </ElTable>
         </div>
 
@@ -184,6 +224,8 @@ const statusMap: Record<number, { label: string; type: string }> = {
         </div>
       </template>
     </ElCard>
+
+    <ApplicationDetailDrawer v-model="detailVisible" :application="currentApplication" />
   </div>
 </template>
 

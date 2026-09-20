@@ -2,15 +2,12 @@ package com.kadmin.mobile.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.kadmin.hr.domain.HrEmployee;
+import com.kadmin.hr.mapper.EmployeeMapper;
 import com.kadmin.mobile.domain.MobileChatGroup;
 import com.kadmin.mobile.domain.MobileChatGroupMember;
-import com.kadmin.mobile.domain.MobileContactRequest;
-import com.kadmin.hr.mapper.EmployeeMapper;
 import com.kadmin.mobile.mapper.MobileChatGroupMapper;
 import com.kadmin.mobile.mapper.MobileChatGroupMemberMapper;
-import com.kadmin.mobile.mapper.MobileContactRequestMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +15,6 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +22,7 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-public class MobileContactService extends ServiceImpl<MobileContactRequestMapper, MobileContactRequest> {
+public class MobileContactService {
 
     private final EmployeeMapper employeeMapper;
     private final MobileChatGroupMapper groupMapper;
@@ -36,13 +32,9 @@ public class MobileContactService extends ServiceImpl<MobileContactRequestMapper
         Long groupCount = groupMemberMapper.selectCount(new LambdaQueryWrapper<MobileChatGroupMember>()
                 .eq(MobileChatGroupMember::getEmployeeId, employeeId)
                 .eq(MobileChatGroupMember::getStatus, 1));
-        Long pendingRequestCount = count(new LambdaQueryWrapper<MobileContactRequest>()
-                .eq(MobileContactRequest::getTargetId, employeeId)
-                .eq(MobileContactRequest::getStatus, 0));
 
-        Map<String, Object> summary = new HashMap<>();
+        Map<String, Object> summary = new java.util.HashMap<>();
         summary.put("groupCount", groupCount == null ? 0 : groupCount);
-        summary.put("pendingRequestCount", pendingRequestCount == null ? 0 : pendingRequestCount);
         return summary;
     }
 
@@ -129,68 +121,6 @@ public class MobileContactService extends ServiceImpl<MobileContactRequestMapper
         return group;
     }
 
-    public List<MobileContactRequest> listRequests(Long employeeId, String type) {
-        LambdaQueryWrapper<MobileContactRequest> wrapper = new LambdaQueryWrapper<>();
-        if ("sent".equals(type)) {
-            wrapper.eq(MobileContactRequest::getRequesterId, employeeId);
-        } else {
-            wrapper.eq(MobileContactRequest::getTargetId, employeeId);
-        }
-        wrapper.orderByDesc(MobileContactRequest::getCreatedTime);
-
-        List<MobileContactRequest> list = list(wrapper);
-        list.forEach(this::fillRequestEmployeeNames);
-        return list;
-    }
-
-    @Transactional
-    public MobileContactRequest sendRequest(Long targetEmployeeId, String remark, Long requesterId) {
-        if (targetEmployeeId == null || targetEmployeeId <= 0) {
-            throw new IllegalArgumentException("请选择联系人");
-        }
-        if (targetEmployeeId.equals(requesterId)) {
-            throw new IllegalArgumentException("不能添加自己");
-        }
-        HrEmployee target = employeeMapper.selectById(targetEmployeeId);
-        if (target == null || (target.getStatus() != null && target.getStatus() != 1)) {
-            throw new IllegalArgumentException("联系人不存在");
-        }
-
-        MobileContactRequest existing = getOne(new LambdaQueryWrapper<MobileContactRequest>()
-                .eq(MobileContactRequest::getRequesterId, requesterId)
-                .eq(MobileContactRequest::getTargetId, targetEmployeeId)
-                .eq(MobileContactRequest::getStatus, 0)
-                .last("LIMIT 1"));
-        if (existing != null) {
-            return existing;
-        }
-
-        MobileContactRequest request = new MobileContactRequest();
-        request.setRequesterId(requesterId);
-        request.setTargetId(targetEmployeeId);
-        request.setStatus(0);
-        request.setRemark(remark);
-        save(request);
-        fillRequestEmployeeNames(request);
-        return request;
-    }
-
-    @Transactional
-    public MobileContactRequest handleRequest(Long requestId, Integer status, Long employeeId) {
-        if (status == null || (status != 1 && status != 2)) {
-            throw new IllegalArgumentException("处理状态不正确");
-        }
-        MobileContactRequest request = getById(requestId);
-        if (request == null || !employeeId.equals(request.getTargetId())) {
-            throw new IllegalArgumentException("申请不存在");
-        }
-        request.setStatus(status);
-        request.setHandledTime(LocalDateTime.now());
-        updateById(request);
-        fillRequestEmployeeNames(request);
-        return request;
-    }
-
     public List<HrEmployee> listGroupMembers(Long groupId, Long employeeId) {
         Long membership = groupMemberMapper.selectCount(new LambdaQueryWrapper<MobileChatGroupMember>()
                 .eq(MobileChatGroupMember::getGroupId, groupId)
@@ -219,19 +149,6 @@ public class MobileContactService extends ServiceImpl<MobileContactRequestMapper
         HrEmployee owner = employeeMapper.selectById(group.getOwnerId());
         if (owner != null) {
             group.setOwnerName(owner.getName());
-        }
-    }
-
-    private void fillRequestEmployeeNames(MobileContactRequest request) {
-        HrEmployee requester = employeeMapper.selectById(request.getRequesterId());
-        if (requester != null) {
-            request.setRequesterName(requester.getName());
-            request.setRequesterAvatar(requester.getAvatar());
-        }
-        HrEmployee target = employeeMapper.selectById(request.getTargetId());
-        if (target != null) {
-            request.setTargetName(target.getName());
-            request.setTargetAvatar(target.getAvatar());
         }
     }
 }

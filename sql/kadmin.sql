@@ -1434,39 +1434,6 @@ LOCK TABLES `mobile_chat_message` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `mobile_contact_request`
---
-
-DROP TABLE IF EXISTS `mobile_contact_request`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `mobile_contact_request` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `requester_id` bigint NOT NULL,
-  `target_id` bigint NOT NULL,
-  `status` tinyint NOT NULL DEFAULT '0',
-  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
-  `handled_time` datetime DEFAULT NULL,
-  `created_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  `updated_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `created_by` bigint DEFAULT NULL,
-  `updated_by` bigint DEFAULT NULL,
-  PRIMARY KEY (`id`) USING BTREE,
-  KEY `idx_mobile_contact_request_target` (`target_id`,`status`) USING BTREE,
-  KEY `idx_mobile_contact_request_requester` (`requester_id`,`status`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC COMMENT='移动端联系人申请';
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `mobile_contact_request`
---
-
-LOCK TABLES `mobile_contact_request` WRITE;
-/*!40000 ALTER TABLE `mobile_contact_request` DISABLE KEYS */;
-/*!40000 ALTER TABLE `mobile_contact_request` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `mobile_moment_like`
 --
 

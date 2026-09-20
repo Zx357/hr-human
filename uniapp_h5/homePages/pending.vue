@@ -187,7 +187,6 @@ async function loadList(reset = false) {
     finished.value = list.value.length >= total || records.length < pageSize
     pageNum.value += 1
   } catch (e) {
-    console.log('加载待办失败', e)
   } finally {
     loading.value = false
     refreshing.value = false

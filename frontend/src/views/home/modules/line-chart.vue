@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue';
 import dayjs from 'dayjs';
-import { fetchDailyRecordPage } from '@/service/api/attendance';
+import { fetchAttendanceDailyTrend } from '@/service/api/report';
 import { useAppStore } from '@/store/modules/app';
 import { useEcharts } from '@/hooks/common/echarts';
 
@@ -111,8 +111,8 @@ function updateLocale() {
 async function loadData() {
   try {
     const { start, end } = range.value;
-    const res = await fetchDailyRecordPage({ page: 1, size: 10000, startDate: start, endDate: end });
-    const records = res?.data?.records ?? [];
+    const res = await fetchAttendanceDailyTrend({ startDate: start, endDate: end });
+    const items = res.data ?? [];
 
     const dayMap = new Map<string, { normal: number; abnormal: number }>();
     for (let i = 0; i < rangeDays; i += 1) {
@@ -120,13 +120,13 @@ async function loadData() {
       dayMap.set(k, { normal: 0, abnormal: 0 });
     }
 
-    records.forEach(r => {
-      if (!r.attDate) return;
-      const k = dayjs(r.attDate).format('YYYY-MM-DD');
+    items.forEach(r => {
+      if (!r.date) return;
+      const k = dayjs(r.date).format('YYYY-MM-DD');
       const bucket = dayMap.get(k);
       if (!bucket) return;
-      if (r.status === 1) bucket.normal += 1;
-      else bucket.abnormal += 1;
+      bucket.normal = Number(r.normal) || 0;
+      bucket.abnormal = Number(r.abnormal) || 0;
     });
 
     const labels = buildXAxis();

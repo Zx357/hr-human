@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import type { FormInstance, FormRules } from 'element-plus';
 import {
   type ApprovalFlow,
   createApprovalFlow,
@@ -17,13 +18,42 @@ const loading = ref(false);
 const data = ref<ApprovalFlow[]>([]);
 const roleOptions = ref<Api.System.Role[]>([]);
 
+// 搜索条件（列表接口不支持服务端筛选，前端对全量列表过滤）
+const searchFlowType = ref<string | undefined>(undefined);
+const filteredData = computed(() =>
+  searchFlowType.value ? data.value.filter(item => item.flowType === searchFlowType.value) : data.value
+);
+
 const dialogVisible = ref(false);
 const operateType = ref<'add' | 'edit'>('add');
 const submitLoading = ref(false);
 const formData = ref<ApprovalFlow>({ flowCode: '', flowName: '', flowType: '', autoPass: 0, nodes: [] });
+const formRef = ref<FormInstance>();
 
 // 是否免审批
 const isAutoPass = computed(() => formData.value.autoPass === 1);
+
+const baseFormRules: FormRules = {
+  flowCode: [{ required: true, message: '请输入流程编码', trigger: 'blur' }],
+  flowName: [{ required: true, message: '请输入流程名称', trigger: 'blur' }],
+  flowType: [{ required: true, message: '请选择流程类型', trigger: 'change' }]
+};
+
+/** 审批节点字段校验规则（非免审批时必填） */
+function nodeRequired(message: string): FormRules[string] {
+  return [
+    {
+      validator: (_rule, value, callback) => {
+        if (!isAutoPass.value && !value) {
+          callback(new Error(message));
+        } else {
+          callback();
+        }
+      },
+      trigger: ['blur', 'change']
+    }
+  ];
+}
 
 async function loadData() {
   loading.value = true;
@@ -105,26 +135,13 @@ function removeNode(index: number) {
 }
 
 async function handleSubmit() {
-  if (!formData.value.flowCode || !formData.value.flowName || !formData.value.flowType) {
-    ElMessage.warning('请填写必填项');
+  if (!formRef.value) return;
+  const valid = await formRef.value.validate().catch(() => false);
+  if (!valid) return;
+  // 非免审批时需要至少一个审批节点（列表级校验，表单 rules 无法覆盖）
+  if (!isAutoPass.value && !formData.value.nodes?.length) {
+    ElMessage.warning('请至少添加一个审批节点');
     return;
-  }
-  // 非免审批时需要审批节点
-  if (!isAutoPass.value) {
-    if (!formData.value.nodes?.length) {
-      ElMessage.warning('请至少添加一个审批节点');
-      return;
-    }
-    for (const node of formData.value.nodes) {
-      if (!node.nodeName) {
-        ElMessage.warning('请填写节点名称');
-        return;
-      }
-      if (!node.roleId) {
-        ElMessage.warning('请选择审批角色');
-        return;
-      }
-    }
   }
   submitLoading.value = true;
   try {
@@ -172,17 +189,28 @@ const statusMap: Record<number, { label: string; type: string }> = {
   <div class="approval-flow-page">
     <ElCard shadow="never" class="table-card">
       <template #header>
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-12px">
           <span>审批流程配置</span>
-          <ElButton type="primary" @click="handleAdd">
-            <template #icon><icon-ep-plus /></template>
-            新增流程
-          </ElButton>
+          <div class="flex items-center gap-12px">
+            <ElSelect
+              v-model="searchFlowType"
+              placeholder="按流程类型筛选"
+              clearable
+              filterable
+              style="width: 180px"
+            >
+              <ElOption v-for="(label, key) in flowTypeMap" :key="key" :label="label" :value="key" />
+            </ElSelect>
+            <ElButton type="primary" @click="handleAdd">
+              <template #icon><icon-ep-plus /></template>
+              新增流程
+            </ElButton>
+          </div>
         </div>
       </template>
 
       <div class="table-wrapper">
-        <ElTable v-loading="loading" :data="data" border stripe height="100%">
+        <ElTable v-loading="loading" :data="filteredData" border stripe height="100%">
           <ElTableColumn type="index" label="序号" width="60" align="center" />
           <ElTableColumn prop="flowCode" label="流程编码" width="120" />
           <ElTableColumn prop="flowName" label="流程名称" width="150" />
@@ -238,22 +266,22 @@ const statusMap: Record<number, { label: string; type: string }> = {
     </ElCard>
 
     <ElDialog v-model="dialogVisible" :title="operateType === 'add' ? '新增审批流程' : '编辑审批流程'" width="700px">
-      <ElForm label-width="100px" :model="formData">
+      <ElForm ref="formRef" label-width="100px" :model="formData" :rules="baseFormRules">
         <ElRow :gutter="20">
           <ElCol :span="12">
-            <ElFormItem label="流程编码" required>
+            <ElFormItem label="流程编码" prop="flowCode">
               <ElInput v-model="formData.flowCode" placeholder="请输入流程编码" :disabled="operateType === 'edit'" />
             </ElFormItem>
           </ElCol>
           <ElCol :span="12">
-            <ElFormItem label="流程名称" required>
+            <ElFormItem label="流程名称" prop="flowName">
               <ElInput v-model="formData.flowName" placeholder="请输入流程名称" />
             </ElFormItem>
           </ElCol>
         </ElRow>
         <ElRow :gutter="20">
           <ElCol :span="12">
-            <ElFormItem label="流程类型" required>
+            <ElFormItem label="流程类型" prop="flowType">
               <ElSelect v-model="formData.flowType" placeholder="请选择流程类型" style="width: 100%">
                 <ElOption v-for="(label, key) in flowTypeMap" :key="key" :label="label" :value="key" />
               </ElSelect>
@@ -302,7 +330,12 @@ const statusMap: Record<number, { label: string; type: string }> = {
             </div>
             <ElRow :gutter="16">
               <ElCol :span="8">
-                <ElFormItem label="节点名称" label-width="80px" required>
+                <ElFormItem
+                  label="节点名称"
+                  label-width="80px"
+                  :prop="`nodes.${index}.nodeName`"
+                  :rules="nodeRequired('请输入节点名称')"
+                >
                   <ElInput v-model="node.nodeName" placeholder="如：部门经理审批" />
                 </ElFormItem>
               </ElCol>
@@ -315,7 +348,12 @@ const statusMap: Record<number, { label: string; type: string }> = {
                 </ElFormItem>
               </ElCol>
               <ElCol :span="8">
-                <ElFormItem label="审批角色" label-width="80px" required>
+                <ElFormItem
+                  label="审批角色"
+                  label-width="80px"
+                  :prop="`nodes.${index}.roleId`"
+                  :rules="nodeRequired('请选择审批角色')"
+                >
                   <ElSelect v-model="node.roleId" placeholder="请选择角色" style="width: 100%" filterable clearable>
                     <ElOption v-for="role in roleOptions" :key="role.id" :label="role.roleName" :value="role.id" />
                   </ElSelect>

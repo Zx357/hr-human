@@ -22,6 +22,7 @@ import com.kadmin.organization.domain.OrgUnit;
 import com.kadmin.organization.mapper.OrgUnitMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +44,7 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
     private final HrMobileApproverMapper mobileApproverMapper;
     private final OrgUnitMapper orgUnitMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * 分页查询员工
@@ -165,6 +167,10 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
                     }
                 }
             }
+
+            // 密码哈希不回显给任何调用方（含管理员与本人）；改密走独立接口
+            employee.setPassword(null);
+            employee.setMiniAppPassword(null);
         }
         return employee;
     }
@@ -320,6 +326,32 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
     }
 
     /**
+     * 按名称查找组织节点ID（Excel 导入用；同名取第一个）
+     */
+    public Long findOrgIdByName(String unitName) {
+        if (unitName == null || unitName.isBlank()) {
+            return null;
+        }
+        OrgUnit unit = orgUnitMapper.selectOne(new LambdaQueryWrapper<OrgUnit>()
+                .eq(OrgUnit::getUnitName, unitName.trim())
+                .last("LIMIT 1"));
+        return unit != null ? unit.getId() : null;
+    }
+
+    /**
+     * 批量删除员工（事务内逐个级联清理，避免部分删除）
+     */
+    @Transactional
+    public void deleteEmployees(List<Long> ids) {
+        if (ids == null) {
+            return;
+        }
+        for (Long id : ids) {
+            deleteEmployee(id);
+        }
+    }
+
+    /**
      * 检查员工编号是否存在
      */
     public boolean checkEmployeeNoExists(String employeeNo, Long excludeId) {
@@ -355,8 +387,7 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
             employee.setPassword(null);
         } else if (employee.getPassword() != null && !employee.getPassword().startsWith("$2")) {
             // 非BCrypt密文一律加密存储
-            employee.setPassword(
-                    new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(employee.getPassword()));
+            employee.setPassword(passwordEncoder.encode(employee.getPassword()));
         }
     }
 }

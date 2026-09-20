@@ -10,6 +10,7 @@ import {
   fetchApplicationPage
 } from '@/service/api/application';
 import EmployeePickerDialog from '@/components/common/EmployeePickerDialog.vue';
+import ApplicationDetailDrawer from '@/components/business/application-detail-drawer.vue';
 
 defineOptions({ name: 'BusinessApplication' });
 
@@ -141,6 +142,15 @@ async function handleSubmit() {
   }
 }
 
+// 详情抽屉
+const detailVisible = ref(false);
+const currentApplication = ref<Application | null>(null);
+
+function handleViewDetail(row: Application) {
+  currentApplication.value = row;
+  detailVisible.value = true;
+}
+
 async function handleCancel(id: number) {
   try {
     await ElMessageBox.confirm('确定撤销该申请吗？撤销后不可恢复', '撤销确认', {
@@ -239,8 +249,11 @@ function handleSizeChange(size: number) {
             </template>
           </ElTableColumn>
           <ElTableColumn prop="createdTime" label="申请时间" width="160" />
-          <ElTableColumn label="操作" width="100" align="center" fixed="right">
+          <ElTableColumn label="操作" width="140" align="center" fixed="right">
             <template #default="{ row }">
+              <ElButton type="primary" link size="small" @click="handleViewDetail(row)">
+                详情
+              </ElButton>
               <ElButton v-if="row.status === 0" type="warning" link size="small" @click="handleCancel(row.id)">
                 撤销
               </ElButton>
@@ -306,5 +319,6 @@ function handleSizeChange(size: number) {
     </ElDialog>
 
     <EmployeePickerDialog v-model="employeeDialogVisible" @confirm="handleConfirmEmployee" />
+    <ApplicationDetailDrawer v-model="detailVisible" :application="currentApplication" />
   </div>
 </template>

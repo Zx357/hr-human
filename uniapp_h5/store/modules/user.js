@@ -108,9 +108,11 @@ const user = {
             resolve(res)
           })
           .catch(() => {
+            // 员工信息拉取失败:不伪造成功状态,提示用户并保留 token(网络波动时下次进入重试)
             commit('SET_ROLES', ['ROLE_EMPLOYEE'])
             commit('SET_NAME', '员工')
             commit('SET_AVATAR', defAva)
+            uni.showToast({ icon: 'none', title: '员工信息加载失败，部分功能不可用' })
             resolve({})
           })
       })

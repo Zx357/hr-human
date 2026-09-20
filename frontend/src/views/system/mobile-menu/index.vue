@@ -1,7 +1,8 @@
 <script setup lang="tsx">
 import { onMounted, reactive, ref } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
-import { request } from '@/service/request';
+import { ElMessage } from 'element-plus';
+import { deleteMobileMenu, fetchMobileMenuPage, saveMobileMenu, toggleMobileMenuStatus } from '@/service/api/system';
 
 defineOptions({ name: 'MobileMenuManage' });
 
@@ -36,18 +37,15 @@ const pageSize = ref(10);
 async function loadData() {
   loading.value = true;
   try {
-    const { data, error } = await request<{ records: MobileMenu[]; total: number }>({
-      url: '/system/mobile-menu/page',
-      method: 'get',
-      params: {
-        pageNum: pageNum.value,
-        pageSize: pageSize.value,
-        menuName: queryForm.menuName || undefined,
-        status: queryForm.status === '' ? undefined : queryForm.status
-      }
+    const res = await fetchMobileMenuPage({
+      pageNum: pageNum.value,
+      pageSize: pageSize.value,
+      menuName: queryForm.menuName || undefined,
+      status: queryForm.status === '' ? undefined : queryForm.status
     });
-    if (!error && data) {
-      tableData.value = data.records;
+    const data = res.data;
+    if (data) {
+      tableData.value = (data.records as unknown as MobileMenu[]) || [];
       total.value = data.total;
     }
   } finally {
@@ -180,12 +178,9 @@ function handleEdit(row: MobileMenu) {
 async function handleDelete(id: number) {
   loading.value = true;
   try {
-    const { error } = await request({
-      url: `/system/mobile-menu/${id}`,
-      method: 'delete'
-    });
-    if (!error) {
-      window.$message?.success('删除成功');
+    const res = await deleteMobileMenu(id);
+    if (res.data !== null && res.data !== undefined) {
+      ElMessage.success('删除成功');
       loadData();
     }
   } finally {
@@ -196,12 +191,9 @@ async function handleDelete(id: number) {
 async function handleToggleStatus(row: MobileMenu) {
   loading.value = true;
   try {
-    const { error } = await request({
-      url: `/system/mobile-menu/toggle-status/${row.id}`,
-      method: 'put'
-    });
-    if (!error) {
-      window.$message?.success(row.status === 1 ? '已禁用' : '已启用');
+    const res = await toggleMobileMenuStatus(row.id);
+    if (res.data !== null && res.data !== undefined) {
+      ElMessage.success(row.status === 1 ? '已禁用' : '已启用');
       loadData();
     }
   } finally {
@@ -216,14 +208,9 @@ async function submitForm() {
     if (valid) {
       loading.value = true;
       try {
-        const method = operateType.value === 'add' ? 'post' : 'put';
-        const { error } = await request({
-          url: '/system/mobile-menu',
-          method,
-          data: formData
-        });
-        if (!error) {
-          window.$message?.success(operateType.value === 'add' ? '新增成功' : '修改成功');
+        const res = await saveMobileMenu({ ...formData });
+        if (res.data !== null && res.data !== undefined) {
+          ElMessage.success(operateType.value === 'add' ? '新增成功' : '修改成功');
           dialogVisible.value = false;
           loadData();
         }
@@ -277,18 +264,10 @@ async function swapSort(row1: MobileMenu, row2: MobileMenu) {
     const tempSort = row1.sortOrder;
 
     // 更新第一个
-    await request({
-      url: '/system/mobile-menu',
-      method: 'put',
-      data: { ...row1, sortOrder: row2.sortOrder }
-    });
+    await saveMobileMenu({ ...row1, sortOrder: row2.sortOrder });
 
     // 更新第二个
-    await request({
-      url: '/system/mobile-menu',
-      method: 'put',
-      data: { ...row2, sortOrder: tempSort }
-    });
+    await saveMobileMenu({ ...row2, sortOrder: tempSort });
 
     loadData();
   } finally {

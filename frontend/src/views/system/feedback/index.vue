@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { request } from '@/service/request';
+import { changeFeedbackStatus, deleteFeedback, fetchFeedbackPage, handleFeedbackReply } from '@/service/api/system';
 
 defineOptions({ name: 'SystemFeedback' });
 
@@ -38,13 +38,10 @@ const replyContent = ref('');
 async function fetchData() {
   loading.value = true;
   try {
-    const { data, error } = await request<any>({
-      url: '/system/feedback/page',
-      method: 'get',
-      params: queryParams
-    });
+    const res = await fetchFeedbackPage({ ...queryParams });
 
-    if (!error && data) {
+    const data = res.data;
+    if (data) {
       tableData.value = data.records || [];
       total.value = data.total || 0;
     }
@@ -86,13 +83,9 @@ function handleView(row: FeedbackRow) {
 async function handleReply() {
   if (!activeRow.value) return;
 
-  const { error } = await request({
-    url: `/system/feedback/${activeRow.value.id}/reply`,
-    method: 'put',
-    data: { replyContent: replyContent.value }
-  });
+  const res = await handleFeedbackReply(activeRow.value.id, { replyContent: replyContent.value });
 
-  if (!error) {
+  if (res.data !== null && res.data !== undefined) {
     ElMessage.success('处理成功');
     drawerVisible.value = false;
     fetchData();
@@ -100,13 +93,9 @@ async function handleReply() {
 }
 
 async function handleStatus(row: FeedbackRow, status: number) {
-  const { error } = await request({
-    url: `/system/feedback/${row.id}/status`,
-    method: 'put',
-    data: { status }
-  });
+  const res = await changeFeedbackStatus(row.id, status);
 
-  if (!error) {
+  if (res.data !== null && res.data !== undefined) {
     ElMessage.success('状态已更新');
     fetchData();
   }
@@ -115,12 +104,9 @@ async function handleStatus(row: FeedbackRow, status: number) {
 async function handleDelete(row: FeedbackRow) {
   try {
     await ElMessageBox.confirm('确定删除这条反馈吗？', '提示', { type: 'warning' });
-    const { error } = await request({
-      url: `/system/feedback/${row.id}`,
-      method: 'delete'
-    });
+    const res = await deleteFeedback(row.id);
 
-    if (!error) {
+    if (res.data !== null && res.data !== undefined) {
       ElMessage.success('删除成功');
       fetchData();
     }

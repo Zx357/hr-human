@@ -15,6 +15,8 @@ declare namespace Api {
       userName: string;
       roles: string[];
       buttons: string[];
+      /** 员工头像（相对路径） */
+      avatar?: string;
     }
   }
 }

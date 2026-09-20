@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kadmin.common.Result;
 import com.kadmin.hr.domain.HrEmployee;
 import com.kadmin.mobile.domain.MobileChatGroup;
-import com.kadmin.mobile.domain.MobileContactRequest;
 import com.kadmin.common.security.LoginUser;
 import com.kadmin.mobile.service.MobileContactService;
 import com.kadmin.common.utils.SecurityUtils;
@@ -13,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -81,46 +79,6 @@ public class MobileContactController {
         return Result.success(contactService.listGroupMembers(id, employeeId));
     }
 
-    @GetMapping("/requests")
-    public Result<List<MobileContactRequest>> requests(@RequestParam(defaultValue = "received") String type) {
-        Long employeeId = currentEmployeeId();
-        if (employeeId == null) {
-            return Result.error("请先登录");
-        }
-        return Result.success(contactService.listRequests(employeeId, type));
-    }
-
-    @PostMapping("/requests")
-    public Result<MobileContactRequest> sendRequest(@RequestBody ContactRequestCreateRequest request) {
-        Long employeeId = currentEmployeeId();
-        if (employeeId == null) {
-            return Result.error("请先登录");
-        }
-        try {
-            return Result.success(contactService.sendRequest(
-                    request.getTargetEmployeeId(),
-                    request.getRemark(),
-                    employeeId));
-        } catch (IllegalArgumentException e) {
-            return Result.error(e.getMessage());
-        }
-    }
-
-    @PutMapping("/requests/{id}/handle")
-    public Result<MobileContactRequest> handleRequest(
-            @PathVariable Long id,
-            @RequestBody ContactRequestHandleRequest request) {
-        Long employeeId = currentEmployeeId();
-        if (employeeId == null) {
-            return Result.error("请先登录");
-        }
-        try {
-            return Result.success(contactService.handleRequest(id, request.getStatus(), employeeId));
-        } catch (IllegalArgumentException e) {
-            return Result.error(e.getMessage());
-        }
-    }
-
     private Long currentEmployeeId() {
         LoginUser loginUser = SecurityUtils.getCurrentUser();
         if (loginUser == null) {
@@ -135,14 +93,4 @@ public class MobileContactController {
         private List<Long> memberIds;
     }
 
-    @Data
-    public static class ContactRequestCreateRequest {
-        private Long targetEmployeeId;
-        private String remark;
-    }
-
-    @Data
-    public static class ContactRequestHandleRequest {
-        private Integer status;
-    }
 }

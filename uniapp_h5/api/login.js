@@ -34,3 +34,12 @@ export function logout() {
     method: 'post'
   })
 }
+
+// 移动端修改密码
+export function mobileChangePassword(oldPassword, newPassword) {
+  return request({
+    url: '/auth/mobile/change-password',
+    method: 'post',
+    data: { oldPassword, newPassword }
+  })
+}

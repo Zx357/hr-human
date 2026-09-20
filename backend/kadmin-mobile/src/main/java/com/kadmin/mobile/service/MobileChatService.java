@@ -48,10 +48,12 @@ public class MobileChatService {
     /**
      * 拉取会话消息
      *
-     * @param afterMessageId 增量参数：仅返回 id 大于该值的消息；为空时返回最近 N 条
+     * @param afterMessageId 增量参数：仅返回 id 大于该值的消息（轮询使用）
+     * @param beforeMessageId 历史分页参数：仅返回 id 小于该值的消息，按时间倒序取 limit 条再反转为正序
+     * @param limit 分页大小，默认 {@link #MAX_MESSAGES}
      */
     public List<MobileChatMessage> listMessages(Long employeeId, Integer chatType, Long targetId,
-            Long afterMessageId) {
+            Long afterMessageId, Long beforeMessageId, Integer limit) {
         LambdaQueryWrapper<MobileChatMessage> wrapper = new LambdaQueryWrapper<>();
         if (chatType != null && chatType == CHAT_TYPE_SINGLE) {
             Long peerId = targetId;
@@ -68,18 +70,31 @@ public class MobileChatService {
                     .eq(MobileChatMessage::getGroupId, targetId);
         }
 
+        int pageSize = (limit != null && limit > 0 && limit <= MAX_MESSAGES) ? limit : MAX_MESSAGES;
+
         if (afterMessageId != null && afterMessageId > 0) {
             // 增量拉取：只取新增消息，按时间正序
             wrapper.gt(MobileChatMessage::getId, afterMessageId)
                     .orderByAsc(MobileChatMessage::getId)
-                    .last("LIMIT " + MAX_MESSAGES);
+                    .last("LIMIT " + pageSize);
             List<MobileChatMessage> list = messageMapper.selectList(wrapper);
             fillSenderInfo(list);
             return list;
         }
 
-        // 全量拉取：取最近 N 条后按时间正序返回
-        wrapper.orderByDesc(MobileChatMessage::getCreatedTime).last("LIMIT " + MAX_MESSAGES);
+        if (beforeMessageId != null && beforeMessageId > 0) {
+            // 历史分页：取该消息之前的一页，倒序取后再反转
+            wrapper.lt(MobileChatMessage::getId, beforeMessageId)
+                    .orderByDesc(MobileChatMessage::getId)
+                    .last("LIMIT " + pageSize);
+            List<MobileChatMessage> list = messageMapper.selectList(wrapper);
+            Collections.reverse(list);
+            fillSenderInfo(list);
+            return list;
+        }
+
+        // 首屏拉取：取最近一页后按时间正序返回
+        wrapper.orderByDesc(MobileChatMessage::getId).last("LIMIT " + pageSize);
         List<MobileChatMessage> list = messageMapper.selectList(wrapper);
         Collections.reverse(list);
         fillSenderInfo(list);

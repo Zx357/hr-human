@@ -56,6 +56,7 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
     private final HrApprovalRecordMapper approvalRecordMapper;
     private final HrMobileApproverMapper mobileApproverMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final NotificationService notificationService;
 
     /**
      * 计算加班小时数
@@ -314,6 +315,10 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
             if (!rejected) {
                 throw new IllegalArgumentException("该申请已被处理");
             }
+            notificationService.notify(application.getEmployeeId(), "approval_result", "审批驳回",
+                    "你的" + appTypeLabel(application.getAppType()) + "申请已被驳回"
+                            + (remark != null && !remark.isBlank() ? "：" + remark : ""),
+                    id, "/homePages/application");
             return true;
         }
 
@@ -333,6 +338,9 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
         boolean result = completeApplication(id, remark, approveBy);
         if (result) {
             applyApprovedEffects(application);
+            notificationService.notify(application.getEmployeeId(), "approval_result", "审批通过",
+                    "你的" + appTypeLabel(application.getAppType()) + "申请已通过审批",
+                    id, "/homePages/application");
         }
         return result;
     }
@@ -473,6 +481,67 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
                 .orElse(null);
     }
 
+    /**
+     * 申请提交后通知移动端审批人（不含申请人本人；通知失败不影响提交）
+     */
+    public void notifyApproversOnSubmit(HrApplication application) {
+        try {
+            List<HrMobileApprover> approvers = mobileApproverMapper.selectList(null);
+            String applicantName = resolveEmployeeName(application.getEmployeeId());
+            String label = appTypeLabel(application.getAppType());
+            for (HrMobileApprover approver : approvers) {
+                Long approverEmployeeId = approver.getEmployeeId();
+                if (approverEmployeeId == null || approverEmployeeId.equals(application.getEmployeeId())) {
+                    continue;
+                }
+                if (!appTypesMatch(approver.getAppTypes(), application.getAppType())) {
+                    continue;
+                }
+                notificationService.notifyOnce(approverEmployeeId, "approval_todo", "待审批提醒",
+                        (applicantName != null ? applicantName : "同事") + "提交了" + label + "申请，请及时处理",
+                        application.getId(), "/homePages/pending");
+            }
+        } catch (Exception e) {
+            log.warn("提交申请通知审批人失败: applicationId={}", application != null ? application.getId() : null, e);
+        }
+    }
+
+    /**
+     * 申请类型展示名
+     */
+    public static String appTypeLabel(String appType) {
+        if (appType == null) {
+            return "";
+        }
+        return switch (appType) {
+            case "leave" -> "请假";
+            case "overtime" -> "加班";
+            case "business" -> "出差";
+            case "makeup" -> "补卡";
+            case "exchange" -> "换休";
+            case "regularization" -> "转正";
+            case "transfer" -> "调动";
+            case "reward" -> "奖励";
+            case "punish" -> "惩罚";
+            case "resignation" -> "离职";
+            case "cost" -> "费用报销";
+            case "device" -> "设备申请";
+            default -> "";
+        };
+    }
+
+    /**
+     * 审批人类型匹配：app_types 为空表示可审全部类型
+     */
+    private boolean appTypesMatch(String appTypes, String appType) {
+        if (appTypes == null || appTypes.isBlank() || appType == null) {
+            return true;
+        }
+        return java.util.Arrays.stream(appTypes.split(","))
+                .map(String::trim)
+                .anyMatch(t -> t.equalsIgnoreCase(appType));
+    }
+
     private boolean isMobileApprover(Long employeeId) {
         if (employeeId == null) {
             return false;
@@ -495,14 +564,8 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
         if (approver == null) {
             return false;
         }
-        String appTypes = approver.getAppTypes();
-        if (appTypes == null || appTypes.isBlank() || appType == null) {
-            return true;
-        }
         // 与待办列表的 FIND_IN_SET 过滤口径一致
-        return java.util.Arrays.stream(appTypes.split(","))
-                .map(String::trim)
-                .anyMatch(t -> t.equalsIgnoreCase(appType));
+        return appTypesMatch(approver.getAppTypes(), appType);
     }
 
     private String resolveEmployeeName(Long employeeId) {

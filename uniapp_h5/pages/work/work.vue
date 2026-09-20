@@ -158,7 +158,6 @@ async function loadPendingCount() {
     // 同步工作台待办数到 tabbar 角标
     store.commit('SET_UNREAD_BADGE', { workTodo: pendingCount.value })
   } catch (error) {
-    console.log('加载待办数量失败', error)
   }
 }
 

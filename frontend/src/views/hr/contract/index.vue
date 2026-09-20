@@ -12,6 +12,7 @@ import {
   updateContract
 } from '@/service/api/contract';
 import { getFileUrl, uploadContractPhoto } from '@/service/api/file';
+import AuthImage from '@/components/business/auth-image.vue';
 import { useDictOptions } from '@/composables/use-dict-options';
 import { downloadFile } from '@/utils/download';
 import EmployeePickerDialog from '@/components/common/EmployeePickerDialog.vue';
@@ -510,7 +511,7 @@ const statusMap: Record<number, { label: string; type: string }> = {
           <div class="w-full">
             <div class="mb-8px flex flex-wrap gap-8px">
               <div v-for="(img, index) in contractImageList" :key="index" class="relative">
-                <ElImage :src="getFileUrl(img)" fit="cover" class="h-100px w-100px border rounded" />
+                <AuthImage :url="img" fit="cover" class="h-100px w-100px border rounded" />
                 <ElIcon
                   class="absolute right-2px top-2px cursor-pointer rounded-full bg-red-500 p-2px text-white"
                   @click="handleRemoveContractImage(index)"

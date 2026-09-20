@@ -51,7 +51,10 @@ public class TransferController {
     public Result<Void> approve(@PathVariable Long id, @RequestParam Integer status,
             @RequestParam(required = false) String remark) {
         Long approverId = com.kadmin.common.utils.SecurityUtils.getCurrentUserId();
-        service.approve(id, status, remark, approverId != null ? approverId : 1L);
+        if (approverId == null) {
+            return Result.error("无法识别当前审批人，请重新登录");
+        }
+        service.approve(id, status, remark, approverId);
         return Result.success();
     }
 }

@@ -83,7 +83,6 @@ const loadMembers = async () => {
     const res = await getEmployeeList({ deptId: deptId.value, status: 1 })
     members.value = Array.isArray(res.data) ? res.data : res.data?.records || []
   } catch (error) {
-    console.log('加载部门成员失败', error)
     members.value = []
   } finally {
     loading.value = false

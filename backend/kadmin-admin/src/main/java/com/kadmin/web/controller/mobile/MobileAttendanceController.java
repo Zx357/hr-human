@@ -7,15 +7,11 @@ import com.kadmin.attendance.domain.AttDailyRecord;
 import com.kadmin.attendance.domain.AttLocation;
 import com.kadmin.attendance.domain.AttSchedule;
 import com.kadmin.attendance.domain.AttShift;
-import com.kadmin.hr.domain.HrEmployee;
-import com.kadmin.organization.domain.OrgUnit;
 import com.kadmin.attendance.mapper.AttClockRecordMapper;
 import com.kadmin.attendance.mapper.AttDailyRecordMapper;
 import com.kadmin.attendance.mapper.AttScheduleMapper;
 import com.kadmin.attendance.mapper.AttShiftMapper;
-import com.kadmin.hr.mapper.EmployeeMapper;
 import com.kadmin.common.security.LoginUser;
-import com.kadmin.organization.service.OrgUnitService;
 import com.kadmin.attendance.service.AttLocationService;
 import com.kadmin.common.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -54,8 +50,6 @@ public class MobileAttendanceController {
     private final AttDailyRecordMapper dailyRecordMapper;
     private final AttScheduleMapper scheduleMapper;
     private final AttShiftMapper shiftMapper;
-    private final EmployeeMapper employeeMapper;
-    private final OrgUnitService orgUnitService;
     private final AttLocationService attLocationService;
 
     @GetMapping("/clock/info")
@@ -408,24 +402,6 @@ public class MobileAttendanceController {
                         .eq(AttClockRecord::getEmployeeId, employeeId)
                         .eq(AttClockRecord::getClockType, clockType)
                         .between(AttClockRecord::getClockTime, today.atStartOfDay(), today.atTime(LocalTime.MAX))) > 0;
-    }
-
-    private OrgUnit getEmployeeCompany(Long employeeId) {
-        HrEmployee employee = employeeMapper.selectById(employeeId);
-        if (employee == null || employee.getDeptId() == null) {
-            return null;
-        }
-
-        Long companyId = orgUnitService.getCompanyId(employee.getDeptId());
-        return companyId == null ? null : orgUnitService.getById(companyId);
-    }
-
-    private boolean hasAttendanceConfig(OrgUnit company) {
-        return company != null
-                && company.getAttendanceLatitude() != null
-                && company.getAttendanceLongitude() != null
-                && company.getAttendanceRange() != null
-                && company.getAttendanceRange() > 0;
     }
 
     private boolean hasAttendanceConfig(AttLocation location) {

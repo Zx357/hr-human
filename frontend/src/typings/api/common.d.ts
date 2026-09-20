@@ -208,6 +208,13 @@ declare namespace Api {
 
   /** 人事管理相关类型 */
   namespace Hr {
+    /** 员工批量导入结果 */
+    interface ImportResult {
+      successCount: number;
+      failCount: number;
+      errors: string[];
+    }
+
     /** 员工 */
     interface Employee {
       id: number;
@@ -666,6 +673,10 @@ declare namespace Api {
       module?: string;
       username?: string;
       status?: number;
+      /** 操作时间范围-开始（yyyy-MM-dd） */
+      beginTime?: string;
+      /** 操作时间范围-结束（yyyy-MM-dd） */
+      endTime?: string;
     }
   }
 }

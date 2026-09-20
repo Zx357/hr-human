@@ -14,11 +14,14 @@
     <view :style="{paddingTop: vuex_custom_bar_height + 'px'}">
     <!-- 月份切换 -->
     <view class="month-switch tn-bg-white tn-flex tn-flex-row-between tn-flex-col-center tn-padding">
-      <view class="month-arrow tn-flex tn-flex-row-center tn-flex-col-center" @click="changeMonth(-1)">
-        <tn-icon name="left" class="tn-color-gray"></tn-icon>
+      <view class="tn-flex tn-flex-col-center">
+        <view class="month-arrow tn-flex tn-flex-row-center tn-flex-col-center" @click="changeMonth(-1)">
+          <tn-icon name="left" class="tn-color-gray"></tn-icon>
+        </view>
+        <view v-if="!isCurrentMonth" class="today-btn tn-text-sm tn-color-blue" @click="backToToday">回到今天</view>
       </view>
       <text class="tn-text-xl tn-text-bold">{{ currentMonthLabel }}</text>
-      <view class="month-arrow tn-flex tn-flex-row-center tn-flex-col-center" @click="changeMonth(1)">
+      <view class="month-arrow tn-flex tn-flex-row-center tn-flex-col-center" :style="isCurrentMonth ? 'opacity:0.35' : ''" @click="changeMonth(1)">
         <tn-icon name="right" class="tn-color-gray"></tn-icon>
       </view>
     </view>
@@ -89,6 +92,11 @@
           {{ selectedRecord.clockOut || '未打卡' }}{{ selectedRecord.clockOut && selectedRecord.earlyOut ? ' (早退)' : '' }}
         </text>
       </view>
+      <view v-if="selectedAbnormal" class="tn-flex tn-flex-row-right tn-padding-top">
+        <tn-button bg-color="#3668FC" size="sm" :fontSize="24" text-color="#FFFFFF" shape="round" @click="goMakeup">
+          <text>申请补卡</text>
+        </tn-button>
+      </view>
     </view>
 
     <view v-if="loading" class="tn-text-center tn-color-gray tn-padding-bottom">加载中...</view>
@@ -130,6 +138,26 @@ const selectedDate = ref('')
 
 const monthKey = computed(() => `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}`)
 const currentMonthLabel = computed(() => `${currentYear.value}年${currentMonth.value}月`)
+// 是否当前月（禁止翻看未来月份）
+const isCurrentMonth = computed(() => currentYear.value === now.getFullYear() && currentMonth.value === now.getMonth() + 1)
+
+// 选中日是否异常（迟到/早退/缺卡）
+const selectedAbnormal = computed(() => {
+  const record = selectedRecord.value
+  if (!record) return false
+  return !!(record.lateIn || record.earlyOut || (record.attended && (!record.clockIn || !record.clockOut)))
+})
+
+const goMakeup = () => {
+  uni.navigateTo({ url: `/workPages/replace?date=${selectedDate.value}` })
+}
+
+const backToToday = () => {
+  currentYear.value = now.getFullYear()
+  currentMonth.value = now.getMonth() + 1
+  selectedDate.value = ''
+  loadCalendar()
+}
 
 const calendarCells = computed(() => {
   const year = currentYear.value
@@ -182,7 +210,7 @@ const loadCalendar = async () => {
       absentDays: Number(data.stats?.absentDays || 0)
     }
   } catch (error) {
-    console.log('加载考勤日历失败', error)
+    uni.showToast({ title: '加载考勤日历失败，请下拉重试', icon: 'none' })
   } finally {
     loading.value = false
     uni.stopPullDownRefresh()
@@ -198,6 +226,13 @@ const changeMonth = (offset) => {
   } else if (month < 1) {
     month = 12
     year -= 1
+  }
+  // 不允许翻到未来月份
+  const target = new Date(year, month - 1, 1)
+  const current = new Date(now.getFullYear(), now.getMonth(), 1)
+  if (target > current) {
+    uni.showToast({ title: '不能查看未来月份', icon: 'none' })
+    return
   }
   currentYear.value = year
   currentMonth.value = month
@@ -251,6 +286,11 @@ onPullDownRefresh(() => {
 
 .month-switch {
   border-radius: 0 0 20rpx 20rpx;
+}
+
+.today-btn {
+  padding: 4rpx 18rpx;
+  color: #3668fc;
 }
 
 .month-arrow {

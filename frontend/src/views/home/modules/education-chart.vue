@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { fetchEmployeeList } from '@/service/api/hr';
+import { fetchEmployeeReportSummary } from '@/service/api/report';
 import { fetchDictDataByCode } from '@/service/api/system';
 import { useEcharts } from '@/hooks/common/echarts';
 
@@ -89,13 +89,13 @@ function normalizeEducation(val: string | undefined): string {
 
 async function loadData() {
   try {
-    const res = await fetchEmployeeList({ status: 1 });
-    const employees = res?.data ?? [];
+    const res = await fetchEmployeeReportSummary();
+    const items = res.data?.education ?? [];
     const map = new Map<string, number>();
 
-    employees.forEach(emp => {
-      const edu = normalizeEducation(emp.highestEducation);
-      map.set(edu, (map.get(edu) ?? 0) + 1);
+    items.forEach(item => {
+      const edu = normalizeEducation(item.name);
+      map.set(edu, (map.get(edu) ?? 0) + (item.value ?? 0));
     });
 
     // Sort by dict order, unknowns at the end

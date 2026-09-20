@@ -181,6 +181,10 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
      * 重置密码
      */
     public boolean resetPassword(Long id, String newPassword) {
+        String policyError = com.kadmin.common.utils.PasswordPolicy.check(newPassword);
+        if (policyError != null) {
+            throw new IllegalArgumentException(policyError);
+        }
         SysUser user = new SysUser();
         user.setId(id);
         user.setPassword(passwordEncoder.encode(newPassword));

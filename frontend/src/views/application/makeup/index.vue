@@ -9,6 +9,7 @@ import {
   fetchApplicationPage
 } from '@/service/api/application';
 import EmployeePickerDialog from '@/components/common/EmployeePickerDialog.vue';
+import ApplicationDetailDrawer from '@/components/business/application-detail-drawer.vue';
 
 defineOptions({ name: 'MakeupApplication' });
 
@@ -98,6 +99,15 @@ async function handleSubmit() {
   } finally {
     submitLoading.value = false;
   }
+}
+
+// 详情抽屉
+const detailVisible = ref(false);
+const currentApplication = ref<Application | null>(null);
+
+function handleViewDetail(row: Application) {
+  currentApplication.value = row;
+  detailVisible.value = true;
 }
 
 async function handleCancel(id: number) {
@@ -201,8 +211,11 @@ const makeupTypeMap: Record<string, string> = { checkin: '上班补卡', checkou
             </template>
           </ElTableColumn>
           <ElTableColumn prop="createdTime" label="申请时间" width="160" />
-          <ElTableColumn label="操作" width="100" align="center" fixed="right">
+          <ElTableColumn label="操作" width="140" align="center" fixed="right">
             <template #default="{ row }">
+              <ElButton type="primary" link size="small" @click="handleViewDetail(row)">
+                详情
+              </ElButton>
               <ElButton v-if="row.status === 0" type="warning" link size="small" @click="handleCancel(row.id)">
                 撤销
               </ElButton>
@@ -260,5 +273,6 @@ const makeupTypeMap: Record<string, string> = { checkin: '上班补卡', checkou
     </ElDialog>
 
     <EmployeePickerDialog v-model="employeeDialogVisible" @confirm="handleConfirmEmployee" />
+    <ApplicationDetailDrawer v-model="detailVisible" :application="currentApplication" />
   </div>
 </template>

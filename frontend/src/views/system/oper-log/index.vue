@@ -10,8 +10,13 @@ const queryParams = reactive({
   pageSize: 10,
   module: '',
   username: '',
-  status: undefined as number | undefined
+  status: undefined as number | undefined,
+  beginTime: undefined as string | undefined,
+  endTime: undefined as string | undefined
 });
+
+/** 操作时间范围（[beginTime, endTime]，yyyy-MM-dd） */
+const dateRange = ref<[string, string] | null>(null);
 
 const tableData = ref<Api.System.OperLogRecord[]>([]);
 const total = ref(0);
@@ -33,6 +38,9 @@ function formatRequestParams(params?: string) {
 async function fetchData() {
   loading.value = true;
   try {
+    // 时间范围同步到查询参数（后端按操作时间过滤，参数名 beginTime/endTime）
+    queryParams.beginTime = dateRange.value?.[0];
+    queryParams.endTime = dateRange.value?.[1];
     const { data, error } = await fetchOperLogPage(queryParams);
 
     if (!error && data) {
@@ -53,6 +61,7 @@ function handleReset() {
   queryParams.module = '';
   queryParams.username = '';
   queryParams.status = undefined;
+  dateRange.value = null;
   handleSearch();
 }
 
@@ -121,6 +130,18 @@ onMounted(() => {
             <ElOption label="成功" :value="1" />
             <ElOption label="失败" :value="0" />
           </ElSelect>
+        </ElFormItem>
+        <ElFormItem label="操作时间">
+          <ElDatePicker
+            v-model="dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            clearable
+            style="width: 260px"
+          />
         </ElFormItem>
         <ElFormItem>
           <ElButton type="primary" @click="handleSearch">

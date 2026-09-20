@@ -1,19 +1,11 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { request } from '@/service/request';
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
+import { deleteNotice, fetchNoticePage, saveNotice, type SysNoticeItem } from '@/service/api/system';
 
 defineOptions({ name: 'SystemNotice' });
 
-interface NoticeRow {
-  id: number;
-  noticeTitle: string;
-  noticeType: number;
-  noticeContent: string;
-  status: number;
-  publishTime?: string;
-  createdTime?: string;
-}
+interface NoticeRow extends SysNoticeItem {}
 
 const queryParams = reactive({
   current: 1,
@@ -38,16 +30,19 @@ const formData = reactive({
   publishTime: ''
 });
 
+const formRef = ref<FormInstance>();
+const formRules: FormRules = {
+  noticeTitle: [{ required: true, message: '请填写公告标题', trigger: 'blur' }],
+  publishTime: [{ required: true, message: '请选择发布日期', trigger: 'change' }]
+};
+
 async function fetchData() {
   loading.value = true;
   try {
-    const { data, error } = await request<any>({
-      url: '/system/notice/page',
-      method: 'get',
-      params: queryParams
-    });
+    const res = await fetchNoticePage({ ...queryParams });
 
-    if (!error && data) {
+    const data = res.data;
+    if (data) {
       tableData.value = data.records || [];
       total.value = data.total || 0;
     }
@@ -106,19 +101,11 @@ function handleEdit(row: NoticeRow) {
 }
 
 async function handleSave() {
-  if (!formData.noticeTitle) {
-    ElMessage.warning('请填写公告标题');
-    return;
-  }
-
+  const valid = await formRef.value?.validate().catch(() => false);
+  if (!valid) return;
   const isEdit = operateType.value === 'edit';
-  const { error } = await request({
-    url: '/system/notice',
-    method: isEdit ? 'put' : 'post',
-    data: formData
-  });
-
-  if (!error) {
+  const res = await saveNotice({ ...formData });
+  if (res.data !== null) {
     ElMessage.success(isEdit ? '更新成功' : '新增成功');
     drawerVisible.value = false;
     fetchData();
@@ -128,12 +115,8 @@ async function handleSave() {
 async function handleDelete(id: number) {
   try {
     await ElMessageBox.confirm('确定删除该公告吗？', '提示', { type: 'warning' });
-    const { error } = await request({
-      url: `/system/notice/${id}`,
-      method: 'delete'
-    });
-
-    if (!error) {
+    const res = await deleteNotice(id);
+    if (res.data !== null) {
       ElMessage.success('删除成功');
       fetchData();
     } else {
@@ -237,8 +220,8 @@ onMounted(() => {
     </ElCard>
 
     <ElDrawer v-model="drawerVisible" :title="operateType === 'add' ? '新增公告' : '编辑公告'" size="500px">
-      <ElForm :model="formData" label-width="100px">
-        <ElFormItem label="公告标题" required>
+      <ElForm ref="formRef" :model="formData" :rules="formRules" label-width="100px">
+        <ElFormItem label="公告标题" prop="noticeTitle">
           <ElInput v-model="formData.noticeTitle" placeholder="请输入公告标题" />
         </ElFormItem>
         <ElFormItem label="公告类型">
@@ -253,7 +236,7 @@ onMounted(() => {
             <ElRadio :value="0">关闭</ElRadio>
           </ElRadioGroup>
         </ElFormItem>
-        <ElFormItem label="发布日期">
+        <ElFormItem label="发布日期" prop="publishTime">
           <ElDatePicker
             v-model="formData.publishTime"
             type="date"

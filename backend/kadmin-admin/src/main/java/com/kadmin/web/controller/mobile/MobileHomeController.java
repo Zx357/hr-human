@@ -9,6 +9,7 @@ import com.kadmin.system.domain.SysNotice;
 import com.kadmin.attendance.mapper.AttClockRecordMapper;
 import com.kadmin.hr.mapper.HrApplicationMapper;
 import com.kadmin.system.mapper.SysNoticeMapper;
+import com.kadmin.system.service.NotificationService;
 import com.kadmin.common.security.LoginUser;
 import com.kadmin.common.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class MobileHomeController {
     private final AttClockRecordMapper clockRecordMapper;
     private final HrApplicationMapper applicationMapper;
     private final SysNoticeMapper noticeMapper;
+    private final NotificationService notificationService;
 
     @GetMapping("/stats")
     public Result<Map<String, Object>> getStats() {
@@ -84,6 +86,9 @@ public class MobileHomeController {
         Long noticeCount = noticeMapper.selectCount(new LambdaQueryWrapper<SysNotice>()
                 .eq(SysNotice::getStatus, 1));
         stats.put("noticeCount", noticeCount != null ? noticeCount : 0);
+
+        // 站内通知未读数（审批结果/待审批/到期提醒）
+        stats.put("unreadNotifications", notificationService.unreadCount(employeeId));
 
         return Result.success(stats);
     }

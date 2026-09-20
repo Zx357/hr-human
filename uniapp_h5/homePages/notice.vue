@@ -27,8 +27,11 @@
     >
       <view class="list-wrap">
         <view v-for="item in filteredList" :key="item.id" class="notice-card" @click="openDetail(item)">
-          <view class="notice-icon" :style="{ color: noticeMeta(item).color, backgroundColor: noticeMeta(item).bg }">
-            <tn-icon :name="noticeMeta(item).icon"></tn-icon>
+          <view class="notice-icon-wrap">
+            <view class="notice-icon" :style="{ color: noticeMeta(item).color, backgroundColor: noticeMeta(item).bg }">
+              <tn-icon :name="noticeMeta(item).icon"></tn-icon>
+            </view>
+            <view v-if="!item.readFlag" class="unread-dot"></view>
           </view>
           <view class="notice-main">
             <view class="notice-head">
@@ -51,6 +54,12 @@
           </view>
           <text class="empty-title">暂无通知</text>
           <text class="empty-desc">系统通知会显示在这里</text>
+        </view>
+
+        <view v-if="filteredList.length" class="load-more-state" @click="loadMore">
+          <text v-if="loadingMore" class="load-more-text">加载中...</text>
+          <text v-else-if="finished" class="load-more-text load-more-text--end">没有更多了</text>
+          <text v-else class="load-more-text">上拉加载更多</text>
         </view>
       </view>
     </scroll-view>
@@ -79,7 +88,7 @@
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
-import { getNoticeList, getNoticeDetail } from '@/api/system/notice'
+import { getMobileNotices, getNoticeDetail, markNoticeRead } from '@/api/system/notice'
 
 const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
@@ -96,11 +105,16 @@ const loading = ref(false)
 const refreshing = ref(false)
 const activeNotice = ref(null)
 
-const filteredList = computed(() => {
-  const type = tabs[currentTab.value]?.value
-  if (!type) return list.value
-  return list.value.filter((item) => Number(item.noticeType) === type)
-})
+// 服务端分页状态
+const pageNum = ref(1)
+const pageSize = 10
+const finished = ref(false)
+const loadingMore = ref(false)
+
+const filteredList = computed(() => list.value)
+
+// 当前 tab 对应的服务端类型筛选
+const currentType = () => tabs[currentTab.value]?.value
 
 onLoad(() => {
   loadNotices()
@@ -110,11 +124,14 @@ async function loadNotices() {
   if (loading.value) return
   loading.value = true
   refreshing.value = true
+  pageNum.value = 1
+  finished.value = false
   try {
-    const res = await getNoticeList({ status: 1 })
-    list.value = Array.isArray(res.data) ? res.data : (res.data?.records || res.data?.list || [])
+    const res = await getMobileNotices({ pageNum: 1, pageSize, noticeType: currentType() })
+    const data = res.data || {}
+    list.value = data.records || []
+    if ((list.value.length) < pageSize) finished.value = true
   } catch (e) {
-    console.log('加载通知失败', e)
     uni.showToast({ icon: 'none', title: '加载通知失败' })
   } finally {
     loading.value = false
@@ -122,8 +139,28 @@ async function loadNotices() {
   }
 }
 
+// 触底加载下一页
+async function loadMore() {
+  if (loadingMore.value || finished.value || loading.value) return
+  loadingMore.value = true
+  try {
+    const nextPage = pageNum.value + 1
+    const res = await getMobileNotices({ pageNum: nextPage, pageSize, noticeType: currentType() })
+    const records = res.data?.records || []
+    const seen = new Set(list.value.map((item) => String(item.id)))
+    list.value = list.value.concat(records.filter((item) => !seen.has(String(item.id))))
+    pageNum.value = nextPage
+    if (records.length < pageSize) finished.value = true
+  } catch (e) {
+    uni.showToast({ icon: 'none', title: '加载失败，请重试' })
+  } finally {
+    loadingMore.value = false
+  }
+}
+
 function onTabChange(index) {
   currentTab.value = index
+  loadNotices()
 }
 
 function noticeMeta(item) {
@@ -149,6 +186,11 @@ function hasHtml(value) {
 
 async function openDetail(item) {
   activeNotice.value = item
+  // 标记已读(幂等),并同步本地未读状态
+  if (item?.id && !item.readFlag) {
+    item.readFlag = 1
+    markNoticeRead(item.id).catch(() => {})
+  }
   // 拉取完整详情，避免列表数据被截断
   if (!item?.id) return
   try {
@@ -157,7 +199,7 @@ async function openDetail(item) {
       activeNotice.value = { ...item, ...res.data }
     }
   } catch (e) {
-    console.log('加载通知详情失败', e)
+    // 详情加载失败时仍展示列表数据
   }
 }
 
@@ -216,8 +258,12 @@ function closeDetail() {
   box-shadow: 0 10rpx 30rpx rgba(29, 37, 65, 0.06);
 }
 
-.notice-icon {
+.notice-icon-wrap {
+  position: relative;
   flex-shrink: 0;
+}
+
+.notice-icon {
   width: 86rpx;
   height: 86rpx;
   border-radius: 50%;
@@ -225,6 +271,30 @@ function closeDetail() {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.unread-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: #fb6a67;
+}
+
+.load-more-state {
+  padding: 24rpx 0;
+  text-align: center;
+}
+
+.load-more-text {
+  color: #9aa4b2;
+  font-size: 24rpx;
+}
+
+.load-more-text--end {
+  color: #c4cbd4;
 }
 
 .notice-main {

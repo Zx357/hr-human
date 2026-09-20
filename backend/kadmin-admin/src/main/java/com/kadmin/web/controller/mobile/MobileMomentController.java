@@ -142,6 +142,23 @@ public class MobileMomentController {
     }
 
     /**
+     * 删除自己的动态
+     */
+    @DeleteMapping("/posts/{id}")
+    public Result<Void> deletePost(@PathVariable Long id) {
+        Long employeeId = currentEmployeeId();
+        if (employeeId == null) {
+            return Result.error("请先登录");
+        }
+        try {
+            momentService.deletePost(id, employeeId);
+            return Result.success();
+        } catch (IllegalArgumentException e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
      * 删除自己的评论
      */
     @DeleteMapping("/comments/{id}")

@@ -214,6 +214,13 @@ public class AuthService {
         result.put("employeeId", loginUser.getEmployeeId());
         result.put("roles", new ArrayList<>(roles));
         result.put("buttons", new ArrayList<>(permissions));
+        // 员工头像（公开目录，直接以 URL 引用）
+        if (loginUser.getEmployeeId() != null) {
+            HrEmployee employee = employeeMapper.selectById(loginUser.getEmployeeId());
+            if (employee != null && employee.getAvatar() != null && !employee.getAvatar().isBlank()) {
+                result.put("avatar", employee.getAvatar());
+            }
+        }
         return Result.success(result);
     }
 
@@ -251,6 +258,10 @@ public class AuthService {
      * 修改密码
      */
     public Result<Void> changePassword(Long userId, String oldPassword, String newPassword) {
+        String policyError = com.kadmin.common.utils.PasswordPolicy.check(newPassword);
+        if (policyError != null) {
+            throw new BusinessException(policyError);
+        }
         SysUser user = userMapper.selectById(userId);
         if (user == null) {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
@@ -275,6 +286,10 @@ public class AuthService {
      * 移动端修改密码（员工）
      */
     public Result<Void> mobileChangePassword(Long employeeId, String oldPassword, String newPassword) {
+        String policyError = com.kadmin.common.utils.PasswordPolicy.check(newPassword);
+        if (policyError != null) {
+            throw new BusinessException(policyError);
+        }
         HrEmployee employee = employeeMapper.selectById(employeeId);
         if (employee == null) {
             throw new BusinessException("员工不存在");

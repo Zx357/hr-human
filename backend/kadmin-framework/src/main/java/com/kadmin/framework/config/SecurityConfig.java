@@ -39,8 +39,9 @@ public class SecurityConfig {
 
     /**
      * 白名单路径（无需登录）
-     * 注意：员工证件照等敏感文件目录已移出白名单，文件名使用UUID防枚举；
-     * /uploads/** 为动态图片等公开上传内容
+     * 员工头像（/employee_photo/**，UUID 文件名防枚举）与动态图片（/uploads/**）需直接在 <img> 标签中
+     * 展示，保持匿名可读；身份证/合同/毕业证/证书等证件类图片属敏感 PII，不在白名单中，
+     * 由管理端经 /file/** 接口鉴权后访问。
      */
     private static final String[] WHITE_LIST = {
             "/auth/login",
@@ -55,12 +56,7 @@ public class SecurityConfig {
             "/favicon.ico",
             "/error",
             "/uploads/**",
-            "/employee_photo/**",
-            "/id_card_front/**",
-            "/id_card_back/**",
-            "/contract_photo/**",
-            "/diploma_photo/**",
-            "/cert_photo/**"
+            "/employee_photo/**"
     };
 
     @Value("${security.cors.allowed-origins:http://localhost:9527,http://127.0.0.1:9527,http://localhost:5173,http://127.0.0.1:5173}")
@@ -79,6 +75,9 @@ public class SecurityConfig {
                 // 注意顺序：精确规则在前，/xx/** 的 ADMIN 兜底规则在后
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(WHITE_LIST).permitAll()
+                        // ===== 敏感证件图片（身份证/合同/毕业证/证书）：仅管理员可读，管理端经带token的请求加载 =====
+                        .requestMatchers("/id_card_front/**", "/id_card_back/**", "/contract_photo/**",
+                                "/diploma_photo/**", "/cert_photo/**").hasRole("ADMIN")
                         // ===== 移动端员工需要共用的接口（登录即可） =====
                         .requestMatchers(HttpMethod.GET, "/employee/list", "/employee/current").authenticated()
                         // 仅匹配数字ID，避免单段通配遮蔽 /employee/page、/employee/export 等管理接口

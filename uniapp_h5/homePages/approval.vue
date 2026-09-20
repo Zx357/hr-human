@@ -180,7 +180,6 @@ async function loadList(reset = false) {
     finished.value = list.value.length >= total || records.length < pageSize
     pageNum.value += 1
   } catch (e) {
-    console.log('加载审批进程失败', e)
   } finally {
     loading.value = false
     refreshing.value = false
@@ -288,7 +287,6 @@ function cancelItem(item) {
         uni.showToast({ title: '已撤销', icon: 'success' })
         refresh()
       } catch (e) {
-        console.log('撤销申请失败', e)
       }
     }
   })

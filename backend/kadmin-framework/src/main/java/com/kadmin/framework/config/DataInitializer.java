@@ -42,6 +42,7 @@ public class DataInitializer implements CommandLineRunner {
         ensureApprovalRecordTable();
         ensureChatMessageSchema();
         ensureFeedbackTable();
+        ensureNotificationTables();
         ensureMobileMomentTables();
         ensureMobileContactTables();
         ensureFeedbackMenu();
@@ -229,6 +230,46 @@ public class DataInitializer implements CommandLineRunner {
             default -> com.kadmin.system.service.FileConfigService.KEY_UPLOAD_BASE;
         };
         return fileConfigService.getAbsolutePath(key);
+    }
+
+    /**
+     * 站内通知与公告已读表
+     */
+    private void ensureNotificationTables() {
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS sys_notification (
+                  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+                  employee_id BIGINT NOT NULL COMMENT '接收员工ID',
+                  type VARCHAR(32) NOT NULL COMMENT '通知类型：approval_result-审批结果，approval_todo-待审批，reminder-到期提醒',
+                  title VARCHAR(100) NOT NULL COMMENT '标题',
+                  content VARCHAR(500) DEFAULT NULL COMMENT '内容',
+                  ref_id BIGINT DEFAULT NULL COMMENT '关联业务ID',
+                  url VARCHAR(200) DEFAULT NULL COMMENT '移动端跳转路径',
+                  read_flag TINYINT NOT NULL DEFAULT 0 COMMENT '是否已读：0-未读，1-已读',
+                  read_time DATETIME DEFAULT NULL COMMENT '已读时间',
+                  created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  created_by BIGINT DEFAULT NULL COMMENT '创建人',
+                  updated_by BIGINT DEFAULT NULL COMMENT '更新人',
+                  PRIMARY KEY (id),
+                  KEY idx_sys_notification_employee (employee_id, read_flag),
+                  KEY idx_sys_notification_ref (type, ref_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='站内通知'
+                """);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS sys_notice_read (
+                  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+                  notice_id BIGINT NOT NULL COMMENT '公告ID',
+                  employee_id BIGINT NOT NULL COMMENT '员工ID',
+                  read_time DATETIME NOT NULL COMMENT '阅读时间',
+                  created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  created_by BIGINT DEFAULT NULL COMMENT '创建人',
+                  updated_by BIGINT DEFAULT NULL COMMENT '更新人',
+                  PRIMARY KEY (id),
+                  UNIQUE KEY uk_sys_notice_read (notice_id, employee_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公告已读记录'
+                """);
     }
 
     private void ensureFeedbackTable() {
@@ -716,24 +757,6 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void ensureMobileContactTables() {
-        jdbcTemplate.execute("""
-                CREATE TABLE IF NOT EXISTS mobile_contact_request (
-                  id BIGINT NOT NULL AUTO_INCREMENT,
-                  requester_id BIGINT NOT NULL,
-                  target_id BIGINT NOT NULL,
-                  status TINYINT NOT NULL DEFAULT 0,
-                  remark VARCHAR(255) DEFAULT NULL,
-                  handled_time DATETIME DEFAULT NULL,
-                  created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-                  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                  created_by BIGINT DEFAULT NULL,
-                  updated_by BIGINT DEFAULT NULL,
-                  PRIMARY KEY (id),
-                  KEY idx_mobile_contact_request_target (target_id, status),
-                  KEY idx_mobile_contact_request_requester (requester_id, status)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='移动端联系人申请'
-                """);
-
         jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS mobile_chat_group (
                   id BIGINT NOT NULL AUTO_INCREMENT,

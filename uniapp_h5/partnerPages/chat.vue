@@ -19,33 +19,47 @@
       :style="{ paddingTop: vuex_custom_bar_height + 'px' }"
       :scroll-into-view="scrollInto"
       scroll-anchoring
+      :refresher-enabled="!historyDone"
+      refresher-default-style="black"
+      :refresher-triggered="refreshing"
+      @refresherrefresh="loadOlder"
     >
+      <view v-if="historyDone && messages.length" class="history-end tn-text-center tn-color-gray tn-text-sm tn-padding-sm">
+        没有更多了
+      </view>
+      <view v-if="loadingHistory" class="tn-text-center tn-color-gray tn-padding-sm">加载历史消息...</view>
       <view v-if="loading" class="tn-text-center tn-color-gray tn-padding">加载中...</view>
       <view v-else-if="!messages.length" class="tn-text-center tn-color-gray--disabled tn-padding-xl">
         暂无消息，发送第一条消息吧
       </view>
 
-      <view
-        v-for="(item, index) in messages"
-        :key="item.id || 'tmp-' + index"
-        :id="'msg-' + (item.id || index)"
-        class="chat-msg tn-padding-left tn-padding-right"
-        :class="{ 'chat-msg--mine': isMine(item) }"
-      >
-        <image class="chat-msg__avatar" :src="formatAvatar(item.fromAvatar)" mode="aspectFill" />
-        <view class="chat-msg__main">
-          <view class="chat-msg__name tn-color-gray tn-text-xs">{{ item.fromName || '成员' }}</view>
-          <!-- 图片消息:点击预览,不用文本气泡样式 -->
-          <image
-            v-if="Number(item.msgType) === 2"
-            class="chat-msg__image"
-            :src="formatImageUrl(item.content)"
-            mode="widthFix"
-            @click="previewImage(item)"
-          />
-          <view v-else class="chat-msg__bubble">{{ item.content }}</view>
+      <template v-for="(item, index) in messages" :key="item.id || 'tmp-' + index">
+        <view
+          v-if="shouldShowTime(index)"
+          class="time-chip tn-text-center tn-color-gray tn-text-sm"
+        >
+          {{ timeChipText(item) }}
         </view>
-      </view>
+        <view
+          :id="'msg-' + (item.id || index)"
+          class="chat-msg tn-padding-left tn-padding-right"
+          :class="{ 'chat-msg--mine': isMine(item) }"
+        >
+          <image class="chat-msg__avatar" :src="formatAvatar(item.fromAvatar)" mode="aspectFill" />
+          <view class="chat-msg__main">
+            <view class="chat-msg__name tn-color-gray tn-text-xs">{{ item.fromName || '成员' }}</view>
+            <!-- 图片消息:点击预览,不用文本气泡样式 -->
+            <image
+              v-if="Number(item.msgType) === 2"
+              class="chat-msg__image"
+              :src="formatImageUrl(item.content)"
+              mode="widthFix"
+              @click="previewImage(item)"
+            />
+            <view v-else class="chat-msg__bubble">{{ item.content }}</view>
+          </view>
+        </view>
+      </template>
       <view class="chat-body__bottom"></view>
     </scroll-view>
 
@@ -98,7 +112,13 @@ const loading = ref(true)
 const sending = ref(false)
 const draft = ref('')
 const scrollInto = ref('')
+const loadingHistory = ref(false)
+const historyDone = ref(false)
+const refreshing = ref(false)
 let pollTimer = null
+
+// 历史分页大小
+const HISTORY_PAGE_SIZE = 20
 
 const myEmployeeId = computed(() => {
   const info = store.getters.employeeInfo || store.state.user?.employeeInfo || uni.getStorageSync('userInfo') || {}
@@ -154,13 +174,88 @@ const appendMessages = (list) => {
   return fresh.length
 }
 
+// 当前最小消息 id
+const minMessageId = () => {
+  return messages.value.reduce((min, item) => {
+    const id = Number(item.id)
+    return Number.isFinite(id) && id < min ? id : min
+  }, Number.MAX_SAFE_INTEGER)
+}
+
+// 顶部下拉加载更早的历史消息
+const loadOlder = async () => {
+  if (loadingHistory.value || historyDone.value || !messages.value.length || !targetId.value) {
+    refreshing.value = false
+    return
+  }
+  loadingHistory.value = true
+  try {
+    const res = await getChatMessages({
+      chatType: chatType.value,
+      targetId: targetId.value,
+      beforeMessageId: minMessageId(),
+      limit: HISTORY_PAGE_SIZE
+    })
+    const list = Array.isArray(res.data) ? res.data : []
+    const seen = new Set(messages.value.map((item) => String(item.id)))
+    const older = list.filter((item) => !seen.has(String(item.id)))
+    if (list.length < HISTORY_PAGE_SIZE) historyDone.value = true
+    if (older.length) {
+      const firstId = messages.value[0] ? 'msg-' + messages.value[0].id : ''
+      // 插入更早消息后滚回首条,保持可视位置
+      messages.value = older.concat(messages.value)
+      nextTick(() => {
+        scrollInto.value = firstId
+      })
+    }
+  } catch (error) {
+    uni.showToast({ title: '加载历史消息失败', icon: 'none' })
+  } finally {
+    loadingHistory.value = false
+    refreshing.value = false
+  }
+}
+
+// 相邻消息间隔超过5分钟时显示时间条
+const shouldShowTime = (index) => {
+  if (index === 0) return true
+  const prev = messages.value[index - 1]
+  const cur = messages.value[index]
+  const prevTime = new Date(String(prev.createdTime || '').replace(/-/g, '/')).getTime()
+  const curTime = new Date(String(cur.createdTime || '').replace(/-/g, '/')).getTime()
+  if (!Number.isFinite(prevTime) || !Number.isFinite(curTime)) return false
+  return curTime - prevTime > 5 * 60 * 1000
+}
+
+// 时间条文案:当天只显示 HH:mm,更早显示 MM-DD HH:mm
+const timeChipText = (item) => {
+  const time = String(item.createdTime || '').replace('T', ' ')
+  if (!time) return ''
+  const date = new Date(time.replace(/-/g, '/'))
+  if (!Number.isFinite(date.getTime())) return time
+  const now = new Date()
+  const sameDay = date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate()
+  const pad = (n) => String(n).padStart(2, '0')
+  const hhmm = pad(date.getHours()) + ':' + pad(date.getMinutes())
+  if (sameDay) return hhmm
+  return pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + hhmm
+}
+
 const loadMessages = async (silent = false) => {
   if (!targetId.value) return
-  if (!silent) loading.value = true
+  if (!silent) {
+    loading.value = true
+    historyDone.value = false
+  }
   try {
-    // 首次进入拉全量;轮询时传当前最大消息 id,只拉增量
+    // 首次进入拉最近一页;轮询时传当前最大消息 id,只拉增量
     const afterMessageId = silent && messages.value.length ? maxMessageId() : undefined
-    const res = await getChatMessages({ chatType: chatType.value, targetId: targetId.value, afterMessageId })
+    const res = await getChatMessages({
+      chatType: chatType.value,
+      targetId: targetId.value,
+      afterMessageId,
+      limit: silent ? undefined : HISTORY_PAGE_SIZE
+    })
     const list = Array.isArray(res.data) ? res.data : []
     if (silent) {
       const added = appendMessages(list)
@@ -174,7 +269,6 @@ const loadMessages = async (silent = false) => {
       scrollToBottom()
     }
   } catch (error) {
-    console.log('加载聊天记录失败', error)
   } finally {
     loading.value = false
   }
@@ -195,7 +289,6 @@ const sendMessage = async ({ content, msgType = 1 }) => {
       uni.showToast({ title: '发送失败，请重试', icon: 'none' })
     }
   } catch (error) {
-    console.log('发送消息失败', error)
     uni.showToast({ icon: 'none', title: '发送失败，请重试' })
   } finally {
     sending.value = false
@@ -223,7 +316,6 @@ const chooseAndSendImage = () => {
         await sendMessage({ content: url, msgType: 2 })
       } catch (error) {
         uni.hideLoading()
-        console.log('发送图片消息失败', error)
         uni.showToast({ icon: 'none', title: '发送失败，请重试' })
       }
     }
@@ -391,6 +483,14 @@ onBeforeUnmount(() => {
     border-radius: 20rpx 4rpx 20rpx 20rpx;
     text-align: left;
   }
+}
+
+.history-end {
+  padding: 12rpx 0;
+}
+
+.time-chip {
+  padding: 16rpx 0 4rpx;
 }
 
 .chat-body__bottom {

@@ -216,7 +216,6 @@
       const res = await getEmployeeList({ status: 1 })
       employees.value = Array.isArray(res.data) ? res.data : []
     } catch (error) {
-      console.log('加载联系人失败', error)
     }
   }
 
@@ -241,7 +240,6 @@
         uni.redirectTo({ url: '/partnerPages/group' })
       }, 500)
     } catch (error) {
-      console.log('创建群聊失败', error)
     }
   }
   

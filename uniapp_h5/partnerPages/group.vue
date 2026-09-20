@@ -48,6 +48,7 @@
 
 <script setup>
   import { computed, onMounted, ref } from 'vue'
+  import { onShow } from '@dcloudio/uni-app'
   import { useCustomBarHeight, useGoBack } from '@/libs/composables'
   import config from '@/config'
   import { getContactGroups } from '@/api/contact'
@@ -75,7 +76,7 @@
       const res = await getContactGroups()
       groups.value = Array.isArray(res.data) ? res.data : []
     } catch (error) {
-      console.log('加载群聊失败', error)
+      uni.showToast({ icon: 'none', title: '加载群聊失败，请重试' })
     }
   }
   
@@ -95,6 +96,11 @@
   }
 
   onMounted(() => {
+    loadGroups()
+  })
+
+  // 从聊天页返回时刷新群列表(最后消息/成员变化)
+  onShow(() => {
     loadGroups()
   })
 </script>

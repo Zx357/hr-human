@@ -134,7 +134,6 @@ const loadSummary = async () => {
       summary.value = { ...summary.value, ...res.data }
     }
   } catch (error) {
-    console.log('加载互动消息失败', error)
     uni.showToast({ title: '加载失败', icon: 'none' })
   }
 }
@@ -145,7 +144,6 @@ const loadMessages = async () => {
     const list = Array.isArray(res.data) ? res.data : []
     messages.value = list.map(normalizeMessage)
   } catch (error) {
-    console.log('加载互动消息列表失败', error)
     uni.showToast({ title: '加载失败', icon: 'none' })
   }
 }
@@ -158,7 +156,6 @@ const markRead = async () => {
     summary.value = { ...summary.value, unreadCount: 0 }
     store.commit('SET_UNREAD_BADGE', { momentUnread: 0 })
   } catch (error) {
-    console.log('标记已读失败', error)
   }
 }
 

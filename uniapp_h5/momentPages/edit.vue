@@ -33,7 +33,7 @@
           <view class="tn-bg-black tn-color-white tn-text-center" style="border-radius: 100rpx;margin-right: 8rpx;width: 45rpx;height: 45rpx;line-height: 45rpx;">
             <tn-icon class="" name="image" style="font-size: 30rpx;"></tn-icon>
           </view>
-          <view class="tn-text-lg tn-padding-right-xs tn-text-bold">发点什么图咧 *</view>
+          <view class="tn-text-lg tn-padding-right-xs tn-text-bold">发点什么（文字或图片）</view>
         </view>
         <view class="justify-content-item tn-text-df tn-color-grey" @tap="clear">
           <text class="tn-padding-xs">清空上传</text>
@@ -202,7 +202,7 @@ const customBtn = ref(false)
 const autoUpload = ref(true)
 const showProgress = ref(false)
 const deleteable = ref(true)
-const maxCount = ref(4)
+const maxCount = ref(9)
 const disabled = ref(false)
 
 const imageUpload = ref(null)
@@ -244,7 +244,6 @@ const upload = async () => {
       uni.navigateBack()
     }, 500)
   } catch (error) {
-    console.log('发布动态失败', error)
   }
 }
 
@@ -255,7 +254,6 @@ const clear = () => {
 
 // 图片拖拽重新排序
 const onSortList = (list) => {
-  console.log(list);
 }
 </script>
 

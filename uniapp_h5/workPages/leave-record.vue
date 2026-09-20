@@ -136,7 +136,6 @@ const loadRecords = async () => {
       }
     })
   } catch (error) {
-    console.log('加载请假记录失败', error)
   } finally {
     loading.value = false
   }

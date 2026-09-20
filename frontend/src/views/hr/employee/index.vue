@@ -11,6 +11,7 @@ import {
   fetchEmployeeById,
   fetchEmployeePage,
   generateEmployeeNo,
+  importEmployees,
   updateEmployee
 } from '@/service/api/hr';
 import { fetchCompanyList, fetchOrgTree } from '@/service/api/organization';
@@ -22,6 +23,7 @@ import {
   uploadEmployeeAvatar,
   uploadEmployeeIdCard
 } from '@/service/api/file';
+import AuthImage from '@/components/business/auth-image.vue';
 import { downloadFile } from '@/utils/download';
 import { hasPermission } from '@/directives/permission';
 
@@ -518,6 +520,51 @@ const beforeUpload: UploadProps['beforeUpload'] = rawFile => {
   return true;
 };
 
+
+// ==================== 员工导入 ====================
+const importDialogVisible = ref(false);
+const importing = ref(false);
+const importFileList = ref<UploadProps['fileList']>(undefined);
+const importResult = ref<Api.Hr.ImportResult | null>(null);
+
+function openImportDialog() {
+  importDialogVisible.value = true;
+  importFileList.value = [];
+  importResult.value = null;
+}
+
+function handleDownloadTemplate() {
+  downloadFile('/employee/import-template', '员工导入模板.xlsx');
+}
+
+async function handleImportSubmit() {
+  const files = importFileList.value || [];
+  const fileItem = files[0];
+  if (!fileItem) {
+    ElMessage.warning('请选择 .xlsx 文件');
+    return;
+  }
+  // el-upload on-change 包装过的 File 在 raw 字段
+  const raw = (fileItem as unknown as { raw?: File }).raw || (fileItem as unknown as File);
+  if (!(raw instanceof File)) {
+    ElMessage.warning('文件读取失败，请重新选择');
+    return;
+  }
+  importing.value = true;
+  try {
+    const res = await importEmployees(raw);
+    importResult.value = res.data || null;
+    if (res.data && res.data.successCount > 0) {
+      ElMessage.success(`成功导入 ${res.data.successCount} 名员工`);
+      loadData();
+    }
+  } catch {
+    // 请求层已统一弹错
+  } finally {
+    importing.value = false;
+  }
+}
+
 /** 导出员工列表 */
 async function handleExport() {
   exporting.value = true;
@@ -661,6 +708,10 @@ const statusMap: Record<number, { label: string; type: string }> = {
             <ElButton :loading="exporting" @click="handleExport">
               <template #icon><icon-ep-download /></template>
               导出
+            </ElButton>
+            <ElButton v-permission="'hr:employee:add'" @click="openImportDialog">
+              <template #icon><icon-ep-upload /></template>
+              导入员工
             </ElButton>
             <ElButton v-permission="'hr:employee:add'" type="primary" @click="handleAdd">
               <template #icon><icon-ep-plus /></template>
@@ -807,9 +858,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
                       :before-upload="beforeUpload"
                       :http-request="({ file }) => handleImageUpload(file as File, 'idCardFront')"
                     >
-                      <ElImage
+                      <AuthImage
                         v-if="editingData.idCardFront"
-                        :src="getFileUrl(editingData.idCardFront)"
+                        :url="editingData.idCardFront"
                         fit="cover"
                         class="h-100px w-160px rounded"
                       />
@@ -834,9 +885,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
                       :before-upload="beforeUpload"
                       :http-request="({ file }) => handleImageUpload(file as File, 'idCardBack')"
                     >
-                      <ElImage
+                      <AuthImage
                         v-if="editingData.idCardBack"
-                        :src="getFileUrl(editingData.idCardBack)"
+                        :url="editingData.idCardBack"
                         fit="cover"
                         class="h-100px w-160px rounded"
                       />
@@ -1195,9 +1246,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
                         :before-upload="beforeUpload"
                         :http-request="({ file }) => handleDiplomaUpload(file as File, index)"
                       >
-                        <ElImage
+                        <AuthImage
                           v-if="edu.diplomaPhoto"
-                          :src="getFileUrl(edu.diplomaPhoto)"
+                          :url="edu.diplomaPhoto"
                           fit="cover"
                           class="h-80px w-120px rounded"
                         />
@@ -1435,9 +1486,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
                         :before-upload="beforeUpload"
                         :http-request="({ file }) => handleCertPhotoUpload(file as File, index)"
                       >
-                        <ElImage
+                        <AuthImage
                           v-if="cert.certPhoto"
-                          :src="getFileUrl(cert.certPhoto)"
+                          :url="cert.certPhoto"
                           fit="cover"
                           class="h-80px w-120px rounded"
                         />
@@ -1472,6 +1523,47 @@ const statusMap: Record<number, { label: string; type: string }> = {
         <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">保存</ElButton>
       </template>
     </ElDrawer>
+
+    <!-- 员工导入 -->
+    <ElDialog v-model="importDialogVisible" title="导入员工" width="560px" :close-on-click-modal="false">
+      <div class="mb-12px">
+        <ElButton link type="primary" @click="handleDownloadTemplate">
+          <template #icon><icon-ep-download /></template>
+          下载导入模板
+        </ElButton>
+      </div>
+      <ElUpload
+        v-model:file-list="importFileList"
+        drag
+        accept=".xlsx"
+        :auto-upload="false"
+        :limit="1"
+        :on-exceed="() => ElMessage.warning('只能选择一个文件')"
+      >
+        <div class="py-16px">
+          <ElIcon :size="36" class="mb-8px text-gray-400"><icon-ep-upload-filled /></ElIcon>
+          <div>将 .xlsx 文件拖到此处，或点击选择</div>
+        </div>
+      </ElUpload>
+      <div v-if="importResult" class="mt-12px">
+        <div class="mb-8px">
+          <ElTag type="success">成功 {{ importResult.successCount }} 条</ElTag>
+          <ElTag v-if="importResult.failCount > 0" type="danger" class="ml-8px">
+            失败 {{ importResult.failCount }} 条
+          </ElTag>
+        </div>
+        <div
+          v-if="importResult.errors.length > 0"
+          class="max-h-160px overflow-y-auto rounded bg-gray-50 p-8px text-xs text-red-500"
+        >
+          <div v-for="(err, index) in importResult.errors" :key="index">{{ err }}</div>
+        </div>
+      </div>
+      <template #footer>
+        <ElButton @click="importDialogVisible = false">关闭</ElButton>
+        <ElButton type="primary" :loading="importing" @click="handleImportSubmit">开始导入</ElButton>
+      </template>
+    </ElDialog>
   </div>
 </template>
 

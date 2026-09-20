@@ -2,11 +2,19 @@ import request from '@/utils/request'
 
 // 获取聊天消息
 // chatType: 1-群聊 2-单聊
-// afterMessageId: 可选,增量拉取该 id 之后的新消息;不传则拉取全量
-export function getChatMessages({ chatType, targetId, afterMessageId } = {}) {
+// afterMessageId: 可选,增量拉取该 id 之后的新消息(轮询使用)
+// beforeMessageId: 可选,翻历史时拉取该 id 之前的一页(配合 limit)
+// limit: 可选,分页大小
+export function getChatMessages({ chatType, targetId, afterMessageId, beforeMessageId, limit } = {}) {
   const params = { chatType, targetId }
   if (afterMessageId !== undefined && afterMessageId !== null && afterMessageId !== '') {
     params.afterMessageId = afterMessageId
+  }
+  if (beforeMessageId !== undefined && beforeMessageId !== null && beforeMessageId !== '') {
+    params.beforeMessageId = beforeMessageId
+  }
+  if (limit !== undefined && limit !== null) {
+    params.limit = limit
   }
   return request({
     url: '/mobile/chat/messages',

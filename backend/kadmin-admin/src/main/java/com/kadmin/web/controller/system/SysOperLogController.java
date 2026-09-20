@@ -25,6 +25,9 @@ public class SysOperLogController {
 
     /**
      * 分页查询操作日志
+     *
+     * @param beginTime 操作时间起（yyyy-MM-dd）
+     * @param endTime   操作时间止（yyyy-MM-dd，含当天）
      */
     @GetMapping("/page")
     public Result<Page<SysOperLog>> page(
@@ -32,12 +35,26 @@ public class SysOperLogController {
             @RequestParam(defaultValue = "10") Integer pageSize,
             @RequestParam(required = false) String module,
             @RequestParam(required = false) String username,
-            @RequestParam(required = false) Integer status) {
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) String beginTime,
+            @RequestParam(required = false) String endTime) {
         LambdaQueryWrapper<SysOperLog> wrapper = new LambdaQueryWrapper<SysOperLog>()
                 .eq(StringUtils.hasText(module), SysOperLog::getModule, module)
                 .like(StringUtils.hasText(username), SysOperLog::getUsername, username)
-                .eq(status != null, SysOperLog::getStatus, status)
-                .orderByDesc(SysOperLog::getId);
+                .eq(status != null, SysOperLog::getStatus, status);
+        try {
+            if (StringUtils.hasText(beginTime)) {
+                wrapper.ge(SysOperLog::getCreatedTime,
+                        java.time.LocalDate.parse(beginTime).atStartOfDay());
+            }
+            if (StringUtils.hasText(endTime)) {
+                wrapper.lt(SysOperLog::getCreatedTime,
+                        java.time.LocalDate.parse(endTime).plusDays(1).atStartOfDay());
+            }
+        } catch (java.time.format.DateTimeParseException e) {
+            return Result.error("时间格式错误，应为 yyyy-MM-dd");
+        }
+        wrapper.orderByDesc(SysOperLog::getId);
         return Result.success(operLogMapper.selectPage(new Page<>(pageNum, pageSize), wrapper));
     }
 

@@ -166,3 +166,93 @@ export function cleanOperLogs(days: number) {
     params: { days }
   });
 }
+
+// ==================== 通知公告 ====================
+
+export interface SysNoticeItem {
+  id: number;
+  noticeTitle: string;
+  noticeType: number;
+  noticeContent: string;
+  status: number;
+  publishTime?: string;
+  createdTime?: string;
+}
+
+export function fetchNoticePage(params: {
+  current: number;
+  size: number;
+  noticeTitle?: string;
+  noticeType?: number;
+  status?: number;
+}) {
+  return request<Api.Common.PageResult<SysNoticeItem>>({
+    url: '/system/notice/page',
+    method: 'get',
+    params
+  });
+}
+
+export function saveNotice(data: Partial<SysNoticeItem>) {
+  return request<boolean>({
+    url: '/system/notice',
+    method: data.id ? 'put' : 'post',
+    data
+  });
+}
+
+export function deleteNotice(id: number) {
+  return request<boolean>({ url: `/system/notice/${id}`, method: 'delete' });
+}
+
+// ==================== 意见反馈 ====================
+
+export function fetchFeedbackPage(params: Record<string, unknown>) {
+  return request<Api.Common.PageResult<Record<string, unknown>>>({
+    url: '/system/feedback/page',
+    method: 'get',
+    params
+  });
+}
+
+export function replyFeedback(data: { id: number; replyContent: string; status?: number }) {
+  return request<boolean>({ url: '/system/feedback/reply', method: 'put', data });
+}
+
+// ==================== 移动端菜单 ====================
+
+export function fetchMobileMenuPage(params: Record<string, unknown>) {
+  return request<Api.Common.PageResult<Record<string, unknown>>>({
+    url: '/system/mobile-menu/page',
+    method: 'get',
+    params
+  });
+}
+
+export function deleteMobileMenu(id: number) {
+  return request<boolean>({ url: `/system/mobile-menu/${id}`, method: 'delete' });
+}
+
+export function toggleMobileMenuStatus(id: number) {
+  return request<boolean>({ url: `/system/mobile-menu/toggle-status/${id}`, method: 'put' });
+}
+
+export function saveMobileMenu(data: Record<string, unknown>) {
+  return request<boolean>({
+    url: '/system/mobile-menu',
+    method: data.id ? 'put' : 'post',
+    data
+  });
+}
+
+export function handleFeedbackReply(id: number, data: { replyContent: string; status?: number }) {
+  return request<boolean>({ url: `/system/feedback/${id}/reply`, method: 'put', data });
+}
+
+export function changeFeedbackStatus(id: number, status: number) {
+  return request<boolean>({ url: `/system/feedback/${id}/status`, method: 'put', data: { status } });
+}
+
+export function deleteFeedback(id: number) {
+  return request<boolean>({ url: `/system/feedback/${id}`, method: 'delete' });
+}

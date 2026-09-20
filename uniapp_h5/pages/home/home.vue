@@ -54,7 +54,7 @@
 <script setup>
   import { computed, onMounted, ref } from 'vue'
   import { useStore } from 'vuex'
-  import { getHomeStats, getHomeMessages } from '@/api/home'
+  import { getHomeStats, getHomeMessages, getNotificationTop, getNotificationUnreadCount, markAllNotificationsRead } from '@/api/home'
   import { getMomentMessages } from '@/api/moment'
   import { getUnreadTotal } from '@/api/chat'
   import { getNoticeList } from '@/api/system/notice'
@@ -72,6 +72,8 @@
   })
   const notices = ref([])
   const backendMessages = ref([])
+  const notifications = ref([])
+  const notificationUnread = ref(0)
   const momentSummary = ref({
     unreadCount: 0,
     likeCount: 0,
@@ -139,6 +141,17 @@
   ])
 
   const messageList = computed(() => {
+    // 站内通知(审批结果/待审批/到期提醒)优先展示
+    const notificationMessages = notifications.value.map((item) => ({
+      id: `ntf-${item.id}`,
+      title: item.title || '消息提醒',
+      desc: item.content || '暂无内容',
+      time: formatDate(item.createdTime),
+      color: item.readFlag ? '#9AA4B2' : Number(item.type === 'approval_result') ? (item.title === '审批通过' ? '#00C8B0' : '#FB6A67') : '#4B98FE',
+      icon: item.type === 'reminder' ? 'clock-fill' : item.type === 'approval_todo' ? 'flag-fill' : 'ticket-fill',
+      badge: '',
+      url: item.url || '/homePages/pending'
+    }))
     const apiMessages = backendMessages.value.map((item, index) => ({
       id: item.id || `message-${index}`,
       title: item.title || '消息提醒',
@@ -150,8 +163,9 @@
       url: item.url || '/homePages/notice',
       avatar: item.avatar
     }))
-    if (apiMessages.length) {
-      return apiMessages
+    const merged = notificationMessages.concat(apiMessages)
+    if (merged.length) {
+      return merged.slice(0, 12)
     }
 
     const noticeMessages = notices.value.slice(0, 3).map((item, index) => ({
@@ -184,12 +198,14 @@
 
   const loadHomeData = async () => {
     try {
-      const [statsResult, messageResult, noticeResult, momentResult, chatUnreadResult] = await Promise.allSettled([
+      const [statsResult, messageResult, noticeResult, momentResult, chatUnreadResult, ntfResult, ntfUnreadResult] = await Promise.allSettled([
         getHomeStats(),
         getHomeMessages(),
         getNoticeList({ status: 1 }),
         getMomentMessages(),
-        getUnreadTotal()
+        getUnreadTotal(),
+        getNotificationTop(10),
+        getNotificationUnreadCount()
       ])
       if (statsResult.status === 'fulfilled') {
         stats.value = {
@@ -210,8 +226,13 @@
         // 聊天未读总数同步到 vuex,供首页快捷入口与 tabbar 角标使用
         store.commit('SET_UNREAD_BADGE', { chatUnread: Number(chatUnreadResult.value.data || 0) })
       }
+      if (ntfResult.status === 'fulfilled') {
+        notifications.value = normalizeList(ntfResult.value.data)
+      }
+      if (ntfUnreadResult.status === 'fulfilled') {
+        notificationUnread.value = Number(ntfUnreadResult.value.data?.count || 0)
+      }
     } catch (error) {
-      console.log('加载首页数据失败', error)
       uni.showToast({ icon: 'none', title: '首页数据加载失败' })
     }
   }

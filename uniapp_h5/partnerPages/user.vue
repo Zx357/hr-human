@@ -271,7 +271,6 @@
         userNotFound.value = true
       }
     } catch (error) {
-      console.log('加载用户信息失败', error)
       userNotFound.value = true
     }
   }

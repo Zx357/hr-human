@@ -20,6 +20,20 @@ export function fetchEmployeePage(params: {
   });
 }
 
+/** 员工批量导入（xlsx） */
+export function importEmployees(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return request<Api.Hr.ImportResult>({
+    url: '/employee/import',
+    method: 'post',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+}
+
 /** 获取员工列表 */
 export function fetchEmployeeList(params?: { deptId?: number; status?: number }) {
   return request<Api.Hr.Employee[]>({

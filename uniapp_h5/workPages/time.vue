@@ -437,7 +437,7 @@ function applyLocationFailure(reason, error, showError = false) {
   refreshMapData()
 
   if (showError) presentLocationError()
-  if (error) console.log('定位失败', error)
+  // 定位失败时页面已有暂无位置信息兜底展示,此处仅忽略
 }
 
 function presentLocationError() {
@@ -458,7 +458,6 @@ async function updateH5PermissionState() {
     locationPermissionState.value = status.state || ''
     locationDenied.value = status.state === 'denied'
   } catch (error) {
-    console.log('读取定位权限失败', error)
   }
 }
 
@@ -566,7 +565,6 @@ async function loadClockInfo() {
     calcDistance()
     refreshMapData()
   } catch (error) {
-    console.log('加载打卡信息失败', error)
   }
 }
 
@@ -768,12 +766,21 @@ function openCompanyLocation() {
     uni.showToast({ icon: 'none', title: '暂无打卡点位置' })
     return
   }
+  // #ifdef MP-WEIXIN
   uni.openLocation({
     latitude: companyLat.value,
     longitude: companyLng.value,
     name: companyName.value || '打卡点',
     address: companyAddress.value || companyName.value || '打卡点'
   })
+  // #endif
+  // #ifdef H5
+  // H5 端不支持 uni.openLocation,跳转高德网页版查看打卡点
+  const lng = companyLng.value
+  const lat = companyLat.value
+  const name = encodeURIComponent(companyName.value || '打卡点')
+  window.open(`https://uri.amap.com/marker?position=${lng},${lat}&name=${name}`, '_blank')
+  // #endif
 }
 
 function vibrateShort() {

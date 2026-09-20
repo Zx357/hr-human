@@ -125,6 +125,8 @@ public class ApplicationController {
         }
         entity.setStatus(0);
         service.save(entity);
+        // 通知移动端审批人（失败不影响提交）
+        service.notifyApproversOnSubmit(entity);
         return Result.success();
     }
 

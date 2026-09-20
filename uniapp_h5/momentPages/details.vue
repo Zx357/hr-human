@@ -181,6 +181,7 @@
             <text class="">{{ post.liked ? '已点赞' : '点赞支持' }}</text>
           </tn-button>
         </view>
+        <!-- #ifdef MP-WEIXIN -->
         <view class="tn-flex-1 justify-content-item tn-text-center tn-margin-sm">
           <tn-button
             bg-color="#05C160"
@@ -194,6 +195,7 @@
             <text class="">分享好友</text>
           </tn-button>
         </view>
+        <!-- #endif -->
       </view>
     </view>
 
@@ -251,7 +253,6 @@ const loadComments = async () => {
     const res = await getMomentComments(postId.value)
     comments.value = Array.isArray(res.data) ? res.data.map(normalizeComment) : []
   } catch (error) {
-    console.log('加载评论失败', error)
     uni.showToast({ title: '加载失败', icon: 'none' })
   }
 }
@@ -270,7 +271,6 @@ const submitComment = async () => {
       commentDraft.value = ''
     }
   } catch (error) {
-    console.log('发表评论失败', error)
     uni.showToast({ title: '发送失败，请重试', icon: 'none' })
   } finally {
     commentSubmitting.value = false
@@ -292,7 +292,6 @@ const removeComment = (item) => {
         }
         uni.showToast({ title: '已删除', icon: 'none' })
       } catch (error) {
-        console.log('删除评论失败', error)
         uni.showToast({ title: '删除失败，请重试', icon: 'none' })
       }
     }
@@ -336,7 +335,6 @@ const loadPost = async () => {
     const res = await getMomentPostDetail(postId.value)
     post.value = res.data ? normalizePost(res.data) : null
   } catch (error) {
-    console.log('加载动态详情失败', error)
     post.value = null
   } finally {
     loading.value = false
@@ -360,7 +358,6 @@ const toggleLike = async () => {
   } catch (error) {
     target.liked = oldLiked
     target.likeCount = oldLikeCount
-    console.log('点赞失败', error)
   }
 }
 
@@ -376,6 +373,17 @@ onLoad((options) => {
   postId.value = options?.id || null
   loadPost()
   loadComments()
+})
+
+// 小程序分享:标题取动态内容前20字,路径直达该动态详情
+import { onShareAppMessage } from '@dcloudio/uni-app'
+onShareAppMessage(() => {
+  const content = post.value?.content || ''
+  const title = content.length > 20 ? content.slice(0, 20) + '…' : (content || '时光动态')
+  return {
+    title,
+    path: '/pages/index?index=1'
+  }
 })
 </script>
 

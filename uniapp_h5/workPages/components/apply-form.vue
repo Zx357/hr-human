@@ -182,6 +182,11 @@ const props = defineProps({
   type: {
     type: String,
     default: 'leave'
+  },
+  // 从考勤日历跳入时预填的补卡日期（yyyy-MM-dd）
+  defaultCardDate: {
+    type: String,
+    default: ''
   }
 })
 
@@ -414,6 +419,15 @@ const leaveHours = ref(0)
 const overtimeHours = ref(0)
 
 const form = reactive(getInitialForm())
+
+// 考勤日历「申请补卡」跳入时预填日期
+watch(
+  () => props.defaultCardDate,
+  (val) => {
+    if (val && !form.cardDate) form.cardDate = val
+  },
+  { immediate: true }
+)
 
 const pageConfig = computed(() => pageMap[props.type] || pageMap.leave)
 const employeeInfo = computed(() => store.getters.employeeInfo || storageUser.value || {})
@@ -707,24 +721,27 @@ async function handleSubmit() {
 
   submitting.value = true
   uni.showLoading({ title: '提交中...' })
+  const promptTitle = encodeURIComponent(pageConfig.value.title)
   try {
     const res = await submitApplication(buildPayload())
     uni.hideLoading()
     if (res.code === 200) {
       showMessage('提交成功')
       setTimeout(() => {
-        if (getCurrentPages().length > 1) {
-          uni.navigateBack()
-        } else {
-          uni.reLaunch({ url: '/pages/index?index=2' })
-        }
-      }, 800)
+        uni.redirectTo({ url: `/workPages/prompt?result=success&title=${promptTitle}` })
+      }, 600)
     } else {
       showMessage(res.msg || '提交失败')
+      setTimeout(() => {
+        uni.redirectTo({ url: `/workPages/prompt?result=fail&title=${promptTitle}` })
+      }, 1200)
     }
   } catch (error) {
     uni.hideLoading()
     showMessage(error?.message || error || '提交失败')
+    setTimeout(() => {
+      uni.redirectTo({ url: `/workPages/prompt?result=fail&title=${promptTitle}` })
+    }, 1200)
   } finally {
     submitting.value = false
   }

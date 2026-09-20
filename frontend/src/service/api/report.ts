@@ -70,3 +70,19 @@ export function fetchAttendanceReportSummary(params: { month: string; companyId?
     params
   });
 }
+
+export interface AttendanceDailyTrendItem {
+  /** YYYY-MM-DD */
+  date: string;
+  normal: number;
+  abnormal: number;
+}
+
+/** 考勤按日趋势（服务端聚合，最多31天） */
+export function fetchAttendanceDailyTrend(params: { startDate: string; endDate: string }) {
+  return request<AttendanceDailyTrendItem[]>({
+    url: '/report/attendance/daily-trend',
+    method: 'get',
+    params
+  });
+}

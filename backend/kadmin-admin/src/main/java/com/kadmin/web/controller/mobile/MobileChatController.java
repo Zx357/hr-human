@@ -26,18 +26,23 @@ public class MobileChatController {
     /**
      * 拉取会话消息
      *
-     * @param afterMessageId 增量参数：仅返回 id 大于该值的消息（轮询使用）；不传则返回最近200条
+     * @param afterMessageId  增量参数：仅返回 id 大于该值的消息（轮询使用）
+     * @param beforeMessageId 历史分页参数：仅返回 id 小于该值的一页消息
+     * @param limit           分页大小（1-200，默认200）
      */
     @GetMapping("/messages")
     public Result<List<MobileChatMessage>> messages(
             @RequestParam(defaultValue = "1") Integer chatType,
             @RequestParam Long targetId,
-            @RequestParam(required = false) Long afterMessageId) {
+            @RequestParam(required = false) Long afterMessageId,
+            @RequestParam(required = false) Long beforeMessageId,
+            @RequestParam(required = false) Integer limit) {
         Long employeeId = currentEmployeeId();
         if (employeeId == null) {
             return Result.error("请先登录");
         }
-        return Result.success(chatService.listMessages(employeeId, chatType, targetId, afterMessageId));
+        return Result.success(chatService.listMessages(employeeId, chatType, targetId, afterMessageId,
+                beforeMessageId, limit));
     }
 
     /**

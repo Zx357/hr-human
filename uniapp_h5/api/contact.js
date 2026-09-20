@@ -30,26 +30,3 @@ export function createContactGroup(data) {
   })
 }
 
-export function getContactRequests(params = {}) {
-  return request({
-    url: '/mobile/contacts/requests',
-    method: 'get',
-    params
-  })
-}
-
-export function sendContactRequest(data) {
-  return request({
-    url: '/mobile/contacts/requests',
-    method: 'post',
-    data
-  })
-}
-
-export function handleContactRequest(id, data) {
-  return request({
-    url: `/mobile/contacts/requests/${id}/handle`,
-    method: 'put',
-    data
-  })
-}

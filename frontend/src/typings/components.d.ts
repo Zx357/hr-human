@@ -8,7 +8,9 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ApplicationDetailDrawer: typeof import('./../components/business/application-detail-drawer.vue')['default']
     AppProvider: typeof import('./../components/common/app-provider.vue')['default']
+    AuthImage: typeof import('./../components/business/auth-image.vue')['default']
     BetterScroll: typeof import('./../components/custom/better-scroll.vue')['default']
     ButtonIcon: typeof import('./../components/custom/button-icon.vue')['default']
     CountTo: typeof import('./../components/custom/count-to.vue')['default']
@@ -101,6 +103,8 @@ declare module 'vue' {
     IconEpSort: typeof import('~icons/ep/sort')['default']
     IconEpTop: typeof import('~icons/ep/top')['default']
     IconEpUnlock: typeof import('~icons/ep/unlock')['default']
+    IconEpUpload: typeof import('~icons/ep/upload')['default']
+    IconEpUploadFilled: typeof import('~icons/ep/upload-filled')['default']
     IconEpUser: typeof import('~icons/ep/user')['default']
     IconGridiconsFullscreen: typeof import('~icons/gridicons/fullscreen')['default']
     IconGridiconsFullscreenExit: typeof import('~icons/gridicons/fullscreen-exit')['default']
@@ -111,7 +115,6 @@ declare module 'vue' {
     IconMdiKeyboardReturn: typeof import('~icons/mdi/keyboard-return')['default']
     IconUilSearch: typeof import('~icons/uil/search')['default']
     LangSwitch: typeof import('./../components/common/lang-switch.vue')['default']
-    LookForward: typeof import('./../components/custom/look-forward.vue')['default']
     MenuToggler: typeof import('./../components/common/menu-toggler.vue')['default']
     PinToggler: typeof import('./../components/common/pin-toggler.vue')['default']
     ReloadButton: typeof import('./../components/common/reload-button.vue')['default']

@@ -77,7 +77,7 @@ const loadMessages = async () => {
       avatar: item.avatar
     }))
   } catch (error) {
-    console.log('加载应用消息失败', error)
+    uni.showToast({ icon: 'none', title: '加载申请列表失败' })
   } finally {
     loading.value = false
   }

@@ -144,7 +144,6 @@ const loadConversations = async () => {
     const list = Array.isArray(res.data) ? res.data : []
     conversations.value = list.map(normalizeConversation)
   } catch (error) {
-    console.log('加载会话列表失败', error)
     uni.showToast({ title: '加载失败', icon: 'none' })
   } finally {
     loading.value = false
@@ -158,9 +157,9 @@ const goChat = (item) => {
   })
 }
 
-// 去通讯录(首页第4个tab)
+// 去通讯录(首页第4个tab):reLaunch 关闭所有已开页面后切到主页通讯录 tab,避免页面栈叠加
 const goContacts = () => {
-  uni.navigateTo({
+  uni.reLaunch({
     url: '/pages/index?index=3'
   })
 }

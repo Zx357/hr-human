@@ -163,7 +163,6 @@ const refreshCurrentTab = async () => {
   try {
     await component?.refresh?.()
   } catch (error) {
-    console.log('刷新页面数据失败', error)
   }
 }
 

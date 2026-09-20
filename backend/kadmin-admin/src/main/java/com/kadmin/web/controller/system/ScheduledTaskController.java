@@ -8,6 +8,7 @@ import com.kadmin.hr.domain.HrEmployee;
 import com.kadmin.hr.mapper.HrCertificateMapper;
 import com.kadmin.hr.mapper.HrContractMapper;
 import com.kadmin.hr.mapper.EmployeeMapper;
+import com.kadmin.system.service.NotificationService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +40,7 @@ public class ScheduledTaskController {
     private final HrContractMapper contractMapper;
     private final HrCertificateMapper certificateMapper;
     private final EmployeeMapper employeeMapper;
+    private final NotificationService notificationService;
 
     /**
      * 每日凌晨2点自动核算前一日的日考勤
@@ -52,6 +54,51 @@ public class ScheduledTaskController {
             log.info("定时任务完成：{} 日考勤核算成功", yesterday);
         } catch (Exception e) {
             log.error("定时任务失败：{} 日考勤核算异常", yesterday, e);
+        }
+    }
+
+    /**
+     * 每日凌晨2点半扫描未来30天内到期的合同/试用期/证书，写入站内通知
+     * （按业务ID去重，同一事项只提醒一次）
+     */
+    @Scheduled(cron = "0 30 2 * * ?")
+    public void scanExpiryReminders() {
+        LocalDate now = LocalDate.now();
+        LocalDate deadline = now.plusDays(30);
+        int count = 0;
+        try {
+            for (HrContract contract : contractMapper.selectList(new LambdaQueryWrapper<HrContract>()
+                    .eq(HrContract::getStatus, 1)
+                    .isNotNull(HrContract::getEndDate)
+                    .between(HrContract::getEndDate, now, deadline))) {
+                notificationService.notifyOnce(contract.getEmployeeId(), "reminder", "合同到期提醒",
+                        "你的合同 " + contract.getContractNo() + " 将于 " + contract.getEndDate()
+                                + " 到期，请联系人事办理续签",
+                        contract.getId(), null);
+                count++;
+            }
+            for (HrEmployee employee : employeeMapper.selectList(new LambdaQueryWrapper<HrEmployee>()
+                    .eq(HrEmployee::getStatus, 1)
+                    .eq(HrEmployee::getEmployeeType, "probation")
+                    .isNotNull(HrEmployee::getRegularDate)
+                    .between(HrEmployee::getRegularDate, now, deadline))) {
+                notificationService.notifyOnce(employee.getId(), "reminder", "试用期到期提醒",
+                        "你的试用期将于 " + employee.getRegularDate() + " 到期，请关注转正安排",
+                        employee.getId(), "/homePages/application");
+                count++;
+            }
+            for (HrCertificate certificate : certificateMapper.selectList(new LambdaQueryWrapper<HrCertificate>()
+                    .isNotNull(HrCertificate::getExpireDate)
+                    .between(HrCertificate::getExpireDate, now, deadline))) {
+                notificationService.notifyOnce(certificate.getEmployeeId(), "reminder", "证书到期提醒",
+                        "你的证书「" + certificate.getCertName() + "」将于 " + certificate.getExpireDate()
+                                + " 到期，请及时复审",
+                        certificate.getId(), null);
+                count++;
+            }
+            log.info("到期提醒扫描完成，共处理 {} 条", count);
+        } catch (Exception e) {
+            log.error("到期提醒扫描异常", e);
         }
     }
 

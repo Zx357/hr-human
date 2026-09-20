@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { ElMessage } from 'element-plus';
 import { useAuthStore } from '@/store/modules/auth';
 import { useForm, useFormRules } from '@/hooks/common/form';
 import { $t } from '@/locales';
@@ -33,6 +34,10 @@ async function handleSubmit() {
   await validate();
   await authStore.login(model.value.userName, model.value.password);
 }
+
+function showForgotPasswordTip() {
+  ElMessage.info('请联系系统管理员在后台重置密码');
+}
 </script>
 
 <template>
@@ -51,6 +56,7 @@ async function handleSubmit() {
     <ElSpace direction="vertical" :size="24" class="w-full" fill>
       <div class="flex-y-center justify-between">
         <ElCheckbox>{{ $t('page.login.pwdLogin.rememberMe') }}</ElCheckbox>
+        <ElButton link type="primary" @click="showForgotPasswordTip">忘记密码？</ElButton>
       </div>
       <ElButton type="primary" size="large" round block :loading="authStore.loginLoading" @click="handleSubmit">
         {{ $t('common.confirm') }}

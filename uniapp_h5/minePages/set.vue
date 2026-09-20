@@ -18,9 +18,10 @@
             <view class="field-label">用户昵称</view>
             <view class="field-value">{{ displayName }}</view>
           </view>
-          <view class="avatar-wrap">
+          <view class="avatar-wrap" @click="changeAvatar">
             <image v-if="avatarUrl" :src="avatarUrl" mode="aspectFill" class="avatar-image" />
             <view v-else class="avatar-fallback">{{ firstChar(displayName) }}</view>
+            <view class="avatar-edit">更换</view>
           </view>
         </view>
       </view>
@@ -67,10 +68,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useStore } from 'vuex'
 import { onShow } from '@dcloudio/uni-app'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
+import { uploadEmployeeAvatar } from '@/api/employee'
 
 const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
@@ -95,6 +97,41 @@ const profileRows = computed(() => [
 onShow(() => {
   store.dispatch('GetInfo')
 })
+
+// 头像上传:选图后经 /file/upload/employee/avatar 上传,成功后刷新资料
+const uploadingAvatar = ref(false)
+
+function changeAvatar() {
+  if (uploadingAvatar.value) return
+  const employeeNo = employee.value.employeeNo
+  if (!employeeNo) {
+    uni.showToast({ title: '缺少工号信息,暂不能更换头像', icon: 'none' })
+    return
+  }
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    success: (res) => {
+      const filePath = res.tempFilePaths && res.tempFilePaths[0]
+      if (!filePath) return
+      uploadingAvatar.value = true
+      uni.showLoading({ title: '上传中', mask: true })
+      uploadEmployeeAvatar(filePath, employeeNo)
+        .then(() => {
+          uni.hideLoading()
+          uni.showToast({ title: '头像已更新', icon: 'success' })
+          store.dispatch('GetInfo')
+        })
+        .catch(() => {
+          uni.hideLoading()
+          uni.showToast({ title: '头像上传失败，请重试', icon: 'none' })
+        })
+        .finally(() => {
+          uploadingAvatar.value = false
+        })
+    }
+  })
+}
 
 function pick(...values) {
   return values.find((value) => value !== undefined && value !== null && String(value).trim() !== '') || ''
@@ -215,8 +252,21 @@ function handleLogout() {
 }
 
 .avatar-wrap {
+  position: relative;
   overflow: hidden;
   background: #f3f6fb;
+}
+
+.avatar-edit {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 3rpx 0;
+  background: rgba(29, 37, 65, 0.55);
+  color: #fff;
+  font-size: 18rpx;
+  text-align: center;
 }
 
 .avatar-image {

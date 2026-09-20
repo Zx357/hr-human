@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import dayjs from 'dayjs';
-import { fetchEmployeeList } from '@/service/api/hr';
+import { fetchEmployeeReportSummary } from '@/service/api/report';
 import { useEcharts } from '@/hooks/common/echarts';
 
 defineOptions({ name: 'PieChart' });
@@ -50,30 +49,17 @@ const { domRef, updateOptions } = useEcharts(() => ({
   ]
 }));
 
-function getAgeGroup(birthDate: string): string {
-  const age = dayjs().diff(dayjs(birthDate), 'year');
-  if (age < 18) return '18岁以下';
-  if (age < 30) return '18-29岁';
-  if (age < 45) return '30-44岁';
-  if (age <= 55) return '45-55岁';
-  return '55岁以上';
-}
-
-const ageOrder = ['18岁以下', '18-29岁', '30-44岁', '45-55岁', '55岁以上'];
+/** 服务端聚合返回的年龄段顺序 */
+const ageOrder = ['18-25', '26-35', '36-45', '46-55', '55以上'];
 
 async function loadData() {
   try {
-    const res = await fetchEmployeeList({ status: 1 });
-    const employees = res?.data ?? [];
-    const map = new Map<string, number>();
-
-    employees.forEach(emp => {
-      if (!emp.birthDate) return;
-      const group = getAgeGroup(emp.birthDate);
-      map.set(group, (map.get(group) ?? 0) + 1);
-    });
-
-    const data = ageOrder.filter(g => map.has(g)).map(g => ({ name: g, value: map.get(g)! }));
+    const res = await fetchEmployeeReportSummary();
+    const buckets = res.data?.ageBuckets ?? [];
+    const data = buckets
+      .slice()
+      .sort((a, b) => ageOrder.indexOf(a.name) - ageOrder.indexOf(b.name))
+      .map(item => ({ name: item.name, value: item.value }));
 
     updateOptions(opts => {
       opts.series[0].data = data;

@@ -78,3 +78,11 @@ export function markMomentMessagesRead() {
     method: 'post'
   })
 }
+
+// 删除自己的动态
+export function deleteMoment(id) {
+  return request({
+    url: `/mobile/moments/posts/${id}`,
+    method: 'delete'
+  })
+}

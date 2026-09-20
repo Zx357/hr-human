@@ -140,6 +140,20 @@ public class MobileMomentService extends ServiceImpl<MobileMomentPostMapper, Mob
      * 删除评论（仅评论作者本人，同步递减评论数）
      */
     @Transactional
+    /**
+     * 删除自己的动态（软删除：状态置0）
+     */
+    public void deletePost(Long postId, Long employeeId) {
+        MobileMomentPost post = getById(postId);
+        if (post == null) {
+            throw new IllegalArgumentException("动态不存在");
+        }
+        if (!post.getEmployeeId().equals(employeeId)) {
+            throw new IllegalArgumentException("只能删除自己的动态");
+        }
+        removeById(postId);
+    }
+
     public void deleteComment(Long commentId, Long employeeId) {
         MobileMomentComment comment = commentMapper.selectById(commentId);
         if (comment == null) {

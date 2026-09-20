@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import dayjs from 'dayjs';
 import { useAppStore } from '@/store/modules/app';
 import { useAuthStore } from '@/store/modules/auth';
+import { getFileUrl } from '@/service/api/file';
 import { useHomeStats } from './use-home-stats';
 
 defineOptions({ name: 'HeaderBanner' });
@@ -14,8 +15,12 @@ const gap = computed(() => (appStore.isMobile ? 0 : 16));
 
 const { loading, stats, load } = useHomeStats();
 
+// 每 60 秒刷新问候语与日期，避免长时间停留后过期
+const now = ref(dayjs());
+let clockTimer: ReturnType<typeof setInterval> | null = null;
+
 const timeGreeting = computed(() => {
-  const hour = dayjs().hour();
+  const hour = now.value.hour();
   if (hour < 9) return '早安';
   if (hour < 12) return '上午好';
   if (hour < 14) return '中午好';
@@ -23,7 +28,9 @@ const timeGreeting = computed(() => {
   return '晚上好';
 });
 
-const todayStr = computed(() => dayjs().format('YYYY年M月D日 dddd'));
+const todayStr = computed(() => now.value.format('YYYY年M月D日 dddd'));
+
+const userAvatar = computed(() => getFileUrl(authStore.userInfo.avatar));
 
 const statisticData = computed(() => [
   {
@@ -51,6 +58,16 @@ const statisticData = computed(() => [
 
 onMounted(() => {
   load();
+  clockTimer = setInterval(() => {
+    now.value = dayjs();
+  }, 60_000);
+});
+
+onBeforeUnmount(() => {
+  if (clockTimer) {
+    clearInterval(clockTimer);
+    clockTimer = null;
+  }
 });
 </script>
 
@@ -62,7 +79,8 @@ onMounted(() => {
           <ElCol :md="16" :sm="24">
             <div class="flex items-center">
               <div class="avatar-ring">
-                <img src="@/assets/imgs/avatar.svg" class="size-full" />
+                <img v-if="userAvatar" :src="userAvatar" class="size-full" />
+                <img v-else src="@/assets/imgs/avatar.svg" class="size-full" />
               </div>
               <div class="pl-20px">
                 <h2 class="mb-4px text-22px font-bold" style="color: var(--el-text-color-primary)">

@@ -60,8 +60,11 @@
                 </view>
               </view>
               <view class="blogger__author__btn justify-content-item tn-flex-col-center tn-flex-row-center">
-                <!-- 为什么不放关注按钮，因为快餐文化的世界，关注按钮放在外面没必要 -->
-                <text class="tn-icon-more-vertical tn-color-gray tn-text-bold tn-text-xxl"></text>
+                <text
+                  v-if="isMine(item)"
+                  class="tn-icon-more-vertical tn-color-gray tn-text-bold tn-text-xxl"
+                  @click.stop="showPostActions(item)"
+                ></text>
               </view>
             </view>
             
@@ -169,9 +172,47 @@
   import { computed, onMounted, ref } from 'vue'
   import { useStore } from 'vuex'
   import config from '@/config'
-  import { getMomentMessages, getMomentPosts, toggleMomentLike } from '@/api/moment'
+  import { deleteMoment, getMomentMessages, getMomentPosts, toggleMomentLike } from '@/api/moment'
 
   const store = useStore()
+
+  const myEmployeeId = computed(() => {
+    const info = store.getters.employeeInfo || {}
+    return store.getters.id || info.id || null
+  })
+
+  const isMine = (item) => {
+    return item.employeeId != null && myEmployeeId.value != null && String(item.employeeId) === String(myEmployeeId.value)
+  }
+
+  // 自己的动态:删除
+  const showPostActions = (item) => {
+    uni.showActionSheet({
+      itemList: ['删除动态'],
+      itemColor: '#E83A30',
+      success: (res) => {
+        if (res.tapIndex === 0) confirmDelete(item)
+      }
+    })
+  }
+
+  const confirmDelete = (item) => {
+    uni.showModal({
+      title: '删除动态',
+      content: '删除后不可恢复，确定删除该条动态吗？',
+      confirmColor: '#E83A30',
+      success: async (res) => {
+        if (!res.confirm) return
+        try {
+          await deleteMoment(item.id)
+          content.value = content.value.filter((post) => String(post.id) !== String(item.id))
+          uni.showToast({ title: '已删除', icon: 'success' })
+        } catch (error) {
+          uni.showToast({ title: (error && error.msg) || '删除失败，请重试', icon: 'none' })
+        }
+      }
+    })
+  }
  
   // 当前tab索引
 const current = ref(0)
@@ -195,15 +236,8 @@ const messageSummary = ref({
 
 const messageCount = computed(() => messageSummary.value.unreadCount || 0)
 
-const currentContent = computed(() => {
-  if (current.value === 1) {
-    return content.value.filter((item) => item.mainImage && item.mainImage.length > 0)
-  }
-  if (current.value === 2) {
-    return [...content.value].sort((a, b) => b.likeCount - a.likeCount)
-  }
-  return content.value
-})
+// 推荐/热门排序已由服务端(tab 参数)返回,前端不再二次过滤/排序
+const currentContent = computed(() => content.value)
 
 const emptyText = computed(() => {
   if (current.value === 1) return '暂无推荐内容'
@@ -283,7 +317,6 @@ const loadMoments = async () => {
     content.value = list.map(normalizePost)
     if (list.length < pageSize) finished.value = true
   } catch (error) {
-    console.log('加载时光动态失败', error)
     uni.showToast({ icon: 'none', title: '加载动态失败' })
   }
 }
@@ -308,7 +341,6 @@ const loadMoreMoments = async () => {
     pageNum.value = nextPage
     if (list.length < pageSize) finished.value = true
   } catch (error) {
-    console.log('加载更多动态失败', error)
     uni.showToast({ icon: 'none', title: '加载失败，请重试' })
   } finally {
     loadingMore.value = false
@@ -325,7 +357,6 @@ const loadMomentMessages = async () => {
     // 同步时光未读数到 tabbar 角标
     store.commit('SET_UNREAD_BADGE', { momentUnread: Number(res.data?.unreadCount || 0) })
   } catch (error) {
-    console.log('加载时光消息失败', error)
   }
 }
 
@@ -350,7 +381,6 @@ const toggleLike = async (item) => {
   } catch (error) {
     item.liked = oldLiked
     item.likeCount = oldLikeCount
-    console.log('点赞失败', error)
   }
 }
 
