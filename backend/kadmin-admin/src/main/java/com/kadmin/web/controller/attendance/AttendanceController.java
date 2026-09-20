@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.attendance;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.common.Result;
 import com.kadmin.attendance.domain.dto.CalculateAttendanceRequest;
 import com.kadmin.attendance.domain.dto.LockDailyRecordRequest;
@@ -36,6 +37,7 @@ public class AttendanceController {
 
     // 保存打卡记录（PC补录）
     @OperLog(module = "考勤管理", action = "补录打卡")
+    @RequiresPermission("attendance:clock:add")
     @PostMapping("/clock")
     public Result<Void> saveClockRecord(@RequestBody AttClockRecord record) {
         attendanceService.saveClockRecord(record);
@@ -44,6 +46,7 @@ public class AttendanceController {
 
     // 删除打卡记录
     @OperLog(module = "考勤管理", action = "删除打卡")
+    @RequiresPermission("attendance:clock:delete")
     @DeleteMapping("/clock/{id}")
     public Result<Void> deleteClockRecord(@PathVariable Long id) {
         attendanceService.deleteClockRecord(id);
@@ -66,6 +69,7 @@ public class AttendanceController {
     }
 
     // 保存日考勤记录
+    @RequiresPermission("attendance:daily:edit")
     @PostMapping("/daily")
     public Result<Void> saveDailyRecord(@RequestBody AttDailyRecord record) {
         attendanceService.saveDailyRecord(record);
@@ -73,6 +77,7 @@ public class AttendanceController {
     }
 
     // 计算指定日期范围的日考勤
+    @RequiresPermission("attendance:daily:calculate")
     @PostMapping("/daily/calculate")
     public Result<Void> calculateDailyAttendance(@RequestBody CalculateAttendanceRequest request) {
         LocalDate start = LocalDate.parse(request.getStartDate());
@@ -84,6 +89,7 @@ public class AttendanceController {
 
     // 锁定日考勤记录
     @OperLog(module = "考勤管理", action = "锁定解锁")
+    @RequiresPermission("attendance:daily:lock")
     @PostMapping("/daily/lock")
     public Result<Void> lockDailyRecords(@RequestBody LockDailyRecordRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();

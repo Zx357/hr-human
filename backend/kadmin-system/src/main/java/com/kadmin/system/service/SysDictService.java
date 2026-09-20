@@ -1,7 +1,7 @@
 package com.kadmin.system.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.kadmin.system.domain.SysDictData;
 import com.kadmin.system.domain.SysDictType;
 import com.kadmin.system.mapper.SysDictDataMapper;

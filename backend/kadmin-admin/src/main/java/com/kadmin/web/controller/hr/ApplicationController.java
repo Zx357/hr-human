@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.hr;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.common.Result;
 import com.kadmin.hr.domain.HrApplication;
 import com.kadmin.common.security.LoginUser;
@@ -13,14 +14,23 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/hr/application")
 @RequiredArgsConstructor
 public class ApplicationController {
+    /**
+     * 允许提交的申请类型白名单
+     */
+    private static final Set<String> SUPPORTED_APP_TYPES = Set.of(
+            "leave", "overtime", "business", "makeup", "exchange",
+            "regularization", "transfer", "reward", "punish", "resignation");
+
     private final ApplicationService service;
     private final SysUserMapper sysUserMapper;
 
@@ -32,15 +42,18 @@ public class ApplicationController {
             @RequestParam(required = false) String employeeNo,
             @RequestParam(required = false) String appType,
             @RequestParam(required = false) Integer status,
-            @RequestParam(required = false) Long employeeId) {
+            @RequestParam(required = false) Long employeeId,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate beginTime,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endTime) {
         // 非管理员强制只看自己的申请
         LoginUser loginUser = SecurityUtils.getCurrentUser();
         if (loginUser != null && !SecurityUtils.isAdmin()) {
             Long selfId = loginUser.getEmployeeId() != null ? loginUser.getEmployeeId() : loginUser.getUserId();
             employeeId = selfId;
         }
-        return Result
-                .success(service.getPage(pageNum, pageSize, employeeName, employeeNo, appType, status, employeeId));
+        return Result.success(
+                service.getPage(pageNum, pageSize, employeeName, employeeNo, appType, status, employeeId, beginTime,
+                        endTime));
     }
 
     @GetMapping("/pending")
@@ -71,27 +84,53 @@ public class ApplicationController {
     }
 
     /**
-     * 计算请假小时数
+     * 计算请假小时数（仅本人或管理员可调用）
      */
     @GetMapping("/calculate-leave-hours")
     public Result<BigDecimal> calculateLeaveHours(
             @RequestParam Long employeeId,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
+        String denied = checkNotSelfOrAdmin(employeeId);
+        if (denied != null) {
+            return Result.error(denied);
+        }
         BigDecimal hours = service.calculateLeaveHours(employeeId, startTime, endTime);
         return Result.success(hours);
     }
 
     /**
-     * 计算加班小时数
+     * 计算加班小时数（仅本人或管理员可调用）
      */
     @GetMapping("/calculate-overtime-hours")
     public Result<BigDecimal> calculateOvertimeHours(
             @RequestParam Long employeeId,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
+        String denied = checkNotSelfOrAdmin(employeeId);
+        if (denied != null) {
+            return Result.error(denied);
+        }
         BigDecimal hours = service.calculateOvertimeHours(employeeId, startTime, endTime);
         return Result.success(hours);
+    }
+
+    /**
+     * employeeId 与当前登录人不一致且非管理员时返回错误信息；允许时返回 null
+     */
+    private String checkNotSelfOrAdmin(Long employeeId) {
+        LoginUser loginUser = SecurityUtils.getCurrentUser();
+        if (loginUser == null) {
+            return "请先登录";
+        }
+        if (SecurityUtils.isAdmin()) {
+            return null;
+        }
+        Long selfId = loginUser.getEmployeeId() != null ? loginUser.getEmployeeId() : loginUser.getUserId();
+        if (!java.util.Objects.equals(selfId, employeeId)) {
+            return "只能查询自己的排班工时";
+        }
+        return null;
     }
 
     @GetMapping("/{id}")
@@ -111,6 +150,10 @@ public class ApplicationController {
 
     @PostMapping
     public Result<Void> add(@RequestBody HrApplication entity) {
+        // 申请类型白名单校验
+        if (entity.getAppType() == null || !SUPPORTED_APP_TYPES.contains(entity.getAppType())) {
+            return Result.error("不支持的申请类型: " + entity.getAppType());
+        }
         // 非管理员只能为自己提交申请；状态一律服务端控制，禁止客户端直传"已通过"
         LoginUser loginUser = SecurityUtils.getCurrentUser();
         if (loginUser != null) {
@@ -176,6 +219,7 @@ public class ApplicationController {
         return Result.success();
     }
 
+    @RequiresPermission({"approval:pending:approve", "approval:pending:reject"})
     @PostMapping("/approve/{id}")
     @OperLog(module = "申请审批", action = "审批")
     public Result<Void> approve(@PathVariable Long id, @RequestParam Integer status,

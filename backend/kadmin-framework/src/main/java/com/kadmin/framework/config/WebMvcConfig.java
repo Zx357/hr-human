@@ -62,7 +62,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
         }
 
         log.info("静态资源映射: {} -> file:{}", pattern, path);
+        // Spring Framework 6.2 起要求静态资源位置以 '/' 结尾，统一为正斜杠，避免每次启动产生告警
+        String location = path.replace('\\', '/');
+        if (!location.endsWith("/")) {
+            location += "/";
+        }
         registry.addResourceHandler(pattern)
-                .addResourceLocations("file:" + path);
+                .addResourceLocations("file:" + location);
     }
 }

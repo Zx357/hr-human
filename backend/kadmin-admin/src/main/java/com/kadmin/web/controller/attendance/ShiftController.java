@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.attendance;
 
 import com.kadmin.common.Result;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.attendance.domain.AttShift;
 import com.kadmin.attendance.service.ShiftService;
 import lombok.RequiredArgsConstructor;
@@ -23,18 +24,21 @@ public class ShiftController {
         return Result.success(service.getDetailById(id));
     }
 
+    @RequiresPermission("attendance:shift:add")
     @PostMapping
     public Result<Void> add(@RequestBody AttShift shift) {
         service.saveShift(shift);
         return Result.success();
     }
 
+    @RequiresPermission("attendance:shift:edit")
     @PutMapping
     public Result<Void> update(@RequestBody AttShift shift) {
         service.updateShift(shift);
         return Result.success();
     }
 
+    @RequiresPermission("attendance:shift:delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         service.deleteShift(id);

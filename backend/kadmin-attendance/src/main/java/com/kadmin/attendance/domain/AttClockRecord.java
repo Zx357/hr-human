@@ -13,6 +13,9 @@ public class AttClockRecord {
     private Long employeeId;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime clockTime;
+    /** 打卡日期（clock_time 的日期部分），与 (employee_id, clock_date, clock_type) 唯一键配合防重复打卡 */
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private java.time.LocalDate clockDate;
     private Integer clockType; // 1-上班 2-下班
     private Integer clockMethod; // 1-APP 2-考勤机 3-手动补卡
     private String location;

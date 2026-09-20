@@ -101,8 +101,9 @@ public class MobileMenuController {
     @GetMapping("/mobile/list")
     public Result<Map<String, List<MobileMenu>>> getMobileMenus() {
         List<MobileMenu> menus = mobileMenuService.listEnabled();
-        // 按分组返回
+        // 按分组返回（过滤未分组记录，避免 groupingBy 空键 NPE）
         Map<String, List<MobileMenu>> grouped = menus.stream()
+                .filter(menu -> menu.getMenuGroup() != null)
                 .collect(Collectors.groupingBy(MobileMenu::getMenuGroup));
         return Result.success(grouped);
     }

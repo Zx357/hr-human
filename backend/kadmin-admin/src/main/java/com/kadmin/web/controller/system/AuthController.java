@@ -93,6 +93,12 @@ public class AuthController {
     @PostMapping("/mobile/change-password")
     public Result<Void> mobileChangePassword(@RequestBody @Validated ChangePasswordRequest request) {
         LoginUser loginUser = SecurityUtils.getCurrentUser();
+        if (loginUser == null) {
+            return Result.error("请先登录");
+        }
+        if (loginUser.getEmployeeId() == null) {
+            return Result.error("当前账号未关联员工信息，无法修改密码");
+        }
         return authService.mobileChangePassword(loginUser.getEmployeeId(), request.getOldPassword(),
                 request.getNewPassword());
     }

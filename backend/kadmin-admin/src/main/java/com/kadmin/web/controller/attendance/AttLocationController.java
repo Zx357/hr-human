@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.attendance;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.common.Result;
 import com.kadmin.attendance.domain.AttLocation;
 import com.kadmin.attendance.service.AttLocationService;
@@ -35,17 +36,20 @@ public class AttLocationController {
         return Result.success(attLocationService.getDetail(id));
     }
 
+    @RequiresPermission("attendance:location:add")
     @PostMapping
     public Result<Boolean> add(@RequestBody AttLocation location) {
         return Result.success(attLocationService.saveLocation(location));
     }
 
+    @RequiresPermission("attendance:location:edit")
     @PutMapping("/{id}")
     public Result<Boolean> update(@PathVariable Long id, @RequestBody AttLocation location) {
         location.setId(id);
         return Result.success(attLocationService.saveLocation(location));
     }
 
+    @RequiresPermission("attendance:location:delete")
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(@PathVariable Long id) {
         return Result.success(attLocationService.deleteLocation(id));

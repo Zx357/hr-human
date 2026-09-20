@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.system;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kadmin.common.Result;
 import com.kadmin.system.domain.SysRole;
@@ -87,6 +88,7 @@ public class SysRoleController {
      * 新增角色
      */
     @Operation(summary = "新增角色")
+    @RequiresPermission("system:role:add")
     @PostMapping
     public Result<Boolean> addRole(@RequestBody RoleRequest request) {
         try {
@@ -109,6 +111,7 @@ public class SysRoleController {
      * 更新角色
      */
     @Operation(summary = "更新角色")
+    @RequiresPermission("system:role:edit")
     @PutMapping
     public Result<Boolean> updateRole(@RequestBody RoleRequest request) {
         try {
@@ -137,6 +140,7 @@ public class SysRoleController {
      * 删除角色
      */
     @Operation(summary = "删除角色")
+    @RequiresPermission("system:role:delete")
     @DeleteMapping("/{id}")
     public Result<Boolean> deleteRole(@PathVariable Long id) {
         boolean success = roleService.deleteRole(id);
@@ -147,6 +151,7 @@ public class SysRoleController {
      * 修改状态
      */
     @Operation(summary = "修改角色状态")
+    @RequiresPermission("system:role:edit")
     @PutMapping("/{id}/status")
     public Result<Boolean> changeStatus(@PathVariable Long id, @RequestBody StatusRequest request) {
         boolean success = roleService.changeStatus(id, request.getStatus());

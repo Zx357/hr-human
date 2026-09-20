@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.system;
 
 import com.kadmin.common.Result;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.system.service.FileConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -96,6 +97,53 @@ public class FileController {
         }
     }
 
+    /**
+     * 通用文档魔数校验：按扩展名校验文件内容（pdf/doc/docx/xls/xlsx，图片类型见 hasImageMagicBytes）
+     */
+    private boolean matchesMagicBytes(MultipartFile file, String extension) {
+        if (extension == null) {
+            return false;
+        }
+        switch (extension.toLowerCase()) {
+            case "jpg":
+            case "jpeg":
+            case "png":
+            case "gif":
+            case "webp":
+                return hasImageMagicBytes(file);
+            case "pdf":
+                return hasExactHeader(file, new byte[] {'%', 'P', 'D', 'F'});
+            case "doc":
+            case "xls":
+                // 旧版 Office 为 OLE2 复合文档：D0 CF 11 E0
+                return hasExactHeader(file, new byte[] {(byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0});
+            case "docx":
+            case "xlsx":
+                // 新版 Office 为 ZIP 容器：PK\x03\x04
+                return hasExactHeader(file, new byte[] {'P', 'K', 0x03, 0x04});
+            default:
+                return false;
+        }
+    }
+
+    private boolean hasExactHeader(MultipartFile file, byte[] expected) {
+        try (InputStream is = file.getInputStream()) {
+            byte[] header = new byte[expected.length];
+            int read = is.read(header);
+            if (read < expected.length) {
+                return false;
+            }
+            for (int i = 0; i < expected.length; i++) {
+                if (header[i] != expected[i]) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     @Operation(summary = "上传文件")
     @PostMapping("/upload")
     public Result<String> upload(@RequestParam("file") MultipartFile file) {
@@ -118,6 +166,8 @@ public class FileController {
         }
         if (!isAllowed)
             return Result.error("不支持的文件类型: " + extension);
+        if (!matchesMagicBytes(file, extension))
+            return Result.error("文件内容与扩展名不符或已损坏，请上传真实的 " + extension + " 文件");
 
         try {
             String dateDir = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
@@ -154,6 +204,8 @@ public class FileController {
         String extension = getExtension(originalFilename);
         if (!isImageType(extension))
             return Result.error("只支持上传图片文件(jpg, jpeg, png, gif, webp)");
+        if (!hasImageMagicBytes(file))
+            return Result.error("图片内容不合法或已损坏");
 
         try {
             String dateDir = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
@@ -221,6 +273,7 @@ public class FileController {
     }
 
     @Operation(summary = "上传员工身份证照片")
+    @RequiresPermission("hr:employee:edit")
     @PostMapping("/upload/employee/idcard")
     public Result<String> uploadEmployeeIdCard(
             @RequestParam("file") MultipartFile file,
@@ -269,6 +322,7 @@ public class FileController {
     }
 
     @Operation(summary = "上传合同照片")
+    @RequiresPermission("hr:employee:edit")
     @PostMapping("/upload/contract")
     public Result<String> uploadContractPhoto(
             @RequestParam("file") MultipartFile file,
@@ -311,6 +365,7 @@ public class FileController {
     }
 
     @Operation(summary = "上传毕业证照片")
+    @RequiresPermission("hr:employee:edit")
     @PostMapping("/upload/diploma")
     public Result<String> uploadDiplomaPhoto(
             @RequestParam("file") MultipartFile file,
@@ -353,6 +408,7 @@ public class FileController {
     }
 
     @Operation(summary = "上传证书照片")
+    @RequiresPermission("hr:employee:edit")
     @PostMapping("/upload/certificate")
     public Result<String> uploadCertPhoto(
             @RequestParam("file") MultipartFile file,
@@ -395,6 +451,7 @@ public class FileController {
     }
 
     @Operation(summary = "删除文件")
+    @RequiresPermission("hr:employee:edit")
     @DeleteMapping("/delete")
     public Result<Boolean> delete(@RequestParam("path") String path) {
         if (path == null || path.isEmpty())

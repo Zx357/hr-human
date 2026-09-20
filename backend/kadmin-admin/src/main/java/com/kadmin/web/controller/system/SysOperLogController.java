@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.system;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kadmin.common.Result;
 import com.kadmin.system.domain.SysOperLog;
@@ -61,6 +62,7 @@ public class SysOperLogController {
     /**
      * 清理 N 天前的日志（默认保留90天）
      */
+    @RequiresPermission("system:oper-log:clean")
     @DeleteMapping("/clean")
     public Result<Void> clean(@RequestParam(defaultValue = "90") Integer days) {
         operLogMapper.delete(new LambdaQueryWrapper<SysOperLog>()

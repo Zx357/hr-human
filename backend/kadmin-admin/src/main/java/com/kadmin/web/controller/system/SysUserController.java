@@ -3,6 +3,7 @@ package com.kadmin.web.controller.system;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kadmin.common.Result;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.system.domain.SysRole;
 import com.kadmin.system.domain.SysUser;
 import com.kadmin.system.service.SysUserService;
@@ -94,6 +95,7 @@ public class SysUserController {
      * 新增用户
      */
     @Operation(summary = "新增用户")
+    @RequiresPermission("system:user:add")
     @PostMapping
     public Result<Boolean> addUser(@RequestBody UserRequest request) {
         try {
@@ -118,6 +120,7 @@ public class SysUserController {
      * 更新用户
      */
     @Operation(summary = "更新用户")
+    @RequiresPermission("system:user:edit")
     @PutMapping
     public Result<Boolean> updateUser(@RequestBody UserRequest request) {
         try {
@@ -143,6 +146,7 @@ public class SysUserController {
      * 删除用户
      */
     @Operation(summary = "删除用户")
+    @RequiresPermission("system:user:delete")
     @DeleteMapping("/{id}")
     public Result<Boolean> deleteUser(@PathVariable Long id) {
         boolean success = userService.deleteUser(id);
@@ -153,6 +157,7 @@ public class SysUserController {
      * 重置密码
      */
     @Operation(summary = "重置密码")
+    @RequiresPermission("system:user:reset")
     @PostMapping("/{id}/resetPassword")
     public Result<Boolean> resetPassword(@PathVariable Long id, @RequestBody ResetPasswordRequest request) {
         boolean success = userService.resetPassword(id, request.getNewPassword());
@@ -163,6 +168,7 @@ public class SysUserController {
      * 修改状态
      */
     @Operation(summary = "修改用户状态")
+    @RequiresPermission("system:user:edit")
     @PutMapping("/{id}/status")
     public Result<Boolean> changeStatus(@PathVariable Long id, @RequestBody StatusRequest request) {
         boolean success = userService.changeStatus(id, request.getStatus());

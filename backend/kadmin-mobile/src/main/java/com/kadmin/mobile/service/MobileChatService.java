@@ -169,31 +169,14 @@ public class MobileChatService {
             conversations.put("S" + entry.getKey(), item);
         }
 
-        // 3. 计算未读数
-        List<MobileChatReadState> readStates = readStateMapper.selectList(
-                new LambdaQueryWrapper<MobileChatReadState>()
-                        .eq(MobileChatReadState::getEmployeeId, employeeId));
-        Map<String, Long> readMap = readStates.stream()
-                .collect(Collectors.toMap(r -> r.getChatType() + ":" + r.getTargetId(),
-                        MobileChatReadState::getLastReadMessageId, (a, b) -> Math.max(a, b)));
+        // 3. 计算未读数（单条 GROUP BY 聚合查询，替代逐会话 count 的 N+1）
+        Map<String, Long> unreadMap = countUnreadByConversation(employeeId,
+                memberships.stream().map(MobileChatGroupMember::getGroupId).distinct().toList());
 
         for (Map<String, Object> item : conversations.values()) {
             Integer chatType = (Integer) item.get("chatType");
             Long targetId = (Long) item.get("targetId");
-            Long lastReadId = readMap.getOrDefault(chatType + ":" + targetId, 0L);
-            LambdaQueryWrapper<MobileChatMessage> unreadWrapper = new LambdaQueryWrapper<MobileChatMessage>()
-                    .gt(MobileChatMessage::getId, lastReadId)
-                    .ne(MobileChatMessage::getFromEmployeeId, employeeId);
-            if (chatType == CHAT_TYPE_SINGLE) {
-                unreadWrapper.eq(MobileChatMessage::getChatType, CHAT_TYPE_SINGLE)
-                        .eq(MobileChatMessage::getFromEmployeeId, targetId)
-                        .eq(MobileChatMessage::getPeerEmployeeId, employeeId);
-            } else {
-                unreadWrapper.eq(MobileChatMessage::getChatType, CHAT_TYPE_GROUP)
-                        .eq(MobileChatMessage::getGroupId, targetId);
-            }
-            Long unread = messageMapper.selectCount(unreadWrapper);
-            item.put("unreadCount", unread != null ? unread : 0);
+            item.put("unreadCount", unreadMap.getOrDefault(chatType + ":" + targetId, 0L));
         }
 
         // 4. 按最后消息时间倒序（LocalDateTime 类型比较，无消息排最后）
@@ -262,15 +245,38 @@ public class MobileChatService {
     }
 
     /**
-     * 未读消息总数（用于首页角标）
+     * 按会话聚合未读数：一条 GROUP BY 查询返回 {chatType:targetId -> 未读数}
+     */
+    private Map<String, Long> countUnreadByConversation(Long employeeId, List<Long> groupIds) {
+        Map<String, Long> unreadMap = new HashMap<>();
+        List<Map<String, Object>> rows = messageMapper.countUnreadGroupByConversation(employeeId, groupIds);
+        for (Map<String, Object> row : rows) {
+            Object chatType = row.get("chatType");
+            Object targetId = row.get("targetId");
+            Object unread = row.get("unread");
+            if (chatType == null || targetId == null) {
+                continue;
+            }
+            unreadMap.put(chatType + ":" + targetId, unread instanceof Number number ? number.longValue() : 0L);
+        }
+        return unreadMap;
+    }
+
+    /**
+     * 未读消息总数（用于首页角标）：复用按会话聚合的结果，不再遍历会话列表
      */
     public long getTotalUnread(Long employeeId) {
+        List<Long> groupIds = groupMemberMapper.selectList(
+                new LambdaQueryWrapper<MobileChatGroupMember>()
+                        .eq(MobileChatGroupMember::getEmployeeId, employeeId)
+                        .eq(MobileChatGroupMember::getStatus, 1))
+                .stream()
+                .map(MobileChatGroupMember::getGroupId)
+                .distinct()
+                .toList();
         long total = 0;
-        for (Map<String, Object> conversation : getConversations(employeeId)) {
-            Object unread = conversation.get("unreadCount");
-            if (unread instanceof Number number) {
-                total += number.longValue();
-            }
+        for (Long unread : countUnreadByConversation(employeeId, groupIds).values()) {
+            total += unread;
         }
         return total;
     }
@@ -336,6 +342,23 @@ public class MobileChatService {
         if (memberCount == null || memberCount == 0) {
             throw new IllegalArgumentException("你不在该群聊中");
         }
+    }
+
+    /**
+     * 群在职成员的员工ID列表（WS 实时推送用：群消息需要逐个推给除发送者外的成员）
+     */
+    public List<Long> getGroupMemberEmployeeIds(Long groupId) {
+        if (groupId == null) {
+            return List.of();
+        }
+        return groupMemberMapper.selectList(new LambdaQueryWrapper<MobileChatGroupMember>()
+                        .eq(MobileChatGroupMember::getGroupId, groupId)
+                        .eq(MobileChatGroupMember::getStatus, 1))
+                .stream()
+                .map(MobileChatGroupMember::getEmployeeId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
     }
 
     private void fillSenderInfo(List<MobileChatMessage> messages) {

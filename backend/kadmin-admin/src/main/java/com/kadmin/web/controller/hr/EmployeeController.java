@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.hr;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.common.Result;
 import com.kadmin.hr.domain.HrEmployee;
 import com.kadmin.hr.domain.HrEducation;
@@ -122,6 +123,7 @@ public class EmployeeController {
      * 新增员工
      */
     @OperLog(module = "员工管理", action = "新增")
+    @RequiresPermission("hr:employee:add")
     @PostMapping
     public Result<Void> add(@Valid @RequestBody EmployeeDTO dto) {
         // 检查工号是否重复
@@ -139,6 +141,7 @@ public class EmployeeController {
      * 修改员工
      */
     @OperLog(module = "员工管理", action = "修改")
+    @RequiresPermission("hr:employee:edit")
     @PutMapping
     public Result<Void> update(@Valid @RequestBody EmployeeDTO dto) {
         // 检查工号是否重复（排除自己）
@@ -156,6 +159,7 @@ public class EmployeeController {
      * 删除员工
      */
     @OperLog(module = "员工管理", action = "删除")
+    @RequiresPermission("hr:employee:delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         employeeService.deleteEmployee(id);
@@ -166,6 +170,7 @@ public class EmployeeController {
      * 批量删除员工（事务内执行，失败整体回滚）
      */
     @OperLog(module = "员工管理", action = "批量删除")
+    @RequiresPermission("hr:employee:delete")
     @DeleteMapping("/batch")
     public Result<Void> deleteBatch(@RequestBody List<Long> ids) {
         employeeService.deleteEmployees(ids);
@@ -200,6 +205,7 @@ public class EmployeeController {
      * 员工批量导入（xlsx，最多1000行）
      */
     @OperLog(module = "员工管理", action = "导入")
+    @RequiresPermission("hr:employee:import")
     @PostMapping("/import")
     public Result<Map<String, Object>> importEmployees(@RequestParam("file") org.springframework.web.multipart.MultipartFile file)
             throws java.io.IOException {

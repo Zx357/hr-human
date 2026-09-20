@@ -56,7 +56,10 @@ public class SecurityConfig {
             "/favicon.ico",
             "/error",
             "/uploads/**",
-            "/employee_photo/**"
+            "/employee_photo/**",
+            // 聊天 WebSocket 握手（/api context-path 下完整路径 /api/ws/chat）：
+            // 鉴权在 ChatHandshakeInterceptor 内用 token query 参数完成，故对安全链放行
+            "/ws/chat"
     };
 
     @Value("${security.cors.allowed-origins:http://localhost:9527,http://127.0.0.1:9527,http://localhost:5173,http://127.0.0.1:5173}")

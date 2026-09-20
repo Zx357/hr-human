@@ -40,6 +40,7 @@ public class DataInitializer implements CommandLineRunner {
         ensureAdminUser();
         migrateEmployeePasswords();
         ensureApprovalRecordTable();
+        ensureAttendanceClockUniqueKey();
         ensureChatMessageSchema();
         ensureFeedbackTable();
         ensureNotificationTables();
@@ -49,6 +50,7 @@ public class DataInitializer implements CommandLineRunner {
         ensureNotificationManagementMenu();
         ensureMobileManagementMenu();
         ensureOperLogMenu();
+        ensurePermissionButtonSeeds();
         ensureDefaultSystemNotice();
         ensureDefaultMomentPosts();
         ensureDefaultMobileGroup();
@@ -151,6 +153,48 @@ public class DataInitializer implements CommandLineRunner {
                   KEY idx_sys_oper_log_created (created_time)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志'
                 """);
+    }
+
+    /**
+     * 打卡记录防重：补 clock_date 列（打卡时间对应日期）并加
+     * (employee_id, clock_date, clock_type) 唯一键（幂等）。
+     * 存量脏数据导致加键失败时仅告警，不阻断启动。
+     */
+    private void ensureAttendanceClockUniqueKey() {
+        Integer colCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() "
+                        + "AND TABLE_NAME = 'att_clock_record' AND COLUMN_NAME = 'clock_date'",
+                Integer.class);
+        if (colCount == null || colCount == 0) {
+            try {
+                jdbcTemplate.execute("ALTER TABLE att_clock_record "
+                        + "ADD COLUMN clock_date DATE NULL COMMENT '打卡日期（clock_time的日期部分，防重唯一键）' AFTER clock_time");
+                log.info("已为 att_clock_record 添加 clock_date 列");
+            } catch (Exception e) {
+                log.warn("添加 att_clock_record.clock_date 列失败: {}", e.getMessage());
+                return;
+            }
+        }
+        // 存量数据回填（幂等：仅补空值）
+        try {
+            jdbcTemplate.update("UPDATE att_clock_record SET clock_date = DATE(clock_time) WHERE clock_date IS NULL");
+        } catch (Exception e) {
+            log.warn("回填 att_clock_record.clock_date 失败: {}", e.getMessage());
+        }
+
+        Integer ukCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() "
+                        + "AND TABLE_NAME = 'att_clock_record' AND INDEX_NAME = 'uk_att_clock_record_day'",
+                Integer.class);
+        if (ukCount == null || ukCount == 0) {
+            try {
+                jdbcTemplate.execute("ALTER TABLE att_clock_record "
+                        + "ADD UNIQUE KEY uk_att_clock_record_day (employee_id, clock_date, clock_type)");
+                log.info("已为 att_clock_record 添加打卡防重唯一键");
+            } catch (Exception e) {
+                log.warn("添加打卡防重唯一键失败（可能存在历史重复打卡数据）: {}", e.getMessage());
+            }
+        }
     }
 
     /**
@@ -524,6 +568,55 @@ public class DataInitializer implements CommandLineRunner {
         assignMenuToAdminRoles(addButton.getId());
         assignMenuToAdminRoles(editButton.getId());
         assignMenuToAdminRoles(deleteButton.getId());
+    }
+
+    /**
+     * 按钮级权限码种子（幂等）：
+     * 为敏感动作补充 sys_menu 按钮（menu_type=3），并绑定管理员角色；
+     * 普通角色不默认授权，由管理员在"角色管理"中按需勾选。
+     */
+    private void ensurePermissionButtonSeeds() {
+        // 考勤-日考勤
+        seedPermissionButton("attendance_daily", "attendance_daily_edit", "保存日考勤", "attendance:daily:edit", 1);
+        seedPermissionButton("attendance_daily", "attendance_daily_calculate", "重算日考勤", "attendance:daily:calculate", 2);
+        seedPermissionButton("attendance_daily", "attendance_daily_lock", "锁定日考勤", "attendance:daily:lock", 3);
+        // 考勤-打卡点
+        seedPermissionButton("attendance_location", "attendance_location_add", "新增打卡点", "attendance:location:add", 1);
+        seedPermissionButton("attendance_location", "attendance_location_edit", "编辑打卡点", "attendance:location:edit", 2);
+        seedPermissionButton("attendance_location", "attendance_location_delete", "删除打卡点", "attendance:location:delete", 3);
+        // 组织架构（公司/部门）
+        seedPermissionButton("organization_org-structure", "organization_company_add", "新增公司", "org:company:add", 1);
+        seedPermissionButton("organization_org-structure", "organization_company_edit", "编辑公司", "org:company:edit", 2);
+        seedPermissionButton("organization_org-structure", "organization_company_delete", "删除公司", "org:company:delete", 3);
+        seedPermissionButton("organization_org-structure", "organization_department_add", "新增部门", "org:department:add", 4);
+        seedPermissionButton("organization_org-structure", "organization_department_edit", "编辑部门", "org:department:edit", 5);
+        seedPermissionButton("organization_org-structure", "organization_department_delete", "删除部门", "org:department:delete", 6);
+        // 人事-合同导出、员工导入
+        seedPermissionButton("hr_contract", "hr_contract_export", "导出台账", "hr:contract:export", 4);
+        seedPermissionButton("hr_employee", "hr_employee_import", "导入", "hr:employee:import", 5);
+        // 申请审批（转正/离职/奖惩/调动 的审批动作）
+        seedPermissionButton("application_regularization", "application_regularization_approve", "审批", "application:regularization:approve", 4);
+        seedPermissionButton("application_resignation", "application_resignation_approve", "审批", "application:resignation:approve", 4);
+        seedPermissionButton("application_reward", "application_reward_approve", "审批", "application:reward:approve", 4);
+        seedPermissionButton("application_transfer", "application_transfer_approve", "审批", "application:transfer:approve", 4);
+        // 系统-文件路径配置
+        seedPermissionButton("system_file-config", "system_file-config_edit", "编辑配置", "system:file-config:edit", 1);
+    }
+
+    /**
+     * 在指定父菜单下种入单个按钮权限（已存在则复用并校正字段），并绑定管理员角色
+     */
+    private void seedPermissionButton(String parentMenuCode, String menuCode, String menuName,
+            String permission, int sortOrder) {
+        SysMenu parent = menuMapper.selectOne(new LambdaQueryWrapper<SysMenu>()
+                .eq(SysMenu::getMenuCode, parentMenuCode)
+                .last("LIMIT 1"));
+        if (parent == null) {
+            log.warn("Parent menu {} not found, skip permission button {} initialization.", parentMenuCode, menuCode);
+            return;
+        }
+        SysMenu button = ensureMenuButton(parent.getId(), menuCode, menuName, permission, sortOrder);
+        assignMenuToAdminRoles(button.getId());
     }
 
     private void ensureOperLogMenu() {

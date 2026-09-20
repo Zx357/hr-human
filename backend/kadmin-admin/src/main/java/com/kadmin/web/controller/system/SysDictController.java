@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.system;
 
 import com.kadmin.common.Result;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.system.domain.SysDictData;
 import com.kadmin.system.domain.SysDictType;
 import com.kadmin.system.service.SysDictService;
@@ -48,6 +49,7 @@ public class SysDictController {
      * 新增字典类型
      */
     @Operation(summary = "新增字典类型")
+    @RequiresPermission("system:dict:add")
     @PostMapping("/type")
     public Result<Boolean> addDictType(@RequestBody SysDictType dictType) {
         try {
@@ -62,6 +64,7 @@ public class SysDictController {
      * 更新字典类型
      */
     @Operation(summary = "更新字典类型")
+    @RequiresPermission("system:dict:edit")
     @PutMapping("/type")
     public Result<Boolean> updateDictType(@RequestBody SysDictType dictType) {
         boolean success = dictService.updateDictType(dictType);
@@ -72,6 +75,7 @@ public class SysDictController {
      * 删除字典类型
      */
     @Operation(summary = "删除字典类型")
+    @RequiresPermission("system:dict:delete")
     @DeleteMapping("/type/{id}")
     public Result<Boolean> deleteDictType(@PathVariable Long id) {
         boolean success = dictService.deleteDictType(id);
@@ -114,6 +118,7 @@ public class SysDictController {
      * 新增字典数据
      */
     @Operation(summary = "新增字典数据")
+    @RequiresPermission("system:dict:add")
     @PostMapping("/data")
     public Result<Boolean> addDictData(@RequestBody SysDictData dictData) {
         boolean success = dictService.addDictData(dictData);
@@ -124,6 +129,7 @@ public class SysDictController {
      * 更新字典数据
      */
     @Operation(summary = "更新字典数据")
+    @RequiresPermission("system:dict:edit")
     @PutMapping("/data")
     public Result<Boolean> updateDictData(@RequestBody SysDictData dictData) {
         boolean success = dictService.updateDictData(dictData);
@@ -134,6 +140,7 @@ public class SysDictController {
      * 删除字典数据
      */
     @Operation(summary = "删除字典数据")
+    @RequiresPermission("system:dict:delete")
     @DeleteMapping("/data/{id}")
     public Result<Boolean> deleteDictData(@PathVariable Long id) {
         boolean success = dictService.deleteDictData(id);

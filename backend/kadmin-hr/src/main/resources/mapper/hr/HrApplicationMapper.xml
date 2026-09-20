@@ -61,6 +61,12 @@
         <if test="status != null">
             AND a.status = #{status}
         </if>
+        <if test="beginTime != null">
+            AND a.created_time >= #{beginTime}
+        </if>
+        <if test="endTime != null">
+            AND a.created_time &lt; DATE_ADD(#{endTime}, INTERVAL 1 DAY)
+        </if>
         <if test="employeeId != null">
             AND a.employee_id = #{employeeId}
         </if>

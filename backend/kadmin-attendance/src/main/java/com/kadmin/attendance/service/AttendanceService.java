@@ -60,10 +60,19 @@ public class AttendanceService {
 
     // 保存打卡记录
     public void saveClockRecord(AttClockRecord record) {
+        // 补齐防重唯一键所需的打卡日期
+        if (record.getClockDate() == null && record.getClockTime() != null) {
+            record.setClockDate(record.getClockTime().toLocalDate());
+        }
         if (record.getId() != null) {
             clockRecordMapper.updateById(record);
         } else {
-            clockRecordMapper.insert(record);
+            try {
+                clockRecordMapper.insert(record);
+            } catch (org.springframework.dao.DuplicateKeyException e) {
+                // (employee_id, clock_date, clock_type) 唯一键拦截重复打卡
+                throw new IllegalArgumentException("该员工当日已存在相同类型的打卡记录，请勿重复添加");
+            }
         }
     }
 

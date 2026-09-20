@@ -3,7 +3,6 @@ package com.kadmin.web.controller.mobile;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.kadmin.common.Result;
 import com.kadmin.mobile.domain.dto.MobileHomeMessageDTO;
-import com.kadmin.attendance.domain.AttClockRecord;
 import com.kadmin.hr.domain.HrApplication;
 import com.kadmin.system.domain.SysNotice;
 import com.kadmin.attendance.mapper.AttClockRecordMapper;
@@ -54,15 +53,11 @@ public class MobileHomeController {
 
         Map<String, Object> stats = new HashMap<>();
 
-        // 本月出勤天数：统计本月有上班打卡(clockType=1)的不同日期数
+        // 本月出勤天数：统计本月有上班打卡(clockType=1)的不同日期数（按日期去重，防一日多卡虚增）
         YearMonth ym = YearMonth.now();
         LocalDateTime monthStart = ym.atDay(1).atStartOfDay();
         LocalDateTime monthEnd = ym.atEndOfMonth().atTime(LocalTime.MAX);
-        Long attendDays = clockRecordMapper.selectCount(
-                new LambdaQueryWrapper<AttClockRecord>()
-                        .eq(AttClockRecord::getEmployeeId, employeeId)
-                        .eq(AttClockRecord::getClockType, 1)
-                        .between(AttClockRecord::getClockTime, monthStart, monthEnd));
+        Long attendDays = clockRecordMapper.countDistinctAttendDays(employeeId, monthStart, monthEnd);
         stats.put("monthAttendDays", attendDays != null ? attendDays : 0);
 
         // 待处理（我的待审批申请）

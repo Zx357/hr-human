@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.hr;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.common.Result;
 import com.kadmin.hr.domain.HrContract;
 import com.kadmin.hr.service.ContractService;
@@ -46,6 +47,7 @@ public class ContractController {
     /**
      * 新增合同
      */
+    @RequiresPermission("hr:contract:add")
     @PostMapping
     public Result<Void> add(@RequestBody HrContract contract) {
         contractService.addContract(contract);
@@ -55,6 +57,7 @@ public class ContractController {
     /**
      * 修改合同
      */
+    @RequiresPermission("hr:contract:edit")
     @PutMapping
     public Result<Void> update(@RequestBody HrContract contract) {
         contractService.updateContract(contract);
@@ -64,6 +67,7 @@ public class ContractController {
     /**
      * 删除合同
      */
+    @RequiresPermission("hr:contract:delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         contractService.deleteContract(id);

@@ -1,7 +1,7 @@
 package com.kadmin.organization.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.service.IService;
+import com.baomidou.mybatisplus.spring.service.IService;
 import com.kadmin.organization.domain.OrgDepartment;
 
 import java.util.List;

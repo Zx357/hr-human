@@ -1,7 +1,7 @@
 package com.kadmin.organization.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.kadmin.organization.domain.dto.OrgStatisticsDTO;
 import com.kadmin.organization.domain.OrgUnit;
 import com.kadmin.organization.mapper.OrgUnitMapper;

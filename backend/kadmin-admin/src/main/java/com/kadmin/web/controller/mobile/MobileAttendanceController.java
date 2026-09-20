@@ -128,6 +128,7 @@ public class MobileAttendanceController {
     }
 
     @PostMapping("/clock")
+    @org.springframework.transaction.annotation.Transactional
     public Result<AttClockRecord> clock(@RequestBody Map<String, Object> params) {
         LoginUser loginUser = SecurityUtils.getCurrentUser();
         if (loginUser == null) {
@@ -173,16 +174,27 @@ public class MobileAttendanceController {
             }
         }
 
+        // 事务内复查，缩小并发窗口；并发兜底由 (employee_id, clock_date, clock_type) 唯一键保证
+        if (hasClockRecordToday(employeeId, clockType)) {
+            return Result.error(clockType == 1 ? "今日已签到，请勿重复打卡" : "今日已签退，请勿重复打卡");
+        }
+
         AttClockRecord record = new AttClockRecord();
         record.setEmployeeId(employeeId);
         record.setClockTime(LocalDateTime.now());
+        record.setClockDate(LocalDate.now());
         record.setClockType(clockType);
         record.setClockMethod(1);
         record.setLocation(params.get("location") instanceof String ? (String) params.get("location") : null);
         record.setDeviceInfo(params.get("deviceInfo") instanceof String ? (String) params.get("deviceInfo") : null);
         record.setRemark(clockType == 1 ? "移动端上班打卡" : "移动端下班打卡");
 
-        clockRecordMapper.insert(record);
+        try {
+            clockRecordMapper.insert(record);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            // 并发重复打卡被唯一键拦截，转为友好提示
+            throw new IllegalArgumentException("今日已打过该卡，请勿重复打卡");
+        }
         return Result.success(record);
     }
 

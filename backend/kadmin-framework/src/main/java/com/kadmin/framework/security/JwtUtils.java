@@ -19,6 +19,11 @@ import java.util.Map;
 @Component
 public class JwtUtils {
 
+    /**
+     * application.yml 中内置的默认弱密钥，生产环境禁止使用
+     */
+    private static final String DEFAULT_SECRET = "change-me-in-production-with-a-long-random-string";
+
     @Value("${jwt.secret}")
     private String secret;
 
@@ -27,6 +32,23 @@ public class JwtUtils {
 
     @Value("${jwt.refresh-expiration}")
     private Long refreshExpiration;
+
+    @Value("${spring.profiles.active:dev}")
+    private String activeProfile;
+
+    /**
+     * 启动时校验：prod 环境下若仍使用默认弱密钥则快速失败，防止弱密钥上线
+     */
+    @jakarta.annotation.PostConstruct
+    void rejectWeakSecretInProd() {
+        boolean prod = activeProfile != null && java.util.Arrays.stream(activeProfile.split(","))
+                .map(String::trim)
+                .anyMatch("prod"::equalsIgnoreCase);
+        if (prod && DEFAULT_SECRET.equals(secret)) {
+            throw new IllegalStateException(
+                    "生产环境(prod)检测到 JWT 密钥仍为默认值，请通过环境变量 JWT_SECRET 配置足够强度的密钥后再启动");
+        }
+    }
 
     /**
      * 获取密钥

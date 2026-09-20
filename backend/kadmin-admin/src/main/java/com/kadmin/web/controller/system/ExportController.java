@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.system;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.attendance.domain.AttDailyRecord;
 import com.kadmin.attendance.service.AttendanceService;
 import com.kadmin.common.Result;
@@ -34,6 +35,7 @@ public class ExportController {
     /**
      * 员工花名册导出
      */
+    @RequiresPermission("hr:employee:export")
     @GetMapping("/employee/export")
     public void exportEmployees(
             HttpServletResponse response,
@@ -74,6 +76,7 @@ public class ExportController {
     /**
      * 日考勤导出
      */
+    @RequiresPermission("attendance:daily:export")
     @GetMapping("/attendance/daily/export")
     public void exportDailyAttendance(
             HttpServletResponse response,
@@ -126,6 +129,7 @@ public class ExportController {
     /**
      * 月考勤汇总导出
      */
+    @RequiresPermission("attendance:monthly:export")
     @GetMapping("/attendance/monthly/export")
     public void exportMonthlyAttendance(
             HttpServletResponse response,
@@ -161,6 +165,7 @@ public class ExportController {
     /**
      * 合同台账导出（支持按当前筛选条件导出）
      */
+    @RequiresPermission("hr:contract:export")
     @GetMapping("/hr/contract/export")
     public void exportContracts(
             HttpServletResponse response,

@@ -20,6 +20,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class KadminApplication {
 
     public static void main(String[] args) {
+        // 统一 JVM 默认时区为东八区，与 Jackson(time-zone: GMT+8)/JDBC(serverTimezone=Asia/Shanghai) 保持一致
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Shanghai"));
         SpringApplication.run(KadminApplication.class, args);
         System.out.println("====================================");
         System.out.println("  KAdmin HR System Started!");

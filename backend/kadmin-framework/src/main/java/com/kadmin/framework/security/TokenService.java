@@ -37,6 +37,8 @@ public class TokenService {
     private static final String TOKEN_PREFIX = "login_token:";
     private static final String REFRESH_TOKEN_PREFIX = "refresh_token:";
     private static final String REFRESH_GRACE_PREFIX = "refresh_grace:";
+    /** 访问会话->配对刷新会话的映射，供登出时一并吊销 */
+    private static final String REFRESH_PAIR_PREFIX = "refresh_pair:";
     private static final String USER_TOKEN_INDEX_PREFIX = "user_tokens:";
     /** 会话索引命名空间：PC系统用户与移动端员工ID分属两套序列，必须隔离避免互踢 */
     private static final String NAMESPACE_USER = "U";
@@ -87,6 +89,11 @@ public class TokenService {
         String refreshTokenKey = getRefreshTokenKey(refreshUuid);
         redisTemplate.opsForValue().set(refreshTokenKey, loginUser, refreshExpiration, TimeUnit.MILLISECONDS);
         addToUserIndex(loginUser, REFRESH_TOKEN_PREFIX, refreshUuid);
+        // 记录与当前访问会话的配对关系，供登出时一并吊销
+        if (loginUser.getToken() != null && !loginUser.getToken().isEmpty()) {
+            redisTemplate.opsForValue().set(REFRESH_PAIR_PREFIX + loginUser.getToken(), refreshUuid,
+                    refreshExpiration, TimeUnit.MILLISECONDS);
+        }
 
         return refreshToken;
     }
@@ -186,6 +193,28 @@ public class TokenService {
                 deleteFromUserIndex(loginUser, TOKEN_PREFIX, uuid);
             }
         }
+    }
+
+    /**
+     * 登出：删除访问Token会话，并同时吊销其配对的RefreshToken会话，
+     * 防止登出后仍可用RefreshToken换取新Token
+     */
+    public void deleteTokenWithRefreshToken(String accessUuid) {
+        deleteToken(accessUuid);
+        if (accessUuid == null) {
+            return;
+        }
+        Object refreshUuid = redisTemplate.opsForValue().get(REFRESH_PAIR_PREFIX + accessUuid);
+        if (refreshUuid instanceof String uuid) {
+            String refreshTokenKey = getRefreshTokenKey(uuid);
+            Object obj = redisTemplate.opsForValue().get(refreshTokenKey);
+            redisTemplate.delete(refreshTokenKey);
+            redisTemplate.delete(REFRESH_GRACE_PREFIX + uuid);
+            if (obj instanceof LoginUser loginUser) {
+                deleteFromUserIndex(loginUser, REFRESH_TOKEN_PREFIX, uuid);
+            }
+        }
+        redisTemplate.delete(REFRESH_PAIR_PREFIX + accessUuid);
     }
 
     /**

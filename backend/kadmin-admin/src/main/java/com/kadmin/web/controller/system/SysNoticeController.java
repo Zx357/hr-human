@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.system;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kadmin.common.Result;
 import com.kadmin.system.domain.SysNotice;
@@ -78,6 +79,7 @@ public class SysNoticeController {
      * 新增公告
      */
     @Operation(summary = "新增公告")
+    @RequiresPermission("system:notice:add")
     @PostMapping
     public Result<Boolean> addNotice(@RequestBody SysNotice notice) {
         boolean success = noticeService.addNotice(notice);
@@ -88,6 +90,7 @@ public class SysNoticeController {
      * 更新公告
      */
     @Operation(summary = "更新公告")
+    @RequiresPermission("system:notice:edit")
     @PutMapping
     public Result<Boolean> updateNotice(@RequestBody SysNotice notice) {
         boolean success = noticeService.updateNotice(notice);
@@ -98,6 +101,7 @@ public class SysNoticeController {
      * 删除公告
      */
     @Operation(summary = "删除公告")
+    @RequiresPermission("system:notice:delete")
     @DeleteMapping("/{id}")
     public Result<Boolean> deleteNotice(@PathVariable Long id) {
         boolean success = noticeService.deleteNotice(id);

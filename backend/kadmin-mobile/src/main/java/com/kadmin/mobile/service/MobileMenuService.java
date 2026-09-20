@@ -77,7 +77,9 @@ public class MobileMenuService {
     public void toggleStatus(Long id) {
         MobileMenu menu = mobileMenuMapper.selectById(id);
         if (menu != null) {
-            menu.setStatus(menu.getStatus() == 1 ? 0 : 1);
+            Integer status = menu.getStatus();
+            // 空状态视为禁用，切换后启用
+            menu.setStatus(status != null && status == 1 ? 0 : 1);
             mobileMenuMapper.updateById(menu);
         }
     }

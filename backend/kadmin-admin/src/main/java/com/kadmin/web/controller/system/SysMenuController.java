@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.system;
 
 import com.kadmin.common.Result;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.system.domain.SysMenu;
 import com.kadmin.system.service.SysMenuService;
 import com.kadmin.common.utils.SecurityUtils;
@@ -57,6 +58,7 @@ public class SysMenuController {
     /**
      * 新增菜单
      */
+    @RequiresPermission("system:menu:add")
     @PostMapping
     public Result<Boolean> addMenu(@RequestBody SysMenu menu) {
         boolean success = menuService.addMenu(menu);
@@ -66,6 +68,7 @@ public class SysMenuController {
     /**
      * 更新菜单
      */
+    @RequiresPermission("system:menu:edit")
     @PutMapping
     public Result<Boolean> updateMenu(@RequestBody SysMenu menu) {
         boolean success = menuService.updateMenu(menu);
@@ -75,6 +78,7 @@ public class SysMenuController {
     /**
      * 删除菜单
      */
+    @RequiresPermission("system:menu:delete")
     @DeleteMapping("/{id}")
     public Result<Boolean> deleteMenu(@PathVariable Long id) {
         // 检查是否有子菜单

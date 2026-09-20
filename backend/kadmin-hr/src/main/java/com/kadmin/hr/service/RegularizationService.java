@@ -1,7 +1,8 @@
 package com.kadmin.hr.service;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.kadmin.hr.domain.HrEmployee;
 import com.kadmin.hr.domain.HrRegularization;
 import com.kadmin.hr.mapper.EmployeeMapper;
@@ -26,20 +27,29 @@ public class RegularizationService extends ServiceImpl<HrRegularizationMapper, H
     public boolean approve(Long id, Integer status, String remark, Long approveBy) {
         HrRegularization regularization = getById(id);
         if (regularization == null) {
-            return false;
+            throw new IllegalArgumentException("转正记录不存在");
+        }
+        if (status == null || (status != 1 && status != 2)) {
+            throw new IllegalArgumentException("无效的审批操作");
         }
 
-        // 更新转正记录状态
-        HrRegularization entity = new HrRegularization();
-        entity.setId(id);
-        entity.setStatus(status);
-        entity.setApproveRemark(remark);
-        entity.setApproveBy(approveBy);
-        entity.setApproveTime(LocalDateTime.now());
-        boolean result = updateById(entity);
+        // 条件更新（仅待审批状态可流转），防止并发重复审批
+        LambdaUpdateWrapper<HrRegularization> wrapper = new LambdaUpdateWrapper<HrRegularization>()
+                .eq(HrRegularization::getId, id)
+                .set(HrRegularization::getStatus, status)
+                .set(HrRegularization::getApproveRemark, remark)
+                .set(HrRegularization::getApproveBy, approveBy)
+                .set(HrRegularization::getApproveTime, LocalDateTime.now());
+        if (regularization.getStatus() != null) {
+            wrapper.eq(HrRegularization::getStatus, 0);
+        }
+        boolean result = update(wrapper);
+        if (!result) {
+            throw new IllegalArgumentException("该记录已被处理，请刷新后查看");
+        }
 
         // 审批通过时，更新员工的类别和转正日期
-        if (result && status == 1) {
+        if (status == 1) {
             HrEmployee employee = new HrEmployee();
             employee.setId(regularization.getEmployeeId());
             // 更新员工类别
@@ -53,6 +63,6 @@ public class RegularizationService extends ServiceImpl<HrRegularizationMapper, H
             employeeMapper.updateById(employee);
         }
 
-        return result;
+        return true;
     }
 }

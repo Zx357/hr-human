@@ -1,7 +1,7 @@
 package com.kadmin.attendance.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.kadmin.attendance.domain.AttSchedule;
 import com.kadmin.hr.domain.HrEmployee;
 import com.kadmin.attendance.mapper.AttScheduleMapper;

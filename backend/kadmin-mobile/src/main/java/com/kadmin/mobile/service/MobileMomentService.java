@@ -3,7 +3,7 @@ package com.kadmin.mobile.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.kadmin.hr.domain.HrEmployee;
 import com.kadmin.hr.mapper.EmployeeMapper;
 import com.kadmin.mobile.domain.MobileMomentComment;
@@ -75,7 +75,16 @@ public class MobileMomentService extends ServiceImpl<MobileMomentPostMapper, Mob
             MobileMomentLike like = new MobileMomentLike();
             like.setPostId(postId);
             like.setEmployeeId(employeeId);
-            likeMapper.insert(like);
+            try {
+                likeMapper.insert(like);
+            } catch (org.springframework.dao.DuplicateKeyException e) {
+                // 并发重复点赞被唯一键拦截：按已点赞幂等处理，不重复计数
+                MobileMomentPost refreshed = getById(postId);
+                Map<String, Object> result = new HashMap<>();
+                result.put("liked", true);
+                result.put("likeCount", refreshed != null && refreshed.getLikeCount() != null ? refreshed.getLikeCount() : 0);
+                return result;
+            }
             update(new LambdaUpdateWrapper<MobileMomentPost>()
                     .eq(MobileMomentPost::getId, postId)
                     .setSql("like_count = IFNULL(like_count, 0) + 1"));
@@ -137,12 +146,9 @@ public class MobileMomentService extends ServiceImpl<MobileMomentPostMapper, Mob
     }
 
     /**
-     * 删除评论（仅评论作者本人，同步递减评论数）
-     */
-    @Transactional
-    /**
      * 删除自己的动态（软删除：状态置0）
      */
+    @Transactional
     public void deletePost(Long postId, Long employeeId) {
         MobileMomentPost post = getById(postId);
         if (post == null) {
@@ -154,6 +160,10 @@ public class MobileMomentService extends ServiceImpl<MobileMomentPostMapper, Mob
         removeById(postId);
     }
 
+    /**
+     * 删除评论（仅评论作者本人，同步递减评论数）
+     */
+    @Transactional
     public void deleteComment(Long commentId, Long employeeId) {
         MobileMomentComment comment = commentMapper.selectById(commentId);
         if (comment == null) {

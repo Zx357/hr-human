@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.system;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kadmin.common.Result;
 import com.kadmin.system.domain.SysFeedback;
@@ -85,6 +86,7 @@ public class SysFeedbackController {
     }
 
     @Operation(summary = "回复意见反馈")
+    @RequiresPermission("system:feedback:reply")
     @PutMapping("/{id}/reply")
     public Result<Boolean> reply(@PathVariable Long id, @RequestBody ReplyFeedbackRequest request) {
         boolean success = feedbackService.reply(id, request.getReplyContent());
@@ -92,6 +94,7 @@ public class SysFeedbackController {
     }
 
     @Operation(summary = "更新意见反馈状态")
+    @RequiresPermission("system:feedback:reply")
     @PutMapping("/{id}/status")
     public Result<Boolean> updateStatus(@PathVariable Long id, @RequestBody UpdateStatusRequest request) {
         boolean success = feedbackService.updateStatus(id, request.getStatus());
@@ -99,6 +102,7 @@ public class SysFeedbackController {
     }
 
     @Operation(summary = "删除意见反馈")
+    @RequiresPermission("system:feedback:delete")
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(@PathVariable Long id) {
         boolean success = feedbackService.removeById(id);

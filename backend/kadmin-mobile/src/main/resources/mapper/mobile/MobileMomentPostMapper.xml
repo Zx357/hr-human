@@ -49,9 +49,15 @@
             ON l.post_id = p.id AND l.employee_id = #{viewerEmployeeId}
     </sql>
 
+    <!-- 可见范围：visibility=1 公开；非公开仅作者本人可见 -->
+    <sql id="VisibilityFilter">
+        AND (p.visibility = 1 OR p.employee_id = #{viewerEmployeeId})
+    </sql>
+
     <select id="selectPostPage" resultMap="MobileMomentPostResultMap">
         <include refid="PostSelect"/>
         WHERE p.status = 1
+        <include refid="VisibilityFilter"/>
         <choose>
             <when test="tab == 'hot'">
                 ORDER BY p.like_count DESC, p.comment_count DESC, p.created_time DESC
@@ -69,6 +75,7 @@
         <include refid="PostSelect"/>
         WHERE p.id = #{id}
           AND p.status = 1
+          <include refid="VisibilityFilter"/>
         LIMIT 1
     </select>
 </mapper>

@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.organization;
 
 import com.kadmin.common.Result;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.organization.domain.dto.OrgStatisticsDTO;
 import com.kadmin.organization.domain.OrgUnit;
 import com.kadmin.organization.service.OrgUnitService;
@@ -71,6 +72,7 @@ public class OrgUnitController {
         return Result.success(orgUnitService.getById(id));
     }
 
+    @RequiresPermission("org:unit:add")
     @PostMapping
     public Result<Void> create(@RequestBody OrgUnit unit) {
         if (orgUnitService.checkCodeExists(unit.getUnitCode(), null)) {
@@ -86,6 +88,7 @@ public class OrgUnitController {
         return Result.success();
     }
 
+    @RequiresPermission("org:unit:edit")
     @PutMapping("/{id}")
     public Result<Void> update(@PathVariable Long id, @RequestBody OrgUnit unit) {
         if (orgUnitService.checkCodeExists(unit.getUnitCode(), id)) {
@@ -102,6 +105,7 @@ public class OrgUnitController {
         return Result.success();
     }
 
+    @RequiresPermission("org:unit:delete")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         try {

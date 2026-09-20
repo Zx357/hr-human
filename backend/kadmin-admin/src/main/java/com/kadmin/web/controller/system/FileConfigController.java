@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.system;
 
 import com.kadmin.common.Result;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.system.domain.SysFileConfig;
 import com.kadmin.system.service.FileConfigService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,6 +37,7 @@ public class FileConfigController {
     }
 
     @Operation(summary = "更新路径配置")
+    @RequiresPermission("system:file-config:edit")
     @PutMapping
     public Result<Boolean> update(@RequestBody SysFileConfig config) {
         if (config.getId() == null) {
@@ -49,6 +51,7 @@ public class FileConfigController {
     }
 
     @Operation(summary = "刷新路径配置缓存")
+    @RequiresPermission("system:file-config:edit")
     @PostMapping("/refresh")
     public Result<Boolean> refresh() {
         fileConfigService.refreshCache();

@@ -3,7 +3,7 @@ package com.kadmin.system.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.kadmin.attendance.domain.AttSchedule;
 import com.kadmin.attendance.domain.AttShiftPeriod;
 import com.kadmin.attendance.mapper.AttScheduleMapper;
@@ -228,9 +228,9 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
     }
 
     public Page<HrApplication> getPage(int pageNum, int pageSize, String employeeName, String employeeNo,
-            String appType, Integer status, Long employeeId) {
+            String appType, Integer status, Long employeeId, LocalDate beginTime, LocalDate endTime) {
         return baseMapper.selectPageWithEmployee(new Page<>(pageNum, pageSize), employeeName, employeeNo, appType,
-                status, employeeId);
+                status, employeeId, beginTime, endTime);
     }
 
     public Page<HrApplication> getPendingPage(int pageNum, int pageSize, String employeeName, String employeeNo,

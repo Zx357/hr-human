@@ -3,7 +3,7 @@ package com.kadmin.hr.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.kadmin.hr.domain.HrCertificate;
 import com.kadmin.hr.domain.HrEducation;
 import com.kadmin.hr.domain.HrEmployee;
@@ -366,8 +366,9 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
     /**
      * 生成下一个员工编号
      * 格式: K + yyyyMMdd + 3位序号
+     * 加锁串行化避免并发取号重号；配合 hr_employee.employee_no 唯一键(uk_employee_no)兜底
      */
-    public String generateNextEmployeeNo() {
+    public synchronized String generateNextEmployeeNo() {
         String today = LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
         String prefix = "K" + today;
 

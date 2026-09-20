@@ -5,6 +5,7 @@ import com.kadmin.common.security.LoginUser;
 import com.kadmin.common.utils.SecurityUtils;
 import com.kadmin.mobile.domain.MobileChatMessage;
 import com.kadmin.mobile.service.MobileChatService;
+import com.kadmin.web.service.ChatMessagePushService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +23,7 @@ import java.util.Map;
 public class MobileChatController {
 
     private final MobileChatService chatService;
+    private final ChatMessagePushService chatMessagePushService;
 
     /**
      * 拉取会话消息
@@ -94,7 +96,10 @@ public class MobileChatController {
         Long targetId = body.get("targetId") == null ? null : Long.valueOf(String.valueOf(body.get("targetId")));
         String content = body.get("content") == null ? null : String.valueOf(body.get("content"));
         Integer msgType = body.get("msgType") == null ? 1 : Integer.valueOf(String.valueOf(body.get("msgType")));
-        return Result.success(chatService.send(employeeId, chatType, targetId, content, msgType));
+        // chatService.send 返回即事务已提交，此后异步推送不影响发送结果（失败由客户端轮询兜底）
+        MobileChatMessage saved = chatService.send(employeeId, chatType, targetId, content, msgType);
+        chatMessagePushService.pushNewMessage(saved);
+        return Result.success(saved);
     }
 
     private Long currentEmployeeId() {

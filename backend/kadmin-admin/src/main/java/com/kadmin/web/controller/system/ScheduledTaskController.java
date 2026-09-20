@@ -1,4 +1,4 @@
-package com.kadmin.framework.task;
+package com.kadmin.web.controller.system;
 
 import com.kadmin.attendance.service.AttendanceService;
 import com.kadmin.common.Result;
@@ -59,7 +59,7 @@ public class ScheduledTaskController {
 
     /**
      * 每日凌晨2点半扫描未来30天内到期的合同/试用期/证书，写入站内通知
-     * （按业务ID去重，同一事项只提醒一次）
+     * （通知类型区分业务线（contract/probation/cert），与业务ID共同构成去重键，同一事项只提醒一次）
      */
     @Scheduled(cron = "0 30 2 * * ?")
     public void scanExpiryReminders() {
@@ -71,7 +71,7 @@ public class ScheduledTaskController {
                     .eq(HrContract::getStatus, 1)
                     .isNotNull(HrContract::getEndDate)
                     .between(HrContract::getEndDate, now, deadline))) {
-                notificationService.notifyOnce(contract.getEmployeeId(), "reminder", "合同到期提醒",
+                notificationService.notifyOnce(contract.getEmployeeId(), "contract", "合同到期提醒",
                         "你的合同 " + contract.getContractNo() + " 将于 " + contract.getEndDate()
                                 + " 到期，请联系人事办理续签",
                         contract.getId(), null);
@@ -82,7 +82,7 @@ public class ScheduledTaskController {
                     .eq(HrEmployee::getEmployeeType, "probation")
                     .isNotNull(HrEmployee::getRegularDate)
                     .between(HrEmployee::getRegularDate, now, deadline))) {
-                notificationService.notifyOnce(employee.getId(), "reminder", "试用期到期提醒",
+                notificationService.notifyOnce(employee.getId(), "probation", "试用期到期提醒",
                         "你的试用期将于 " + employee.getRegularDate() + " 到期，请关注转正安排",
                         employee.getId(), "/homePages/application");
                 count++;
@@ -90,7 +90,7 @@ public class ScheduledTaskController {
             for (HrCertificate certificate : certificateMapper.selectList(new LambdaQueryWrapper<HrCertificate>()
                     .isNotNull(HrCertificate::getExpireDate)
                     .between(HrCertificate::getExpireDate, now, deadline))) {
-                notificationService.notifyOnce(certificate.getEmployeeId(), "reminder", "证书到期提醒",
+                notificationService.notifyOnce(certificate.getEmployeeId(), "cert", "证书到期提醒",
                         "你的证书「" + certificate.getCertName() + "」将于 " + certificate.getExpireDate()
                                 + " 到期，请及时复审",
                         certificate.getId(), null);
@@ -150,18 +150,27 @@ public class ScheduledTaskController {
             probations.add(item);
         }
 
-        // 3. 证书到期（有到期日的证书在窗口内）
-        List<Map<String, Object>> certificates = new ArrayList<>();
-        for (HrCertificate certificate : certificateMapper.selectList(new LambdaQueryWrapper<HrCertificate>()
+        // 3. 证书到期（有到期日的证书在窗口内），批量查询员工姓名避免 N+1
+        List<HrCertificate> expiringCertificates = certificateMapper.selectList(new LambdaQueryWrapper<HrCertificate>()
                 .isNotNull(HrCertificate::getExpireDate)
                 .between(HrCertificate::getExpireDate, now, deadline)
-                .orderByAsc(HrCertificate::getExpireDate))) {
-            HrEmployee employee = employeeMapper.selectById(certificate.getEmployeeId());
+                .orderByAsc(HrCertificate::getExpireDate));
+        List<Long> certEmployeeIds = expiringCertificates.stream()
+                .map(HrCertificate::getEmployeeId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, String> employeeNames = certEmployeeIds.isEmpty() ? Map.of()
+                : employeeMapper.selectBatchIds(certEmployeeIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(HrEmployee::getId, HrEmployee::getName,
+                                (a, b) -> a));
+        List<Map<String, Object>> certificates = new ArrayList<>();
+        for (HrCertificate certificate : expiringCertificates) {
             Map<String, Object> item = new HashMap<>();
             item.put("type", "certificate");
             item.put("typeName", "证书到期");
             item.put("employeeId", certificate.getEmployeeId());
-            item.put("employeeName", employee != null ? employee.getName() : null);
+            item.put("employeeName", employeeNames.get(certificate.getEmployeeId()));
             item.put("date", certificate.getExpireDate());
             item.put("remainDays", certificate.getExpireDate().toEpochDay() - now.toEpochDay());
             item.put("detail", certificate.getCertName());

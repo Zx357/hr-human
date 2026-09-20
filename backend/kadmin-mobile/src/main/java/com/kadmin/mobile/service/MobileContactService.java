@@ -49,7 +49,24 @@ public class MobileContactService {
                     .like(HrEmployee::getPhone, keyword));
         }
         wrapper.orderByAsc(HrEmployee::getName);
-        return employeeMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        Page<HrEmployee> page = employeeMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        page.getRecords().forEach(this::maskSensitiveFields);
+        return page;
+    }
+
+    /**
+     * 通讯录脱敏：移动端仅需姓名/手机号/头像/部门等联系字段，
+     * 身份证号、证件照URL与密码哈希任何场景都不下发给移动端
+     */
+    private void maskSensitiveFields(HrEmployee employee) {
+        if (employee == null) {
+            return;
+        }
+        employee.setIdCard(null);
+        employee.setIdCardFront(null);
+        employee.setIdCardBack(null);
+        employee.setPassword(null);
+        employee.setMiniAppPassword(null);
     }
 
     public List<MobileChatGroup> listGroups(Long employeeId) {
@@ -139,7 +156,9 @@ public class MobileContactService {
         if (memberIds.isEmpty()) {
             return List.of();
         }
-        return new ArrayList<>(employeeMapper.selectBatchIds(memberIds));
+        List<HrEmployee> members = new ArrayList<>(employeeMapper.selectBatchIds(memberIds));
+        members.forEach(this::maskSensitiveFields);
+        return members;
     }
 
     private void fillOwnerName(MobileChatGroup group) {

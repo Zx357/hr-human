@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.attendance;
 
 import com.kadmin.common.Result;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.attendance.service.ScheduleService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class ScheduleController {
     /**
      * 保存单个排班
      */
+    @RequiresPermission({"attendance:schedule:add", "attendance:schedule:edit"})
     @PostMapping("/save")
     public Result<Void> saveSchedule(@RequestBody ScheduleRequest request) {
         service.saveSchedule(request.getEmployeeId(), request.getShiftId(), request.getScheduleDate());
@@ -42,6 +44,7 @@ public class ScheduleController {
     /**
      * 批量排班
      */
+    @RequiresPermission("attendance:schedule:add")
     @PostMapping("/batch")
     public Result<Void> batchSchedule(@RequestBody BatchScheduleRequest request) {
         service.batchSchedule(request.getEmployeeIds(), request.getShiftId(), request.getStartDate(), request.getEndDate());

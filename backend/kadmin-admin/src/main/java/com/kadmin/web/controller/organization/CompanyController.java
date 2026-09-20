@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.organization;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.common.Result;
 import com.kadmin.organization.domain.OrgCompany;
 import com.kadmin.organization.service.CompanyService;
@@ -61,6 +62,7 @@ public class CompanyController {
     /**
      * 创建公司
      */
+    @RequiresPermission("org:company:add")
     @PostMapping
     public Result<Boolean> createCompany(@RequestBody OrgCompany company) {
         return Result.success(companyService.createCompany(company));
@@ -69,6 +71,7 @@ public class CompanyController {
     /**
      * 更新公司
      */
+    @RequiresPermission("org:company:edit")
     @PutMapping("/{id}")
     public Result<Boolean> updateCompany(@PathVariable Long id, @RequestBody OrgCompany company) {
         company.setId(id);
@@ -78,6 +81,7 @@ public class CompanyController {
     /**
      * 删除公司
      */
+    @RequiresPermission("org:company:delete")
     @DeleteMapping("/{id}")
     public Result<Boolean> deleteCompany(@PathVariable Long id) {
         return Result.success(companyService.deleteCompany(id));

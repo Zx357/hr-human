@@ -182,9 +182,11 @@ public class AuthService {
     private void recordLoginFail(String scene, String account) {
         try {
             String key = LOGIN_FAIL_PREFIX + scene + ":" + account;
-            Object fails = redisTemplate.opsForValue().get(key);
-            int next = fails instanceof Number number ? number.intValue() + 1 : 1;
-            redisTemplate.opsForValue().set(key, next, LOGIN_FAIL_TTL_MINUTES, java.util.concurrent.TimeUnit.MINUTES);
+            // 原子自增，避免并发 get-then-set 丢计数；仅首次写入时设置过期时间
+            Long next = redisTemplate.opsForValue().increment(key);
+            if (next != null && next == 1L) {
+                redisTemplate.expire(key, LOGIN_FAIL_TTL_MINUTES, java.util.concurrent.TimeUnit.MINUTES);
+            }
         } catch (Exception e) {
             log.warn("记录登录失败次数异常: {}", e.getMessage());
         }
@@ -206,7 +208,13 @@ public class AuthService {
      */
     public Result<Map<String, Object>> getUserInfo(LoginUser loginUser) {
         Set<String> roles = loginUser.getRoles() != null ? loginUser.getRoles() : new HashSet<>();
-        Set<String> permissions = loginUser.getPermissions() != null ? loginUser.getPermissions() : new HashSet<>();
+        // 超级管理员（ROLE_ADMIN）追加通配权限：即使角色未绑定任何菜单，
+        // PC 端按钮权限（hasAuth/v-permission）也全部放行，避免管理员被锁在按钮之外
+        Set<String> permissions = new HashSet<>(
+                loginUser.getPermissions() != null ? loginUser.getPermissions() : new HashSet<>());
+        if (roles.contains("ROLE_ADMIN")) {
+            permissions.add("*:*:*");
+        }
 
         Map<String, Object> result = new HashMap<>();
         result.put("userId", String.valueOf(loginUser.getUserId()));
@@ -225,11 +233,11 @@ public class AuthService {
     }
 
     /**
-     * 登出
+     * 登出（同时吊销访问Token与其配对的RefreshToken会话）
      */
     public Result<Void> logout(LoginUser loginUser) {
         if (loginUser != null) {
-            tokenService.deleteToken(loginUser.getToken());
+            tokenService.deleteTokenWithRefreshToken(loginUser.getToken());
         }
         return Result.success();
     }

@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.organization;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.common.Result;
 import com.kadmin.organization.domain.OrgDepartment;
 import com.kadmin.organization.service.DepartmentService;
@@ -73,6 +74,7 @@ public class DepartmentController {
     /**
      * 创建部门
      */
+    @RequiresPermission("org:department:add")
     @PostMapping
     public Result<Boolean> createDepartment(@RequestBody OrgDepartment department) {
         return Result.success(departmentService.createDepartment(department));
@@ -81,6 +83,7 @@ public class DepartmentController {
     /**
      * 更新部门
      */
+    @RequiresPermission("org:department:edit")
     @PutMapping("/{id}")
     public Result<Boolean> updateDepartment(@PathVariable Long id, @RequestBody OrgDepartment department) {
         department.setId(id);
@@ -90,6 +93,7 @@ public class DepartmentController {
     /**
      * 删除部门
      */
+    @RequiresPermission("org:department:delete")
     @DeleteMapping("/{id}")
     public Result<Boolean> deleteDepartment(@PathVariable Long id) {
         return Result.success(departmentService.deleteDepartment(id));

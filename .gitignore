@@ -86,3 +86,12 @@ uniapp_h5/tuniao-oa-vue3.zip
 # 系统文件
 # ========================
 .VSCodeCounter
+
+# ========================
+# 后端上传目录（运行时生成，不入库）
+# ========================
+backend/kadmin-admin/uploads/
+
+# Redis 运行时产物
+dump.rdb
+memurai-log.txt

@@ -1,7 +1,7 @@
 package com.kadmin.hr.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.kadmin.hr.domain.HrContract;
 import com.kadmin.hr.mapper.HrContractMapper;
 import org.springframework.stereotype.Service;
