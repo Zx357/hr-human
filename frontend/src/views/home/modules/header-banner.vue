@@ -16,9 +16,32 @@ const gap = computed(() => (appStore.isMobile ? 0 : 16));
 
 const { loading, stats, load } = useHomeStats();
 
-// 每 60 秒刷新问候语与日期，避免长时间停留后过期
+// 每 60 秒刷新问候语与日期，避免长时间停留后过期；页面隐藏时暂停，可见时立即刷新并恢复
 const now = ref(dayjs());
 let clockTimer: ReturnType<typeof setInterval> | null = null;
+
+function startClock() {
+  if (clockTimer) return;
+  clockTimer = setInterval(() => {
+    now.value = dayjs();
+  }, 60_000);
+}
+
+function stopClock() {
+  if (clockTimer) {
+    clearInterval(clockTimer);
+    clockTimer = null;
+  }
+}
+
+function handleVisibilityChange() {
+  if (document.hidden) {
+    stopClock();
+  } else {
+    now.value = dayjs();
+    startClock();
+  }
+}
 
 const timeGreeting = computed(() => {
   const hour = now.value.hour();
@@ -59,16 +82,13 @@ const statisticData = computed(() => [
 
 onMounted(() => {
   load();
-  clockTimer = setInterval(() => {
-    now.value = dayjs();
-  }, 60_000);
+  startClock();
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 });
 
 onBeforeUnmount(() => {
-  if (clockTimer) {
-    clearInterval(clockTimer);
-    clockTimer = null;
-  }
+  stopClock();
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 </script>
 

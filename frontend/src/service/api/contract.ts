@@ -70,3 +70,25 @@ export function deleteContract(id: number) {
     method: 'delete'
   });
 }
+
+/** 合同续签参数：id 为旧合同，其余字段缺省时沿用旧合同 */
+export interface ContractRenewParams {
+  id: number;
+  contractNo?: string;
+  contractType?: string | number;
+  startDate?: string;
+  endDate?: string;
+  signDate?: string;
+  probationMonths?: number;
+  salary?: number;
+  remark?: string;
+}
+
+/** 合同续签：旧合同置为已续签并生成新合同（次数+1） */
+export function renewContract(data: ContractRenewParams) {
+  return request<Contract>({
+    url: '/hr/contract/renew',
+    method: 'post',
+    data
+  });
+}

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { appTypeColorMap, appTypeShortMap } from '@/constants/application';
+import { appTypeColorMap, appTypeShortLabel } from '@/constants/application';
 import { type Application, fetchPendingPage } from '@/service/api/application';
 import { formatDateTime } from '@/utils/format';
 
@@ -14,7 +14,7 @@ const total = ref(0);
 
 function getTypeInfo(type: string) {
   return {
-    label: appTypeShortMap[type] ?? type,
+    label: appTypeShortLabel(type),
     color: appTypeColorMap[type] ?? '#6b7280'
   };
 }

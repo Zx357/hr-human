@@ -3,6 +3,8 @@ import { $t } from '@/locales';
 
 defineOptions({ name: 'TableHeaderOperation' });
 
+type TableDensity = 'large' | 'default' | 'small';
+
 interface Props {
   disabledDelete?: boolean;
   loading?: boolean;
@@ -21,6 +23,17 @@ const emit = defineEmits<Emits>();
 const columns = defineModel<UI.TableColumnCheck[]>('columns', {
   default: () => []
 });
+
+/** 表格密度，配合 ElTable 的 size 属性使用 */
+const density = defineModel<TableDensity>('density', {
+  default: 'default'
+});
+
+const densityOptions: Array<{ value: TableDensity; labelKey: App.I18n.I18nKey }> = [
+  { value: 'large', labelKey: 'common.sizeLarge' },
+  { value: 'default', labelKey: 'common.sizeDefault' },
+  { value: 'small', labelKey: 'common.sizeSmall' }
+];
 
 function add() {
   emit('add');
@@ -62,6 +75,25 @@ function refresh() {
       </template>
       {{ $t('common.refresh') }}
     </ElButton>
+    <ElDropdown trigger="click" @command="(cmd: TableDensity) => (density = cmd)">
+      <ElButton :title="$t('common.density')">
+        <template #icon>
+          <icon-mdi-dots-horizontal class="text-icon" />
+        </template>
+      </ElButton>
+      <template #dropdown>
+        <ElDropdownMenu>
+          <ElDropdownItem
+            v-for="option in densityOptions"
+            :key="option.value"
+            :command="option.value"
+            :class="{ 'text-primary': density === option.value }"
+          >
+            {{ $t(option.labelKey) }}
+          </ElDropdownItem>
+        </ElDropdownMenu>
+      </template>
+    </ElDropdown>
     <TableColumnSetting v-model:columns="columns" />
     <slot name="suffix"></slot>
   </ElSpace>

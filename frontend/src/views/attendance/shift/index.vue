@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import { enableStatusLabel, enableStatusMap } from '@/constants/common';
 import {
   type Shift,
   type ShiftPeriod,
@@ -69,8 +70,22 @@ function handleAdd() {
     shiftName: '',
     status: 1,
     periods: [
-      { periodName: $t('attendance.shift.am'), startTime: '09:00', endTime: '12:00', crossDay: 0, needClockIn: 1, needClockOut: 1 },
-      { periodName: $t('attendance.shift.pm'), startTime: '13:00', endTime: '18:00', crossDay: 0, needClockIn: 1, needClockOut: 1 }
+      {
+        periodName: $t('attendance.shift.am'),
+        startTime: '09:00',
+        endTime: '12:00',
+        crossDay: 0,
+        needClockIn: 1,
+        needClockOut: 1
+      },
+      {
+        periodName: $t('attendance.shift.pm'),
+        startTime: '13:00',
+        endTime: '18:00',
+        crossDay: 0,
+        needClockIn: 1,
+        needClockOut: 1
+      }
     ]
   };
   dialogVisible.value = true;
@@ -157,10 +172,7 @@ async function handleSubmit() {
   }
 }
 
-const statusMap: Record<number, { label: string; type: string }> = {
-  0: { label: $t('common.disable'), type: 'danger' },
-  1: { label: $t('common.enable'), type: 'success' }
-};
+// 启用/停用状态与 approval/flow 语义相同，共用 constants/common 的 enableStatusMap
 
 function formatTime(time?: string) {
   if (!time) return '';
@@ -190,7 +202,8 @@ function formatTime(time?: string) {
           <template #default="{ row }">
             <div v-if="row.periods?.length" class="flex flex-wrap gap-8px">
               <ElTag v-for="(period, index) in row.periods" :key="index" size="small">
-                {{ period.periodName || $t('attendance.shift.period', { index: index + 1 }) }}: {{ formatTime(period.startTime) }} -
+                {{ period.periodName || $t('attendance.shift.period', { index: index + 1 }) }}:
+                {{ formatTime(period.startTime) }} -
                 {{ formatTime(period.endTime) }}
                 <span v-if="period.crossDay" class="text-orange-500">{{ $t('attendance.shift.crossDay') }}</span>
               </ElTag>
@@ -208,7 +221,7 @@ function formatTime(time?: string) {
         </ElTableColumn>
         <ElTableColumn prop="status" :label="$t('common.status')" width="80" align="center">
           <template #default="{ row }">
-            <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
+            <ElTag :type="enableStatusMap[row.status]?.type">{{ enableStatusLabel(row.status) }}</ElTag>
           </template>
         </ElTableColumn>
         <ElTableColumn :label="$t('common.action')" width="150" align="center" fixed="right">
@@ -216,9 +229,14 @@ function formatTime(time?: string) {
             <ElButton v-permission="'attendance:shift:edit'" type="primary" link size="small" @click="handleEdit(row)">
               {{ $t('common.edit') }}
             </ElButton>
-            <ElPopconfirm :title="$t('attendance.shift.areYouSureYouWantToDeleteThisShift')" @confirm="handleDelete(row.id)">
+            <ElPopconfirm
+              :title="$t('attendance.shift.areYouSureYouWantToDeleteThisShift')"
+              @confirm="handleDelete(row.id)"
+            >
               <template #reference>
-                <ElButton v-permission="'attendance:shift:delete'" type="danger" link size="small">{{ $t('common.delete') }}</ElButton>
+                <ElButton v-permission="'attendance:shift:delete'" type="danger" link size="small">
+                  {{ $t('common.delete') }}
+                </ElButton>
               </template>
             </ElPopconfirm>
           </template>
@@ -226,12 +244,20 @@ function formatTime(time?: string) {
       </ElTable>
     </ElCard>
 
-    <ElDialog v-model="dialogVisible" :title="operateType === 'add' ? $t('attendance.shift.newShift') : $t('attendance.shift.editShift')" width="750px">
+    <ElDialog
+      v-model="dialogVisible"
+      :title="operateType === 'add' ? $t('attendance.shift.newShift') : $t('attendance.shift.editShift')"
+      width="750px"
+    >
       <ElForm :model="formData" label-position="top">
         <ElRow :gutter="16">
           <ElCol :span="8">
             <ElFormItem :label="$t('attendance.shift.shiftCode')" required>
-              <ElInput v-model="formData.shiftCode" :placeholder="$t('attendance.shift.eGDay01')" :disabled="operateType === 'edit'" />
+              <ElInput
+                v-model="formData.shiftCode"
+                :placeholder="$t('attendance.shift.eGDay01')"
+                :disabled="operateType === 'edit'"
+              />
             </ElFormItem>
           </ElCol>
           <ElCol :span="8">

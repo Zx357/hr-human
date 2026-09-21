@@ -46,6 +46,7 @@ declare module "@elegant-router/types" {
     "home": "/home";
     "hr": "/hr";
     "hr_contract": "/hr/contract";
+    "hr_leave-quota": "/hr/leave-quota";
     "hr_employee": "/hr/employee";
     "iframe-page": "/iframe-page/:url";
     "login": "/login/:module(pwd-login|code-login|register|reset-pwd|bind-wechat)?";
@@ -153,6 +154,7 @@ declare module "@elegant-router/types" {
     | "attendance_shift"
     | "home"
     | "hr_contract"
+    | "hr_leave-quota"
     | "hr_employee"
     | "organization_org-structure"
     | "report_attendance"

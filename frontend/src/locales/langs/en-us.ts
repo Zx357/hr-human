@@ -1,4 +1,11 @@
 const local: App.I18n.Schema = {
+  headerNotice: {
+    pending: 'Pending Approvals',
+    notices: 'Latest Notices',
+    viewAll: 'View All',
+    noPending: 'No pending approvals',
+    noNotice: 'No notices'
+  },
   system: {
     title: 'HR Management System',
     updateTitle: 'System Version Update Notification',
@@ -124,6 +131,12 @@ const local: App.I18n.Schema = {
     pleaseEnterNewPassword: "Please enter new password",
     calculatingDot: "Calculating...",
     selectTime: "Select time",
+    density: "Density",
+    pleaseSelectTimeRange: "Please select a time range",
+    downloadFailed: "Download failed",
+    sizeLarge: "Large",
+    sizeDefault: "Default",
+    sizeSmall: "Small",
     handoverPerson: "Handover Person",
     makeupClock: "Makeup Clock",
     approve: "Approve",
@@ -240,7 +253,8 @@ const local: App.I18n.Schema = {
     logoutWithModal: 'Pop up modal after request failed and then log out user',
     logoutWithModalMsg: 'User status is invalid, please log in again',
     refreshToken: 'The requested token has expired, refresh the token',
-    tokenExpired: 'The requested token has expired'
+    tokenExpired: 'The requested token has expired',
+    operationFailed: 'Operation failed'
   },
   theme: {
     themeSchema: {
@@ -393,7 +407,6 @@ const local: App.I18n.Schema = {
     plugin_charts: 'Charts',
     plugin_charts_echarts: 'ECharts',
     plugin_charts_antv: 'AntV',
-    plugin_charts_vchart: 'VChart',
     plugin_editor: 'Editor',
     plugin_editor_quill: 'Quill',
     plugin_editor_markdown: 'Markdown',
@@ -420,6 +433,7 @@ const local: App.I18n.Schema = {
     hr: 'HR Management',
     hr_employee: 'Employee Management',
     hr_contract: 'Contract Management',
+    "hr_leave-quota": 'Leave Quota',
     hr_regularization: 'Regularization Management',
     hr_transfer: 'Transfer Management',
     hr_reward: 'Reward & Punishment',
@@ -467,6 +481,7 @@ const local: App.I18n.Schema = {
     login: {
       common: {
         loginOrRegister: 'Login / Register',
+        loginSubtitle: 'Enter your account and password to sign in',
         userNamePlaceholder: 'Please enter user name',
         phonePlaceholder: 'Please enter phone number',
         codePlaceholder: 'Please enter verification code',
@@ -482,6 +497,7 @@ const local: App.I18n.Schema = {
       pwdLogin: {
         title: 'Password Login',
         rememberMe: 'Remember me',
+        contactAdminReset: 'Please contact the system administrator to reset your password',
         forgetPassword: 'Forget password?',
         register: 'Register',
         otherAccountLogin: 'Other Account Login',
@@ -523,7 +539,7 @@ const local: App.I18n.Schema = {
       prdDep: 'Production Dependency',
       devDep: 'Development Dependency'
     },
-    home: {
+  home: {
       branchDesc: 'Welcome to HR Management System, this system provides complete human resource management functions.',
       greeting: 'Good morning, {userName}, today is another day full of vitality!',
       weatherDesc: 'Today is cloudy to clear, 20℃ - 25℃!',
@@ -774,11 +790,46 @@ const local: App.I18n.Schema = {
   },
 
   application: {
+    types: {
+      leave: 'Leave Application',
+      overtime: 'Overtime Application',
+      business: 'Business Trip Application',
+      makeup: 'Makeup Clock Application',
+      exchange: 'Exchange Leave Application',
+      regularization: 'Regularization Application',
+      transfer: 'Transfer Application',
+      reward: 'Reward Application',
+      punish: 'Punishment Application',
+      resignation: 'Resignation Application'
+    },
+    typeShort: {
+      leave: 'Leave',
+      overtime: 'Overtime',
+      business: 'Trip',
+      makeup: 'Makeup',
+      exchange: 'Exchange',
+      regularization: 'Regularization',
+      transfer: 'Transfer',
+      reward: 'Reward',
+      punish: 'Punish',
+      resignation: 'Resign'
+    },
+    status: {
+      pending: 'Pending',
+      approved: 'Approved',
+      rejected: 'Rejected',
+      cancelled: 'Withdrawn'
+    },
+    durationUnit: {
+      hour: 'h',
+      day: 'd'
+    },
     common: {
       applicationTime: "Application Time",
       applicant: "Applicant",
       withdrawalConfirmation: "Withdrawal Confirmation",
       confirmWithdrawal: "Confirm Withdrawal",
+      withdrawConfirmMessage: "Are you sure you want to withdraw the application \"{title}\" submitted by {name}? This cannot be undone.",
       submitApplication: "Submit Application",
       applicationSubmittedSuccessfully: "Application submitted successfully",
       company: "Company",
@@ -808,6 +859,7 @@ const local: App.I18n.Schema = {
       createRewardPunishmentApplication: "Create Reward/Punishment Application",
       rewardPunishmentApplications: "Reward & Punishment Applications",
       pleaseSelectACategory: "Please select a category",
+      pleaseSelectEffectiveDate: "Please select the effective date",
       pleaseEnterReason: "Please enter reason"
     },
     regularization: {
@@ -844,6 +896,7 @@ const local: App.I18n.Schema = {
       resignationApplications: "Resignation Applications",
       selectHandoverPerson: "Select Handover Person",
       pleaseSelectResignationType: "Please select resignation type",
+      pleaseSelectLastWorkingDay: "Please select the last working day",
       pleaseSelectHandoverPerson: "Please select handover person",
       pleaseEnterResignationReason: "Please enter resignation reason"
     },
@@ -856,6 +909,7 @@ const local: App.I18n.Schema = {
       makeupClockTime: "Makeup Clock Time",
       makeupClockApplications: "Makeup Clock Applications",
       pleaseSelectMakeupClockType: "Please select makeup clock type",
+      pleaseSelectMakeupClockTime: "Please select the makeup clock time",
       pleaseEnterMakeupClockReason: "Please enter makeup clock reason"
     },
     exchange: {
@@ -1154,6 +1208,8 @@ const local: App.I18n.Schema = {
       earlyLeaveCount: "Early Leave Count",
       thisMonthHasTooMuchAttendanceDataAndThePageMayLagNarrowTheRangeByCompanyDepartment: "This month has too much attendance data and the page may lag. Narrow the range by company/department.",
       monthlyAttendanceSummaryXlsx: "Monthly Attendance Summary_{month}.xlsx",
+      monthlyReconciliationXlsx: "Monthly Reconciliation_{month}.xlsx",
+      exportReconciliation: "Reconciliation Export",
       selectMonth: "Select month",
       lateMin: "Late (min)",
       earlyLeaveMin: "Early Leave (min)",
@@ -1422,6 +1478,20 @@ const local: App.I18n.Schema = {
       onlyOneFileCanBeSelected: "Only one file can be selected",
       items: "items"
     },
+    leaveQuota: {
+      title: "Leave Quota",
+      year: "Year",
+      addQuota: "Add Quota",
+      editQuota: "Edit Quota",
+      pleaseSelectYear: "Please select year",
+      pleaseSelectEmployee: "Please select an employee",
+      pleaseInputTotalHours: "Please input quota hours",
+      totalHours: "Total Hours",
+      usedHours: "Used Hours",
+      remainHours: "Remaining",
+      confirmDelete: "The quota will no longer be deducted after deletion. Continue?",
+      remainingQuotaHours: "{hours} hours of annual leave remaining"
+    },
     contract: {
       uploadedSuccessfully: "Uploaded successfully",
       contractNo: "Contract No.",
@@ -1444,6 +1514,11 @@ const local: App.I18n.Schema = {
       contractList: "Contract List",
       upTo9ImagesCanBeUploadedEachWithin5mb: "Up to 9 images can be uploaded, each within 5MB",
       areYouSureYouWantToDeleteThisContract: "Are you sure you want to delete this contract?",
+      renew: "Renew",
+      renewTitle: "Contract Renewal",
+      renewOriginal: "Original Contract",
+      renewTerm: "New Term",
+      renewSalary: "New Salary",
       contractCount: "Contract Count",
       no: "No. {count}",
       contractTerm: "Contract Term",
@@ -1552,6 +1627,12 @@ const local: App.I18n.Schema = {
       averageAge: "Average Age",
       yrs: "{age} yrs",
       basedOnEmployeesWithBirthdayFilled: "Based on employees with birthday filled",
+      ageBucketUnder24: "24 and under",
+      ageBucket25To29: "25-29",
+      ageBucket30To34: "30-34",
+      ageBucket35To39: "35-39",
+      ageBucket40To44: "40-44",
+      ageBucket45AndAbove: "45 and above",
       people: "{b}: {c} people ({d}%)",
       employeesOnProbation: "Employees on Probation",
       employeesOnProbation2: "Employees on probation",
@@ -1647,6 +1728,12 @@ const local: App.I18n.Schema = {
       node: "Node"
     },
     common: {
+      batchApprove: "Batch Approve",
+      batchReject: "Batch Reject",
+      pleaseSelectRowsFirst: "Please select applications first",
+      batchRejectReasonPrompt: "Enter a unified rejection reason",
+      batchApprovedSummary: "Batch approve finished: {success} succeeded, {fail} failed",
+      batchRejectedSummary: "Batch reject finished: {success} succeeded, {fail} failed",
       rewardApplication: "Reward Application",
       punishmentApplication: "Punishment Application",
       approvalConfirmation: "Approval Confirmation",

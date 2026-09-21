@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { statusMap } from '@/constants/application';
+import { ElMessage } from 'element-plus';
+import type { FormInstance, FormRules } from 'element-plus';
+import { statusLabel, statusTagType } from '@/constants/application';
 import {
   type Application,
   calculateLeaveHours,
@@ -9,6 +10,7 @@ import {
   createApplication,
   fetchApplicationPage
 } from '@/service/api/application';
+import { canCancelApplication, confirmCancelApplication, dateRangeRule } from '@/composables/use-application-cancel';
 import { formatDateTime } from '@/utils/format';
 import EmployeePickerDialog from '@/components/common/employee-picker-dialog.vue';
 import ApplicationDetailDrawer from '@/components/business/application-detail-drawer.vue';
@@ -26,15 +28,28 @@ const pageSize = ref(10);
 
 const dialogVisible = ref(false);
 const submitLoading = ref(false);
+const formRef = ref<FormInstance>();
 const formData = ref<
-  Application & { employeeName?: string; employeeNo?: string; companyName?: string; deptName?: string }
+  Application & {
+    employeeName?: string;
+    employeeNo?: string;
+    companyName?: string;
+    deptName?: string;
+    dateRange?: [string, string] | null;
+  }
 >({
-  employeeId: undefined as any,
-  appType: 'business'
+  employeeId: undefined,
+  appType: 'business',
+  dateRange: null
 });
 
-// 日期范围
-const dateRange = ref<[string, string] | null>(null);
+// 弹窗表单校验规则
+const formRules: FormRules = {
+  employeeId: [{ required: true, message: $t('common.pleaseSelectEmployees'), trigger: 'change' }],
+  title: [{ required: true, message: $t('application.business.pleaseEnterTripLocation'), trigger: 'blur' }],
+  dateRange: [dateRangeRule('common.pleaseSelectTimeRange')],
+  reason: [{ required: true, message: $t('application.business.pleaseEnterTripReason'), trigger: 'blur' }]
+};
 
 // 出差小时数（自动计算）
 const businessHours = ref<number>(0);
@@ -42,13 +57,14 @@ const calculatingHours = ref(false);
 
 // 监听员工和时间变化，自动计算出差小时（使用请假的计算逻辑）
 watch(
-  [() => formData.value.employeeId, dateRange],
+  [() => formData.value.employeeId, () => formData.value.dateRange],
   async () => {
-    if (formData.value.employeeId && dateRange.value && dateRange.value.length === 2) {
+    const range = formData.value.dateRange;
+    if (formData.value.employeeId && range && range.length === 2) {
       calculatingHours.value = true;
       try {
-        const startTime = `${dateRange.value[0]}:00`;
-        const endTime = `${dateRange.value[1]}:00`;
+        const startTime = `${range[0]}:00`;
+        const endTime = `${range[1]}:00`;
         const res = await calculateLeaveHours(formData.value.employeeId, startTime, endTime);
         businessHours.value = res.data || 0;
       } catch {
@@ -87,6 +103,8 @@ async function loadData() {
     });
     data.value = res.data?.records || [];
     total.value = res.data?.total || 0;
+  } catch {
+    // 错误已由请求层统一提示
   } finally {
     loading.value = false;
   }
@@ -97,7 +115,7 @@ onMounted(() => {
 
 function handleAdd() {
   formData.value = {
-    employeeId: undefined as any,
+    employeeId: undefined,
     appType: 'business',
     title: '',
     startTime: '',
@@ -107,9 +125,9 @@ function handleAdd() {
     employeeName: '',
     employeeNo: '',
     companyName: '',
-    deptName: ''
+    deptName: '',
+    dateRange: null
   };
-  dateRange.value = null;
   businessHours.value = 0;
   employeeDisplayName.value = '';
   dialogVisible.value = true;
@@ -127,16 +145,16 @@ function handleConfirmEmployee(selected: Api.Hr.Employee[]) {
 }
 
 async function handleSubmit() {
-  if (!formData.value.employeeId || !formData.value.title || !dateRange.value || dateRange.value.length !== 2) {
-    ElMessage.warning($t('common.pleaseFillRequired'));
-    return;
-  }
+  const valid = await formRef.value?.validate().catch(() => false);
+  if (!valid) return;
+  const range = formData.value.dateRange;
+  if (!range || range.length !== 2) return;
   if (businessHours.value <= 0) {
     ElMessage.warning($t('application.business.invalidTripTimePleaseCheckTheEmployeeSchedule'));
     return;
   }
-  formData.value.startTime = `${dateRange.value[0]}:00`;
-  formData.value.endTime = `${dateRange.value[1]}:00`;
+  formData.value.startTime = `${range[0]}:00`;
+  formData.value.endTime = `${range[1]}:00`;
   formData.value.duration = businessHours.value;
   submitLoading.value = true;
   try {
@@ -160,18 +178,10 @@ function handleViewDetail(row: Application) {
   detailVisible.value = true;
 }
 
-async function handleCancel(id: number) {
+async function handleCancel(row: Application) {
+  if (!(await confirmCancelApplication(row, row.title))) return;
   try {
-    await ElMessageBox.confirm($t('application.business.areYouSureYouWantToWithdrawThisApplicationThisCannotBeUndone'), $t('application.common.withdrawalConfirmation'), {
-      type: 'warning',
-      confirmButtonText: $t('application.common.confirmWithdrawal'),
-      cancelButtonText: $t('common.cancel')
-    });
-  } catch {
-    return;
-  }
-  try {
-    await cancelApplication(id);
+    await cancelApplication(row.id!);
     ElMessage.success($t('common.withdrawn'));
     loadData();
   } catch {
@@ -231,7 +241,12 @@ function handleSizeChange(size: number) {
           />
         </ElFormItem>
         <ElFormItem :label="$t('common.status')">
-          <ElSelect v-model="searchParams.status" :placeholder="$t('common.pleaseSelectStatus')" clearable style="width: 120px">
+          <ElSelect
+            v-model="searchParams.status"
+            :placeholder="$t('common.pleaseSelectStatus')"
+            clearable
+            style="width: 120px"
+          >
             <ElOption :label="$t('common.pendingApproval')" :value="0" />
             <ElOption :label="$t('common.approved')" :value="1" />
             <ElOption :label="$t('common.rejected')" :value="2" />
@@ -266,16 +281,26 @@ function handleSizeChange(size: number) {
           <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" />
           <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="100" />
           <ElTableColumn prop="employeeName" :label="$t('application.common.applicant')" width="100" />
-          <ElTableColumn prop="companyName" :label="$t('application.common.company')" min-width="120" show-overflow-tooltip />
+          <ElTableColumn
+            prop="companyName"
+            :label="$t('application.common.company')"
+            min-width="120"
+            show-overflow-tooltip
+          />
           <ElTableColumn prop="deptName" :label="$t('common.department')" width="100" />
           <ElTableColumn prop="title" :label="$t('application.business.tripLocation')" width="150" />
           <ElTableColumn prop="startTime" :label="$t('common.startTime')" width="160" />
           <ElTableColumn prop="endTime" :label="$t('common.endTime')" width="160" />
           <ElTableColumn prop="duration" :label="$t('common.hours')" width="80" align="center" />
-          <ElTableColumn prop="reason" :label="$t('application.business.tripReason')" min-width="150" show-overflow-tooltip />
+          <ElTableColumn
+            prop="reason"
+            :label="$t('application.business.tripReason')"
+            min-width="150"
+            show-overflow-tooltip
+          />
           <ElTableColumn prop="status" :label="$t('common.status')" width="90" align="center">
             <template #default="{ row }">
-              <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
+              <ElTag :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</ElTag>
             </template>
           </ElTableColumn>
           <ElTableColumn prop="createdTime" :label="$t('application.common.applicationTime')" width="160">
@@ -283,8 +308,10 @@ function handleSizeChange(size: number) {
           </ElTableColumn>
           <ElTableColumn :label="$t('common.action')" width="140" align="center" fixed="right">
             <template #default="{ row }">
-              <ElButton type="primary" link size="small" @click="handleViewDetail(row)">{{ $t('common.details') }}</ElButton>
-              <ElButton v-if="row.status === 0" type="warning" link size="small" @click="handleCancel(row.id)">
+              <ElButton type="primary" link size="small" @click="handleViewDetail(row)">
+                {{ $t('common.details') }}
+              </ElButton>
+              <ElButton v-if="canCancelApplication(row)" type="warning" link size="small" @click="handleCancel(row)">
                 {{ $t('common.withdraw') }}
               </ElButton>
             </template>
@@ -304,20 +331,32 @@ function handleSizeChange(size: number) {
       </div>
     </ElCard>
 
-    <ElDialog v-model="dialogVisible" :title="$t('application.business.createBusinessTripApplication')" width="600px" destroy-on-close>
-      <ElForm label-width="100px" :model="formData">
-        <ElFormItem :label="$t('application.common.applicant')" required>
+    <ElDialog
+      v-model="dialogVisible"
+      :title="$t('application.business.createBusinessTripApplication')"
+      width="600px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      destroy-on-close
+    >
+      <ElForm ref="formRef" label-width="100px" :model="formData" :rules="formRules">
+        <ElFormItem :label="$t('application.common.applicant')" prop="employeeId" required>
           <div class="w-full flex gap-8px">
-            <ElInput v-model="employeeDisplayName" disabled :placeholder="$t('common.pleaseSelectEmployees')" class="flex-1" />
+            <ElInput
+              v-model="employeeDisplayName"
+              disabled
+              :placeholder="$t('common.pleaseSelectEmployees')"
+              class="flex-1"
+            />
             <ElButton type="primary" @click="employeeDialogVisible = true">{{ $t('common.selectEmployees') }}</ElButton>
           </div>
         </ElFormItem>
-        <ElFormItem :label="$t('application.business.tripLocation')" required>
+        <ElFormItem :label="$t('application.business.tripLocation')" prop="title" required>
           <ElInput v-model="formData.title" :placeholder="$t('application.business.pleaseEnterTripLocation')" />
         </ElFormItem>
-        <ElFormItem :label="$t('application.business.tripTime')" required>
+        <ElFormItem :label="$t('application.business.tripTime')" prop="dateRange" required>
           <ElDatePicker
-            v-model="dateRange"
+            v-model="formData.dateRange"
             type="datetimerange"
             :range-separator="$t('common.to')"
             :start-placeholder="$t('common.startTime')"
@@ -334,17 +373,27 @@ function handleSizeChange(size: number) {
               <span v-else>{{ $t('common.hours') }}</span>
             </template>
           </ElInput>
-          <div v-if="businessHours === 0 && formData.employeeId && dateRange" class="mt-4px text-12px text-orange-500">
+          <div
+            v-if="businessHours === 0 && formData.employeeId && formData.dateRange"
+            class="mt-4px text-12px text-orange-500"
+          >
             {{ $t('application.business.noteTripHoursAre0TheEmployeeMayHaveNoScheduleInThisPeriod') }}
           </div>
         </ElFormItem>
-        <ElFormItem :label="$t('application.business.tripReason')" required>
-          <ElInput v-model="formData.reason" type="textarea" :rows="3" :placeholder="$t('application.business.pleaseEnterTripReason')" />
+        <ElFormItem :label="$t('application.business.tripReason')" prop="reason" required>
+          <ElInput
+            v-model="formData.reason"
+            type="textarea"
+            :rows="3"
+            :placeholder="$t('application.business.pleaseEnterTripReason')"
+          />
         </ElFormItem>
       </ElForm>
       <template #footer>
         <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
-        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('application.common.submitApplication') }}</ElButton>
+        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">
+          {{ $t('application.common.submitApplication') }}
+        </ElButton>
       </template>
     </ElDialog>
 

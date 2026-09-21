@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { appTypeMap } from '@/constants/application';
+import { enableStatusLabel, enableStatusMap } from '@/constants/common';
 import {
   type ApprovalFlow,
   createApprovalFlow,
@@ -187,10 +188,8 @@ async function handleSubmit() {
 
 const flowTypeMap = appTypeMap;
 
-const statusMap: Record<number, { label: string; type: string }> = {
-  0: { label: $t('common.deactivate'), type: 'info' },
-  1: { label: $t('common.enable'), type: 'success' }
-};
+// 启用/停用状态与 attendance/shift 语义相同，共用 constants/common 的 enableStatusMap
+// （原 0-停用/info 展示统一为「禁用」/danger，与班次启用状态保持一致）
 </script>
 
 <template>
@@ -208,7 +207,7 @@ const statusMap: Record<number, { label: string; type: string }> = {
               style="width: 180px"
               @change="pagination.current = 1"
             >
-              <ElOption v-for="(label, key) in flowTypeMap" :key="key" :label="label" :value="key" />
+              <ElOption v-for="(labelKey, key) in flowTypeMap" :key="key" :label="$t(labelKey)" :value="key" />
             </ElSelect>
             <ElButton v-permission="'approval:flow:add'" type="primary" @click="handleAdd">
               <template #icon><icon-ep-plus /></template>
@@ -224,7 +223,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
           <ElTableColumn prop="flowCode" :label="$t('approval.flow.flowCode')" width="120" />
           <ElTableColumn prop="flowName" :label="$t('approval.flow.flowName')" width="150" />
           <ElTableColumn prop="flowType" :label="$t('approval.flow.flowType')" width="120">
-            <template #default="{ row }">{{ flowTypeMap[row.flowType] || row.flowType }}</template>
+            <template #default="{ row }">
+              {{ flowTypeMap[row.flowType] ? $t(flowTypeMap[row.flowType]) : row.flowType }}
+            </template>
           </ElTableColumn>
           <ElTableColumn prop="autoPass" :label="$t('approval.flow.noApproval')" width="80" align="center">
             <template #default="{ row }">
@@ -251,12 +252,14 @@ const statusMap: Record<number, { label: string; type: string }> = {
           </ElTableColumn>
           <ElTableColumn prop="status" :label="$t('common.status')" width="80" align="center">
             <template #default="{ row }">
-              <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
+              <ElTag :type="enableStatusMap[row.status]?.type">{{ enableStatusLabel(row.status) }}</ElTag>
             </template>
           </ElTableColumn>
           <ElTableColumn :label="$t('common.action')" width="180" align="center" fixed="right">
             <template #default="{ row }">
-              <ElButton v-permission="'approval:flow:edit'" type="primary" link size="small" @click="handleEdit(row)">{{ $t('common.edit') }}</ElButton>
+              <ElButton v-permission="'approval:flow:edit'" type="primary" link size="small" @click="handleEdit(row)">
+                {{ $t('common.edit') }}
+              </ElButton>
               <ElButton
                 v-permission="'approval:flow:edit'"
                 :type="row.status === 1 ? 'warning' : 'success'"
@@ -266,8 +269,15 @@ const statusMap: Record<number, { label: string; type: string }> = {
               >
                 {{ row.status === 1 ? $t('common.deactivate') : $t('common.enable') }}
               </ElButton>
-              <ElPopconfirm :title="$t('approval.flow.areYouSureYouWantToDeleteThisFlow')" @confirm="handleDelete(row.id)">
-                <template #reference><ElButton v-permission="'approval:flow:delete'" type="danger" link size="small">{{ $t('common.delete') }}</ElButton></template>
+              <ElPopconfirm
+                :title="$t('approval.flow.areYouSureYouWantToDeleteThisFlow')"
+                @confirm="handleDelete(row.id)"
+              >
+                <template #reference>
+                  <ElButton v-permission="'approval:flow:delete'" type="danger" link size="small">
+                    {{ $t('common.delete') }}
+                  </ElButton>
+                </template>
               </ElPopconfirm>
             </template>
           </ElTableColumn>
@@ -279,18 +289,26 @@ const statusMap: Record<number, { label: string; type: string }> = {
           v-model:current-page="pagination.current"
           v-model:page-size="pagination.pageSize"
           :total="filteredData.length"
-          :page-sizes="[20, 50, 100]"
+          :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next"
         />
       </div>
     </ElCard>
 
-    <ElDialog v-model="dialogVisible" :title="operateType === 'add' ? $t('approval.flow.newApprovalFlow') : $t('approval.flow.editApprovalFlow')" width="700px">
+    <ElDialog
+      v-model="dialogVisible"
+      :title="operateType === 'add' ? $t('approval.flow.newApprovalFlow') : $t('approval.flow.editApprovalFlow')"
+      width="700px"
+    >
       <ElForm ref="formRef" label-width="100px" :model="formData" :rules="baseFormRules">
         <ElRow :gutter="20">
           <ElCol :span="12">
             <ElFormItem :label="$t('approval.flow.flowCode')" prop="flowCode">
-              <ElInput v-model="formData.flowCode" :placeholder="$t('approval.flow.pleaseEnterFlowCode')" :disabled="operateType === 'edit'" />
+              <ElInput
+                v-model="formData.flowCode"
+                :placeholder="$t('approval.flow.pleaseEnterFlowCode')"
+                :disabled="operateType === 'edit'"
+              />
             </ElFormItem>
           </ElCol>
           <ElCol :span="12">
@@ -302,8 +320,12 @@ const statusMap: Record<number, { label: string; type: string }> = {
         <ElRow :gutter="20">
           <ElCol :span="12">
             <ElFormItem :label="$t('approval.flow.flowType')" prop="flowType">
-              <ElSelect v-model="formData.flowType" :placeholder="$t('approval.flow.pleaseSelectFlowType')" style="width: 100%">
-                <ElOption v-for="(label, key) in flowTypeMap" :key="key" :label="label" :value="key" />
+              <ElSelect
+                v-model="formData.flowType"
+                :placeholder="$t('approval.flow.pleaseSelectFlowType')"
+                style="width: 100%"
+              >
+                <ElOption v-for="(labelKey, key) in flowTypeMap" :key="key" :label="$t(labelKey)" :value="key" />
               </ElSelect>
             </ElFormItem>
           </ElCol>
@@ -327,10 +349,17 @@ const statusMap: Record<number, { label: string; type: string }> = {
             :active-text="$t('approval.flow.directApproval')"
             :inactive-text="$t('approval.flow.approvalRequired')"
           />
-          <span class="ml-12px text-sm text-gray-400">{{ $t('approval.flow.whenEnabledApplicationsWillBeAutoApprovedWithoutReview') }}</span>
+          <span class="ml-12px text-sm text-gray-400">
+            {{ $t('approval.flow.whenEnabledApplicationsWillBeAutoApprovedWithoutReview') }}
+          </span>
         </ElFormItem>
         <ElFormItem :label="$t('common.description')">
-          <ElInput v-model="formData.description" type="textarea" :rows="2" :placeholder="$t('approval.flow.pleaseEnterDescription')" />
+          <ElInput
+            v-model="formData.description"
+            type="textarea"
+            :rows="2"
+            :placeholder="$t('approval.flow.pleaseEnterDescription')"
+          />
         </ElFormItem>
 
         <template v-if="!isAutoPass">
@@ -374,7 +403,13 @@ const statusMap: Record<number, { label: string; type: string }> = {
                   :prop="`nodes.${index}.roleId`"
                   :rules="nodeRequired($t('approval.flow.pleaseSelectApprovalRole'))"
                 >
-                  <ElSelect v-model="node.roleId" :placeholder="$t('approval.flow.pleaseSelectARole')" style="width: 100%" filterable clearable>
+                  <ElSelect
+                    v-model="node.roleId"
+                    :placeholder="$t('approval.flow.pleaseSelectARole')"
+                    style="width: 100%"
+                    filterable
+                    clearable
+                  >
                     <ElOption v-for="role in roleOptions" :key="role.id" :label="role.roleName" :value="role.id" />
                   </ElSelect>
                 </ElFormItem>

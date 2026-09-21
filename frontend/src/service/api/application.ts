@@ -2,7 +2,8 @@ import { request } from '../request';
 
 export interface Application {
   id?: number;
-  employeeId: number;
+  /** 员工 ID（表单场景由员工选择器回填，允许先为空） */
+  employeeId?: number;
   employeeName?: string;
   employeeNo?: string;
   deptName?: string;

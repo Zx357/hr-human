@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { statusMap } from '@/constants/application';
+import { ElMessage } from 'element-plus';
+import type { FormInstance, FormRules } from 'element-plus';
+import { statusLabel, statusTagType } from '@/constants/application';
 import {
   type Application,
   cancelApplication,
   createApplication,
   fetchApplicationPage
 } from '@/service/api/application';
+import { canCancelApplication, confirmCancelApplication } from '@/composables/use-application-cancel';
 import { useDictOptions } from '@/composables/use-dict-options';
 import { formatDateTime } from '@/utils/format';
 import EmployeePickerDialog from '@/components/common/employee-picker-dialog.vue';
@@ -27,6 +29,7 @@ const pageSize = ref(10);
 const { options: resignTypeOptions, getDictLabel: getResignTypeLabel } = useDictOptions('resign_type');
 const dialogVisible = ref(false);
 const submitLoading = ref(false);
+const formRef = ref<FormInstance>();
 const formData = ref<
   Application & {
     employeeName?: string;
@@ -36,9 +39,20 @@ const formData = ref<
     entryDate?: string;
   }
 >({
-  employeeId: undefined as any,
+  employeeId: undefined,
   appType: 'resignation'
 });
+
+// 弹窗表单校验规则
+const formRules: FormRules = {
+  employeeId: [{ required: true, message: $t('common.pleaseSelectEmployees'), trigger: 'change' }],
+  resignType: [
+    { required: true, message: $t('application.resignation.pleaseSelectResignationType'), trigger: 'change' }
+  ],
+  lastWorkDate: [
+    { required: true, message: $t('application.resignation.pleaseSelectLastWorkingDay'), trigger: 'change' }
+  ]
+};
 
 // 员工选择弹窗
 const employeeDialogVisible = ref(false);
@@ -70,6 +84,8 @@ async function loadData() {
     });
     data.value = res.data?.records || [];
     total.value = res.data?.total || 0;
+  } catch {
+    // 错误已由请求层统一提示
   } finally {
     loading.value = false;
   }
@@ -80,7 +96,7 @@ onMounted(() => {
 
 function handleAdd() {
   formData.value = {
-    employeeId: undefined as any,
+    employeeId: undefined,
     appType: 'resignation',
     resignType: '',
     lastWorkDate: '',
@@ -121,10 +137,8 @@ function handleConfirmHandover(selected: Api.Hr.Employee[]) {
 }
 
 async function handleSubmit() {
-  if (!formData.value.employeeId || !formData.value.resignType || !formData.value.lastWorkDate) {
-    ElMessage.warning($t('common.pleaseFillRequired'));
-    return;
-  }
+  const valid = await formRef.value?.validate().catch(() => false);
+  if (!valid) return;
   submitLoading.value = true;
   try {
     await createApplication(formData.value);
@@ -147,18 +161,10 @@ function handleViewDetail(row: Application) {
   detailVisible.value = true;
 }
 
-async function handleCancel(id: number) {
+async function handleCancel(row: Application) {
+  if (!(await confirmCancelApplication(row, getResignTypeLabel(row.resignType)))) return;
   try {
-    await ElMessageBox.confirm($t('application.business.areYouSureYouWantToWithdrawThisApplicationThisCannotBeUndone'), $t('application.common.withdrawalConfirmation'), {
-      type: 'warning',
-      confirmButtonText: $t('application.common.confirmWithdrawal'),
-      cancelButtonText: $t('common.cancel')
-    });
-  } catch {
-    return;
-  }
-  try {
-    await cancelApplication(id);
+    await cancelApplication(row.id!);
     ElMessage.success($t('common.withdrawn'));
     loadData();
   } catch {
@@ -207,7 +213,12 @@ function handleSizeChange(size: number) {
           />
         </ElFormItem>
         <ElFormItem :label="$t('common.resignationType')">
-          <ElSelect v-model="searchParams.resignType" :placeholder="$t('common.pleaseSelectType')" clearable style="width: 120px">
+          <ElSelect
+            v-model="searchParams.resignType"
+            :placeholder="$t('common.pleaseSelectType')"
+            clearable
+            style="width: 120px"
+          >
             <ElOption
               v-for="item in resignTypeOptions"
               :key="item.dictValue"
@@ -228,7 +239,12 @@ function handleSizeChange(size: number) {
           />
         </ElFormItem>
         <ElFormItem :label="$t('common.status')">
-          <ElSelect v-model="searchParams.status" :placeholder="$t('common.pleaseSelectStatus')" clearable style="width: 120px">
+          <ElSelect
+            v-model="searchParams.status"
+            :placeholder="$t('common.pleaseSelectStatus')"
+            clearable
+            style="width: 120px"
+          >
             <ElOption :label="$t('common.pendingApproval')" :value="0" />
             <ElOption :label="$t('common.approved')" :value="1" />
             <ElOption :label="$t('common.rejected')" :value="2" />
@@ -263,7 +279,12 @@ function handleSizeChange(size: number) {
         <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" />
         <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="100" />
         <ElTableColumn prop="employeeName" :label="$t('common.employeeName')" width="100" />
-        <ElTableColumn prop="companyName" :label="$t('application.common.company')" min-width="120" show-overflow-tooltip />
+        <ElTableColumn
+          prop="companyName"
+          :label="$t('application.common.company')"
+          min-width="120"
+          show-overflow-tooltip
+        />
         <ElTableColumn prop="deptName" :label="$t('common.department')" width="100" />
         <ElTableColumn prop="entryDate" :label="$t('common.entryDate')" width="110" />
         <ElTableColumn prop="resignType" :label="$t('common.resignationType')" width="100">
@@ -271,10 +292,15 @@ function handleSizeChange(size: number) {
         </ElTableColumn>
         <ElTableColumn prop="lastWorkDate" :label="$t('application.resignation.lastWorkingDay')" width="110" />
         <ElTableColumn prop="handoverToName" :label="$t('common.handoverPerson2')" width="100" />
-        <ElTableColumn prop="reason" :label="$t('application.resignation.resignationReason')" min-width="150" show-overflow-tooltip />
+        <ElTableColumn
+          prop="reason"
+          :label="$t('application.resignation.resignationReason')"
+          min-width="150"
+          show-overflow-tooltip
+        />
         <ElTableColumn prop="status" :label="$t('common.status')" width="90" align="center">
           <template #default="{ row }">
-            <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
+            <ElTag :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</ElTag>
           </template>
         </ElTableColumn>
         <ElTableColumn prop="createdTime" :label="$t('application.common.applicationTime')" width="160">
@@ -282,8 +308,10 @@ function handleSizeChange(size: number) {
         </ElTableColumn>
         <ElTableColumn :label="$t('common.action')" width="140" align="center" fixed="right">
           <template #default="{ row }">
-            <ElButton type="primary" link size="small" @click="handleViewDetail(row)">{{ $t('common.details') }}</ElButton>
-            <ElButton v-if="row.status === 0" type="warning" link size="small" @click="handleCancel(row.id)">
+            <ElButton type="primary" link size="small" @click="handleViewDetail(row)">
+              {{ $t('common.details') }}
+            </ElButton>
+            <ElButton v-if="canCancelApplication(row)" type="warning" link size="small" @click="handleCancel(row)">
               {{ $t('common.withdraw') }}
             </ElButton>
           </template>
@@ -304,16 +332,32 @@ function handleSizeChange(size: number) {
     </ElCard>
 
     <!-- 新增申请弹窗 -->
-    <ElDialog v-model="dialogVisible" :title="$t('application.resignation.createResignationApplication')" width="600px" destroy-on-close>
-      <ElForm label-width="100px" :model="formData">
-        <ElFormItem :label="$t('common.employee')" required>
+    <ElDialog
+      v-model="dialogVisible"
+      :title="$t('application.resignation.createResignationApplication')"
+      width="600px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      destroy-on-close
+    >
+      <ElForm ref="formRef" label-width="100px" :model="formData" :rules="formRules">
+        <ElFormItem :label="$t('common.employee')" prop="employeeId" required>
           <div class="w-full flex gap-8px">
-            <ElInput v-model="employeeDisplayName" disabled :placeholder="$t('common.pleaseSelectEmployees')" class="flex-1" />
+            <ElInput
+              v-model="employeeDisplayName"
+              disabled
+              :placeholder="$t('common.pleaseSelectEmployees')"
+              class="flex-1"
+            />
             <ElButton type="primary" @click="employeeDialogVisible = true">{{ $t('common.selectEmployees') }}</ElButton>
           </div>
         </ElFormItem>
-        <ElFormItem :label="$t('common.resignationType')" required>
-          <ElSelect v-model="formData.resignType" :placeholder="$t('application.resignation.pleaseSelectResignationType')" style="width: 100%">
+        <ElFormItem :label="$t('common.resignationType')" prop="resignType" required>
+          <ElSelect
+            v-model="formData.resignType"
+            :placeholder="$t('application.resignation.pleaseSelectResignationType')"
+            style="width: 100%"
+          >
             <ElOption
               v-for="item in resignTypeOptions"
               :key="item.dictValue"
@@ -322,7 +366,7 @@ function handleSizeChange(size: number) {
             />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem :label="$t('application.resignation.lastWorkingDay')" required>
+        <ElFormItem :label="$t('application.resignation.lastWorkingDay')" prop="lastWorkDate" required>
           <ElDatePicker
             v-model="formData.lastWorkDate"
             type="date"
@@ -333,17 +377,31 @@ function handleSizeChange(size: number) {
         </ElFormItem>
         <ElFormItem :label="$t('common.handoverPerson')">
           <div class="w-full flex gap-8px">
-            <ElInput v-model="handoverToName" disabled :placeholder="$t('application.resignation.pleaseSelectHandoverPerson')" class="flex-1" />
-            <ElButton @click="handoverDialogVisible = true">{{ $t('application.resignation.selectHandoverPerson') }}</ElButton>
+            <ElInput
+              v-model="handoverToName"
+              disabled
+              :placeholder="$t('application.resignation.pleaseSelectHandoverPerson')"
+              class="flex-1"
+            />
+            <ElButton @click="handoverDialogVisible = true">
+              {{ $t('application.resignation.selectHandoverPerson') }}
+            </ElButton>
           </div>
         </ElFormItem>
         <ElFormItem :label="$t('application.resignation.resignationReason')">
-          <ElInput v-model="formData.reason" type="textarea" :rows="3" :placeholder="$t('application.resignation.pleaseEnterResignationReason')" />
+          <ElInput
+            v-model="formData.reason"
+            type="textarea"
+            :rows="3"
+            :placeholder="$t('application.resignation.pleaseEnterResignationReason')"
+          />
         </ElFormItem>
       </ElForm>
       <template #footer>
         <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
-        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('application.common.submitApplication') }}</ElButton>
+        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">
+          {{ $t('application.common.submitApplication') }}
+        </ElButton>
       </template>
     </ElDialog>
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { appTypeMap, statusMap } from '@/constants/application';
+import { appTypeLabel, statusLabel, statusMap } from '@/constants/application';
 import { type Application, cancelApplication, fetchApplicationPage } from '@/service/api/application';
 import { fetchGetUserById } from '@/service/api/system';
 import { useAuthStore } from '@/store/modules/auth';
@@ -170,7 +170,7 @@ function handleSizeChange(size: number) {
             <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" />
             <ElTableColumn prop="appType" :label="$t('application.common.applicationType')" width="120">
               <template #default="{ row }">
-                <ElTag>{{ appTypeMap[row.appType] || row.appType }}</ElTag>
+                <ElTag>{{ appTypeLabel(row.appType) }}</ElTag>
               </template>
             </ElTableColumn>
             <ElTableColumn prop="startTime" :label="$t('common.startTime')" width="160" />
@@ -178,7 +178,7 @@ function handleSizeChange(size: number) {
             <ElTableColumn prop="reason" :label="$t('application.common.applicationReason2')" min-width="200" show-overflow-tooltip />
             <ElTableColumn prop="status" :label="$t('common.status')" width="100" align="center">
               <template #default="{ row }">
-                <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
+                <ElTag :type="statusMap[row.status]?.type as any">{{ statusLabel(row.status) }}</ElTag>
               </template>
             </ElTableColumn>
             <ElTableColumn prop="approveRemark" :label="$t('application.common.approvalComment')" width="150" show-overflow-tooltip />

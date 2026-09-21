@@ -1,4 +1,12 @@
 const local: App.I18n.Schema = {
+  headerNotice: {
+    pending: '待审批',
+    notices: '最新公告',
+    viewAll: '查看全部',
+    noPending: '暂无待审批',
+    noNotice: '暂无公告'
+  },
+
   system: {
     title: '人资管理系统',
     updateTitle: '系统版本更新通知',
@@ -124,6 +132,12 @@ const local: App.I18n.Schema = {
     pleaseEnterNewPassword: "请输入新密码",
     calculatingDot: "计算中...",
     selectTime: "选择时间",
+    density: "密度",
+    pleaseSelectTimeRange: "请选择时间范围",
+    downloadFailed: "下载失败",
+    sizeLarge: "大",
+    sizeDefault: "默认",
+    sizeSmall: "小",
     handoverPerson: "工作交接人",
     makeupClock: "补卡",
     approve: "通过",
@@ -240,7 +254,8 @@ const local: App.I18n.Schema = {
     logoutWithModal: '请求失败后弹出模态框再登出用户',
     logoutWithModalMsg: '用户状态失效，请重新登录',
     refreshToken: '请求的token已过期，刷新token',
-    tokenExpired: 'token已过期'
+    tokenExpired: 'token已过期',
+    operationFailed: '操作失败'
   },
   theme: {
     themeSchema: {
@@ -393,7 +408,6 @@ const local: App.I18n.Schema = {
     plugin_charts: '图表',
     plugin_charts_echarts: 'ECharts',
     plugin_charts_antv: 'AntV',
-    plugin_charts_vchart: 'VChart',
     plugin_editor: '编辑器',
     plugin_editor_quill: '富文本编辑器',
     plugin_editor_markdown: 'MD 编辑器',
@@ -420,6 +434,7 @@ const local: App.I18n.Schema = {
     hr: '人事管理',
     hr_employee: '员工管理',
     hr_contract: '合同管理',
+    "hr_leave-quota": '假期额度',
     hr_regularization: '转正管理',
     hr_transfer: '调动管理',
     hr_reward: '奖惩管理',
@@ -467,6 +482,7 @@ const local: App.I18n.Schema = {
     login: {
       common: {
         loginOrRegister: '登录 / 注册',
+        loginSubtitle: '请输入账号密码登录系统',
         userNamePlaceholder: '请输入用户名',
         phonePlaceholder: '请输入手机号',
         codePlaceholder: '请输入验证码',
@@ -482,6 +498,7 @@ const local: App.I18n.Schema = {
       pwdLogin: {
         title: '密码登录',
         rememberMe: '记住我',
+        contactAdminReset: '请联系系统管理员在后台重置密码',
         forgetPassword: '忘记密码？',
         register: '注册账号',
         otherAccountLogin: '其他账号登录',
@@ -523,7 +540,7 @@ const local: App.I18n.Schema = {
       prdDep: '生产依赖',
       devDep: '开发依赖'
     },
-    home: {
+  home: {
       branchDesc: '欢迎使用人资管理系统，本系统提供完整的人力资源管理功能。',
       greeting: '早安，{userName}, 今天又是充满活力的一天!',
       weatherDesc: '今日多云转晴，20℃ - 25℃!',
@@ -774,11 +791,46 @@ const local: App.I18n.Schema = {
   },
 
   application: {
+    types: {
+      leave: '请假申请',
+      overtime: '加班申请',
+      business: '出差申请',
+      makeup: '补卡申请',
+      exchange: '换休申请',
+      regularization: '转正申请',
+      transfer: '调动申请',
+      reward: '奖励申请',
+      punish: '惩罚申请',
+      resignation: '离职申请'
+    },
+    typeShort: {
+      leave: '请假',
+      overtime: '加班',
+      business: '出差',
+      makeup: '补卡',
+      exchange: '换休',
+      regularization: '转正',
+      transfer: '调动',
+      reward: '奖励',
+      punish: '惩罚',
+      resignation: '离职'
+    },
+    status: {
+      pending: '待审批',
+      approved: '已通过',
+      rejected: '已拒绝',
+      cancelled: '已撤销'
+    },
+    durationUnit: {
+      hour: '小时',
+      day: '天'
+    },
     common: {
       applicationTime: "申请时间",
       applicant: "申请人",
       withdrawalConfirmation: "撤销确认",
       confirmWithdrawal: "确认撤销",
+      withdrawConfirmMessage: "确定撤销 {name} 的申请单「{title}」吗？撤销后不可恢复",
       submitApplication: "提交申请",
       applicationSubmittedSuccessfully: "申请提交成功",
       company: "所属公司",
@@ -808,6 +860,7 @@ const local: App.I18n.Schema = {
       createRewardPunishmentApplication: "发起奖惩申请",
       rewardPunishmentApplications: "奖惩申请列表",
       pleaseSelectACategory: "请选择类别",
+      pleaseSelectEffectiveDate: "请选择生效日期",
       pleaseEnterReason: "请输入原因"
     },
     regularization: {
@@ -844,6 +897,7 @@ const local: App.I18n.Schema = {
       resignationApplications: "离职申请列表",
       selectHandoverPerson: "选择交接人",
       pleaseSelectResignationType: "请选择离职类型",
+      pleaseSelectLastWorkingDay: "请选择最后工作日",
       pleaseSelectHandoverPerson: "请选择交接人",
       pleaseEnterResignationReason: "请输入离职原因"
     },
@@ -856,6 +910,7 @@ const local: App.I18n.Schema = {
       makeupClockTime: "补卡时间",
       makeupClockApplications: "补卡申请列表",
       pleaseSelectMakeupClockType: "请选择补卡类型",
+      pleaseSelectMakeupClockTime: "请选择补卡时间",
       pleaseEnterMakeupClockReason: "请输入补卡原因"
     },
     exchange: {
@@ -1154,6 +1209,8 @@ const local: App.I18n.Schema = {
       earlyLeaveCount: "早退次数",
       thisMonthHasTooMuchAttendanceDataAndThePageMayLagNarrowTheRangeByCompanyDepartment: "本月考勤数据量过大，页面可能卡顿，请按公司/部门缩小统计范围",
       monthlyAttendanceSummaryXlsx: "月考勤汇总_{month}.xlsx",
+      monthlyReconciliationXlsx: "月度对账_{month}.xlsx",
+      exportReconciliation: "对账导出",
       selectMonth: "选择月份",
       lateMin: "迟到(分)",
       earlyLeaveMin: "早退(分)",
@@ -1422,6 +1479,20 @@ const local: App.I18n.Schema = {
       onlyOneFileCanBeSelected: "只能选择一个文件",
       items: "条"
     },
+    leaveQuota: {
+      title: "假期额度",
+      year: "年度",
+      addQuota: "新增额度",
+      editQuota: "编辑额度",
+      pleaseSelectYear: "请选择年度",
+      pleaseSelectEmployee: "请选择员工",
+      pleaseInputTotalHours: "请输入额度工时",
+      totalHours: "额度工时",
+      usedHours: "已用工时",
+      remainHours: "剩余工时",
+      confirmDelete: "删除后该额度不再参与扣减，确定删除？",
+      remainingQuotaHours: "年假剩余 {hours} 小时"
+    },
     contract: {
       uploadedSuccessfully: "上传成功",
       contractNo: "合同编号",
@@ -1444,6 +1515,11 @@ const local: App.I18n.Schema = {
       contractList: "合同列表",
       upTo9ImagesCanBeUploadedEachWithin5mb: "支持上传最多9张图片，每张不超过5MB",
       areYouSureYouWantToDeleteThisContract: "确定删除该合同吗？",
+      renew: "续签",
+      renewTitle: "合同续签",
+      renewOriginal: "原合同",
+      renewTerm: "新合同期限",
+      renewSalary: "新合同薪资",
       contractCount: "合同次数",
       no: "`第{count}次`",
       contractTerm: "合同期限",
@@ -1552,6 +1628,12 @@ const local: App.I18n.Schema = {
       averageAge: "平均年龄",
       yrs: "{age} 岁",
       basedOnEmployeesWithBirthdayFilled: "基于已填写生日的员工",
+      ageBucketUnder24: "24岁及以下",
+      ageBucket25To29: "25-29岁",
+      ageBucket30To34: "30-34岁",
+      ageBucket35To39: "35-39岁",
+      ageBucket40To44: "40-44岁",
+      ageBucket45AndAbove: "45岁及以上",
       people: "{b}: {c}人 ({d}%)",
       employeesOnProbation: "试用期人数",
       employeesOnProbation2: "状态为试用期的员工",
@@ -1647,6 +1729,12 @@ const local: App.I18n.Schema = {
       node: "节点"
     },
     common: {
+      batchApprove: "批量通过",
+      batchReject: "批量驳回",
+      pleaseSelectRowsFirst: "请先勾选要处理的申请",
+      batchRejectReasonPrompt: "请输入统一的驳回理由",
+      batchApprovedSummary: "批量通过完成：成功 {success} 条，失败 {fail} 条",
+      batchRejectedSummary: "批量驳回完成：成功 {success} 条，失败 {fail} 条",
       rewardApplication: "奖励申请",
       punishmentApplication: "惩罚申请",
       approvalConfirmation: "审批确认",

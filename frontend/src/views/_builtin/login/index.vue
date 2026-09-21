@@ -87,7 +87,7 @@ const bgColor = computed(() => {
         <main class="w-full">
           <div class="mb-8">
             <h3 class="mb-2 text-28px text-primary font-bold">{{ $t(activeModule.label) }}</h3>
-            <p class="text-sm text-gray-400 tracking-wide dark:text-gray-500">请输入账号密码登录系统</p>
+            <p class="text-sm text-gray-400 tracking-wide dark:text-gray-500">{{ $t('page.login.common.loginSubtitle') }}</p>
           </div>
 
           <div class="w-full">

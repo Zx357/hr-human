@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { statusMap } from '@/constants/application';
+import { ElMessage } from 'element-plus';
+import type { FormInstance, FormRules } from 'element-plus';
+import { statusLabel, statusTagType } from '@/constants/application';
 import {
   type Application,
   cancelApplication,
   createApplication,
   fetchApplicationPage
 } from '@/service/api/application';
+import { canCancelApplication, confirmCancelApplication } from '@/composables/use-application-cancel';
 import { formatDateTime } from '@/utils/format';
 import EmployeePickerDialog from '@/components/common/employee-picker-dialog.vue';
 import ApplicationDetailDrawer from '@/components/business/application-detail-drawer.vue';
@@ -25,12 +27,21 @@ const pageSize = ref(10);
 
 const dialogVisible = ref(false);
 const submitLoading = ref(false);
+const formRef = ref<FormInstance>();
 const formData = ref<
   Application & { employeeName?: string; employeeNo?: string; companyName?: string; deptName?: string }
 >({
-  employeeId: undefined as any,
+  employeeId: undefined,
   appType: 'makeup'
 });
+
+// 弹窗表单校验规则
+const formRules: FormRules = {
+  employeeId: [{ required: true, message: $t('common.pleaseSelectEmployees'), trigger: 'change' }],
+  title: [{ required: true, message: $t('application.makeup.pleaseSelectMakeupClockType'), trigger: 'change' }],
+  startTime: [{ required: true, message: $t('application.makeup.pleaseSelectMakeupClockTime'), trigger: 'change' }],
+  reason: [{ required: true, message: $t('application.makeup.pleaseEnterMakeupClockReason'), trigger: 'blur' }]
+};
 
 // 员工选择弹窗
 const employeeDialogVisible = ref(false);
@@ -56,6 +67,8 @@ async function loadData() {
     });
     data.value = res.data?.records || [];
     total.value = res.data?.total || 0;
+  } catch {
+    // 错误已由请求层统一提示
   } finally {
     loading.value = false;
   }
@@ -66,7 +79,7 @@ onMounted(() => {
 
 function handleAdd() {
   formData.value = {
-    employeeId: undefined as any,
+    employeeId: undefined,
     appType: 'makeup',
     title: '',
     startTime: '',
@@ -92,11 +105,14 @@ function handleConfirmEmployee(selected: Api.Hr.Employee[]) {
   employeeDisplayName.value = `${row.name} (${row.employeeNo})`;
 }
 
+const makeupTypeMap: Record<string, string> = {
+  checkin: $t('application.makeup.clockInMakeup'),
+  checkout: $t('application.makeup.clockOutMakeup')
+};
+
 async function handleSubmit() {
-  if (!formData.value.employeeId || !formData.value.title || !formData.value.startTime) {
-    ElMessage.warning($t('common.pleaseFillRequired'));
-    return;
-  }
+  const valid = await formRef.value?.validate().catch(() => false);
+  if (!valid) return;
   submitLoading.value = true;
   try {
     await createApplication(formData.value);
@@ -119,18 +135,10 @@ function handleViewDetail(row: Application) {
   detailVisible.value = true;
 }
 
-async function handleCancel(id: number) {
+async function handleCancel(row: Application) {
+  if (!(await confirmCancelApplication(row, makeupTypeMap[row.title || ''] || row.title))) return;
   try {
-    await ElMessageBox.confirm($t('application.business.areYouSureYouWantToWithdrawThisApplicationThisCannotBeUndone'), $t('application.common.withdrawalConfirmation'), {
-      type: 'warning',
-      confirmButtonText: $t('application.common.confirmWithdrawal'),
-      cancelButtonText: $t('common.cancel')
-    });
-  } catch {
-    return;
-  }
-  try {
-    await cancelApplication(id);
+    await cancelApplication(row.id!);
     ElMessage.success($t('common.withdrawn'));
     loadData();
   } catch {
@@ -156,8 +164,6 @@ function handleSizeChange(size: number) {
   currentPage.value = 1;
   loadData();
 }
-
-const makeupTypeMap: Record<string, string> = { checkin: $t('application.makeup.clockInMakeup'), checkout: $t('application.makeup.clockOutMakeup') };
 </script>
 
 <template>
@@ -192,7 +198,12 @@ const makeupTypeMap: Record<string, string> = { checkin: $t('application.makeup.
           />
         </ElFormItem>
         <ElFormItem :label="$t('common.status')">
-          <ElSelect v-model="searchParams.status" :placeholder="$t('common.pleaseSelectStatus')" clearable style="width: 120px">
+          <ElSelect
+            v-model="searchParams.status"
+            :placeholder="$t('common.pleaseSelectStatus')"
+            clearable
+            style="width: 120px"
+          >
             <ElOption :label="$t('common.pendingApproval')" :value="0" />
             <ElOption :label="$t('common.approved')" :value="1" />
             <ElOption :label="$t('common.rejected')" :value="2" />
@@ -228,16 +239,26 @@ const makeupTypeMap: Record<string, string> = { checkin: $t('application.makeup.
           <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" />
           <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="100" />
           <ElTableColumn prop="employeeName" :label="$t('application.common.applicant')" width="100" />
-          <ElTableColumn prop="companyName" :label="$t('application.common.company')" min-width="120" show-overflow-tooltip />
+          <ElTableColumn
+            prop="companyName"
+            :label="$t('application.common.company')"
+            min-width="120"
+            show-overflow-tooltip
+          />
           <ElTableColumn prop="deptName" :label="$t('common.department')" width="100" />
           <ElTableColumn prop="title" :label="$t('application.makeup.makeupClockType')" width="100">
             <template #default="{ row }">{{ makeupTypeMap[row.title] || row.title }}</template>
           </ElTableColumn>
           <ElTableColumn prop="startTime" :label="$t('application.makeup.makeupClockTime')" width="160" />
-          <ElTableColumn prop="reason" :label="$t('application.makeup.makeupClockReason')" min-width="200" show-overflow-tooltip />
+          <ElTableColumn
+            prop="reason"
+            :label="$t('application.makeup.makeupClockReason')"
+            min-width="200"
+            show-overflow-tooltip
+          />
           <ElTableColumn prop="status" :label="$t('common.status')" width="90" align="center">
             <template #default="{ row }">
-              <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
+              <ElTag :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</ElTag>
             </template>
           </ElTableColumn>
           <ElTableColumn prop="createdTime" :label="$t('application.common.applicationTime')" width="160">
@@ -245,8 +266,10 @@ const makeupTypeMap: Record<string, string> = { checkin: $t('application.makeup.
           </ElTableColumn>
           <ElTableColumn :label="$t('common.action')" width="140" align="center" fixed="right">
             <template #default="{ row }">
-              <ElButton type="primary" link size="small" @click="handleViewDetail(row)">{{ $t('common.details') }}</ElButton>
-              <ElButton v-if="row.status === 0" type="warning" link size="small" @click="handleCancel(row.id)">
+              <ElButton type="primary" link size="small" @click="handleViewDetail(row)">
+                {{ $t('common.details') }}
+              </ElButton>
+              <ElButton v-if="canCancelApplication(row)" type="warning" link size="small" @click="handleCancel(row)">
                 {{ $t('common.withdraw') }}
               </ElButton>
             </template>
@@ -268,21 +291,37 @@ const makeupTypeMap: Record<string, string> = { checkin: $t('application.makeup.
     </ElCard>
 
     <!-- 新增申请弹窗 -->
-    <ElDialog v-model="dialogVisible" :title="$t('application.makeup.createMakeupClockApplication')" width="600px" destroy-on-close>
-      <ElForm label-width="100px" :model="formData">
-        <ElFormItem :label="$t('application.common.applicant')" required>
+    <ElDialog
+      v-model="dialogVisible"
+      :title="$t('application.makeup.createMakeupClockApplication')"
+      width="600px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      destroy-on-close
+    >
+      <ElForm ref="formRef" label-width="100px" :model="formData" :rules="formRules">
+        <ElFormItem :label="$t('application.common.applicant')" prop="employeeId" required>
           <div class="w-full flex gap-8px">
-            <ElInput v-model="employeeDisplayName" disabled :placeholder="$t('common.pleaseSelectEmployees')" class="flex-1" />
+            <ElInput
+              v-model="employeeDisplayName"
+              disabled
+              :placeholder="$t('common.pleaseSelectEmployees')"
+              class="flex-1"
+            />
             <ElButton type="primary" @click="employeeDialogVisible = true">{{ $t('common.selectEmployees') }}</ElButton>
           </div>
         </ElFormItem>
-        <ElFormItem :label="$t('application.makeup.makeupClockType')" required>
-          <ElSelect v-model="formData.title" :placeholder="$t('application.makeup.pleaseSelectMakeupClockType')" style="width: 100%">
+        <ElFormItem :label="$t('application.makeup.makeupClockType')" prop="title" required>
+          <ElSelect
+            v-model="formData.title"
+            :placeholder="$t('application.makeup.pleaseSelectMakeupClockType')"
+            style="width: 100%"
+          >
             <ElOption :label="$t('application.makeup.clockInMakeup')" value="checkin" />
             <ElOption :label="$t('application.makeup.clockOutMakeup')" value="checkout" />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem :label="$t('application.makeup.makeupClockTime')" required>
+        <ElFormItem :label="$t('application.makeup.makeupClockTime')" prop="startTime" required>
           <ElDatePicker
             v-model="formData.startTime"
             type="datetime"
@@ -292,13 +331,20 @@ const makeupTypeMap: Record<string, string> = { checkin: $t('application.makeup.
             format="YYYY-MM-DD HH:mm"
           />
         </ElFormItem>
-        <ElFormItem :label="$t('application.makeup.makeupClockReason')" required>
-          <ElInput v-model="formData.reason" type="textarea" :rows="3" :placeholder="$t('application.makeup.pleaseEnterMakeupClockReason')" />
+        <ElFormItem :label="$t('application.makeup.makeupClockReason')" prop="reason" required>
+          <ElInput
+            v-model="formData.reason"
+            type="textarea"
+            :rows="3"
+            :placeholder="$t('application.makeup.pleaseEnterMakeupClockReason')"
+          />
         </ElFormItem>
       </ElForm>
       <template #footer>
         <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
-        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('application.common.submitApplication') }}</ElButton>
+        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">
+          {{ $t('application.common.submitApplication') }}
+        </ElButton>
       </template>
     </ElDialog>
 

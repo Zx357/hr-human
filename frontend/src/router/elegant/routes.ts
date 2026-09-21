@@ -334,6 +334,17 @@ export const generatedRoutes: GeneratedRoute[] = [
           order: 3,
           icon: 'mdi:account-multiple'
         }
+      },
+      {
+        name: 'hr_leave-quota',
+        path: '/hr/leave-quota',
+        component: 'view.hr_leave-quota',
+        meta: {
+          title: 'hr_leave-quota',
+          i18nKey: 'route.hr_leave-quota',
+          order: 3,
+          icon: 'mdi:calendar-clock'
+        }
       }
     ]
   },

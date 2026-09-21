@@ -1,59 +1,63 @@
-import { getAuthorization } from '@/service/request/shared';
-import { getServiceBaseURL } from '@/utils/service';
+import { request } from '@/service/request';
+import { useAuthStore } from '@/store/modules/auth';
+import { $t } from '@/locales';
 
-const isHttpProxy = import.meta.env.DEV && import.meta.env.VITE_HTTP_PROXY === 'Y';
-const { baseURL } = getServiceBaseURL(import.meta.env, isHttpProxy);
+/** blob 响应下后端返回业务错误（HTTP 200 + JSON）时，响应体已被转成普通对象 */
+interface BackendFailPayload {
+  code?: number | string;
+  msg?: string;
+  message?: string;
+}
 
-/**
- * 构建查询字符串（跳过 undefined / null / 空字符串）
- */
-function buildQuery(params?: Record<string, unknown>): string {
-  if (!params) return '';
-
-  const query = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
-      query.append(key, String(value));
-    }
-  });
-
-  const qs = query.toString();
-  return qs ? `?${qs}` : '';
+function isBackendFailPayload(data: unknown): data is BackendFailPayload {
+  return data !== null && data !== undefined && typeof data === 'object' && !(data instanceof Blob) && 'code' in data;
 }
 
 /**
- * 下载文件（携带 Authorization 请求头，以 blob 方式触发浏览器下载）
- *
- * @param url 接口路径（不含 baseURL，如 /employee/export）
- * @param fileName 下载保存的文件名
- * @param params 查询参数
+ * 触发浏览器保存 blob 文件
  */
-export async function downloadFile(url: string, fileName: string, params?: Record<string, unknown>) {
-  const response = await fetch(`${baseURL}${url}${buildQuery(params)}`, {
-    headers: { Authorization: getAuthorization() || '' }
-  });
-
-  if (!response.ok) {
-    throw new Error(`下载失败（${response.status}）`);
-  }
-
-  // 后端业务错误也是 HTTP 200 + JSON（{code, msg}），只有非 JSON（Excel 二进制）才走 blob 下载
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    const json = (await response.json()) as { code?: number | string; msg?: string; message?: string };
-    const msg = json.msg || json.message || '下载失败';
-    window.$message?.error(msg);
-    throw new Error(msg);
-  }
-
-  const blob = await response.blob();
+function saveBlob(blob: Blob, fileName: string) {
   const objectUrl = URL.createObjectURL(blob);
-
   const link = document.createElement('a');
+
   link.href = objectUrl;
   link.download = fileName;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(objectUrl);
+}
+
+/**
+ * 下载文件（走统一 request 实例：自动携带鉴权、token 过期刷新/登出、错误统一提示）
+ *
+ * @param url 接口路径（不含 baseURL，如 /employee/export）
+ * @param fileName 下载保存的文件名
+ * @param params 查询参数
+ */
+export async function downloadFile(url: string, fileName: string, params?: Record<string, unknown>) {
+  const { data, error, response } = await request<Blob, 'blob'>({ url, method: 'get', params, responseType: 'blob' });
+
+  if (error) {
+    // HTTP 401：登录已过期/未登录，走统一过期处理（清空登录态回登录页），与 request 层 logoutCodes 行为一致
+    if (response?.status === 401) {
+      useAuthStore().resetStore();
+    }
+    // 网络错误/HTTP 错误信息已由请求层统一 toast，这里仅抛出让调用方感知失败
+    throw new Error(error.message || 'download failed');
+  }
+
+  if (isBackendFailPayload(data)) {
+    // 后端业务失败（HTTP 200 + JSON），blob 模式不会经过统一错误处理，这里补一条提示
+    const msg = data.msg || data.message || $t('common.downloadFailed');
+    window.$message?.error(msg);
+    throw new Error(msg);
+  }
+
+  if (!(data instanceof Blob)) {
+    window.$message?.error($t('common.downloadFailed'));
+    throw new Error($t('common.downloadFailed'));
+  }
+
+  saveBlob(data, fileName);
 }

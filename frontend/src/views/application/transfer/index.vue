@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { statusMap } from '@/constants/application';
+import { ElMessage } from 'element-plus';
+import type { FormInstance, FormRules } from 'element-plus';
+import { statusLabel, statusTagType } from '@/constants/application';
 import {
   type Application,
   cancelApplication,
   createApplication,
   fetchApplicationPage
 } from '@/service/api/application';
+import { canCancelApplication, confirmCancelApplication } from '@/composables/use-application-cancel';
 import { useDictOptions } from '@/composables/use-dict-options';
 import { useOrgTree } from '@/composables/use-org-tree';
 import { formatDateTime } from '@/utils/format';
@@ -31,12 +33,20 @@ const { orgTreeOptions } = useOrgTree();
 const orgFlatMap = ref<Map<number, Api.Organization.OrgUnit>>(new Map());
 const dialogVisible = ref(false);
 const submitLoading = ref(false);
+const formRef = ref<FormInstance>();
 const formData = ref<
   Application & { employeeName?: string; employeeNo?: string; fromCompanyName?: string; fromDeptName?: string }
 >({
-  employeeId: undefined as any,
+  employeeId: undefined,
   appType: 'transfer'
 });
+
+// 弹窗表单校验规则（新部门/新职位按变更类型条件必填，提交前单独校验）
+const formRules: FormRules = {
+  employeeId: [{ required: true, message: $t('common.pleaseSelectEmployees'), trigger: 'change' }],
+  transferType: [{ required: true, message: $t('application.transfer.pleaseSelectChangeType'), trigger: 'change' }],
+  effectDate: [{ required: true, message: $t('application.reward.pleaseSelectEffectiveDate'), trigger: 'change' }]
+};
 
 // 变更类型：1-部门调动，2-职位变更，3-部门+职位变更
 const showNewDept = computed(() => formData.value.transferType === '1' || formData.value.transferType === '3');
@@ -85,6 +95,8 @@ async function loadData() {
     });
     data.value = res.data?.records || [];
     total.value = res.data?.total || 0;
+  } catch {
+    // 错误已由请求层统一提示
   } finally {
     loading.value = false;
   }
@@ -95,7 +107,7 @@ onMounted(() => {
 
 function handleAdd() {
   formData.value = {
-    employeeId: undefined as any,
+    employeeId: undefined,
     appType: 'transfer',
     transferType: '',
     fromCompanyId: undefined,
@@ -130,10 +142,8 @@ function handleConfirmEmployee(selected: Api.Hr.Employee[]) {
 }
 
 async function handleSubmit() {
-  if (!formData.value.employeeId || !formData.value.transferType || !formData.value.effectDate) {
-    ElMessage.warning($t('common.pleaseFillRequired'));
-    return;
-  }
+  const valid = await formRef.value?.validate().catch(() => false);
+  if (!valid) return;
   // 根据变更类型验证必填项
   if (showNewDept.value && !formData.value.toDeptId) {
     ElMessage.warning($t('application.transfer.pleaseSelectNewDepartment'));
@@ -169,18 +179,10 @@ function handleViewDetail(row: Application) {
   detailVisible.value = true;
 }
 
-async function handleCancel(id: number) {
+async function handleCancel(row: Application) {
+  if (!(await confirmCancelApplication(row, getTransferTypeLabel(row.transferType)))) return;
   try {
-    await ElMessageBox.confirm($t('application.business.areYouSureYouWantToWithdrawThisApplicationThisCannotBeUndone'), $t('application.common.withdrawalConfirmation'), {
-      type: 'warning',
-      confirmButtonText: $t('application.common.confirmWithdrawal'),
-      cancelButtonText: $t('common.cancel')
-    });
-  } catch {
-    return;
-  }
-  try {
-    await cancelApplication(id);
+    await cancelApplication(row.id!);
     ElMessage.success($t('common.withdrawn'));
     loadData();
   } catch {
@@ -229,7 +231,12 @@ function handleSizeChange(size: number) {
           />
         </ElFormItem>
         <ElFormItem :label="$t('application.transfer.changeType')">
-          <ElSelect v-model="searchParams.transferType" :placeholder="$t('common.pleaseSelectType')" clearable style="width: 150px">
+          <ElSelect
+            v-model="searchParams.transferType"
+            :placeholder="$t('common.pleaseSelectType')"
+            clearable
+            style="width: 150px"
+          >
             <ElOption
               v-for="item in transferTypeOptions"
               :key="item.dictValue"
@@ -250,7 +257,12 @@ function handleSizeChange(size: number) {
           />
         </ElFormItem>
         <ElFormItem :label="$t('common.status')">
-          <ElSelect v-model="searchParams.status" :placeholder="$t('common.pleaseSelectStatus')" clearable style="width: 120px">
+          <ElSelect
+            v-model="searchParams.status"
+            :placeholder="$t('common.pleaseSelectStatus')"
+            clearable
+            style="width: 120px"
+          >
             <ElOption :label="$t('common.pendingApproval')" :value="0" />
             <ElOption :label="$t('common.approved')" :value="1" />
             <ElOption :label="$t('common.rejected')" :value="2" />
@@ -285,15 +297,30 @@ function handleSizeChange(size: number) {
         <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" />
         <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" min-width="100" />
         <ElTableColumn prop="employeeName" :label="$t('common.employeeName')" min-width="100" />
-        <ElTableColumn prop="transferType" :label="$t('application.transfer.changeType')" min-width="100" align="center">
+        <ElTableColumn
+          prop="transferType"
+          :label="$t('application.transfer.changeType')"
+          min-width="100"
+          align="center"
+        >
           <template #default="{ row }">{{ getTransferTypeLabel(row.transferType) }}</template>
         </ElTableColumn>
-        <ElTableColumn prop="fromCompanyName" :label="$t('application.transfer.originalCompany')" min-width="120" show-overflow-tooltip />
+        <ElTableColumn
+          prop="fromCompanyName"
+          :label="$t('application.transfer.originalCompany')"
+          min-width="120"
+          show-overflow-tooltip
+        />
         <ElTableColumn prop="fromDeptName" :label="$t('application.transfer.originalDepartment')" min-width="100" />
         <ElTableColumn prop="fromPosition" :label="$t('application.transfer.originalPosition')" min-width="100">
           <template #default="{ row }">{{ getPositionLabel(row.fromPosition) }}</template>
         </ElTableColumn>
-        <ElTableColumn prop="toCompanyName" :label="$t('application.transfer.newCompany')" min-width="120" show-overflow-tooltip />
+        <ElTableColumn
+          prop="toCompanyName"
+          :label="$t('application.transfer.newCompany')"
+          min-width="120"
+          show-overflow-tooltip
+        />
         <ElTableColumn prop="toDeptName" :label="$t('application.transfer.newDepartment')" min-width="100" />
         <ElTableColumn prop="toPosition" :label="$t('application.transfer.newPosition')" min-width="100">
           <template #default="{ row }">{{ getPositionLabel(row.toPosition) }}</template>
@@ -301,7 +328,7 @@ function handleSizeChange(size: number) {
         <ElTableColumn prop="effectDate" :label="$t('application.reward.effectiveDate')" min-width="110" />
         <ElTableColumn prop="status" :label="$t('common.status')" min-width="90" align="center">
           <template #default="{ row }">
-            <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
+            <ElTag :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</ElTag>
           </template>
         </ElTableColumn>
         <ElTableColumn prop="createdTime" :label="$t('application.common.applicationTime')" min-width="160">
@@ -309,8 +336,10 @@ function handleSizeChange(size: number) {
         </ElTableColumn>
         <ElTableColumn :label="$t('common.action')" width="140" align="center" fixed="right">
           <template #default="{ row }">
-            <ElButton type="primary" link size="small" @click="handleViewDetail(row)">{{ $t('common.details') }}</ElButton>
-            <ElButton v-if="row.status === 0" type="warning" link size="small" @click="handleCancel(row.id)">
+            <ElButton type="primary" link size="small" @click="handleViewDetail(row)">
+              {{ $t('common.details') }}
+            </ElButton>
+            <ElButton v-if="canCancelApplication(row)" type="warning" link size="small" @click="handleCancel(row)">
               {{ $t('common.withdraw') }}
             </ElButton>
           </template>
@@ -331,30 +360,54 @@ function handleSizeChange(size: number) {
     </ElCard>
 
     <!-- 新增申请弹窗 -->
-    <ElDialog v-model="dialogVisible" :title="$t('application.transfer.newTransferApplication')" width="650px" destroy-on-close>
-      <ElForm label-width="100px" :model="formData">
-        <ElFormItem :label="$t('common.employee')" required>
+    <ElDialog
+      v-model="dialogVisible"
+      :title="$t('application.transfer.newTransferApplication')"
+      width="650px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      destroy-on-close
+    >
+      <ElForm ref="formRef" label-width="100px" :model="formData" :rules="formRules">
+        <ElFormItem :label="$t('common.employee')" prop="employeeId" required>
           <div class="w-full flex gap-8px">
-            <ElInput v-model="employeeDisplayName" disabled :placeholder="$t('common.pleaseSelectEmployees')" class="flex-1" />
+            <ElInput
+              v-model="employeeDisplayName"
+              disabled
+              :placeholder="$t('common.pleaseSelectEmployees')"
+              class="flex-1"
+            />
             <ElButton type="primary" @click="employeeDialogVisible = true">{{ $t('common.selectEmployees') }}</ElButton>
           </div>
         </ElFormItem>
         <ElRow :gutter="20">
           <ElCol :span="12">
             <ElFormItem :label="$t('application.transfer.originalCompany')">
-              <ElInput v-model="formData.fromCompanyName" disabled :placeholder="$t('application.transfer.autoDisplayedAfterSelectingAnEmployee')" />
+              <ElInput
+                v-model="formData.fromCompanyName"
+                disabled
+                :placeholder="$t('application.transfer.autoDisplayedAfterSelectingAnEmployee')"
+              />
             </ElFormItem>
           </ElCol>
           <ElCol :span="12">
             <ElFormItem :label="$t('application.transfer.originalDepartment')">
-              <ElInput v-model="formData.fromDeptName" disabled :placeholder="$t('application.transfer.autoDisplayedAfterSelectingAnEmployee')" />
+              <ElInput
+                v-model="formData.fromDeptName"
+                disabled
+                :placeholder="$t('application.transfer.autoDisplayedAfterSelectingAnEmployee')"
+              />
             </ElFormItem>
           </ElCol>
         </ElRow>
         <ElFormItem :label="$t('application.transfer.originalPosition')">
-          <ElInput :model-value="getPositionLabel(formData.fromPosition)" disabled :placeholder="$t('application.transfer.autoDisplayedAfterSelectingAnEmployee')" />
+          <ElInput
+            :model-value="getPositionLabel(formData.fromPosition)"
+            disabled
+            :placeholder="$t('application.transfer.autoDisplayedAfterSelectingAnEmployee')"
+          />
         </ElFormItem>
-        <ElFormItem :label="$t('application.transfer.changeType')" required>
+        <ElFormItem :label="$t('application.transfer.changeType')" prop="transferType" required>
           <ElSelect
             v-model="formData.transferType"
             :placeholder="$t('application.transfer.pleaseSelectChangeType')"
@@ -384,7 +437,12 @@ function handleSizeChange(size: number) {
           />
         </ElFormItem>
         <ElFormItem v-if="showNewPosition" :label="$t('application.transfer.newPosition')" required>
-          <ElSelect v-model="formData.toPosition" :placeholder="$t('application.transfer.pleaseSelectNewPosition')" style="width: 100%" clearable>
+          <ElSelect
+            v-model="formData.toPosition"
+            :placeholder="$t('application.transfer.pleaseSelectNewPosition')"
+            style="width: 100%"
+            clearable
+          >
             <ElOption
               v-for="item in positionOptions"
               :key="item.dictValue"
@@ -393,7 +451,7 @@ function handleSizeChange(size: number) {
             />
           </ElSelect>
         </ElFormItem>
-        <ElFormItem :label="$t('application.reward.effectiveDate')" required>
+        <ElFormItem :label="$t('application.reward.effectiveDate')" prop="effectDate" required>
           <ElDatePicker
             v-model="formData.effectDate"
             type="date"
@@ -403,12 +461,19 @@ function handleSizeChange(size: number) {
           />
         </ElFormItem>
         <ElFormItem :label="$t('application.transfer.transferReason')">
-          <ElInput v-model="formData.reason" type="textarea" :rows="3" :placeholder="$t('application.transfer.pleaseEnterTransferReason')" />
+          <ElInput
+            v-model="formData.reason"
+            type="textarea"
+            :rows="3"
+            :placeholder="$t('application.transfer.pleaseEnterTransferReason')"
+          />
         </ElFormItem>
       </ElForm>
       <template #footer>
         <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
-        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('application.common.submitApplication') }}</ElButton>
+        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">
+          {{ $t('application.common.submitApplication') }}
+        </ElButton>
       </template>
     </ElDialog>
 

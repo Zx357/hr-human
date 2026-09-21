@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { statusMap } from '@/constants/application';
+import { ElMessage } from 'element-plus';
+import type { FormInstance, FormRules } from 'element-plus';
+import { statusLabel, statusTagType } from '@/constants/application';
 import {
   type Application,
   cancelApplication,
   createApplication,
   fetchApplicationPage
 } from '@/service/api/application';
+import { canCancelApplication, confirmCancelApplication } from '@/composables/use-application-cancel';
 import { useDictOptions } from '@/composables/use-dict-options';
 import { formatDateTime } from '@/utils/format';
 import EmployeePickerDialog from '@/components/common/employee-picker-dialog.vue';
@@ -27,18 +29,26 @@ const pageSize = ref(10);
 const { options: rewardCategoryOptions, getDictLabel: getRewardCategoryLabel } = useDictOptions('reward_category');
 const { options: punishCategoryOptions, getDictLabel: getPunishCategoryLabel } = useDictOptions('punish_category');
 const dialogVisible = ref(false);
+const submitLoading = ref(false);
+const formRef = ref<FormInstance>();
+const formData = ref<
+  Application & { employeeName?: string; employeeNo?: string; companyName?: string; deptName?: string }
+>({
+  employeeId: undefined,
+  appType: 'reward',
+  rewardType: 1
+});
+
+// 弹窗表单校验规则
+const formRules: FormRules = {
+  employeeId: [{ required: true, message: $t('common.pleaseSelectEmployees'), trigger: 'change' }],
+  category: [{ required: true, message: $t('application.reward.pleaseSelectACategory'), trigger: 'change' }],
+  effectDate: [{ required: true, message: $t('application.reward.pleaseSelectEffectiveDate'), trigger: 'change' }]
+};
 
 function getCategoryLabel(appType?: string, category?: string) {
   return appType === 'reward' ? getRewardCategoryLabel(category) : getPunishCategoryLabel(category);
 }
-const submitLoading = ref(false);
-const formData = ref<
-  Application & { employeeName?: string; employeeNo?: string; companyName?: string; deptName?: string }
->({
-  employeeId: undefined as any,
-  appType: 'reward',
-  rewardType: 1
-});
 
 // 员工选择弹窗
 const employeeDialogVisible = ref(false);
@@ -85,6 +95,8 @@ async function loadData() {
     records.sort((a, b) => new Date(b.createdTime || '').getTime() - new Date(a.createdTime || '').getTime());
     data.value = records;
     total.value = totalCount;
+  } catch {
+    // 错误已由请求层统一提示
   } finally {
     loading.value = false;
   }
@@ -102,7 +114,7 @@ watch(
 
 function handleAdd() {
   formData.value = {
-    employeeId: undefined as any,
+    employeeId: undefined,
     appType: 'reward',
     rewardType: 1,
     category: '',
@@ -130,10 +142,8 @@ function handleConfirmEmployee(selected: Api.Hr.Employee[]) {
 }
 
 async function handleSubmit() {
-  if (!formData.value.employeeId || !formData.value.category || !formData.value.effectDate) {
-    ElMessage.warning($t('common.pleaseFillRequired'));
-    return;
-  }
+  const valid = await formRef.value?.validate().catch(() => false);
+  if (!valid) return;
   formData.value.appType = formData.value.rewardType === 1 ? 'reward' : 'punish';
   submitLoading.value = true;
   try {
@@ -157,18 +167,10 @@ function handleViewDetail(row: Application) {
   detailVisible.value = true;
 }
 
-async function handleCancel(id: number) {
+async function handleCancel(row: Application) {
+  if (!(await confirmCancelApplication(row, getCategoryLabel(row.appType, row.category)))) return;
   try {
-    await ElMessageBox.confirm($t('application.business.areYouSureYouWantToWithdrawThisApplicationThisCannotBeUndone'), $t('application.common.withdrawalConfirmation'), {
-      type: 'warning',
-      confirmButtonText: $t('application.common.confirmWithdrawal'),
-      cancelButtonText: $t('common.cancel')
-    });
-  } catch {
-    return;
-  }
-  try {
-    await cancelApplication(id);
+    await cancelApplication(row.id!);
     ElMessage.success($t('common.withdrawn'));
     loadData();
   } catch {
@@ -217,7 +219,12 @@ function handleSizeChange(size: number) {
           />
         </ElFormItem>
         <ElFormItem :label="$t('common.type')">
-          <ElSelect v-model="searchParams.appType" :placeholder="$t('common.pleaseSelectType')" clearable style="width: 120px">
+          <ElSelect
+            v-model="searchParams.appType"
+            :placeholder="$t('common.pleaseSelectType')"
+            clearable
+            style="width: 120px"
+          >
             <ElOption :label="$t('common.reward')" value="reward" />
             <ElOption :label="$t('common.punishment')" value="punish" />
           </ElSelect>
@@ -234,7 +241,12 @@ function handleSizeChange(size: number) {
           />
         </ElFormItem>
         <ElFormItem :label="$t('common.status')">
-          <ElSelect v-model="searchParams.status" :placeholder="$t('common.pleaseSelectStatus')" clearable style="width: 120px">
+          <ElSelect
+            v-model="searchParams.status"
+            :placeholder="$t('common.pleaseSelectStatus')"
+            clearable
+            style="width: 120px"
+          >
             <ElOption :label="$t('common.pendingApproval')" :value="0" />
             <ElOption :label="$t('common.approved')" :value="1" />
             <ElOption :label="$t('common.rejected')" :value="2" />
@@ -269,7 +281,12 @@ function handleSizeChange(size: number) {
         <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" />
         <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" min-width="100" />
         <ElTableColumn prop="employeeName" :label="$t('common.employeeName')" min-width="100" />
-        <ElTableColumn prop="companyName" :label="$t('application.common.company')" min-width="120" show-overflow-tooltip />
+        <ElTableColumn
+          prop="companyName"
+          :label="$t('application.common.company')"
+          min-width="120"
+          show-overflow-tooltip
+        />
         <ElTableColumn prop="deptName" :label="$t('common.department')" min-width="100" />
         <ElTableColumn prop="appType" :label="$t('common.type')" min-width="80" align="center">
           <template #default="{ row }">
@@ -290,7 +307,7 @@ function handleSizeChange(size: number) {
         <ElTableColumn prop="reason" :label="$t('common.reason')" min-width="150" show-overflow-tooltip />
         <ElTableColumn prop="status" :label="$t('common.status')" min-width="90" align="center">
           <template #default="{ row }">
-            <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
+            <ElTag :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</ElTag>
           </template>
         </ElTableColumn>
         <ElTableColumn prop="createdTime" :label="$t('application.common.applicationTime')" min-width="160">
@@ -298,8 +315,10 @@ function handleSizeChange(size: number) {
         </ElTableColumn>
         <ElTableColumn :label="$t('common.action')" width="140" align="center" fixed="right">
           <template #default="{ row }">
-            <ElButton type="primary" link size="small" @click="handleViewDetail(row)">{{ $t('common.details') }}</ElButton>
-            <ElButton v-if="row.status === 0" type="warning" link size="small" @click="handleCancel(row.id)">
+            <ElButton type="primary" link size="small" @click="handleViewDetail(row)">
+              {{ $t('common.details') }}
+            </ElButton>
+            <ElButton v-if="canCancelApplication(row)" type="warning" link size="small" @click="handleCancel(row)">
               {{ $t('common.withdraw') }}
             </ElButton>
           </template>
@@ -320,11 +339,23 @@ function handleSizeChange(size: number) {
     </ElCard>
 
     <!-- 新增申请弹窗 -->
-    <ElDialog v-model="dialogVisible" :title="$t('application.reward.createRewardPunishmentApplication')" width="600px" destroy-on-close>
-      <ElForm label-width="100px" :model="formData">
-        <ElFormItem :label="$t('common.employee')" required>
+    <ElDialog
+      v-model="dialogVisible"
+      :title="$t('application.reward.createRewardPunishmentApplication')"
+      width="600px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      destroy-on-close
+    >
+      <ElForm ref="formRef" label-width="100px" :model="formData" :rules="formRules">
+        <ElFormItem :label="$t('common.employee')" prop="employeeId" required>
           <div class="w-full flex gap-8px">
-            <ElInput v-model="employeeDisplayName" disabled :placeholder="$t('common.pleaseSelectEmployees')" class="flex-1" />
+            <ElInput
+              v-model="employeeDisplayName"
+              disabled
+              :placeholder="$t('common.pleaseSelectEmployees')"
+              class="flex-1"
+            />
             <ElButton type="primary" @click="employeeDialogVisible = true">{{ $t('common.selectEmployees') }}</ElButton>
           </div>
         </ElFormItem>
@@ -334,8 +365,12 @@ function handleSizeChange(size: number) {
             <ElRadio :value="2">{{ $t('common.punishment') }}</ElRadio>
           </ElRadioGroup>
         </ElFormItem>
-        <ElFormItem :label="$t('common.category')" required>
-          <ElSelect v-model="formData.category" :placeholder="$t('application.reward.pleaseSelectACategory')" style="width: 100%">
+        <ElFormItem :label="$t('common.category')" prop="category" required>
+          <ElSelect
+            v-model="formData.category"
+            :placeholder="$t('application.reward.pleaseSelectACategory')"
+            style="width: 100%"
+          >
             <ElOption
               v-for="item in formData.rewardType === 1 ? rewardCategoryOptions : punishCategoryOptions"
               :key="item.dictValue"
@@ -347,7 +382,7 @@ function handleSizeChange(size: number) {
         <ElFormItem :label="$t('common.amount')">
           <ElInputNumber v-model="formData.amount" :min="0" :precision="2" style="width: 100%" />
         </ElFormItem>
-        <ElFormItem :label="$t('application.reward.effectiveDate')" required>
+        <ElFormItem :label="$t('application.reward.effectiveDate')" prop="effectDate" required>
           <ElDatePicker
             v-model="formData.effectDate"
             type="date"
@@ -357,12 +392,19 @@ function handleSizeChange(size: number) {
           />
         </ElFormItem>
         <ElFormItem :label="$t('common.reason')">
-          <ElInput v-model="formData.reason" type="textarea" :rows="3" :placeholder="$t('application.reward.pleaseEnterReason')" />
+          <ElInput
+            v-model="formData.reason"
+            type="textarea"
+            :rows="3"
+            :placeholder="$t('application.reward.pleaseEnterReason')"
+          />
         </ElFormItem>
       </ElForm>
       <template #footer>
         <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
-        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('application.common.submitApplication') }}</ElButton>
+        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">
+          {{ $t('application.common.submitApplication') }}
+        </ElButton>
       </template>
     </ElDialog>
 

@@ -296,6 +296,13 @@ declare namespace App {
     };
 
     type Schema = {
+      headerNotice: {
+        pending: string;
+        notices: string;
+        viewAll: string;
+        noPending: string;
+        noNotice: string;
+      };
       system: {
         title: string;
         updateTitle: string;
@@ -497,6 +504,18 @@ declare namespace App {
         calculatingDot: string;
         /** 选择时间 */
         selectTime: string;
+        /** 密度 */
+        density: string;
+        /** 请选择时间范围 */
+        pleaseSelectTimeRange: string;
+        /** 下载失败 */
+        downloadFailed: string;
+        /** 大 */
+        sizeLarge: string;
+        /** 默认 */
+        sizeDefault: string;
+        /** 小 */
+        sizeSmall: string;
         /** 工作交接人 */
         handoverPerson: string;
         /** 补卡 */
@@ -723,6 +742,7 @@ declare namespace App {
         logoutWithModalMsg: string;
         refreshToken: string;
         tokenExpired: string;
+        operationFailed: string;
       };
       theme: {
         themeSchema: { title: string } & Record<UnionKey.ThemeScheme, string>;
@@ -793,6 +813,7 @@ declare namespace App {
         login: {
           common: {
             loginOrRegister: string;
+            loginSubtitle: string;
             userNamePlaceholder: string;
             phonePlaceholder: string;
             codePlaceholder: string;
@@ -808,6 +829,7 @@ declare namespace App {
           pwdLogin: {
             title: string;
             rememberMe: string;
+            contactAdminReset: string;
             forgetPassword: string;
             register: string;
             otherAccountLogin: string;
@@ -1075,6 +1097,40 @@ declare namespace App {
         itemCount: string;
       };
       application: {
+        types: {
+          leave: string;
+          overtime: string;
+          business: string;
+          makeup: string;
+          exchange: string;
+          regularization: string;
+          transfer: string;
+          reward: string;
+          punish: string;
+          resignation: string;
+        };
+        typeShort: {
+          leave: string;
+          overtime: string;
+          business: string;
+          makeup: string;
+          exchange: string;
+          regularization: string;
+          transfer: string;
+          reward: string;
+          punish: string;
+          resignation: string;
+        };
+        status: {
+          pending: string;
+          approved: string;
+          rejected: string;
+          cancelled: string;
+        };
+        durationUnit: {
+          hour: string;
+          day: string;
+        };
         common: {
           /** 申请时间 */
           applicationTime: string;
@@ -1104,6 +1160,8 @@ declare namespace App {
           currentAccountIsNotLinkedToAnEmployee: string;
           /** 申请原因 */
           applicationReason2: string;
+          /** 确定撤销 {name} 的申请单「{title}」吗？撤销后不可恢复 */
+          withdrawConfirmMessage: string;
         };
         business: {
           /** 确定撤销该申请吗？撤销后不可恢复 */
@@ -1138,6 +1196,8 @@ declare namespace App {
           rewardPunishmentApplications: string;
           /** 请选择类别 */
           pleaseSelectACategory: string;
+          /** 请选择生效日期 */
+          pleaseSelectEffectiveDate: string;
           /** 请输入原因 */
           pleaseEnterReason: string;
         };
@@ -1204,6 +1264,8 @@ declare namespace App {
           selectHandoverPerson: string;
           /** 请选择离职类型 */
           pleaseSelectResignationType: string;
+          /** 请选择最后工作日 */
+          pleaseSelectLastWorkingDay: string;
           /** 请选择交接人 */
           pleaseSelectHandoverPerson: string;
           /** 请输入离职原因 */
@@ -1226,6 +1288,8 @@ declare namespace App {
           makeupClockApplications: string;
           /** 请选择补卡类型 */
           pleaseSelectMakeupClockType: string;
+          /** 请选择补卡时间 */
+          pleaseSelectMakeupClockTime: string;
           /** 请输入补卡原因 */
           pleaseEnterMakeupClockReason: string;
         };
@@ -1762,6 +1826,10 @@ declare namespace App {
           thisMonthHasTooMuchAttendanceDataAndThePageMayLagNarrowTheRangeByCompanyDepartment: string;
           /** 月考勤汇总_{month}.xlsx */
           monthlyAttendanceSummaryXlsx: string;
+          /** 月度对账_{month}.xlsx */
+          monthlyReconciliationXlsx: string;
+          /** 对账导出 */
+          exportReconciliation: string;
           /** 选择月份 */
           selectMonth: string;
           /** 迟到(分) */
@@ -2277,6 +2345,32 @@ declare namespace App {
           /** 条 */
           items: string;
         };
+        leaveQuota: {
+          /** 假期额度 */
+          title: string;
+          /** 年度 */
+          year: string;
+          /** 新增额度 */
+          addQuota: string;
+          /** 编辑额度 */
+          editQuota: string;
+          /** 请选择年度 */
+          pleaseSelectYear: string;
+          /** 请选择员工 */
+          pleaseSelectEmployee: string;
+          /** 请输入额度工时 */
+          pleaseInputTotalHours: string;
+          /** 额度工时 */
+          totalHours: string;
+          /** 已用工时 */
+          usedHours: string;
+          /** 剩余工时 */
+          remainHours: string;
+          /** 删除后该额度不再参与扣减，确定删除？ */
+          confirmDelete: string;
+          /** 年假剩余 {hours} 小时 */
+          remainingQuotaHours: string;
+        };
         contract: {
           /** 上传成功 */
           uploadedSuccessfully: string;
@@ -2320,6 +2414,16 @@ declare namespace App {
           upTo9ImagesCanBeUploadedEachWithin5mb: string;
           /** 确定删除该合同吗？ */
           areYouSureYouWantToDeleteThisContract: string;
+          /** 续签 */
+          renew: string;
+          /** 合同续签 */
+          renewTitle: string;
+          /** 原合同 */
+          renewOriginal: string;
+          /** 新合同期限 */
+          renewTerm: string;
+          /** 新合同薪资 */
+          renewSalary: string;
           /** 合同次数 */
           contractCount: string;
           /** `第{count}次` */
@@ -2522,6 +2626,18 @@ declare namespace App {
           yrs: string;
           /** 基于已填写生日的员工 */
           basedOnEmployeesWithBirthdayFilled: string;
+          /** 24岁及以下 */
+          ageBucketUnder24: string;
+          /** 25-29岁 */
+          ageBucket25To29: string;
+          /** 30-34岁 */
+          ageBucket30To34: string;
+          /** 35-39岁 */
+          ageBucket35To39: string;
+          /** 40-44岁 */
+          ageBucket40To44: string;
+          /** 45岁及以上 */
+          ageBucket45AndAbove: string;
           /** {b}: {c}人 ({d}%) */
           people: string;
           /** 试用期人数 */
@@ -2702,6 +2818,12 @@ declare namespace App {
           node: string;
         };
         common: {
+          batchApprove: string;
+          batchReject: string;
+          pleaseSelectRowsFirst: string;
+          batchRejectReasonPrompt: string;
+          batchApprovedSummary: string;
+          batchRejectedSummary: string;
           /** 奖励申请 */
           rewardApplication: string;
           /** 惩罚申请 */

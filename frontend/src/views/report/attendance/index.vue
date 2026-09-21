@@ -41,6 +41,7 @@ interface AbnormalRecord extends AttDailyRecord {
 }
 
 const loading = ref(false);
+const exporting = ref(false); // 导出 loading
 const activeTab = ref<ReportTab>('employee');
 const currentMonth = ref(getCurrentMonth());
 const companies = ref<Api.Organization.OrgUnit[]>([]);
@@ -127,10 +128,30 @@ const overview = computed(() => {
 });
 
 const overviewCards = computed(() => [
-  { label: $t('report.attendance.employeesInStatistics'), value: overview.value.employeeCount, hint: $t('report.attendance.employeesInMonthlyStatistics'), tone: 'primary' },
-  { label: $t('report.attendance.averageAttendanceRate'), value: `${overview.value.attendanceRate}%`, hint: $t('report.attendance.actualRequiredAttendance'), tone: 'success' },
-  { label: $t('report.attendance.abnormalRecords'), value: overview.value.abnormalCount, hint: $t('report.attendance.lateEarlyLeaveAbsent'), tone: 'danger' },
-  { label: $t('attendance.monthly.totalWorkHours'), value: `${overview.value.totalWorkHours.toFixed(1)} h`, hint: $t('report.attendance.workHoursSummaryOfAllEmployees'), tone: 'info' }
+  {
+    label: $t('report.attendance.employeesInStatistics'),
+    value: overview.value.employeeCount,
+    hint: $t('report.attendance.employeesInMonthlyStatistics'),
+    tone: 'primary'
+  },
+  {
+    label: $t('report.attendance.averageAttendanceRate'),
+    value: `${overview.value.attendanceRate}%`,
+    hint: $t('report.attendance.actualRequiredAttendance'),
+    tone: 'success'
+  },
+  {
+    label: $t('report.attendance.abnormalRecords'),
+    value: overview.value.abnormalCount,
+    hint: $t('report.attendance.lateEarlyLeaveAbsent'),
+    tone: 'danger'
+  },
+  {
+    label: $t('attendance.monthly.totalWorkHours'),
+    value: `${overview.value.totalWorkHours.toFixed(1)} h`,
+    hint: $t('report.attendance.workHoursSummaryOfAllEmployees'),
+    tone: 'info'
+  }
 ]);
 
 const digestCards = computed(() => [
@@ -353,7 +374,9 @@ async function fetchAllDailyRecords() {
   }
 
   if (truncated) {
-    ElMessage.warning($t('report.attendance.tooMuchAttendanceDataOnlyTheFirst20000DetailsAreCountedNarrowTheTimeRangeOrAddFilters'));
+    ElMessage.warning(
+      $t('report.attendance.tooMuchAttendanceDataOnlyTheFirst20000DetailsAreCountedNarrowTheTimeRangeOrAddFilters')
+    );
   }
 
   return records;
@@ -455,38 +478,47 @@ function handleAbnormalSizeChange(size: number) {
   abnormalPagination.value.current = 1;
 }
 
-function handleExport() {
+async function handleExport() {
   if (!monthlyData.value.length) {
     ElMessage.warning($t('report.attendance.noAttendanceDataToExport'));
     return;
   }
 
-  downloadCsv(
-    $t('report.attendance.attendanceReportCsv', { month: currentMonth.value, stamp: getExportStamp() }),
-    [
-      { title: $t('common.month'), key: 'month' },
-      { title: $t('common.company'), key: 'companyName' },
-      { title: $t('common.department'), key: 'deptName' },
-      { title: $t('common.employeeNo'), key: 'employeeNo' },
-      { title: $t('common.name'), key: 'employeeName' },
-      { title: $t('report.attendance.requiredAttendanceDays'), key: 'workDays' },
-      { title: $t('report.attendance.actualAttendanceDays'), key: 'actualDays' },
-      { title: $t('report.attendance.attendanceRate'), key: 'attendanceRate', formatter: row => formatRate(row.actualDays, row.workDays) },
-      { title: $t('attendance.monthly.lateCount'), key: 'lateTimes' },
-      { title: $t('report.attendance.lateMinutes'), key: 'totalLateMinutes' },
-      { title: $t('attendance.monthly.earlyLeaveCount'), key: 'earlyTimes' },
-      { title: $t('report.attendance.earlyLeaveMinutes'), key: 'totalEarlyMinutes' },
-      { title: $t('report.attendance.absentDays'), key: 'absentDays' },
-      { title: $t('report.attendance.leaveDays'), key: 'leaveDays' },
-      { title: $t('attendance.monthly.totalWorkHours'), key: 'totalWorkHours' }
-    ],
-    monthlyData.value.map(item => ({
-      ...item,
-      attendanceRate: formatRate(item.actualDays, item.workDays)
-    }))
-  );
+  exporting.value = true;
+  try {
+    downloadCsv(
+      $t('report.attendance.attendanceReportCsv', { month: currentMonth.value, stamp: getExportStamp() }),
+      [
+        { title: $t('common.month'), key: 'month' },
+        { title: $t('common.company'), key: 'companyName' },
+        { title: $t('common.department'), key: 'deptName' },
+        { title: $t('common.employeeNo'), key: 'employeeNo' },
+        { title: $t('common.name'), key: 'employeeName' },
+        { title: $t('report.attendance.requiredAttendanceDays'), key: 'workDays' },
+        { title: $t('report.attendance.actualAttendanceDays'), key: 'actualDays' },
+        {
+          title: $t('report.attendance.attendanceRate'),
+          key: 'attendanceRate',
+          formatter: row => formatRate(row.actualDays, row.workDays)
+        },
+        { title: $t('attendance.monthly.lateCount'), key: 'lateTimes' },
+        { title: $t('report.attendance.lateMinutes'), key: 'totalLateMinutes' },
+        { title: $t('attendance.monthly.earlyLeaveCount'), key: 'earlyTimes' },
+        { title: $t('report.attendance.earlyLeaveMinutes'), key: 'totalEarlyMinutes' },
+        { title: $t('report.attendance.absentDays'), key: 'absentDays' },
+        { title: $t('report.attendance.leaveDays'), key: 'leaveDays' },
+        { title: $t('attendance.monthly.totalWorkHours'), key: 'totalWorkHours' }
+      ],
+      monthlyData.value.map(item => ({
+        ...item,
+        attendanceRate: formatRate(item.actualDays, item.workDays)
+      }))
+    );
 
-  ElMessage.success($t('report.attendance.attendanceReportExported'));
+    ElMessage.success($t('report.attendance.attendanceReportExported'));
+  } finally {
+    exporting.value = false;
+  }
 }
 
 function getCurrentMonth() {
@@ -563,7 +595,12 @@ onMounted(async () => {
           />
         </ElFormItem>
         <ElFormItem :label="$t('common.company')">
-          <ElSelect v-model="searchParams.companyId" :placeholder="$t('common.pleaseSelectCompany')" clearable style="width: 170px">
+          <ElSelect
+            v-model="searchParams.companyId"
+            :placeholder="$t('common.pleaseSelectCompany')"
+            clearable
+            style="width: 170px"
+          >
             <ElOption v-for="company in companies" :key="company.id" :label="company.unitName" :value="company.id" />
           </ElSelect>
         </ElFormItem>
@@ -605,7 +642,13 @@ onMounted(async () => {
             <template #icon><icon-ep-refresh /></template>
             {{ $t('common.reset') }}
           </ElButton>
-          <ElButton v-permission="'report:attendance:export'" type="success" :disabled="loading || monthlyData.length === 0" @click="handleExport">
+          <ElButton
+            v-permission="'report:attendance:export'"
+            type="success"
+            :loading="exporting"
+            :disabled="loading || monthlyData.length === 0"
+            @click="handleExport"
+          >
             <template #icon><icon-ep-download /></template>
             {{ $t('report.attendance.exportMonthlyReport') }}
           </ElButton>
@@ -697,7 +740,9 @@ onMounted(async () => {
       <template #header>
         <div class="section-head">
           <span>{{ $t('report.attendance.detailView') }}</span>
-          <span class="section-head__meta">{{ $t('report.attendance.switchAmongDepartmentEmployeeAndAbnormalityViews') }}</span>
+          <span class="section-head__meta">
+            {{ $t('report.attendance.switchAmongDepartmentEmployeeAndAbnormalityViews') }}
+          </span>
         </div>
       </template>
 
@@ -714,16 +759,36 @@ onMounted(async () => {
             >
               <ElTableColumn prop="deptName" :label="$t('common.department')" min-width="180" show-overflow-tooltip />
               <ElTableColumn prop="employees" :label="$t('report.attendance.employees')" width="90" align="center" />
-              <ElTableColumn prop="workDays" :label="$t('attendance.monthly.requiredAttendance')" width="90" align="center" />
-              <ElTableColumn prop="actualDays" :label="$t('attendance.monthly.actualAttendance')" width="90" align="center" />
-              <ElTableColumn prop="attendanceRate" :label="$t('report.attendance.attendanceRate')" width="110" align="center">
+              <ElTableColumn
+                prop="workDays"
+                :label="$t('attendance.monthly.requiredAttendance')"
+                width="90"
+                align="center"
+              />
+              <ElTableColumn
+                prop="actualDays"
+                :label="$t('attendance.monthly.actualAttendance')"
+                width="90"
+                align="center"
+              />
+              <ElTableColumn
+                prop="attendanceRate"
+                :label="$t('report.attendance.attendanceRate')"
+                width="110"
+                align="center"
+              >
                 <template #default="{ row }">{{ row.attendanceRate }}%</template>
               </ElTableColumn>
               <ElTableColumn prop="lateTimes" :label="$t('common.late')" width="80" align="center" />
               <ElTableColumn prop="earlyTimes" :label="$t('common.earlyLeave')" width="80" align="center" />
               <ElTableColumn prop="absentDays" :label="$t('common.absent')" width="80" align="center" />
               <ElTableColumn prop="leaveDays" :label="$t('common.leave')" width="80" align="center" />
-              <ElTableColumn prop="totalWorkHours" :label="$t('attendance.monthly.totalWorkHours')" width="100" align="center">
+              <ElTableColumn
+                prop="totalWorkHours"
+                :label="$t('attendance.monthly.totalWorkHours')"
+                width="100"
+                align="center"
+              >
                 <template #default="{ row }">{{ row.totalWorkHours.toFixed(1) }}h</template>
               </ElTableColumn>
             </ElTable>
@@ -744,18 +809,43 @@ onMounted(async () => {
               <ElTableColumn prop="deptName" :label="$t('common.department')" width="160" show-overflow-tooltip />
               <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="110" />
               <ElTableColumn prop="employeeName" :label="$t('common.name')" width="100" />
-              <ElTableColumn prop="workDays" :label="$t('attendance.monthly.requiredAttendance')" width="88" align="center" />
-              <ElTableColumn prop="actualDays" :label="$t('attendance.monthly.actualAttendance')" width="88" align="center" />
+              <ElTableColumn
+                prop="workDays"
+                :label="$t('attendance.monthly.requiredAttendance')"
+                width="88"
+                align="center"
+              />
+              <ElTableColumn
+                prop="actualDays"
+                :label="$t('attendance.monthly.actualAttendance')"
+                width="88"
+                align="center"
+              />
               <ElTableColumn :label="$t('report.attendance.attendanceRate')" width="100" align="center">
                 <template #default="{ row }">{{ formatRate(row.actualDays, row.workDays) }}</template>
               </ElTableColumn>
               <ElTableColumn prop="lateTimes" :label="$t('common.late')" width="72" align="center" />
-              <ElTableColumn prop="totalLateMinutes" :label="$t('report.attendance.lateMinutes2')" width="86" align="center" />
+              <ElTableColumn
+                prop="totalLateMinutes"
+                :label="$t('report.attendance.lateMinutes2')"
+                width="86"
+                align="center"
+              />
               <ElTableColumn prop="earlyTimes" :label="$t('common.earlyLeave')" width="72" align="center" />
-              <ElTableColumn prop="totalEarlyMinutes" :label="$t('report.attendance.earlyLeaveMinutes2')" width="86" align="center" />
+              <ElTableColumn
+                prop="totalEarlyMinutes"
+                :label="$t('report.attendance.earlyLeaveMinutes2')"
+                width="86"
+                align="center"
+              />
               <ElTableColumn prop="absentDays" :label="$t('common.absent')" width="72" align="center" />
               <ElTableColumn prop="leaveDays" :label="$t('common.leave')" width="72" align="center" />
-              <ElTableColumn prop="totalWorkHours" :label="$t('attendance.monthly.totalWorkHours')" width="90" align="center">
+              <ElTableColumn
+                prop="totalWorkHours"
+                :label="$t('attendance.monthly.totalWorkHours')"
+                width="90"
+                align="center"
+              >
                 <template #default="{ row }">{{ Number(row.totalWorkHours || 0).toFixed(1) }}h</template>
               </ElTableColumn>
             </ElTable>
@@ -790,12 +880,22 @@ onMounted(async () => {
               <ElTableColumn prop="deptName" :label="$t('common.department')" width="150" show-overflow-tooltip />
               <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="110" />
               <ElTableColumn prop="employeeName" :label="$t('common.name')" width="100" />
-              <ElTableColumn prop="abnormalType" :label="$t('report.attendance.abnormalityType')" width="110" align="center">
+              <ElTableColumn
+                prop="abnormalType"
+                :label="$t('report.attendance.abnormalityType')"
+                width="110"
+                align="center"
+              >
                 <template #default="{ row }">
                   <ElTag :type="getStatusTagType(row.status)" size="small">{{ row.abnormalType }}</ElTag>
                 </template>
               </ElTableColumn>
-              <ElTableColumn prop="occurrenceTime" :label="$t('report.attendance.relatedTime')" width="180" show-overflow-tooltip />
+              <ElTableColumn
+                prop="occurrenceTime"
+                :label="$t('report.attendance.relatedTime')"
+                width="180"
+                show-overflow-tooltip
+              />
               <ElTableColumn prop="remark" :label="$t('common.remark')" min-width="180" show-overflow-tooltip>
                 <template #default="{ row }">{{ row.remark || '-' }}</template>
               </ElTableColumn>

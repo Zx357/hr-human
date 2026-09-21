@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { getDurationUnit } from '@/constants/business';
-import { appTypeMap, statusMap } from '@/constants/application';
+import { appTypeLabel, statusLabel, statusMap } from '@/constants/application';
 import { type Application, type ApprovalRecord, fetchApprovalRecords } from '@/service/api/application';
 import { useDictOptions } from '@/composables/use-dict-options';
 import { formatDateTime } from '@/utils/format';
@@ -68,11 +68,11 @@ function getRecordStatusLabel(status?: number): string {
     <template v-if="application">
       <ElDescriptions :column="2" border>
         <ElDescriptionsItem :label="$t('application.common.applicationType')">
-          {{ appTypeMap[application.appType] || application.appType }}
+          {{ appTypeLabel(application.appType) }}
         </ElDescriptionsItem>
         <ElDescriptionsItem :label="$t('common.status')">
           <ElTag :type="statusMap[application.status ?? -1]?.type as any" size="small">
-            {{ statusMap[application.status ?? -1]?.label || '-' }}
+            {{ statusLabel(application.status) }}
           </ElTag>
         </ElDescriptionsItem>
         <ElDescriptionsItem :label="$t('application.common.applicant')">{{ application.employeeName || '-' }}</ElDescriptionsItem>

@@ -84,20 +84,24 @@ function handleDetail(row: Api.System.OperLogRecord) {
 
 async function handleClean() {
   try {
-    const { value } = await ElMessageBox.prompt($t('sys.operLog.allOperationLogsBeforeThisNumberOfDaysWillBeDeleted'), $t('sys.operLog.cleanLogs'), {
-      confirmButtonText: $t('common.ok'),
-      cancelButtonText: $t('common.cancel'),
-      inputValue: '90',
-      inputPattern: /^\d+$/,
-      inputErrorMessage: $t('sys.operLog.pleaseEnterANumber'),
-      inputValidator: (input: string) => {
-        const days = Number(input);
-        if (!Number.isFinite(days) || days < 7) {
-          return $t('sys.operLog.retentionDaysCannotBeLessThan7');
+    const { value } = await ElMessageBox.prompt(
+      $t('sys.operLog.allOperationLogsBeforeThisNumberOfDaysWillBeDeleted'),
+      $t('sys.operLog.cleanLogs'),
+      {
+        confirmButtonText: $t('common.ok'),
+        cancelButtonText: $t('common.cancel'),
+        inputValue: '90',
+        inputPattern: /^\d+$/,
+        inputErrorMessage: $t('sys.operLog.pleaseEnterANumber'),
+        inputValidator: (input: string) => {
+          const days = Number(input);
+          if (!Number.isFinite(days) || days < 7) {
+            return $t('sys.operLog.retentionDaysCannotBeLessThan7');
+          }
+          return true;
         }
-        return true;
       }
-    });
+    );
 
     const days = Number(value);
     const { error } = await cleanOperLogs(days);
@@ -121,10 +125,20 @@ onMounted(() => {
     <ElCard class="search-card">
       <ElForm :model="queryParams" inline>
         <ElFormItem :label="$t('sys.operLog.module')">
-          <ElInput v-model="queryParams.module" :placeholder="$t('sys.operLog.pleaseEnterModule')" clearable @keyup.enter="handleSearch" />
+          <ElInput
+            v-model="queryParams.module"
+            :placeholder="$t('sys.operLog.pleaseEnterModule')"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
         <ElFormItem :label="$t('sys.operLog.operator')">
-          <ElInput v-model="queryParams.username" :placeholder="$t('sys.operLog.pleaseEnterOperator')" clearable @keyup.enter="handleSearch" />
+          <ElInput
+            v-model="queryParams.username"
+            :placeholder="$t('sys.operLog.pleaseEnterOperator')"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </ElFormItem>
         <ElFormItem :label="$t('sys.operLog.result')">
           <ElSelect v-model="queryParams.status" :placeholder="$t('common.all')" clearable style="width: 120px">
@@ -170,12 +184,17 @@ onMounted(() => {
 
       <div class="table-wrapper">
         <ElTable v-loading="loading" :data="tableData" border stripe height="100%">
-          <ElTableColumn prop="createdTime" :label="$t('common.time')" width="180" />
+          <ElTableColumn prop="createdTime" :label="$t('common.time')" width="180" sortable />
           <ElTableColumn prop="module" :label="$t('sys.operLog.module')" min-width="120" show-overflow-tooltip />
           <ElTableColumn prop="action" :label="$t('common.action')" min-width="120" show-overflow-tooltip />
           <ElTableColumn prop="username" :label="$t('sys.operLog.operator')" min-width="100" show-overflow-tooltip />
           <ElTableColumn prop="ip" label="IP" width="140" show-overflow-tooltip />
-          <ElTableColumn prop="requestUri" :label="$t('sys.operLog.requestPath')" min-width="200" show-overflow-tooltip />
+          <ElTableColumn
+            prop="requestUri"
+            :label="$t('sys.operLog.requestPath')"
+            min-width="200"
+            show-overflow-tooltip
+          />
           <ElTableColumn prop="status" :label="$t('sys.operLog.result')" width="80" align="center">
             <template #default="{ row }">
               <ElTag :type="row.status === 1 ? 'success' : 'danger'" size="small">
@@ -204,7 +223,7 @@ onMounted(() => {
           v-model:current-page="queryParams.pageNum"
           v-model:page-size="queryParams.pageSize"
           :total="total"
-          :page-sizes="[10, 20, 50]"
+          :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper"
           @current-change="handlePageChange"
           @size-change="handleSizeChange"

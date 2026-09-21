@@ -1,8 +1,7 @@
-// import { dateEnUS, dateZhCN, enUS, zhCN } from 'naive-ui';
-import zhCn from 'element-plus/dist/locale/zh-cn.mjs';
-import en from 'element-plus/dist/locale/en.mjs';
+import type { Language } from 'element-plus/es/locale';
+import { en, zhCn } from 'element-plus/es/locale';
 
-export const UILocales: any = {
+export const UILocales: Record<App.I18n.LangType, Language> = {
   'zh-CN': zhCn,
   'en-US': en
 };

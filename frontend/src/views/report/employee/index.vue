@@ -33,6 +33,7 @@ interface TrendRow {
 }
 
 const loading = ref(false);
+const exporting = ref(false); // 导出 loading
 const companies = ref<Api.Organization.OrgUnit[]>([]);
 const departments = ref<Api.Organization.OrgUnit[]>([]);
 const employees = ref<Api.Hr.Employee[]>([]);
@@ -99,10 +100,30 @@ const summaryCards = computed<StatCard[]>(() => {
   if (api?.totals) {
     const apiTrend = api.monthlyTrend?.find(item => item.month === currentMonth);
     return [
-      { label: $t('common.totalEmployees'), value: Number(api.totals.total || 0), hint: $t('report.employee.employeesUnderCurrentFilters'), tone: 'primary' },
-      { label: $t('report.employee.activeEmployees'), value: Number(api.totals.active || 0), hint: $t('report.employee.employeesWithActiveStatus'), tone: 'success' },
-      { label: $t('report.employee.employeesOnProbation'), value: Number(api.totals.probation || 0), hint: $t('report.employee.employeesOnProbation2'), tone: 'info' },
-      { label: $t('report.employee.resignedEmployees'), value: Number(api.totals.resigned || 0), hint: $t('report.employee.employeesWithResignedStatus'), tone: 'warning' },
+      {
+        label: $t('common.totalEmployees'),
+        value: Number(api.totals.total || 0),
+        hint: $t('report.employee.employeesUnderCurrentFilters'),
+        tone: 'primary'
+      },
+      {
+        label: $t('report.employee.activeEmployees'),
+        value: Number(api.totals.active || 0),
+        hint: $t('report.employee.employeesWithActiveStatus'),
+        tone: 'success'
+      },
+      {
+        label: $t('report.employee.employeesOnProbation'),
+        value: Number(api.totals.probation || 0),
+        hint: $t('report.employee.employeesOnProbation2'),
+        tone: 'info'
+      },
+      {
+        label: $t('report.employee.resignedEmployees'),
+        value: Number(api.totals.resigned || 0),
+        hint: $t('report.employee.employeesWithResignedStatus'),
+        tone: 'warning'
+      },
       {
         label: $t('report.employee.newHiresThisMonth'),
         value: apiTrend ? Number(apiTrend.entry || 0) : newThisMonthLocal,
@@ -129,11 +150,36 @@ const summaryCards = computed<StatCard[]>(() => {
   const resignedCount = employees.value.filter(item => item.status === 2).length;
 
   return [
-    { label: $t('common.totalEmployees'), value: totalEmployees.value, hint: $t('report.employee.employeesUnderCurrentFilters'), tone: 'primary' },
-    { label: $t('report.employee.activeEmployees'), value: onJobCount, hint: $t('report.employee.employeesWithActiveStatus'), tone: 'success' },
-    { label: $t('report.employee.resignedEmployees'), value: resignedCount, hint: $t('report.employee.employeesWithResignedStatus'), tone: 'warning' },
-    { label: $t('report.employee.newHiresThisMonth'), value: newThisMonthLocal, hint: $t('report.employee.countedByEntryDate'), tone: 'info' },
-    { label: $t('report.employee.resignationsThisMonth'), value: resignedThisMonthLocal, hint: $t('report.employee.countedByResignationDate'), tone: 'danger' },
+    {
+      label: $t('common.totalEmployees'),
+      value: totalEmployees.value,
+      hint: $t('report.employee.employeesUnderCurrentFilters'),
+      tone: 'primary'
+    },
+    {
+      label: $t('report.employee.activeEmployees'),
+      value: onJobCount,
+      hint: $t('report.employee.employeesWithActiveStatus'),
+      tone: 'success'
+    },
+    {
+      label: $t('report.employee.resignedEmployees'),
+      value: resignedCount,
+      hint: $t('report.employee.employeesWithResignedStatus'),
+      tone: 'warning'
+    },
+    {
+      label: $t('report.employee.newHiresThisMonth'),
+      value: newThisMonthLocal,
+      hint: $t('report.employee.countedByEntryDate'),
+      tone: 'info'
+    },
+    {
+      label: $t('report.employee.resignationsThisMonth'),
+      value: resignedThisMonthLocal,
+      hint: $t('report.employee.countedByResignationDate'),
+      tone: 'danger'
+    },
     {
       label: $t('report.employee.averageAge'),
       value: averageAge > 0 ? $t('report.employee.yrs', { age: averageAge.toFixed(1) }) : '-',
@@ -192,7 +238,9 @@ const educationDistribution = computed(() => {
 const employeeTypeDistribution = computed(() =>
   buildDistribution(
     employees.value.reduce<Record<string, number>>((acc, item) => {
-      const name = item.employeeType ? getDictLabelByValue(employeeTypeOptions.value, item.employeeType) : $t('home.educationChart.notFilled');
+      const name = item.employeeType
+        ? getDictLabelByValue(employeeTypeOptions.value, item.employeeType)
+        : $t('home.educationChart.notFilled');
       acc[name] = (acc[name] || 0) + 1;
 
       return acc;
@@ -206,34 +254,43 @@ const ageDistribution = computed(() => {
     return buildDistribution(fromNameValue(employeeSummary.value.ageBuckets));
   }
 
-  // 回退：前端全量计算
+  // 回退：前端全量计算（分桶文案走 i18n，作为图表轴标签展示）
   const bucketMap: Record<string, number> = {
-    '24岁及以下': 0,
-    '25-29岁': 0,
-    '30-34岁': 0,
-    '35-39岁': 0,
-    '40-44岁': 0,
-    '45岁及以上': 0,
-    未填写: 0
+    [$t('report.employee.ageBucketUnder24')]: 0,
+    [$t('report.employee.ageBucket25To29')]: 0,
+    [$t('report.employee.ageBucket30To34')]: 0,
+    [$t('report.employee.ageBucket35To39')]: 0,
+    [$t('report.employee.ageBucket40To44')]: 0,
+    [$t('report.employee.ageBucket45AndAbove')]: 0,
+    [$t('home.educationChart.notFilled')]: 0
+  };
+  const bucketKeys = {
+    under24: $t('report.employee.ageBucketUnder24'),
+    b25To29: $t('report.employee.ageBucket25To29'),
+    b30To34: $t('report.employee.ageBucket30To34'),
+    b35To39: $t('report.employee.ageBucket35To39'),
+    b40To44: $t('report.employee.ageBucket40To44'),
+    b45AndAbove: $t('report.employee.ageBucket45AndAbove'),
+    notFilled: $t('home.educationChart.notFilled')
   };
 
   for (const item of employees.value) {
     const age = getAge(item.birthDate);
 
     if (age === null) {
-      bucketMap[$t('home.educationChart.notFilled')] += 1;
+      bucketMap[bucketKeys.notFilled] += 1;
     } else if (age <= 24) {
-      bucketMap['24岁及以下'] += 1;
+      bucketMap[bucketKeys.under24] += 1;
     } else if (age <= 29) {
-      bucketMap['25-29岁'] += 1;
+      bucketMap[bucketKeys.b25To29] += 1;
     } else if (age <= 34) {
-      bucketMap['30-34岁'] += 1;
+      bucketMap[bucketKeys.b30To34] += 1;
     } else if (age <= 39) {
-      bucketMap['35-39岁'] += 1;
+      bucketMap[bucketKeys.b35To39] += 1;
     } else if (age <= 44) {
-      bucketMap['40-44岁'] += 1;
+      bucketMap[bucketKeys.b40To44] += 1;
     } else {
-      bucketMap['45岁及以上'] += 1;
+      bucketMap[bucketKeys.b45AndAbove] += 1;
     }
   }
 
@@ -276,7 +333,10 @@ const pagedEmployees = computed(() => {
 /** 近 12 个月入离职趋势 - 折线图 */
 const { domRef: trendChartRef, updateOptions: updateTrendOptions } = useEcharts(() => ({
   tooltip: { trigger: 'axis' },
-  legend: { data: [$t('report.employee.newHires'), $t('report.employee.resignedEmployees'), $t('report.employee.netGrowth')], top: 0 },
+  legend: {
+    data: [$t('report.employee.newHires'), $t('report.employee.resignedEmployees'), $t('report.employee.netGrowth')],
+    top: 0
+  },
   grid: { left: '2%', right: '2%', bottom: '3%', top: '40px', containLabel: true },
   xAxis: {
     type: 'category',
@@ -508,31 +568,44 @@ function handleSizeChange(size: number) {
   pagination.value.current = 1;
 }
 
-function handleExport() {
+async function handleExport() {
   if (!employees.value.length) {
     ElMessage.warning($t('report.employee.noEmployeeDataToExport'));
     return;
   }
 
-  downloadCsv(
-    $t('report.employee.employeeReportCsv', { stamp: getExportStamp() }),
-    [
-      { title: $t('common.company'), key: 'companyName' },
-      { title: $t('common.department'), key: 'deptName' },
-      { title: $t('common.employeeNo'), key: 'employeeNo' },
-      { title: $t('common.name'), key: 'name' },
-      { title: $t('common.gender'), key: 'gender', formatter: row => getGenderLabel(row.gender) },
-      { title: $t('common.education'), key: 'highestEducation', formatter: row => getEducationLabel(row.highestEducation) },
-      { title: $t('hr.employee.employeeCategory'), key: 'employeeType', formatter: row => getEmployeeTypeLabel(row.employeeType) },
-      { title: $t('common.entryDate'), key: 'entryDate' },
-      { title: $t('common.resignationDate'), key: 'leaveDate' },
-      { title: $t('common.phone'), key: 'phone' },
-      { title: $t('common.status'), key: 'status', formatter: row => getStatusLabel(row.status) }
-    ],
-    employees.value
-  );
+  exporting.value = true;
+  try {
+    downloadCsv(
+      $t('report.employee.employeeReportCsv', { stamp: getExportStamp() }),
+      [
+        { title: $t('common.company'), key: 'companyName' },
+        { title: $t('common.department'), key: 'deptName' },
+        { title: $t('common.employeeNo'), key: 'employeeNo' },
+        { title: $t('common.name'), key: 'name' },
+        { title: $t('common.gender'), key: 'gender', formatter: row => getGenderLabel(row.gender) },
+        {
+          title: $t('common.education'),
+          key: 'highestEducation',
+          formatter: row => getEducationLabel(row.highestEducation)
+        },
+        {
+          title: $t('hr.employee.employeeCategory'),
+          key: 'employeeType',
+          formatter: row => getEmployeeTypeLabel(row.employeeType)
+        },
+        { title: $t('common.entryDate'), key: 'entryDate' },
+        { title: $t('common.resignationDate'), key: 'leaveDate' },
+        { title: $t('common.phone'), key: 'phone' },
+        { title: $t('common.status'), key: 'status', formatter: row => getStatusLabel(row.status) }
+      ],
+      employees.value
+    );
 
-  ElMessage.success($t('report.employee.employeeReportExported'));
+    ElMessage.success($t('report.employee.employeeReportExported'));
+  } finally {
+    exporting.value = false;
+  }
 }
 
 function buildDistribution(source: Record<string, number>) {
@@ -658,7 +731,12 @@ onMounted(async () => {
     <ElCard class="search-card">
       <ElForm inline :model="searchParams">
         <ElFormItem :label="$t('common.company')">
-          <ElSelect v-model="searchParams.companyId" :placeholder="$t('common.pleaseSelectCompany')" clearable style="width: 180px">
+          <ElSelect
+            v-model="searchParams.companyId"
+            :placeholder="$t('common.pleaseSelectCompany')"
+            clearable
+            style="width: 180px"
+          >
             <ElOption v-for="company in companies" :key="company.id" :label="company.unitName" :value="company.id" />
           </ElSelect>
         </ElFormItem>
@@ -705,7 +783,13 @@ onMounted(async () => {
             <template #icon><icon-ep-refresh /></template>
             {{ $t('common.reset') }}
           </ElButton>
-          <ElButton v-permission="'report:employee:export'" type="success" :disabled="loading || totalEmployees === 0" @click="handleExport">
+          <ElButton
+            v-permission="'report:employee:export'"
+            type="success"
+            :loading="exporting"
+            :disabled="loading || totalEmployees === 0"
+            @click="handleExport"
+          >
             <template #icon><icon-ep-download /></template>
             {{ $t('report.employee.exportDetails') }}
           </ElButton>
@@ -732,7 +816,9 @@ onMounted(async () => {
         <template #header>
           <div class="card-header">
             <span>{{ $t('report.employee.departmentDistribution') }}</span>
-            <span class="card-header__meta">{{ $t('home.reminderCard.total') }} {{ totalEmployees }} {{ $t('org.structure.people') }}</span>
+            <span class="card-header__meta">
+              {{ $t('home.reminderCard.total') }} {{ totalEmployees }} {{ $t('org.structure.people') }}
+            </span>
           </div>
         </template>
         <div class="table-wrapper">
@@ -760,7 +846,9 @@ onMounted(async () => {
         <template #header>
           <div class="card-header">
             <span>{{ $t('home.educationChart.educationDistribution') }}</span>
-            <span class="card-header__meta">{{ $t('home.reminderCard.total') }} {{ totalEmployees }} {{ $t('org.structure.people') }}</span>
+            <span class="card-header__meta">
+              {{ $t('home.reminderCard.total') }} {{ totalEmployees }} {{ $t('org.structure.people') }}
+            </span>
           </div>
         </template>
         <div ref="educationChartRef" class="h-300px overflow-hidden"></div>
@@ -789,7 +877,9 @@ onMounted(async () => {
         <template #header>
           <div class="card-header">
             <span>{{ $t('report.employee.employeeCategoryDistribution') }}</span>
-            <span class="card-header__meta">{{ $t('home.reminderCard.total') }} {{ totalEmployees }} {{ $t('org.structure.people') }}</span>
+            <span class="card-header__meta">
+              {{ $t('home.reminderCard.total') }} {{ totalEmployees }} {{ $t('org.structure.people') }}
+            </span>
           </div>
         </template>
         <div class="table-wrapper">
@@ -817,7 +907,9 @@ onMounted(async () => {
         <template #header>
           <div class="card-header">
             <span>{{ $t('common.ageDistribution') }}</span>
-            <span class="card-header__meta">{{ $t('home.reminderCard.total') }} {{ totalEmployees }} {{ $t('org.structure.people') }}</span>
+            <span class="card-header__meta">
+              {{ $t('home.reminderCard.total') }} {{ totalEmployees }} {{ $t('org.structure.people') }}
+            </span>
           </div>
         </template>
         <div ref="ageChartRef" class="h-300px overflow-hidden"></div>
@@ -879,7 +971,9 @@ onMounted(async () => {
       <template #header>
         <div class="card-header">
           <span>{{ $t('report.employee.employeeDetails') }}</span>
-          <span class="card-header__meta">{{ $t('report.employee.total') }} {{ totalEmployees }} {{ $t('hr.employee.items') }}</span>
+          <span class="card-header__meta">
+            {{ $t('report.employee.total') }} {{ totalEmployees }} {{ $t('hr.employee.items') }}
+          </span>
         </div>
       </template>
 

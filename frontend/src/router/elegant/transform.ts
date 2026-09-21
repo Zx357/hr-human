@@ -192,6 +192,7 @@ const routeMap: RouteMap = {
   "home": "/home",
   "hr": "/hr",
   "hr_contract": "/hr/contract",
+  "hr_leave-quota": "/hr/leave-quota",
   "hr_employee": "/hr/employee",
   "iframe-page": "/iframe-page/:url",
   "login": "/login/:module(pwd-login|code-login|register|reset-pwd|bind-wechat)?",

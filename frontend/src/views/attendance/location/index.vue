@@ -50,7 +50,9 @@ const employeePageNum = ref(1);
 const employeePageSize = ref(10);
 const form = ref<LocationForm>(createEmptyForm());
 
-const dialogTitle = computed(() => (form.value.id ? $t('attendance.location.editClockLocation') : $t('attendance.location.newClockLocation')));
+const dialogTitle = computed(() =>
+  form.value.id ? $t('attendance.location.editClockLocation') : $t('attendance.location.newClockLocation')
+);
 const assignedEmployees = computed(() => selectedLocation.value?.employees || []);
 const currentEmployeeIds = computed(() => selectedLocation.value?.employeeIds || []);
 const pagedAssignedEmployees = computed(() => {
@@ -229,9 +231,15 @@ async function handleEdit(row: AttLocation) {
 
 async function handleDelete(row: AttLocation) {
   try {
-    await ElMessageBox.confirm($t('attendance.location.areYouSureYouWantToDeleteClockLocationAssignedEmployeesWillBeUnassigned', { name: row.locationName }), $t('common.tip'), {
-      type: 'warning'
-    });
+    await ElMessageBox.confirm(
+      $t('attendance.location.areYouSureYouWantToDeleteClockLocationAssignedEmployeesWillBeUnassigned', {
+        name: row.locationName
+      }),
+      $t('common.tip'),
+      {
+        type: 'warning'
+      }
+    );
   } catch {
     // 用户取消删除
     return;
@@ -392,7 +400,10 @@ async function removeEmployees(employees: Api.Hr.Employee[]) {
   const names = employees.map(item => item.name || item.employeeNo).join('、');
   try {
     await ElMessageBox.confirm(
-      $t('attendance.location.areYouSureYouWantToRemoveEmployeesFromTheCurrentClockLocation', { count: employees.length, names: names ? `（${names}）` : '' }),
+      $t('attendance.location.areYouSureYouWantToRemoveEmployeesFromTheCurrentClockLocation', {
+        count: employees.length,
+        names: names ? `（${names}）` : ''
+      }),
       $t('common.tip'),
       {
         type: 'warning'
@@ -436,7 +447,11 @@ function handleBatchRemoveEmployees() {
     <div class="page-header">
       <div>
         <div class="page-title">{{ $t('attendance.location.clockLocationSettings') }}</div>
-        <div class="page-desc">{{ $t('attendance.location.manageClockLocationsOnTheLeftAndAssignedEmployeesOfTheCurrentLocationOnTheRight') }}</div>
+        <div class="page-desc">
+          {{
+            $t('attendance.location.manageClockLocationsOnTheLeftAndAssignedEmployeesOfTheCurrentLocationOnTheRight')
+          }}
+        </div>
       </div>
       <ElButton v-permission="'attendance:location:add'" type="primary" @click="handleAdd">
         <template #icon>
@@ -453,7 +468,12 @@ function handleBatchRemoveEmployees() {
         </template>
 
         <div class="toolbar">
-          <ElInput v-model="keyword" clearable :placeholder="$t('attendance.location.searchLocationNameOrAddress')" @keyup.enter="handleSearch">
+          <ElInput
+            v-model="keyword"
+            clearable
+            :placeholder="$t('attendance.location.searchLocationNameOrAddress')"
+            @keyup.enter="handleSearch"
+          >
             <template #prefix>
               <icon-ep-search />
             </template>
@@ -471,7 +491,12 @@ function handleBatchRemoveEmployees() {
           row-key="id"
           @row-click="selectLocation"
         >
-          <ElTableColumn prop="locationName" :label="$t('attendance.location.locationName')" width="110" show-overflow-tooltip />
+          <ElTableColumn
+            prop="locationName"
+            :label="$t('attendance.location.locationName')"
+            width="110"
+            show-overflow-tooltip
+          />
           <ElTableColumn prop="address" :label="$t('common.clockAddress')" min-width="180" show-overflow-tooltip />
           <ElTableColumn prop="clockRange" :label="$t('attendance.location.radius')" width="72" align="center">
             <template #default="{ row }">{{ row.clockRange }}{{ $t('common.meter') }}</template>
@@ -483,13 +508,31 @@ function handleBatchRemoveEmployees() {
           </ElTableColumn>
           <ElTableColumn prop="status" :label="$t('common.status')" width="72" align="center">
             <template #default="{ row }">
-              <ElTag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? $t('common.enable') : $t('common.deactivate') }}</ElTag>
+              <ElTag :type="row.status === 1 ? 'success' : 'info'">
+                {{ row.status === 1 ? $t('common.enable') : $t('common.deactivate') }}
+              </ElTag>
             </template>
           </ElTableColumn>
           <ElTableColumn :label="$t('common.action')" width="116" align="center" fixed="right">
             <template #default="{ row }">
-              <ElButton v-permission="'attendance:location:edit'" type="primary" link size="small" @click.stop="handleEdit(row)">{{ $t('common.edit') }}</ElButton>
-              <ElButton v-permission="'attendance:location:delete'" type="danger" link size="small" @click.stop="handleDelete(row)">{{ $t('common.delete') }}</ElButton>
+              <ElButton
+                v-permission="'attendance:location:edit'"
+                type="primary"
+                link
+                size="small"
+                @click.stop="handleEdit(row)"
+              >
+                {{ $t('common.edit') }}
+              </ElButton>
+              <ElButton
+                v-permission="'attendance:location:delete'"
+                type="danger"
+                link
+                size="small"
+                @click.stop="handleDelete(row)"
+              >
+                {{ $t('common.delete') }}
+              </ElButton>
             </template>
           </ElTableColumn>
         </ElTable>
@@ -499,7 +542,7 @@ function handleBatchRemoveEmployees() {
             v-model:current-page="pageNum"
             v-model:page-size="pageSize"
             :total="total"
-            :page-sizes="[10, 20, 50]"
+            :page-sizes="[10, 20, 50, 100]"
             layout="total, sizes, prev, pager, next"
             @size-change="handleLocationPageSizeChange"
             @current-change="handleLocationPageChange"
@@ -513,7 +556,11 @@ function handleBatchRemoveEmployees() {
             <div>
               <div class="panel-title">{{ $t('common.assignEmployees') }}</div>
               <div class="panel-desc">
-                {{ selectedLocation ? $t('org.mapPicker.currentLocation', { name: selectedLocation.locationName }) : $t('attendance.location.pleaseSelectAClockLocationOnTheLeft') }}
+                {{
+                  selectedLocation
+                    ? $t('org.mapPicker.currentLocation', { name: selectedLocation.locationName })
+                    : $t('attendance.location.pleaseSelectAClockLocationOnTheLeft')
+                }}
               </div>
             </div>
             <div class="employee-actions">
@@ -534,12 +581,16 @@ function handleBatchRemoveEmployees() {
 
         <div v-if="selectedLocation" class="location-summary">
           <ElDescriptions :column="1" border size="small">
-            <ElDescriptionsItem :label="$t('common.clockAddress')">{{ selectedLocation.address || '--' }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('common.clockAddress')">
+              {{ selectedLocation.address || '--' }}
+            </ElDescriptionsItem>
             <ElDescriptionsItem :label="$t('common.coordinates')">
               {{ selectedLocation.latitude?.toFixed?.(6) || '--' }},
               {{ selectedLocation.longitude?.toFixed?.(6) || '--' }}
             </ElDescriptionsItem>
-            <ElDescriptionsItem :label="$t('attendance.location.clockRadius')">{{ selectedLocation.clockRange || 0 }} {{ $t('common.meter') }}</ElDescriptionsItem>
+            <ElDescriptionsItem :label="$t('attendance.location.clockRadius')">
+              {{ selectedLocation.clockRange || 0 }} {{ $t('common.meter') }}
+            </ElDescriptionsItem>
           </ElDescriptions>
         </div>
 
@@ -559,12 +610,16 @@ function handleBatchRemoveEmployees() {
           <ElTableColumn prop="phone" :label="$t('common.phone')" min-width="106" show-overflow-tooltip />
           <ElTableColumn prop="status" :label="$t('common.status')" width="66" align="center">
             <template #default="{ row }">
-              <ElTag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? $t('common.active') : $t('common.resigned') }}</ElTag>
+              <ElTag :type="row.status === 1 ? 'success' : 'info'">
+                {{ row.status === 1 ? $t('common.active') : $t('common.resigned') }}
+              </ElTag>
             </template>
           </ElTableColumn>
           <ElTableColumn :label="$t('common.action')" width="74" align="center" fixed="right">
             <template #default="{ row }">
-              <ElButton type="danger" link size="small" @click="handleRemoveEmployee(row)">{{ $t('common.remove') }}</ElButton>
+              <ElButton type="danger" link size="small" @click="handleRemoveEmployee(row)">
+                {{ $t('common.remove') }}
+              </ElButton>
             </template>
           </ElTableColumn>
         </ElTable>
@@ -574,7 +629,7 @@ function handleBatchRemoveEmployees() {
             v-model:current-page="employeePageNum"
             v-model:page-size="employeePageSize"
             :total="assignedEmployees.length"
-            :page-sizes="[10, 20, 50]"
+            :page-sizes="[10, 20, 50, 100]"
             layout="total, sizes, prev, pager, next"
             @size-change="resetEmployeeSelection"
             @current-change="resetEmployeeSelection"
@@ -586,13 +641,22 @@ function handleBatchRemoveEmployees() {
     <ElDialog v-model="dialogVisible" :title="dialogTitle" width="760px" destroy-on-close>
       <ElForm :model="form" label-width="100px">
         <ElFormItem :label="$t('attendance.location.locationName')" required>
-          <ElInput v-model="form.locationName" maxlength="100" show-word-limit :placeholder="$t('attendance.location.eGHuashuiIndustrialParkBuilding1Floor5')" />
+          <ElInput
+            v-model="form.locationName"
+            maxlength="100"
+            show-word-limit
+            :placeholder="$t('attendance.location.eGHuashuiIndustrialParkBuilding1Floor5')"
+          />
         </ElFormItem>
 
         <ElFormItem :label="$t('attendance.location.mapPicker')" required>
           <div class="pick-row">
-            <ElButton type="primary" plain @click="handlePickLocation">{{ $t('attendance.location.pickLocationOnMap') }}</ElButton>
-            <span class="pick-tip">{{ $t('attendance.location.theAddressAndGcj02CoordinatesWillBeFilledAutomaticallyAfterSelection') }}</span>
+            <ElButton type="primary" plain @click="handlePickLocation">
+              {{ $t('attendance.location.pickLocationOnMap') }}
+            </ElButton>
+            <span class="pick-tip">
+              {{ $t('attendance.location.theAddressAndGcj02CoordinatesWillBeFilledAutomaticallyAfterSelection') }}
+            </span>
           </div>
         </ElFormItem>
 
@@ -664,7 +728,13 @@ function handleBatchRemoveEmployees() {
       </template>
     </ElDialog>
 
-    <ElDialog v-model="assignDialogVisible" :title="$t('common.selectEmployees')" width="900px" destroy-on-close append-to-body>
+    <ElDialog
+      v-model="assignDialogVisible"
+      :title="$t('common.selectEmployees')"
+      width="900px"
+      destroy-on-close
+      append-to-body
+    >
       <div class="selected-employee-box">
         <template v-if="tempSelectedEmployees.length > 0">
           <ElTag
@@ -683,7 +753,12 @@ function handleBatchRemoveEmployees() {
       <div class="mb-16px">
         <ElForm inline :model="assignEmployeeSearch">
           <ElFormItem :label="$t('common.name')">
-            <ElInput v-model="assignEmployeeSearch.name" :placeholder="$t('common.pleaseInputName')" clearable style="width: 120px" />
+            <ElInput
+              v-model="assignEmployeeSearch.name"
+              :placeholder="$t('common.pleaseInputName')"
+              clearable
+              style="width: 120px"
+            />
           </ElFormItem>
           <ElFormItem :label="$t('common.employeeNo')">
             <ElInput
@@ -743,12 +818,14 @@ function handleBatchRemoveEmployees() {
       </ElTable>
 
       <div class="employee-dialog-footer">
-        <span class="selected-count">{{ $t('attendance.location.selected') }} {{ tempSelectedEmployees.length }} {{ $t('org.structure.people') }}</span>
+        <span class="selected-count">
+          {{ $t('attendance.location.selected') }} {{ tempSelectedEmployees.length }} {{ $t('org.structure.people') }}
+        </span>
         <ElPagination
           v-model:current-page="assignEmployeePage"
           v-model:page-size="assignEmployeePageSize"
           :total="assignEmployeeTotal"
-          :page-sizes="[10, 20, 50]"
+          :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next"
           @current-change="handleAssignPageChange"
           @size-change="handleAssignSizeChange"
@@ -757,7 +834,11 @@ function handleBatchRemoveEmployees() {
 
       <ElAlert
         class="assign-tip"
-        :title="$t('attendance.location.afterSavingSelectedEmployeesWillBeBoundToTheCurrentClockLocationAnEmployeeCanBindToMultipleLocations')"
+        :title="
+          $t(
+            'attendance.location.afterSavingSelectedEmployeesWillBeBoundToTheCurrentClockLocationAnEmployeeCanBindToMultipleLocations'
+          )
+        "
         type="info"
         :closable="false"
         show-icon
@@ -765,7 +846,9 @@ function handleBatchRemoveEmployees() {
 
       <template #footer>
         <ElButton @click="assignDialogVisible = false">{{ $t('common.cancel') }}</ElButton>
-        <ElButton type="primary" :loading="assignSubmitLoading" @click="handleSaveAssignments">{{ $t('attendance.location.saveAssignments') }}</ElButton>
+        <ElButton type="primary" :loading="assignSubmitLoading" @click="handleSaveAssignments">
+          {{ $t('attendance.location.saveAssignments') }}
+        </ElButton>
       </template>
     </ElDialog>
 

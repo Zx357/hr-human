@@ -55,7 +55,15 @@ const monthDates = computed(() => {
   const lastDay = new Date(year, month + 1, 0);
 
   const dates = [];
-  const dayNames = [$t('attendance.daily.sun'), $t('attendance.daily.mon'), $t('attendance.daily.tue'), $t('attendance.daily.wed'), $t('attendance.daily.thu'), $t('attendance.daily.fri'), $t('attendance.daily.sat')];
+  const dayNames = [
+    $t('attendance.daily.sun'),
+    $t('attendance.daily.mon'),
+    $t('attendance.daily.tue'),
+    $t('attendance.daily.wed'),
+    $t('attendance.daily.thu'),
+    $t('attendance.daily.fri'),
+    $t('attendance.daily.sat')
+  ];
 
   for (let d = 1; d <= lastDay.getDate(); d += 1) {
     const date = new Date(year, month, d);
@@ -127,12 +135,13 @@ function getShiftColor(shiftId?: number) {
   if (!shiftId) return 'var(--el-fill-color-lighter)';
   const shift = shifts.value.find(s => s.id === shiftId);
   if (!shift) return 'var(--el-fill-color-lighter)';
-  const name = shift.shiftName || '';
-  if (name.includes('休') || name.includes('假')) return '#909399';
-  if (name.includes('早') || name.includes('白') || name.includes('标准')) return '#67C23A';
-  if (name.includes('中')) return '#E6A23C';
-  if (name.includes('晚') || name.includes('夜')) return '#F56C6C';
-  return '#409EFF';
+  // 按班次的稳定时间字段判定配色（shiftCode/shiftName 为自由命名，不做文本匹配）：
+  // 无时段或零工时 → 休息类班次（中性灰）；跨天 → 夜班（红）；午后开班 → 中班（橙）；其余 → 白班（绿）
+  const { workStartTime: start, workEndTime: end, workHours, isNextDay } = shift;
+  if (!start || !end || !workHours) return '#909399';
+  if (isNextDay === 1 || end <= start) return '#F56C6C';
+  if (Number(start.slice(0, 2)) >= 12) return '#E6A23C';
+  return '#67C23A';
 }
 
 async function handleCellClick(row: ScheduleRow, dateKey: string) {
@@ -259,7 +268,9 @@ function handleReset() {
             <template #default="{ node, data }">
               <div class="tree-node-content">
                 <span>{{ data.unitName }}</span>
-                <ElCheckbox v-if="node.level === 1" v-model="linkage" @click.stop>{{ $t('common.cascade') }}</ElCheckbox>
+                <ElCheckbox v-if="node.level === 1" v-model="linkage" @click.stop>
+                  {{ $t('common.cascade') }}
+                </ElCheckbox>
               </div>
             </template>
             <template #label="{ value }">
@@ -374,7 +385,8 @@ function handleReset() {
         </table>
       </div>
       <div class="mt-8px text-xs text-gray-400">
-        {{ $t('attendance.schedule.note') }}{{
+        {{ $t('attendance.schedule.note')
+        }}{{
           currentBrush !== null
             ? currentBrush === -1
               ? $t('attendance.schedule.clickACellToClearItsSchedule')
@@ -409,7 +421,11 @@ function handleReset() {
           </div>
         </ElFormItem>
         <ElFormItem :label="$t('attendance.schedule.selectShift')" required>
-          <ElSelect v-model="batchForm.shiftId" :placeholder="$t('attendance.schedule.pleaseSelectAShift')" style="width: 100%">
+          <ElSelect
+            v-model="batchForm.shiftId"
+            :placeholder="$t('attendance.schedule.pleaseSelectAShift')"
+            style="width: 100%"
+          >
             <ElOption v-for="shift in shifts" :key="shift.id" :label="shift.shiftName" :value="shift.id!" />
           </ElSelect>
         </ElFormItem>

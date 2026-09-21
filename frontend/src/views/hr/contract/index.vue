@@ -4,18 +4,22 @@ import { ElMessage } from 'element-plus';
 import type { UploadProps } from 'element-plus';
 import dayjs from 'dayjs';
 import { Plus } from '@element-plus/icons-vue';
+import type { TagType } from '@/constants/common';
 import {
   type Contract,
   createContract,
   deleteContract,
   fetchContractPage,
+  renewContract,
   updateContract
 } from '@/service/api/contract';
 import { uploadContractPhoto } from '@/service/api/file';
 import { useDictOptions } from '@/composables/use-dict-options';
+import { useTableColumnSetting } from '@/composables/use-table-column-setting';
 import { downloadFile } from '@/utils/download';
 import AuthImage from '@/components/business/auth-image.vue';
 import EmployeePickerDialog from '@/components/common/employee-picker-dialog.vue';
+import TableHeaderOperation from '@/components/advanced/table-header-operation.vue';
 import { $t } from '@/locales';
 
 defineOptions({ name: 'ContractManage' });
@@ -27,6 +31,19 @@ const data = ref<Contract[]>([]);
 const total = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(10);
+
+// 表格列设置与密度（localStorage 持久化），配合 TableHeaderOperation 使用
+const { columnChecks, density, isColumnVisible } = useTableColumnSetting('hr-contract', [
+  { prop: 'contractNo', label: $t('hr.contract.contractNo'), checked: true, visible: true },
+  { prop: 'companyName', label: $t('application.common.company'), checked: true, visible: true },
+  { prop: 'employeeNo', label: $t('common.employeeNo'), checked: true, visible: true },
+  { prop: 'employeeName', label: $t('common.employeeName'), checked: true, visible: true },
+  { prop: 'contractType', label: $t('hr.contract.contractType'), checked: true, visible: true },
+  { prop: 'startDate', label: $t('common.startDate'), checked: true, visible: true },
+  { prop: 'endDate', label: $t('common.endDate'), checked: true, visible: true },
+  { prop: 'signDate', label: $t('hr.contract.signDate'), checked: true, visible: true },
+  { prop: 'status', label: $t('common.status'), checked: true, visible: true }
+]);
 
 // 员工选择弹窗相关
 const employeeDialogVisible = ref(false);
@@ -152,6 +169,56 @@ async function handleDelete(id: number) {
   }
 }
 
+// ===== 合同续签 =====
+const renewVisible = ref(false);
+const renewSubmitting = ref(false);
+const renewTarget = ref<Contract | null>(null);
+const renewForm = ref<{
+  range?: [string, string];
+  signDate?: string;
+  salary?: number;
+}>({});
+
+function handleRenew(row: Contract) {
+  renewTarget.value = row;
+  // 默认期限：旧合同结束次日（已过期则从今天）起 3 年
+  const oldEnd = row.endDate ? dayjs(row.endDate) : dayjs();
+  const start = oldEnd.add(1, 'day').isAfter(dayjs()) ? oldEnd.add(1, 'day') : dayjs();
+  renewForm.value = {
+    range: [start.format('YYYY-MM-DD'), start.add(3, 'year').format('YYYY-MM-DD')],
+    signDate: dayjs().format('YYYY-MM-DD'),
+    salary: row.salary
+  };
+  renewVisible.value = true;
+}
+
+async function submitRenew() {
+  const target = renewTarget.value;
+  if (!target?.id) return;
+  const range = renewForm.value.range;
+  if (!range || !range[0] || !range[1]) {
+    ElMessage.warning($t('hr.contract.pleaseSelectStartDate'));
+    return;
+  }
+  renewSubmitting.value = true;
+  try {
+    await renewContract({
+      id: target.id,
+      startDate: range[0],
+      endDate: range[1],
+      signDate: renewForm.value.signDate,
+      salary: renewForm.value.salary
+    });
+    ElMessage.success($t('common.updateSuccess'));
+    renewVisible.value = false;
+    loadData();
+  } catch {
+    // 请求层已统一弹错
+  } finally {
+    renewSubmitting.value = false;
+  }
+}
+
 function handleView(row: Contract) {
   operateType.value = 'view';
   editingData.value = {
@@ -177,13 +244,17 @@ async function handleExport() {
   try {
     // clearable 的 ElSelect 清空后值为 ''，跳过空串
     const params = searchParams.value;
-    await downloadFile('/hr/contract/export', $t('hr.contract.contractListXlsx', { date: dayjs().format('YYYYMMDD') }), {
-      employeeName: params.employeeName || undefined,
-      employeeNo: params.employeeNo || undefined,
-      contractNo: params.contractNo || undefined,
-      contractType: params.contractType || undefined,
-      status: params.status === undefined || (params.status as unknown) === '' ? undefined : params.status
-    });
+    await downloadFile(
+      '/hr/contract/export',
+      $t('hr.contract.contractListXlsx', { date: dayjs().format('YYYYMMDD') }),
+      {
+        employeeName: params.employeeName || undefined,
+        employeeNo: params.employeeNo || undefined,
+        contractNo: params.contractNo || undefined,
+        contractType: params.contractType || undefined,
+        status: params.status === undefined || (params.status as unknown) === '' ? undefined : params.status
+      }
+    );
     ElMessage.success($t('attendance.common.exportSuccessful'));
   } catch {
     // downloadFile 内部已提示具体错误
@@ -326,7 +397,8 @@ function handleRemoveContractImage(index: number) {
   contractImageList.value.splice(index, 1);
 }
 
-const statusMap: Record<number, { label: string; type: string }> = {
+// 合同状态（1-履行中 2-即将到期 3-已到期 4-已解除），语义独立，不并入 constants/common 的 enableStatusMap
+const statusMap: Record<number, { label: string; type: TagType }> = {
   1: { label: $t('hr.contract.inEffect'), type: 'success' },
   2: { label: $t('hr.contract.expiringSoon'), type: 'warning' },
   3: { label: $t('hr.contract.expired'), type: 'info' },
@@ -364,7 +436,12 @@ const statusMap: Record<number, { label: string; type: string }> = {
           />
         </ElFormItem>
         <ElFormItem :label="$t('hr.contract.contractType')">
-          <ElSelect v-model="searchParams.contractType" :placeholder="$t('hr.contract.pleaseSelectContractType')" clearable style="width: 180px">
+          <ElSelect
+            v-model="searchParams.contractType"
+            :placeholder="$t('hr.contract.pleaseSelectContractType')"
+            clearable
+            style="width: 180px"
+          >
             <ElOption
               v-for="item in contractTypeOptions"
               :key="item.dictValue"
@@ -374,7 +451,12 @@ const statusMap: Record<number, { label: string; type: string }> = {
           </ElSelect>
         </ElFormItem>
         <ElFormItem :label="$t('common.status')">
-          <ElSelect v-model="searchParams.status" :placeholder="$t('common.pleaseSelectStatus')" clearable style="width: 150px">
+          <ElSelect
+            v-model="searchParams.status"
+            :placeholder="$t('common.pleaseSelectStatus')"
+            clearable
+            style="width: 150px"
+          >
             <ElOption :label="$t('hr.contract.inEffect')" :value="1" />
             <ElOption :label="$t('hr.contract.expiringSoon')" :value="2" />
             <ElOption :label="$t('hr.contract.expired')" :value="3" />
@@ -397,9 +479,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
     <!-- 表格区域 -->
     <ElCard class="flex-1">
       <template #header>
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-12px">
           <span>{{ $t('hr.contract.contractList') }}</span>
-          <div class="flex items-center gap-8px">
+          <div class="flex flex-wrap items-center gap-8px">
             <ElButton v-permission="'hr:contract:export'" :loading="exporting" @click="handleExport">
               <template #icon><icon-ep-download /></template>
               {{ $t('common.export') }}
@@ -408,40 +490,105 @@ const statusMap: Record<number, { label: string; type: string }> = {
               <template #icon><icon-ep-plus /></template>
               {{ $t('hr.contract.newContract') }}
             </ElButton>
+            <TableHeaderOperation
+              v-model:columns="columnChecks"
+              v-model:density="density"
+              :loading="loading"
+              @refresh="loadData"
+            >
+              <template #default />
+            </TableHeaderOperation>
           </div>
         </div>
       </template>
 
-      <ElTable v-loading="loading" :data="data" border stripe>
+      <ElTable v-loading="loading" :data="data" border stripe :size="density">
         <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" />
-        <ElTableColumn prop="contractNo" :label="$t('hr.contract.contractNo')" min-width="130" />
-        <ElTableColumn prop="companyName" :label="$t('application.common.company')" min-width="120" />
-        <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" min-width="100" />
-        <ElTableColumn prop="employeeName" :label="$t('common.employeeName')" min-width="100" />
-        <ElTableColumn prop="contractType" :label="$t('hr.contract.contractType')" min-width="100" align="center">
+        <ElTableColumn
+          v-if="isColumnVisible('contractNo')"
+          prop="contractNo"
+          :label="$t('hr.contract.contractNo')"
+          min-width="130"
+        />
+        <ElTableColumn
+          v-if="isColumnVisible('companyName')"
+          prop="companyName"
+          :label="$t('application.common.company')"
+          min-width="120"
+        />
+        <ElTableColumn
+          v-if="isColumnVisible('employeeNo')"
+          prop="employeeNo"
+          :label="$t('common.employeeNo')"
+          min-width="100"
+        />
+        <ElTableColumn
+          v-if="isColumnVisible('employeeName')"
+          prop="employeeName"
+          :label="$t('common.employeeName')"
+          min-width="100"
+        />
+        <ElTableColumn
+          v-if="isColumnVisible('contractType')"
+          prop="contractType"
+          :label="$t('hr.contract.contractType')"
+          min-width="100"
+          align="center"
+        >
           <template #default="{ row }">
             {{ getContractTypeLabel(row.contractType) }}
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="startDate" :label="$t('common.startDate')" min-width="110" />
-        <ElTableColumn prop="endDate" :label="$t('common.endDate')" min-width="110" />
-        <ElTableColumn prop="signDate" :label="$t('hr.contract.signDate')" min-width="110" />
-        <ElTableColumn prop="status" :label="$t('common.status')" min-width="90" align="center">
+        <ElTableColumn
+          v-if="isColumnVisible('startDate')"
+          prop="startDate"
+          :label="$t('common.startDate')"
+          min-width="110"
+        />
+        <ElTableColumn v-if="isColumnVisible('endDate')" prop="endDate" :label="$t('common.endDate')" min-width="110" />
+        <ElTableColumn
+          v-if="isColumnVisible('signDate')"
+          prop="signDate"
+          :label="$t('hr.contract.signDate')"
+          min-width="110"
+        />
+        <ElTableColumn
+          v-if="isColumnVisible('status')"
+          prop="status"
+          :label="$t('common.status')"
+          min-width="90"
+          align="center"
+        >
           <template #default="{ row }">
-            <ElTag :type="statusMap[row.status]?.type as any">
+            <ElTag :type="statusMap[row.status]?.type">
               {{ statusMap[row.status]?.label }}
             </ElTag>
           </template>
         </ElTableColumn>
-        <ElTableColumn :label="$t('common.action')" width="180" align="center" fixed="right">
+        <ElTableColumn :label="$t('common.action')" width="230" align="center" fixed="right">
           <template #default="{ row }">
             <ElButton type="primary" link size="small" @click="handleView(row)">{{ $t('common.view') }}</ElButton>
             <ElButton v-permission="'hr:contract:edit'" type="primary" link size="small" @click="handleEdit(row)">
               {{ $t('common.edit') }}
             </ElButton>
-            <ElPopconfirm :title="$t('hr.contract.areYouSureYouWantToDeleteThisContract')" @confirm="handleDelete(row.id)">
+            <ElButton
+              v-if="row.status !== 4"
+              v-permission="'hr:contract:add'"
+              type="warning"
+              link
+              size="small"
+              @click="handleRenew(row)"
+            >
+              {{ $t('hr.contract.renew') }}
+            </ElButton>
+            <ElPopconfirm
+              :title="$t('hr.contract.areYouSureYouWantToDeleteThisContract')"
+              @confirm="handleDelete(row.id)"
+            >
               <template #reference>
-                <ElButton v-permission="'hr:contract:delete'" type="danger" link size="small">{{ $t('common.delete') }}</ElButton>
+                <ElButton v-permission="'hr:contract:delete'" type="danger" link size="small">
+                  {{ $t('common.delete') }}
+                </ElButton>
               </template>
             </ElPopconfirm>
           </template>
@@ -464,11 +611,19 @@ const statusMap: Record<number, { label: string; type: string }> = {
     <!-- 新增/编辑/查看弹窗 -->
     <ElDialog
       v-model="drawerVisible"
-      :title="operateType === 'add' ? $t('hr.contract.newContract') : isViewMode ? $t('hr.contract.viewContract') : $t('hr.contract.editContract')"
+      :title="
+        operateType === 'add'
+          ? $t('hr.contract.newContract')
+          : isViewMode
+            ? $t('hr.contract.viewContract')
+            : $t('hr.contract.editContract')
+      "
       width="600px"
       top="24px"
       destroy-on-close
       append-to-body
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
       class="contract-dialog"
       @opened="handleContractDialogOpened"
     >
@@ -478,15 +633,26 @@ const statusMap: Record<number, { label: string; type: string }> = {
         </ElFormItem>
         <ElFormItem :label="$t('common.employee')" required>
           <div class="w-full flex gap-8px">
-            <ElInput v-model="employeeDisplayName" disabled :placeholder="$t('common.pleaseSelectEmployees')" class="flex-1" />
-            <ElButton v-if="!isViewMode" type="primary" @click="employeeDialogVisible = true">{{ $t('common.selectEmployees') }}</ElButton>
+            <ElInput
+              v-model="employeeDisplayName"
+              disabled
+              :placeholder="$t('common.pleaseSelectEmployees')"
+              class="flex-1"
+            />
+            <ElButton v-if="!isViewMode" type="primary" @click="employeeDialogVisible = true">
+              {{ $t('common.selectEmployees') }}
+            </ElButton>
           </div>
         </ElFormItem>
         <ElFormItem v-if="editingData.contractCount" :label="$t('hr.contract.contractCount')">
           <ElInput :value="$t('hr.contract.no', { count: editingData.contractCount })" disabled style="width: 100%" />
         </ElFormItem>
         <ElFormItem :label="$t('hr.contract.contractType')" required>
-          <ElSelect v-model="editingData.contractType" :placeholder="$t('hr.contract.pleaseSelectContractType')" style="width: 100%">
+          <ElSelect
+            v-model="editingData.contractType"
+            :placeholder="$t('hr.contract.pleaseSelectContractType')"
+            style="width: 100%"
+          >
             <ElOption
               v-for="item in contractTypeOptions"
               :key="item.dictValue"
@@ -559,12 +725,63 @@ const statusMap: Record<number, { label: string; type: string }> = {
           </div>
         </ElFormItem>
         <ElFormItem :label="$t('common.remark')">
-          <ElInput v-model="editingData.remark" type="textarea" :rows="3" :placeholder="$t('hr.contract.pleaseEnterRemark')" />
+          <ElInput
+            v-model="editingData.remark"
+            type="textarea"
+            :rows="3"
+            :placeholder="$t('hr.contract.pleaseEnterRemark')"
+          />
         </ElFormItem>
       </ElForm>
       <template #footer>
         <ElButton @click="drawerVisible = false">{{ isViewMode ? $t('common.close') : $t('common.cancel') }}</ElButton>
-        <ElButton v-if="!isViewMode" type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('common.ok') }}</ElButton>
+        <ElButton v-if="!isViewMode" type="primary" :loading="submitLoading" @click="handleSubmit">
+          {{ $t('common.ok') }}
+        </ElButton>
+      </template>
+    </ElDialog>
+
+    <!-- 合同续签弹窗：旧合同置为已续签，生成新合同 -->
+    <ElDialog
+      v-model="renewVisible"
+      :title="$t('hr.contract.renewTitle')"
+      width="480px"
+      destroy-on-close
+      append-to-body
+      :close-on-click-modal="false"
+    >
+      <ElForm label-width="100px">
+        <ElFormItem :label="$t('hr.contract.renewOriginal')">
+          <span>{{ renewTarget?.contractNo }}（{{ renewTarget?.employeeName }}）</span>
+        </ElFormItem>
+        <ElFormItem :label="$t('hr.contract.renewTerm')" required>
+          <ElDatePicker
+            v-model="renewForm.range"
+            type="daterange"
+            value-format="YYYY-MM-DD"
+            :start-placeholder="$t('common.startDate')"
+            :end-placeholder="$t('common.endDate')"
+            style="width: 100%"
+          />
+        </ElFormItem>
+        <ElFormItem :label="$t('hr.contract.signDate')">
+          <ElDatePicker
+            v-model="renewForm.signDate"
+            type="date"
+            value-format="YYYY-MM-DD"
+            :placeholder="$t('hr.contract.signDate')"
+            style="width: 100%"
+          />
+        </ElFormItem>
+        <ElFormItem :label="$t('hr.contract.renewSalary')">
+          <ElInputNumber v-model="renewForm.salary" :min="0" :controls="false" style="width: 100%" />
+        </ElFormItem>
+      </ElForm>
+      <template #footer>
+        <ElButton @click="renewVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="renewSubmitting" @click="submitRenew">
+          {{ $t('hr.contract.renew') }}
+        </ElButton>
       </template>
     </ElDialog>
 

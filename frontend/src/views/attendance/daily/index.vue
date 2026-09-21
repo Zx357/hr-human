@@ -2,6 +2,7 @@
 import { onMounted, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import dayjs from 'dayjs';
+import type { TagType } from '@/constants/common';
 import {
   type AttDailyRecord,
   calculateDailyAttendance,
@@ -9,8 +10,10 @@ import {
   lockDailyRecords
 } from '@/service/api/attendance';
 import { fetchCompanyList, fetchDepartmentTree } from '@/service/api/organization';
+import { useTableColumnSetting } from '@/composables/use-table-column-setting';
 import { resolveOrgIds } from '@/utils/report';
 import { downloadFile } from '@/utils/download';
+import TableHeaderOperation from '@/components/advanced/table-header-operation.vue';
 import { $t } from '@/locales';
 
 defineOptions({ name: 'DailyAttendance' });
@@ -36,7 +39,32 @@ const searchParams = ref({
 
 const pagination = ref({ current: 1, pageSize: 20, total: 0 });
 
-const statusMap: Record<number, { label: string; type: string }> = {
+// 表格列设置与密度（localStorage 持久化），配合 TableHeaderOperation 使用；页面原为 small 密度，沿用为初始值
+const { columnChecks, density, isColumnVisible } = useTableColumnSetting(
+  'attendance-daily',
+  [
+    { prop: 'attDate', label: $t('common.date'), checked: true, visible: true },
+    { prop: 'weekday', label: $t('attendance.daily.weekday'), checked: true, visible: true },
+    { prop: 'companyName', label: $t('common.company'), checked: true, visible: true },
+    { prop: 'employeeNo', label: $t('common.employeeNo'), checked: true, visible: true },
+    { prop: 'employeeName', label: $t('common.name'), checked: true, visible: true },
+    { prop: 'deptName', label: $t('common.department'), checked: true, visible: true },
+    { prop: 'shiftName', label: $t('common.shift'), checked: true, visible: true },
+    { prop: 'clockIns', label: $t('attendance.daily.clockInsByPeriod'), checked: true, visible: true },
+    { prop: 'lateMinutes', label: $t('common.late'), checked: true, visible: true },
+    { prop: 'earlyMinutes', label: $t('common.earlyLeave'), checked: true, visible: true },
+    { prop: 'workHours', label: $t('common.workHours'), checked: true, visible: true },
+    { prop: 'overtimeDuration', label: $t('common.overtime'), checked: true, visible: true },
+    { prop: 'leaveDuration', label: $t('common.leave'), checked: true, visible: true },
+    { prop: 'businessDuration', label: $t('common.businessTrip'), checked: true, visible: true },
+    { prop: 'status', label: $t('common.status'), checked: true, visible: true }
+  ],
+  'small'
+);
+
+// 考勤日报结果状态（0-未处理 1-正常 2-迟到 3-早退 4-旷工 5-请假 6-出差 7-迟到且早退），
+// 与启用/停用类状态语义不同，不并入 constants/common 的 enableStatusMap
+const statusMap: Record<number, { label: string; type: TagType }> = {
   0: { label: $t('attendance.daily.unprocessed'), type: 'info' },
   1: { label: $t('common.normal'), type: 'success' },
   2: { label: $t('common.late'), type: 'warning' },
@@ -129,7 +157,15 @@ function handleSelectionChange(rows: AttDailyRecord[]) {
   selectedRows.value = rows;
 }
 
-const weekDays = [$t('attendance.daily.sun'), $t('attendance.daily.mon'), $t('attendance.daily.tue'), $t('attendance.daily.wed'), $t('attendance.daily.thu'), $t('attendance.daily.fri'), $t('attendance.daily.sat')];
+const weekDays = [
+  $t('attendance.daily.sun'),
+  $t('attendance.daily.mon'),
+  $t('attendance.daily.tue'),
+  $t('attendance.daily.wed'),
+  $t('attendance.daily.thu'),
+  $t('attendance.daily.fri'),
+  $t('attendance.daily.sat')
+];
 function getWeekDay(dateStr: string) {
   if (!dateStr) return '';
   return $t('attendance.daily.wk', { day: weekDays[dayjs(dateStr).day()] });
@@ -204,11 +240,15 @@ async function handleCalculate() {
     return;
   }
   try {
-    await ElMessageBox.confirm($t('attendance.daily.confirmToRunAttendanceCalculation', { tip: getCalculateTooltip().replace(/\n/g, ' ') }), $t('attendance.daily.attendanceCalculationConfirmation'), {
-      type: 'warning',
-      confirmButtonText: $t('attendance.daily.confirmCalculation'),
-      cancelButtonText: $t('common.cancel')
-    });
+    await ElMessageBox.confirm(
+      $t('attendance.daily.confirmToRunAttendanceCalculation', { tip: getCalculateTooltip().replace(/\n/g, ' ') }),
+      $t('attendance.daily.attendanceCalculationConfirmation'),
+      {
+        type: 'warning',
+        confirmButtonText: $t('attendance.daily.confirmCalculation'),
+        cancelButtonText: $t('common.cancel')
+      }
+    );
   } catch {
     return;
   }
@@ -257,7 +297,10 @@ async function handleLock(lock: boolean) {
   }
   try {
     await ElMessageBox.confirm(
-      $t('attendance.daily.areYouSureYouWantToTheSelectedAttendanceRecords', { action: lock ? $t('attendance.daily.lock') : $t('attendance.daily.unlock'), count: selectedRows.value.length }),
+      $t('attendance.daily.areYouSureYouWantToTheSelectedAttendanceRecords', {
+        action: lock ? $t('attendance.daily.lock') : $t('attendance.daily.unlock'),
+        count: selectedRows.value.length
+      }),
       lock ? $t('attendance.daily.lockConfirmation') : $t('attendance.daily.unlockConfirmation'),
       {
         type: 'warning',
@@ -294,14 +337,18 @@ async function handleExport() {
       const resolved = resolveOrgIds(departments.value, deptId);
       orgIds = resolved.length > 0 ? resolved : [deptId ?? companyId!];
     }
-    await downloadFile('/attendance/daily/export', $t('attendance.daily.dailyAttendanceXlsx', { start: startDate, end: endDate }), {
-      startDate,
-      endDate,
-      orgIds: orgIds?.join(','),
-      employeeNo: searchParams.value.employeeNo,
-      employeeName: searchParams.value.employeeName,
-      status: searchParams.value.status
-    });
+    await downloadFile(
+      '/attendance/daily/export',
+      $t('attendance.daily.dailyAttendanceXlsx', { start: startDate, end: endDate }),
+      {
+        startDate,
+        endDate,
+        orgIds: orgIds?.join(','),
+        employeeNo: searchParams.value.employeeNo,
+        employeeName: searchParams.value.employeeName,
+        status: searchParams.value.status
+      }
+    );
     ElMessage.success($t('attendance.common.exportSuccessful'));
   } catch {
     // downloadFile 内部已提示具体错误
@@ -327,7 +374,12 @@ async function handleExport() {
           />
         </ElFormItem>
         <ElFormItem :label="$t('common.company')">
-          <ElSelect v-model="searchParams.companyId" :placeholder="$t('common.pleaseSelectCompany')" clearable style="width: 150px">
+          <ElSelect
+            v-model="searchParams.companyId"
+            :placeholder="$t('common.pleaseSelectCompany')"
+            clearable
+            style="width: 150px"
+          >
             <ElOption v-for="c in companies" :key="c.id" :label="c.unitName || c.companyName" :value="c.id" />
           </ElSelect>
         </ElFormItem>
@@ -380,49 +432,120 @@ async function handleExport() {
 
     <ElCard class="flex-1">
       <template #header>
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-12px">
+        <div class="flex flex-wrap items-center justify-between gap-12px">
+          <div class="flex flex-wrap items-center gap-12px">
             <span>{{ $t('attendance.daily.dailyAttendanceRecords') }}</span>
             <ElTooltip :content="getCalculateTooltip()" placement="top">
-              <ElButton v-permission="'attendance:daily:calculate'" type="success" :loading="calculating" @click="handleCalculate">
+              <ElButton
+                v-permission="'attendance:daily:calculate'"
+                type="success"
+                :loading="calculating"
+                @click="handleCalculate"
+              >
                 <template #icon><icon-ep-refresh /></template>
                 {{ getCalculateButtonText() }}
               </ElButton>
             </ElTooltip>
-            <ElButton v-permission="'attendance:daily:lock'" type="warning" :disabled="selectedRows.length === 0" @click="handleLock(true)">
+            <ElButton
+              v-permission="'attendance:daily:lock'"
+              type="warning"
+              :disabled="selectedRows.length === 0"
+              @click="handleLock(true)"
+            >
               <template #icon><icon-ep-lock /></template>
               {{ $t('attendance.daily.lock') }}
             </ElButton>
-            <ElButton v-permission="'attendance:daily:lock'" :disabled="selectedRows.length === 0" @click="handleLock(false)">
+            <ElButton
+              v-permission="'attendance:daily:lock'"
+              :disabled="selectedRows.length === 0"
+              @click="handleLock(false)"
+            >
               <template #icon><icon-ep-unlock /></template>
               {{ $t('attendance.daily.unlock') }}
             </ElButton>
-            <ElButton v-permission="'attendance:daily:export'" type="primary" :loading="exporting" @click="handleExport">
+            <ElButton
+              v-permission="'attendance:daily:export'"
+              type="primary"
+              :loading="exporting"
+              @click="handleExport"
+            >
               <template #icon><icon-ep-download /></template>
               {{ $t('common.export') }}
             </ElButton>
-            <span class="text-xs text-gray-400">{{ $t('attendance.daily.tipCheckEmployeesToCalculateTheSelectionOrCalculateBySearchFilters') }}</span>
+            <span class="text-xs text-gray-400">
+              {{ $t('attendance.daily.tipCheckEmployeesToCalculateTheSelectionOrCalculateBySearchFilters') }}
+            </span>
           </div>
           <div class="flex items-center gap-8px text-sm">
-            <ElTag v-for="(item, key) in statusMap" :key="key" :type="item.type as any" size="small">
+            <ElTag v-for="(item, key) in statusMap" :key="key" :type="item.type" size="small">
               {{ item.label }}
             </ElTag>
+            <TableHeaderOperation
+              v-model:columns="columnChecks"
+              v-model:density="density"
+              :loading="loading"
+              @refresh="loadData"
+            >
+              <template #default />
+            </TableHeaderOperation>
           </div>
         </div>
       </template>
 
-      <ElTable v-loading="loading" :data="data" border stripe size="small" @selection-change="handleSelectionChange">
+      <ElTable v-loading="loading" :data="data" border stripe :size="density" @selection-change="handleSelectionChange">
         <ElTableColumn type="selection" width="40" fixed="left" />
-        <ElTableColumn prop="attDate" :label="$t('common.date')" width="100" fixed="left" />
-        <ElTableColumn :label="$t('attendance.daily.weekday')" width="60" align="center" fixed="left">
+        <ElTableColumn
+          v-if="isColumnVisible('attDate')"
+          prop="attDate"
+          :label="$t('common.date')"
+          width="100"
+          fixed="left"
+          sortable
+        />
+        <ElTableColumn
+          v-if="isColumnVisible('weekday')"
+          :label="$t('attendance.daily.weekday')"
+          width="60"
+          align="center"
+          fixed="left"
+        >
           <template #default="{ row }">{{ getWeekDay(row.attDate) }}</template>
         </ElTableColumn>
-        <ElTableColumn prop="companyName" :label="$t('common.company')" width="100" show-overflow-tooltip fixed="left" />
-        <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="80" fixed="left" />
-        <ElTableColumn prop="employeeName" :label="$t('common.name')" width="70" fixed="left" />
-        <ElTableColumn prop="deptName" :label="$t('common.department')" width="100" show-overflow-tooltip />
-        <ElTableColumn prop="shiftName" :label="$t('common.shift')" width="70" />
-        <ElTableColumn :label="$t('attendance.daily.clockInsByPeriod')" min-width="400">
+        <ElTableColumn
+          v-if="isColumnVisible('companyName')"
+          prop="companyName"
+          :label="$t('common.company')"
+          width="100"
+          show-overflow-tooltip
+          fixed="left"
+        />
+        <ElTableColumn
+          v-if="isColumnVisible('employeeNo')"
+          prop="employeeNo"
+          :label="$t('common.employeeNo')"
+          width="80"
+          fixed="left"
+        />
+        <ElTableColumn
+          v-if="isColumnVisible('employeeName')"
+          prop="employeeName"
+          :label="$t('common.name')"
+          width="70"
+          fixed="left"
+        />
+        <ElTableColumn
+          v-if="isColumnVisible('deptName')"
+          prop="deptName"
+          :label="$t('common.department')"
+          width="100"
+          show-overflow-tooltip
+        />
+        <ElTableColumn v-if="isColumnVisible('shiftName')" prop="shiftName" :label="$t('common.shift')" width="70" />
+        <ElTableColumn
+          v-if="isColumnVisible('clockIns')"
+          :label="$t('attendance.daily.clockInsByPeriod')"
+          min-width="400"
+        >
           <template #default="{ row }">
             <div class="flex flex-wrap gap-8px">
               <div
@@ -451,22 +574,50 @@ async function handleExport() {
             </div>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="lateMinutes" :label="$t('common.late')" width="60" align="center">
+        <ElTableColumn
+          v-if="isColumnVisible('lateMinutes')"
+          prop="lateMinutes"
+          :label="$t('common.late')"
+          width="60"
+          align="center"
+        >
           <template #default="{ row }">
-            <span v-if="row.lateMinutes > 0" class="text-red-500">{{ row.lateMinutes }}{{ $t('attendance.daily.min') }}</span>
+            <span v-if="row.lateMinutes > 0" class="text-red-500">
+              {{ row.lateMinutes }}{{ $t('attendance.daily.min') }}
+            </span>
             <span v-else>-</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="earlyMinutes" :label="$t('common.earlyLeave')" width="60" align="center">
+        <ElTableColumn
+          v-if="isColumnVisible('earlyMinutes')"
+          prop="earlyMinutes"
+          :label="$t('common.earlyLeave')"
+          width="60"
+          align="center"
+        >
           <template #default="{ row }">
-            <span v-if="row.earlyMinutes > 0" class="text-red-500">{{ row.earlyMinutes }}{{ $t('attendance.daily.min') }}</span>
+            <span v-if="row.earlyMinutes > 0" class="text-red-500">
+              {{ row.earlyMinutes }}{{ $t('attendance.daily.min') }}
+            </span>
             <span v-else>-</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="workHours" :label="$t('common.workHours')" width="60" align="center">
+        <ElTableColumn
+          v-if="isColumnVisible('workHours')"
+          prop="workHours"
+          :label="$t('common.workHours')"
+          width="60"
+          align="center"
+        >
           <template #default="{ row }">{{ row.workHours || 0 }}h</template>
         </ElTableColumn>
-        <ElTableColumn prop="overtimeDuration" :label="$t('common.overtime')" width="70" align="center">
+        <ElTableColumn
+          v-if="isColumnVisible('overtimeDuration')"
+          prop="overtimeDuration"
+          :label="$t('common.overtime')"
+          width="70"
+          align="center"
+        >
           <template #default="{ row }">
             <ElTooltip v-if="row.overtimeDuration > 0" placement="top">
               <template #content>
@@ -477,18 +628,32 @@ async function handleExport() {
             <span v-else>-</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn :label="$t('common.leave')" width="70" align="center">
+        <ElTableColumn v-if="isColumnVisible('leaveDuration')" :label="$t('common.leave')" width="70" align="center">
           <template #default="{ row }">
             <ElTooltip v-if="getTotalLeaveHours(row) > 0" placement="top">
               <template #content>
                 <div class="text-xs">
-                  <div v-if="row.annualLeaveDuration > 0">{{ $t('attendance.daily.annualLeave') }} {{ row.annualLeaveDuration }}h</div>
-                  <div v-if="row.personalLeaveDuration > 0">{{ $t('attendance.daily.personalLeave') }} {{ row.personalLeaveDuration }}h</div>
-                  <div v-if="row.sickLeaveDuration > 0">{{ $t('attendance.daily.sickLeave') }} {{ row.sickLeaveDuration }}h</div>
-                  <div v-if="row.marriageLeaveDuration > 0">{{ $t('attendance.daily.marriageLeave') }} {{ row.marriageLeaveDuration }}h</div>
-                  <div v-if="row.maternityLeaveDuration > 0">{{ $t('attendance.daily.maternityLeave') }} {{ row.maternityLeaveDuration }}h</div>
-                  <div v-if="row.paternityLeaveDuration > 0">{{ $t('attendance.daily.paternityLeave') }} {{ row.paternityLeaveDuration }}h</div>
-                  <div v-if="row.bereavementLeaveDuration > 0">{{ $t('attendance.daily.bereavementLeave') }} {{ row.bereavementLeaveDuration }}h</div>
+                  <div v-if="row.annualLeaveDuration > 0">
+                    {{ $t('attendance.daily.annualLeave') }} {{ row.annualLeaveDuration }}h
+                  </div>
+                  <div v-if="row.personalLeaveDuration > 0">
+                    {{ $t('attendance.daily.personalLeave') }} {{ row.personalLeaveDuration }}h
+                  </div>
+                  <div v-if="row.sickLeaveDuration > 0">
+                    {{ $t('attendance.daily.sickLeave') }} {{ row.sickLeaveDuration }}h
+                  </div>
+                  <div v-if="row.marriageLeaveDuration > 0">
+                    {{ $t('attendance.daily.marriageLeave') }} {{ row.marriageLeaveDuration }}h
+                  </div>
+                  <div v-if="row.maternityLeaveDuration > 0">
+                    {{ $t('attendance.daily.maternityLeave') }} {{ row.maternityLeaveDuration }}h
+                  </div>
+                  <div v-if="row.paternityLeaveDuration > 0">
+                    {{ $t('attendance.daily.paternityLeave') }} {{ row.paternityLeaveDuration }}h
+                  </div>
+                  <div v-if="row.bereavementLeaveDuration > 0">
+                    {{ $t('attendance.daily.bereavementLeave') }} {{ row.bereavementLeaveDuration }}h
+                  </div>
                 </div>
               </template>
               <span class="cursor-pointer text-orange-500">{{ getTotalLeaveHours(row) }}h</span>
@@ -496,7 +661,13 @@ async function handleExport() {
             <span v-else>-</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="businessDuration" :label="$t('common.businessTrip')" width="70" align="center">
+        <ElTableColumn
+          v-if="isColumnVisible('businessDuration')"
+          prop="businessDuration"
+          :label="$t('common.businessTrip')"
+          width="70"
+          align="center"
+        >
           <template #default="{ row }">
             <ElTooltip v-if="row.businessDuration > 0" placement="top">
               <template #content>
@@ -507,9 +678,15 @@ async function handleExport() {
             <span v-else>-</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="status" :label="$t('common.status')" width="85" align="center">
+        <ElTableColumn
+          v-if="isColumnVisible('status')"
+          prop="status"
+          :label="$t('common.status')"
+          width="85"
+          align="center"
+        >
           <template #default="{ row }">
-            <ElTag :type="statusMap[row.status]?.type as any" size="small">{{ statusMap[row.status]?.label }}</ElTag>
+            <ElTag :type="statusMap[row.status]?.type" size="small">{{ statusMap[row.status]?.label }}</ElTag>
           </template>
         </ElTableColumn>
         <ElTableColumn :label="$t('attendance.daily.lock')" width="60" align="center">
@@ -525,7 +702,7 @@ async function handleExport() {
           v-model:current-page="pagination.current"
           v-model:page-size="pagination.pageSize"
           :total="pagination.total"
-          :page-sizes="[20, 50, 100]"
+          :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next"
           @current-change="handlePageChange"
           @size-change="handleSizeChange"

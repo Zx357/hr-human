@@ -4,6 +4,7 @@ import { ElMessage, type FormInstance, type FormRules, type UploadProps } from '
 import dayjs from 'dayjs';
 import { Plus } from '@element-plus/icons-vue';
 import { REG_EMAIL, REG_ID_CARD, REG_PHONE } from '@/constants/reg';
+import type { TagType } from '@/constants/common';
 import {
   checkEmployeeNo,
   createEmployee,
@@ -23,9 +24,11 @@ import {
   uploadEmployeeIdCard
 } from '@/service/api/file';
 import { useDictOptions } from '@/composables/use-dict-options';
+import { useTableColumnSetting } from '@/composables/use-table-column-setting';
 import { downloadFile } from '@/utils/download';
 import AuthImage from '@/components/business/auth-image.vue';
 import { hasPermission } from '@/directives/permission';
+import TableHeaderOperation from '@/components/advanced/table-header-operation.vue';
 import { $t } from '@/locales';
 
 defineOptions({ name: 'EmployeeManage' });
@@ -92,12 +95,44 @@ const employeeNoError = ref(''); // 工号重复错误提示
 const basicFormRef = ref<FormInstance>();
 const exporting = ref(false); // 导出 loading
 
+// 表格列设置与密度（localStorage 持久化），配合 TableHeaderOperation 使用
+const { columnChecks, density, isColumnVisible } = useTableColumnSetting('hr-employee', [
+  { prop: 'employeeNo', label: $t('hr.employee.personnelNo'), checked: true, visible: true },
+  { prop: 'name', label: $t('common.name'), checked: true, visible: true },
+  { prop: 'gender', label: $t('common.gender'), checked: true, visible: true },
+  { prop: 'idCard', label: $t('common.idNumber'), checked: true, visible: true },
+  { prop: 'birthDate', label: $t('hr.employee.dateOfBirth'), checked: true, visible: true },
+  { prop: 'nation', label: $t('common.ethnicity'), checked: true, visible: true },
+  { prop: 'highestEducation', label: $t('common.education'), checked: true, visible: true },
+  { prop: 'phone', label: $t('hr.employee.telephone'), checked: true, visible: true },
+  { prop: 'email', label: $t('common.email'), checked: true, visible: true },
+  { prop: 'employeeType', label: $t('hr.employee.employeeCategory'), checked: true, visible: true },
+  { prop: 'maritalStatus', label: $t('common.maritalStatus'), checked: true, visible: true },
+  { prop: 'politicalStatus', label: $t('common.politicalStatus'), checked: true, visible: true },
+  { prop: 'companyName', label: $t('common.company'), checked: true, visible: true },
+  { prop: 'deptName', label: $t('common.department'), checked: true, visible: true },
+  { prop: 'entryDate', label: $t('common.entryDate'), checked: true, visible: true },
+  { prop: 'regularDate', label: $t('application.regularization.regularizationDate'), checked: true, visible: true },
+  { prop: 'duty', label: $t('common.jobTitle'), checked: true, visible: true },
+  { prop: 'position', label: $t('common.position'), checked: true, visible: true },
+  { prop: 'jobLevel', label: $t('hr.employee.jobGrade'), checked: true, visible: true },
+  { prop: 'nativePlace', label: $t('common.nativePlace'), checked: true, visible: true },
+  { prop: 'registeredAddress', label: $t('hr.employee.registeredAddress'), checked: true, visible: true },
+  { prop: 'currentAddress', label: $t('hr.employee.currentResidence'), checked: true, visible: true },
+  { prop: 'emergencyContact', label: $t('common.emergencyContact'), checked: true, visible: true },
+  { prop: 'emergencyRelation', label: $t('hr.employee.relationship'), checked: true, visible: true },
+  { prop: 'emergencyPhone', label: $t('hr.employee.emergencyPhone'), checked: true, visible: true },
+  { prop: 'status', label: $t('common.status'), checked: true, visible: true }
+]);
+
 /** 基本信息表单校验规则（非必填字段，填写时校验格式） */
 const basicFormRules: FormRules = {
   phone: [{ pattern: REG_PHONE, message: $t('hr.employee.pleaseEnterAValidPhoneNumber'), trigger: 'blur' }],
   email: [{ pattern: REG_EMAIL, message: $t('hr.employee.pleaseEnterAValidEmailAddress'), trigger: 'blur' }],
   idCard: [{ pattern: REG_ID_CARD, message: $t('hr.employee.pleaseEnterAValidIdNumber'), trigger: 'blur' }],
-  emergencyPhone: [{ pattern: REG_PHONE, message: $t('hr.employee.pleaseEnterAValidEmergencyContactPhone'), trigger: 'blur' }]
+  emergencyPhone: [
+    { pattern: REG_PHONE, message: $t('hr.employee.pleaseEnterAValidEmergencyContactPhone'), trigger: 'blur' }
+  ]
 };
 
 /** 生成随机初始密码（8 位，去除易混淆字符） */
@@ -600,7 +635,8 @@ function getDictLabel(options: Api.System.DictData[], value?: string): string {
   const item = options.find(o => o.dictValue === value);
   return item?.dictLabel || value;
 }
-const statusMap: Record<number, { label: string; type: string }> = {
+// 员工在职状态（1-在职 2-离职 3-待入职），语义独立，不并入 constants/common 的 enableStatusMap
+const statusMap: Record<number, { label: string; type: TagType }> = {
   1: { label: $t('common.active'), type: 'success' },
   2: { label: $t('common.resigned'), type: 'info' },
   3: { label: $t('common.pendingEntry'), type: 'warning' }
@@ -649,7 +685,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
             <template #default="{ node, data }">
               <div class="tree-node-content">
                 <span>{{ data.unitName }}</span>
-                <ElCheckbox v-if="node.level === 1" v-model="cascadeSelect" @click.stop>{{ $t('common.cascade') }}</ElCheckbox>
+                <ElCheckbox v-if="node.level === 1" v-model="cascadeSelect" @click.stop>
+                  {{ $t('common.cascade') }}
+                </ElCheckbox>
               </div>
             </template>
             <template #label="{ value }">
@@ -658,7 +696,12 @@ const statusMap: Record<number, { label: string; type: string }> = {
           </ElTreeSelect>
         </ElFormItem>
         <ElFormItem :label="$t('common.status')">
-          <ElSelect v-model="searchParams.status" :placeholder="$t('common.pleaseSelectStatus')" clearable style="width: 120px">
+          <ElSelect
+            v-model="searchParams.status"
+            :placeholder="$t('common.pleaseSelectStatus')"
+            clearable
+            style="width: 120px"
+          >
             <ElOption :label="$t('common.active')" :value="1" />
             <ElOption :label="$t('common.resigned')" :value="2" />
             <ElOption :label="$t('common.pendingEntry')" :value="3" />
@@ -693,60 +736,188 @@ const statusMap: Record<number, { label: string; type: string }> = {
               <template #icon><icon-ep-plus /></template>
               {{ $t('hr.employee.addEmployee') }}
             </ElButton>
+            <TableHeaderOperation
+              v-model:columns="columnChecks"
+              v-model:density="density"
+              :loading="loading"
+              @refresh="loadData"
+            >
+              <template #default />
+            </TableHeaderOperation>
           </div>
         </div>
       </template>
       <div class="table-wrapper">
-        <ElTable v-loading="loading" :data="data" border stripe height="100%">
+        <ElTable v-loading="loading" :data="data" border stripe :size="density" height="100%">
           <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" fixed="left" />
-          <ElTableColumn prop="employeeNo" :label="$t('hr.employee.personnelNo')" width="100" fixed="left" />
-          <ElTableColumn prop="name" :label="$t('common.name')" width="80" fixed="left" />
-          <ElTableColumn prop="gender" :label="$t('common.gender')" width="60" align="center">
+          <ElTableColumn
+            v-if="isColumnVisible('employeeNo')"
+            prop="employeeNo"
+            :label="$t('hr.employee.personnelNo')"
+            width="100"
+            fixed="left"
+          />
+          <ElTableColumn
+            v-if="isColumnVisible('name')"
+            prop="name"
+            :label="$t('common.name')"
+            width="80"
+            fixed="left"
+          />
+          <ElTableColumn
+            v-if="isColumnVisible('gender')"
+            prop="gender"
+            :label="$t('common.gender')"
+            width="60"
+            align="center"
+          >
             <template #default="{ row }">{{ getDictLabel(genderOptions, row.gender) }}</template>
           </ElTableColumn>
-          <ElTableColumn prop="idCard" :label="$t('common.idNumber')" width="170" />
-          <ElTableColumn prop="birthDate" :label="$t('hr.employee.dateOfBirth')" width="100" />
-          <ElTableColumn prop="nation" :label="$t('common.ethnicity')" width="70">
+          <ElTableColumn v-if="isColumnVisible('idCard')" prop="idCard" :label="$t('common.idNumber')" width="170" />
+          <ElTableColumn
+            v-if="isColumnVisible('birthDate')"
+            prop="birthDate"
+            :label="$t('hr.employee.dateOfBirth')"
+            width="100"
+          />
+          <ElTableColumn v-if="isColumnVisible('nation')" prop="nation" :label="$t('common.ethnicity')" width="70">
             <template #default="{ row }">{{ getDictLabel(nationOptions, row.nation) }}</template>
           </ElTableColumn>
-          <ElTableColumn prop="highestEducation" :label="$t('common.education')" width="80">
+          <ElTableColumn
+            v-if="isColumnVisible('highestEducation')"
+            prop="highestEducation"
+            :label="$t('common.education')"
+            width="80"
+          >
             <template #default="{ row }">{{ getDictLabel(educationOptions, row.highestEducation) }}</template>
           </ElTableColumn>
-          <ElTableColumn prop="phone" :label="$t('hr.employee.telephone')" width="120" />
-          <ElTableColumn prop="email" :label="$t('common.email')" width="150" show-overflow-tooltip />
-          <ElTableColumn prop="employeeType" :label="$t('hr.employee.employeeCategory')" width="90">
+          <ElTableColumn
+            v-if="isColumnVisible('phone')"
+            prop="phone"
+            :label="$t('hr.employee.telephone')"
+            width="120"
+          />
+          <ElTableColumn
+            v-if="isColumnVisible('email')"
+            prop="email"
+            :label="$t('common.email')"
+            width="150"
+            show-overflow-tooltip
+          />
+          <ElTableColumn
+            v-if="isColumnVisible('employeeType')"
+            prop="employeeType"
+            :label="$t('hr.employee.employeeCategory')"
+            width="90"
+          >
             <template #default="{ row }">{{ getDictLabel(employeeTypeOptions, row.employeeType) }}</template>
           </ElTableColumn>
-          <ElTableColumn prop="maritalStatus" :label="$t('common.maritalStatus')" width="80">
+          <ElTableColumn
+            v-if="isColumnVisible('maritalStatus')"
+            prop="maritalStatus"
+            :label="$t('common.maritalStatus')"
+            width="80"
+          >
             <template #default="{ row }">{{ getDictLabel(maritalStatusOptions, row.maritalStatus) }}</template>
           </ElTableColumn>
-          <ElTableColumn prop="politicalStatus" :label="$t('common.politicalStatus')" width="90">
+          <ElTableColumn
+            v-if="isColumnVisible('politicalStatus')"
+            prop="politicalStatus"
+            :label="$t('common.politicalStatus')"
+            width="90"
+          >
             <template #default="{ row }">{{ getDictLabel(politicalStatusOptions, row.politicalStatus) }}</template>
           </ElTableColumn>
-          <ElTableColumn prop="companyName" :label="$t('common.company')" width="100" show-overflow-tooltip />
-          <ElTableColumn prop="deptName" :label="$t('common.department')" width="90" />
-          <ElTableColumn prop="entryDate" :label="$t('common.entryDate')" width="100" />
-          <ElTableColumn prop="regularDate" :label="$t('application.regularization.regularizationDate')" width="100" />
-          <ElTableColumn prop="duty" :label="$t('common.jobTitle')" width="80">
+          <ElTableColumn
+            v-if="isColumnVisible('companyName')"
+            prop="companyName"
+            :label="$t('common.company')"
+            width="100"
+            show-overflow-tooltip
+          />
+          <ElTableColumn
+            v-if="isColumnVisible('deptName')"
+            prop="deptName"
+            :label="$t('common.department')"
+            width="90"
+          />
+          <ElTableColumn
+            v-if="isColumnVisible('entryDate')"
+            prop="entryDate"
+            :label="$t('common.entryDate')"
+            width="100"
+            sortable
+          />
+          <ElTableColumn
+            v-if="isColumnVisible('regularDate')"
+            prop="regularDate"
+            :label="$t('application.regularization.regularizationDate')"
+            width="100"
+          />
+          <ElTableColumn v-if="isColumnVisible('duty')" prop="duty" :label="$t('common.jobTitle')" width="80">
             <template #default="{ row }">{{ getDictLabel(dutyOptions, row.duty) }}</template>
           </ElTableColumn>
-          <ElTableColumn prop="position" :label="$t('common.position')" width="100">
+          <ElTableColumn v-if="isColumnVisible('position')" prop="position" :label="$t('common.position')" width="100">
             <template #default="{ row }">{{ getDictLabel(positionOptions, row.position) }}</template>
           </ElTableColumn>
-          <ElTableColumn prop="jobLevel" :label="$t('hr.employee.jobGrade')" width="70">
+          <ElTableColumn
+            v-if="isColumnVisible('jobLevel')"
+            prop="jobLevel"
+            :label="$t('hr.employee.jobGrade')"
+            width="70"
+          >
             <template #default="{ row }">{{ getDictLabel(jobLevelOptions, row.jobLevel) }}</template>
           </ElTableColumn>
-          <ElTableColumn prop="nativePlace" :label="$t('common.nativePlace')" width="100" show-overflow-tooltip />
-          <ElTableColumn prop="registeredAddress" :label="$t('hr.employee.registeredAddress')" width="150" show-overflow-tooltip />
-          <ElTableColumn prop="currentAddress" :label="$t('hr.employee.currentResidence')" width="150" show-overflow-tooltip />
-          <ElTableColumn prop="emergencyContact" :label="$t('common.emergencyContact')" width="90" />
-          <ElTableColumn prop="emergencyRelation" :label="$t('hr.employee.relationship')" width="70">
+          <ElTableColumn
+            v-if="isColumnVisible('nativePlace')"
+            prop="nativePlace"
+            :label="$t('common.nativePlace')"
+            width="100"
+            show-overflow-tooltip
+          />
+          <ElTableColumn
+            v-if="isColumnVisible('registeredAddress')"
+            prop="registeredAddress"
+            :label="$t('hr.employee.registeredAddress')"
+            width="150"
+            show-overflow-tooltip
+          />
+          <ElTableColumn
+            v-if="isColumnVisible('currentAddress')"
+            prop="currentAddress"
+            :label="$t('hr.employee.currentResidence')"
+            width="150"
+            show-overflow-tooltip
+          />
+          <ElTableColumn
+            v-if="isColumnVisible('emergencyContact')"
+            prop="emergencyContact"
+            :label="$t('common.emergencyContact')"
+            width="90"
+          />
+          <ElTableColumn
+            v-if="isColumnVisible('emergencyRelation')"
+            prop="emergencyRelation"
+            :label="$t('hr.employee.relationship')"
+            width="70"
+          >
             <template #default="{ row }">{{ getDictLabel(familyRelationOptions, row.emergencyRelation) }}</template>
           </ElTableColumn>
-          <ElTableColumn prop="emergencyPhone" :label="$t('hr.employee.emergencyPhone')" width="120" />
-          <ElTableColumn prop="status" :label="$t('common.status')" width="70" align="center">
+          <ElTableColumn
+            v-if="isColumnVisible('emergencyPhone')"
+            prop="emergencyPhone"
+            :label="$t('hr.employee.emergencyPhone')"
+            width="120"
+          />
+          <ElTableColumn
+            v-if="isColumnVisible('status')"
+            prop="status"
+            :label="$t('common.status')"
+            width="70"
+            align="center"
+          >
             <template #default="{ row }">
-              <ElTag :type="statusMap[row.status]?.type as any">{{ statusMap[row.status]?.label }}</ElTag>
+              <ElTag :type="statusMap[row.status]?.type">{{ statusMap[row.status]?.label }}</ElTag>
             </template>
           </ElTableColumn>
           <ElTableColumn :label="$t('common.action')" width="120" align="center" fixed="right">
@@ -759,7 +930,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
                 :title="$t('hr.employee.areYouSureYouWantToDeleteThisEmployee')"
                 @confirm="handleDelete(row.id)"
               >
-                <template #reference><ElButton type="danger" link size="small">{{ $t('common.delete') }}</ElButton></template>
+                <template #reference>
+                  <ElButton type="danger" link size="small">{{ $t('common.delete') }}</ElButton>
+                </template>
               </ElPopconfirm>
             </template>
           </ElTableColumn>
@@ -782,6 +955,8 @@ const statusMap: Record<number, { label: string; type: string }> = {
       :title="operateType === 'add' ? $t('hr.employee.addEmployee') : $t('hr.employee.editEmployee')"
       size="900px"
       class="employee-drawer"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
     >
       <div v-loading="detailLoading" class="drawer-content">
         <ElTabs v-model="activeTab">
@@ -795,7 +970,11 @@ const statusMap: Record<number, { label: string; type: string }> = {
                       v-model="editingData.password"
                       type="password"
                       show-password
-                      :placeholder="operateType === 'edit' ? $t('hr.employee.leaveBlankToKeepUnchanged') : $t('hr.employee.leaveBlankToUseARandomInitialPassword')"
+                      :placeholder="
+                        operateType === 'edit'
+                          ? $t('hr.employee.leaveBlankToKeepUnchanged')
+                          : $t('hr.employee.leaveBlankToUseARandomInitialPassword')
+                      "
                     />
                   </ElFormItem>
                 </ElCol>
@@ -903,7 +1082,11 @@ const statusMap: Record<number, { label: string; type: string }> = {
                 </ElCol>
                 <ElCol :span="8">
                   <ElFormItem :label="$t('common.gender')">
-                    <ElSelect v-model="editingData.gender" :placeholder="$t('hr.employee.pleaseSelectGender')" style="width: 100%">
+                    <ElSelect
+                      v-model="editingData.gender"
+                      :placeholder="$t('hr.employee.pleaseSelectGender')"
+                      style="width: 100%"
+                    >
                       <ElOption
                         v-for="item in genderOptions"
                         :key="item.dictValue"
@@ -933,7 +1116,11 @@ const statusMap: Record<number, { label: string; type: string }> = {
                 </ElCol>
                 <ElCol :span="8">
                   <ElFormItem :label="$t('common.ethnicity')">
-                    <ElSelect v-model="editingData.nation" :placeholder="$t('hr.employee.pleaseSelectEthnicity')" style="width: 100%">
+                    <ElSelect
+                      v-model="editingData.nation"
+                      :placeholder="$t('hr.employee.pleaseSelectEthnicity')"
+                      style="width: 100%"
+                    >
                       <ElOption
                         v-for="item in nationOptions"
                         :key="item.dictValue"
@@ -947,7 +1134,11 @@ const statusMap: Record<number, { label: string; type: string }> = {
               <ElRow :gutter="20">
                 <ElCol :span="8">
                   <ElFormItem :label="$t('hr.employee.highestEducation')">
-                    <ElSelect v-model="editingData.highestEducation" :placeholder="$t('hr.employee.pleaseSelectEducation')" style="width: 100%">
+                    <ElSelect
+                      v-model="editingData.highestEducation"
+                      :placeholder="$t('hr.employee.pleaseSelectEducation')"
+                      style="width: 100%"
+                    >
                       <ElOption
                         v-for="item in educationOptions"
                         :key="item.dictValue"
@@ -971,7 +1162,11 @@ const statusMap: Record<number, { label: string; type: string }> = {
               <ElRow :gutter="20">
                 <ElCol :span="8">
                   <ElFormItem :label="$t('hr.employee.employeeCategory')">
-                    <ElSelect v-model="editingData.employeeType" :placeholder="$t('hr.employee.pleaseSelectEmployeeCategory')" style="width: 100%">
+                    <ElSelect
+                      v-model="editingData.employeeType"
+                      :placeholder="$t('hr.employee.pleaseSelectEmployeeCategory')"
+                      style="width: 100%"
+                    >
                       <ElOption
                         v-for="item in employeeTypeOptions"
                         :key="item.dictValue"
@@ -983,7 +1178,11 @@ const statusMap: Record<number, { label: string; type: string }> = {
                 </ElCol>
                 <ElCol :span="8">
                   <ElFormItem :label="$t('common.maritalStatus')">
-                    <ElSelect v-model="editingData.maritalStatus" :placeholder="$t('hr.employee.pleaseSelectMaritalStatus')" style="width: 100%">
+                    <ElSelect
+                      v-model="editingData.maritalStatus"
+                      :placeholder="$t('hr.employee.pleaseSelectMaritalStatus')"
+                      style="width: 100%"
+                    >
                       <ElOption
                         v-for="item in maritalStatusOptions"
                         :key="item.dictValue"
@@ -995,7 +1194,11 @@ const statusMap: Record<number, { label: string; type: string }> = {
                 </ElCol>
                 <ElCol :span="8">
                   <ElFormItem :label="$t('common.politicalStatus')">
-                    <ElSelect v-model="editingData.politicalStatus" :placeholder="$t('hr.employee.pleaseSelectPoliticalStatus')" style="width: 100%">
+                    <ElSelect
+                      v-model="editingData.politicalStatus"
+                      :placeholder="$t('hr.employee.pleaseSelectPoliticalStatus')"
+                      style="width: 100%"
+                    >
                       <ElOption
                         v-for="item in politicalStatusOptions"
                         :key="item.dictValue"
@@ -1049,7 +1252,11 @@ const statusMap: Record<number, { label: string; type: string }> = {
               <ElRow :gutter="20">
                 <ElCol :span="8">
                   <ElFormItem :label="$t('common.jobTitle')">
-                    <ElSelect v-model="editingData.duty" :placeholder="$t('hr.employee.pleaseSelectJobTitle')" style="width: 100%">
+                    <ElSelect
+                      v-model="editingData.duty"
+                      :placeholder="$t('hr.employee.pleaseSelectJobTitle')"
+                      style="width: 100%"
+                    >
                       <ElOption
                         v-for="item in dutyOptions"
                         :key="item.dictValue"
@@ -1061,7 +1268,11 @@ const statusMap: Record<number, { label: string; type: string }> = {
                 </ElCol>
                 <ElCol :span="8">
                   <ElFormItem :label="$t('common.position')">
-                    <ElSelect v-model="editingData.position" :placeholder="$t('hr.employee.pleaseSelectPosition')" style="width: 100%">
+                    <ElSelect
+                      v-model="editingData.position"
+                      :placeholder="$t('hr.employee.pleaseSelectPosition')"
+                      style="width: 100%"
+                    >
                       <ElOption
                         v-for="item in positionOptions"
                         :key="item.dictValue"
@@ -1073,7 +1284,11 @@ const statusMap: Record<number, { label: string; type: string }> = {
                 </ElCol>
                 <ElCol :span="8">
                   <ElFormItem :label="$t('hr.employee.jobGrade')">
-                    <ElSelect v-model="editingData.jobLevel" :placeholder="$t('hr.employee.pleaseSelectJobGrade')" style="width: 100%">
+                    <ElSelect
+                      v-model="editingData.jobLevel"
+                      :placeholder="$t('hr.employee.pleaseSelectJobGrade')"
+                      style="width: 100%"
+                    >
                       <ElOption
                         v-for="item in jobLevelOptions"
                         :key="item.dictValue"
@@ -1087,7 +1302,11 @@ const statusMap: Record<number, { label: string; type: string }> = {
               <ElRow :gutter="20">
                 <ElCol :span="8">
                   <ElFormItem :label="$t('common.status')">
-                    <ElSelect v-model="editingData.status" :placeholder="$t('common.pleaseSelectStatus')" style="width: 100%">
+                    <ElSelect
+                      v-model="editingData.status"
+                      :placeholder="$t('common.pleaseSelectStatus')"
+                      style="width: 100%"
+                    >
                       <ElOption :label="$t('common.active')" :value="1" />
                       <ElOption :label="$t('common.resigned')" :value="2" />
                       <ElOption :label="$t('common.pendingEntry')" :value="3" />
@@ -1099,17 +1318,26 @@ const statusMap: Record<number, { label: string; type: string }> = {
               <ElRow :gutter="20">
                 <ElCol :span="8">
                   <ElFormItem :label="$t('common.nativePlace')">
-                    <ElInput v-model="editingData.nativePlace" :placeholder="$t('hr.employee.pleaseEnterNativePlace')" />
+                    <ElInput
+                      v-model="editingData.nativePlace"
+                      :placeholder="$t('hr.employee.pleaseEnterNativePlace')"
+                    />
                   </ElFormItem>
                 </ElCol>
                 <ElCol :span="8">
                   <ElFormItem :label="$t('hr.employee.registeredAddress')">
-                    <ElInput v-model="editingData.registeredAddress" :placeholder="$t('hr.employee.pleaseEnterRegisteredAddress')" />
+                    <ElInput
+                      v-model="editingData.registeredAddress"
+                      :placeholder="$t('hr.employee.pleaseEnterRegisteredAddress')"
+                    />
                   </ElFormItem>
                 </ElCol>
                 <ElCol :span="8">
                   <ElFormItem :label="$t('hr.employee.currentResidence')">
-                    <ElInput v-model="editingData.currentAddress" :placeholder="$t('hr.employee.pleaseEnterCurrentResidence')" />
+                    <ElInput
+                      v-model="editingData.currentAddress"
+                      :placeholder="$t('hr.employee.pleaseEnterCurrentResidence')"
+                    />
                   </ElFormItem>
                 </ElCol>
               </ElRow>
@@ -1117,12 +1345,19 @@ const statusMap: Record<number, { label: string; type: string }> = {
               <ElRow :gutter="20">
                 <ElCol :span="8">
                   <ElFormItem :label="$t('common.contact')">
-                    <ElInput v-model="editingData.emergencyContact" :placeholder="$t('hr.employee.pleaseEnterEmergencyContact')" />
+                    <ElInput
+                      v-model="editingData.emergencyContact"
+                      :placeholder="$t('hr.employee.pleaseEnterEmergencyContact')"
+                    />
                   </ElFormItem>
                 </ElCol>
                 <ElCol :span="8">
                   <ElFormItem :label="$t('hr.employee.relationship')">
-                    <ElSelect v-model="editingData.emergencyRelation" :placeholder="$t('hr.employee.pleaseSelectRelationship')" style="width: 100%">
+                    <ElSelect
+                      v-model="editingData.emergencyRelation"
+                      :placeholder="$t('hr.employee.pleaseSelectRelationship')"
+                      style="width: 100%"
+                    >
                       <ElOption
                         v-for="item in familyRelationOptions"
                         :key="item.dictValue"
@@ -1134,7 +1369,10 @@ const statusMap: Record<number, { label: string; type: string }> = {
                 </ElCol>
                 <ElCol :span="8">
                   <ElFormItem :label="$t('common.contactPhone')" prop="emergencyPhone">
-                    <ElInput v-model="editingData.emergencyPhone" :placeholder="$t('hr.employee.pleaseEnterContactPhone')" />
+                    <ElInput
+                      v-model="editingData.emergencyPhone"
+                      :placeholder="$t('hr.employee.pleaseEnterContactPhone')"
+                    />
                   </ElFormItem>
                 </ElCol>
               </ElRow>
@@ -1172,11 +1410,17 @@ const statusMap: Record<number, { label: string; type: string }> = {
                     </ElFormItem>
                   </ElCol>
                   <ElCol :span="8">
-                    <ElFormItem :label="$t('hr.employee.major')"><ElInput v-model="edu.major" :placeholder="$t('hr.employee.pleaseEnterMajor')" /></ElFormItem>
+                    <ElFormItem :label="$t('hr.employee.major')">
+                      <ElInput v-model="edu.major" :placeholder="$t('hr.employee.pleaseEnterMajor')" />
+                    </ElFormItem>
                   </ElCol>
                   <ElCol :span="8">
                     <ElFormItem :label="$t('common.education')">
-                      <ElSelect v-model="edu.education" :placeholder="$t('hr.employee.pleaseSelectEducation')" style="width: 100%">
+                      <ElSelect
+                        v-model="edu.education"
+                        :placeholder="$t('hr.employee.pleaseSelectEducation')"
+                        style="width: 100%"
+                      >
                         <ElOption
                           v-for="item in educationOptions"
                           :key="item.dictValue"
@@ -1279,11 +1523,17 @@ const statusMap: Record<number, { label: string; type: string }> = {
               <ElForm label-width="80px">
                 <ElRow :gutter="20">
                   <ElCol :span="8">
-                    <ElFormItem :label="$t('common.name')"><ElInput v-model="member.name" :placeholder="$t('common.pleaseInputName')" /></ElFormItem>
+                    <ElFormItem :label="$t('common.name')">
+                      <ElInput v-model="member.name" :placeholder="$t('common.pleaseInputName')" />
+                    </ElFormItem>
                   </ElCol>
                   <ElCol :span="8">
                     <ElFormItem :label="$t('hr.employee.relationship')">
-                      <ElSelect v-model="member.relation" :placeholder="$t('hr.employee.pleaseSelectRelationship')" style="width: 100%">
+                      <ElSelect
+                        v-model="member.relation"
+                        :placeholder="$t('hr.employee.pleaseSelectRelationship')"
+                        style="width: 100%"
+                      >
                         <ElOption
                           v-for="item in familyRelationOptions"
                           :key="item.dictValue"
@@ -1308,7 +1558,11 @@ const statusMap: Record<number, { label: string; type: string }> = {
                 <ElRow :gutter="20">
                   <ElCol :span="8">
                     <ElFormItem :label="$t('common.politicalStatus')">
-                      <ElSelect v-model="member.politicalStatus" :placeholder="$t('common.pleaseSelect')" style="width: 100%">
+                      <ElSelect
+                        v-model="member.politicalStatus"
+                        :placeholder="$t('common.pleaseSelect')"
+                        style="width: 100%"
+                      >
                         <ElOption
                           v-for="item in politicalStatusOptions"
                           :key="item.dictValue"
@@ -1324,7 +1578,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
                     </ElFormItem>
                   </ElCol>
                   <ElCol :span="8">
-                    <ElFormItem :label="$t('hr.employee.telephone')"><ElInput v-model="member.phone" :placeholder="$t('hr.employee.pleaseEnterPhoneNumber')" /></ElFormItem>
+                    <ElFormItem :label="$t('hr.employee.telephone')">
+                      <ElInput v-model="member.phone" :placeholder="$t('hr.employee.pleaseEnterPhoneNumber')" />
+                    </ElFormItem>
                   </ElCol>
                 </ElRow>
               </ElForm>
@@ -1361,7 +1617,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
                     </ElFormItem>
                   </ElCol>
                   <ElCol :span="8">
-                    <ElFormItem :label="$t('common.position')"><ElInput v-model="work.position" :placeholder="$t('hr.employee.pleaseEnterPosition')" /></ElFormItem>
+                    <ElFormItem :label="$t('common.position')">
+                      <ElInput v-model="work.position" :placeholder="$t('hr.employee.pleaseEnterPosition')" />
+                    </ElFormItem>
                   </ElCol>
                 </ElRow>
                 <ElRow :gutter="20">
@@ -1431,7 +1689,11 @@ const statusMap: Record<number, { label: string; type: string }> = {
                   </ElCol>
                   <ElCol :span="8">
                     <ElFormItem :label="$t('hr.employee.certificateType')">
-                      <ElSelect v-model="cert.certType" :placeholder="$t('hr.employee.pleaseSelectCertificateType')" style="width: 100%">
+                      <ElSelect
+                        v-model="cert.certType"
+                        :placeholder="$t('hr.employee.pleaseSelectCertificateType')"
+                        style="width: 100%"
+                      >
                         <ElOption
                           v-for="item in certTypeOptions"
                           :key="item.dictValue"
@@ -1443,7 +1705,11 @@ const statusMap: Record<number, { label: string; type: string }> = {
                   </ElCol>
                   <ElCol :span="8">
                     <ElFormItem :label="$t('hr.employee.certificateLevel')">
-                      <ElSelect v-model="cert.certLevel" :placeholder="$t('hr.employee.pleaseSelectCertificateLevel')" style="width: 100%">
+                      <ElSelect
+                        v-model="cert.certLevel"
+                        :placeholder="$t('hr.employee.pleaseSelectCertificateLevel')"
+                        style="width: 100%"
+                      >
                         <ElOption
                           v-for="item in certLevelOptions"
                           :key="item.dictValue"
@@ -1510,7 +1776,10 @@ const statusMap: Record<number, { label: string; type: string }> = {
               <ElRow :gutter="20">
                 <ElCol v-for="field in extraFieldOptions" :key="field.dictValue" :span="8">
                   <ElFormItem :label="field.dictLabel">
-                    <ElInput v-model="extraFieldValues[field.dictValue]" :placeholder="$t('hr.employee.pleaseEnter', { field: field.dictLabel })" />
+                    <ElInput
+                      v-model="extraFieldValues[field.dictValue]"
+                      :placeholder="$t('hr.employee.pleaseEnter', { field: field.dictLabel })"
+                    />
                   </ElFormItem>
                 </ElCol>
               </ElRow>
@@ -1525,7 +1794,12 @@ const statusMap: Record<number, { label: string; type: string }> = {
     </ElDrawer>
 
     <!-- 员工导入 -->
-    <ElDialog v-model="importDialogVisible" :title="$t('hr.employee.importEmployees')" width="560px" :close-on-click-modal="false">
+    <ElDialog
+      v-model="importDialogVisible"
+      :title="$t('hr.employee.importEmployees')"
+      width="560px"
+      :close-on-click-modal="false"
+    >
       <div class="mb-12px">
         <ElButton link type="primary" @click="handleDownloadTemplate">
           <template #icon><icon-ep-download /></template>
@@ -1547,7 +1821,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
       </ElUpload>
       <div v-if="importResult" class="mt-12px">
         <div class="mb-8px">
-          <ElTag type="success">{{ $t('common.success') }} {{ importResult.successCount }} {{ $t('hr.employee.items') }}</ElTag>
+          <ElTag type="success">
+            {{ $t('common.success') }} {{ importResult.successCount }} {{ $t('hr.employee.items') }}
+          </ElTag>
           <ElTag v-if="importResult.failCount > 0" type="danger" class="ml-8px">
             {{ $t('common.fail') }} {{ importResult.failCount }} {{ $t('hr.employee.items') }}
           </ElTag>
@@ -1561,7 +1837,9 @@ const statusMap: Record<number, { label: string; type: string }> = {
       </div>
       <template #footer>
         <ElButton @click="importDialogVisible = false">{{ $t('common.close') }}</ElButton>
-        <ElButton type="primary" :loading="importing" @click="handleImportSubmit">{{ $t('hr.employee.startImport') }}</ElButton>
+        <ElButton type="primary" :loading="importing" @click="handleImportSubmit">
+          {{ $t('hr.employee.startImport') }}
+        </ElButton>
       </template>
     </ElDialog>
   </div>

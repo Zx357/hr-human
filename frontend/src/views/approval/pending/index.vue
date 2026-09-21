@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getDurationUnit } from '@/constants/business';
-import { appTypeMap } from '@/constants/application';
+import { appTypeLabel } from '@/constants/application';
 import {
   type Application,
   type ApprovalRecord,
@@ -23,6 +23,8 @@ const currentPage = ref(1);
 const pageSize = ref(10);
 
 const detailVisible = ref(false);
+const selectedRows = ref<Application[]>([]);
+const batchLoading = ref(false);
 const currentRecord = ref<Application | null>(null);
 const approvalComment = ref('');
 const submitLoading = ref(false);
@@ -139,6 +141,69 @@ async function handleReject() {
   }
 }
 
+/** 表格多选变化 */
+function handleSelectionChange(rows: Application[]) {
+  selectedRows.value = rows;
+}
+
+/** 批量审批：逐条调用，统计成功/失败数（单条失败不中断批次） */
+async function batchApprove(status: 1 | 2, comment: string, summaryKey: App.I18n.I18nKey) {
+  batchLoading.value = true;
+  let success = 0;
+  let fail = 0;
+  try {
+    for (const row of selectedRows.value) {
+      try {
+        await approveApplication(row.id!, status, comment);
+        success += 1;
+      } catch {
+        fail += 1;
+      }
+    }
+    ElMessage.success($t(summaryKey, { success, fail }));
+    loadData();
+  } finally {
+    batchLoading.value = false;
+  }
+}
+
+async function handleBatchApprove() {
+  if (!selectedRows.value.length) {
+    ElMessage.warning($t('approval.common.pleaseSelectRowsFirst'));
+    return;
+  }
+  try {
+    await ElMessageBox.confirm($t('approval.common.areYouSureYouWantToApproveThisApplication'), $t('approval.common.approvalConfirmation'), {
+      type: 'warning',
+      confirmButtonText: $t('approval.common.confirmApproval'),
+      cancelButtonText: $t('approval.common.notNow')
+    });
+  } catch {
+    return;
+  }
+  await batchApprove(1, '', 'approval.common.batchApprovedSummary');
+}
+
+async function handleBatchReject() {
+  if (!selectedRows.value.length) {
+    ElMessage.warning($t('approval.common.pleaseSelectRowsFirst'));
+    return;
+  }
+  let reason = '';
+  try {
+    const result = await ElMessageBox.prompt($t('approval.common.batchRejectReasonPrompt'), $t('approval.common.batchReject'), {
+      type: 'warning',
+      confirmButtonText: $t('approval.common.confirmRejection'),
+      cancelButtonText: $t('approval.common.notNow'),
+      inputValidator: (value: string) => !!value?.trim() || $t('approval.common.pleaseEnterRejectionReason')
+    });
+    reason = result.value.trim();
+  } catch {
+    return;
+  }
+  await batchApprove(2, reason, 'approval.common.batchRejectedSummary');
+}
+
 function handleSearch() {
   currentPage.value = 1;
   loadData();
@@ -206,17 +271,28 @@ function getDictLabel(options: Api.System.DictData[], value?: string) {
     <ElCard class="table-card">
       <template #header>
         <div class="flex items-center justify-between">
-          <span>{{ $t('approval.pending.pendingApprovals') }}</span>
-          <ElTag type="danger">{{ total }} {{ $t('approval.common.pending') }}</ElTag>
+          <div class="flex items-center gap-2">
+            <span>{{ $t('approval.pending.pendingApprovals') }}</span>
+            <ElTag type="danger">{{ total }} {{ $t('approval.common.pending') }}</ElTag>
+          </div>
+          <div class="flex items-center gap-2">
+            <ElButton type="success" size="small" :loading="batchLoading" @click="handleBatchApprove">
+              {{ $t('approval.common.batchApprove') }}
+            </ElButton>
+            <ElButton type="danger" size="small" :loading="batchLoading" @click="handleBatchReject">
+              {{ $t('approval.common.batchReject') }}
+            </ElButton>
+          </div>
         </div>
       </template>
 
       <div class="table-wrapper">
-        <ElTable v-loading="loading" :data="data" border stripe height="100%">
+        <ElTable v-loading="loading" :data="data" border stripe height="100%" @selection-change="handleSelectionChange">
+          <ElTableColumn type="selection" width="42" align="center" />
           <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" />
           <ElTableColumn prop="appType" :label="$t('application.common.applicationType')" width="120">
             <template #default="{ row }">
-              <ElTag>{{ appTypeMap[row.appType] || row.appType }}</ElTag>
+              <ElTag>{{ appTypeLabel(row.appType) }}</ElTag>
             </template>
           </ElTableColumn>
           <ElTableColumn prop="employeeName" :label="$t('application.common.applicant')" width="100" />
@@ -276,7 +352,7 @@ function getDictLabel(options: Api.System.DictData[], value?: string) {
       <template v-if="currentRecord">
         <ElDescriptions :column="2" border>
           <ElDescriptionsItem :label="$t('application.common.applicationType')">
-            {{ appTypeMap[currentRecord.appType] || currentRecord.appType }}
+            {{ appTypeLabel(currentRecord.appType) }}
           </ElDescriptionsItem>
           <ElDescriptionsItem :label="$t('application.common.applicant')">{{ currentRecord.employeeName }}</ElDescriptionsItem>
           <ElDescriptionsItem :label="$t('common.company')">{{ currentRecord.companyName }}</ElDescriptionsItem>

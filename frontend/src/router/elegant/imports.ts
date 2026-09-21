@@ -43,6 +43,7 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   home: () => import("@/views/home/index.vue"),
   hr_contract: () => import("@/views/hr/contract/index.vue"),
   hr_employee: () => import("@/views/hr/employee/index.vue"),
+  "hr_leave-quota": () => import("@/views/hr/leave-quota/index.vue"),
   "organization_org-structure": () => import("@/views/organization/org-structure/index.vue"),
   report_attendance: () => import("@/views/report/attendance/index.vue"),
   report_employee: () => import("@/views/report/employee/index.vue"),

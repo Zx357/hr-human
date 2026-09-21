@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage } from 'element-plus';
+import type { FormInstance, FormRules } from 'element-plus';
 import dayjs from 'dayjs';
-import { statusMap } from '@/constants/application';
+import { statusLabel, statusTagType } from '@/constants/application';
 import {
   type Application,
   cancelApplication,
   createApplication,
   fetchApplicationPage
 } from '@/service/api/application';
+import { canCancelApplication, confirmCancelApplication } from '@/composables/use-application-cancel';
 import { useDictOptions } from '@/composables/use-dict-options';
 import { formatDateTime } from '@/utils/format';
 import EmployeePickerDialog from '@/components/common/employee-picker-dialog.vue';
@@ -28,6 +30,7 @@ const pageSize = ref(10);
 const { options: employeeTypeOptions, getDictLabel: getEmployeeTypeLabel } = useDictOptions('employee_type');
 const dialogVisible = ref(false);
 const submitLoading = ref(false);
+const formRef = ref<FormInstance>();
 const formData = ref<
   Application & {
     employeeName?: string;
@@ -37,9 +40,20 @@ const formData = ref<
     entryDateDisplay?: string;
   }
 >({
-  employeeId: undefined as any,
+  employeeId: undefined,
   appType: 'regularization'
 });
+
+// 弹窗表单校验规则
+const formRules: FormRules = {
+  employeeId: [{ required: true, message: $t('common.pleaseSelectEmployees'), trigger: 'change' }],
+  regularDate: [
+    { required: true, message: $t('application.regularization.selectRegularizationDate'), trigger: 'change' }
+  ],
+  newEmployeeType: [
+    { required: true, message: $t('application.regularization.pleaseSelectEmployeeType'), trigger: 'change' }
+  ]
+};
 
 // 员工选择弹窗
 const employeeDialogVisible = ref(false);
@@ -65,6 +79,8 @@ async function loadData() {
     });
     data.value = res.data?.records || [];
     total.value = res.data?.total || 0;
+  } catch {
+    // 错误已由请求层统一提示
   } finally {
     loading.value = false;
   }
@@ -75,7 +91,7 @@ onMounted(() => {
 
 function handleAdd() {
   formData.value = {
-    employeeId: undefined as any,
+    employeeId: undefined,
     appType: 'regularization',
     regularDate: '',
     probationEndDate: '',
@@ -109,10 +125,8 @@ function handleConfirmEmployee(selected: Api.Hr.Employee[]) {
 }
 
 async function handleSubmit() {
-  if (!formData.value.employeeId || !formData.value.regularDate || !formData.value.newEmployeeType) {
-    ElMessage.warning($t('common.pleaseFillRequired'));
-    return;
-  }
+  const valid = await formRef.value?.validate().catch(() => false);
+  if (!valid) return;
   submitLoading.value = true;
   try {
     await createApplication(formData.value);
@@ -135,18 +149,10 @@ function handleViewDetail(row: Application) {
   detailVisible.value = true;
 }
 
-async function handleCancel(id: number) {
+async function handleCancel(row: Application) {
+  if (!(await confirmCancelApplication(row))) return;
   try {
-    await ElMessageBox.confirm($t('application.business.areYouSureYouWantToWithdrawThisApplicationThisCannotBeUndone'), $t('application.common.withdrawalConfirmation'), {
-      type: 'warning',
-      confirmButtonText: $t('application.common.confirmWithdrawal'),
-      cancelButtonText: $t('common.cancel')
-    });
-  } catch {
-    return;
-  }
-  try {
-    await cancelApplication(id);
+    await cancelApplication(row.id!);
     ElMessage.success($t('common.withdrawn'));
     loadData();
   } catch {
@@ -207,7 +213,12 @@ function handleSizeChange(size: number) {
           />
         </ElFormItem>
         <ElFormItem :label="$t('common.status')">
-          <ElSelect v-model="searchParams.status" :placeholder="$t('common.pleaseSelectStatus')" clearable style="width: 150px">
+          <ElSelect
+            v-model="searchParams.status"
+            :placeholder="$t('common.pleaseSelectStatus')"
+            clearable
+            style="width: 150px"
+          >
             <ElOption :label="$t('common.pendingApproval')" :value="0" />
             <ElOption :label="$t('common.approved')" :value="1" />
             <ElOption :label="$t('common.rejected')" :value="2" />
@@ -246,16 +257,25 @@ function handleSizeChange(size: number) {
           <ElTableColumn prop="employeeName" :label="$t('common.employeeName')" min-width="100" />
           <ElTableColumn prop="companyName" :label="$t('application.common.company')" min-width="120" />
           <ElTableColumn prop="deptName" :label="$t('common.department')" min-width="100" />
-          <ElTableColumn prop="regularDate" :label="$t('application.regularization.regularizationDate')" min-width="110" />
-          <ElTableColumn prop="newEmployeeType" :label="$t('application.regularization.typeAfterRegularization')" min-width="100" align="center">
+          <ElTableColumn
+            prop="regularDate"
+            :label="$t('application.regularization.regularizationDate')"
+            min-width="110"
+          />
+          <ElTableColumn
+            prop="newEmployeeType"
+            :label="$t('application.regularization.typeAfterRegularization')"
+            min-width="100"
+            align="center"
+          >
             <template #default="{ row }">
               {{ getEmployeeTypeLabel(row.newEmployeeType) }}
             </template>
           </ElTableColumn>
           <ElTableColumn prop="status" :label="$t('common.status')" min-width="90" align="center">
             <template #default="{ row }">
-              <ElTag :type="statusMap[row.status]?.type as any">
-                {{ statusMap[row.status]?.label }}
+              <ElTag :type="statusTagType(row.status)">
+                {{ statusLabel(row.status) }}
               </ElTag>
             </template>
           </ElTableColumn>
@@ -264,8 +284,10 @@ function handleSizeChange(size: number) {
           </ElTableColumn>
           <ElTableColumn :label="$t('common.action')" width="160" align="center" fixed="right">
             <template #default="{ row }">
-              <ElButton type="primary" link size="small" @click="handleViewDetail(row)">{{ $t('common.details') }}</ElButton>
-              <ElButton v-if="row.status === 0" type="warning" link size="small" @click="handleCancel(row.id)">
+              <ElButton type="primary" link size="small" @click="handleViewDetail(row)">
+                {{ $t('common.details') }}
+              </ElButton>
+              <ElButton v-if="canCancelApplication(row)" type="warning" link size="small" @click="handleCancel(row)">
                 {{ $t('common.withdraw') }}
               </ElButton>
             </template>
@@ -287,15 +309,27 @@ function handleSizeChange(size: number) {
     </ElCard>
 
     <!-- 新增申请弹窗 -->
-    <ElDialog v-model="dialogVisible" :title="$t('application.regularization.newRegularizationApplication')" width="600px" destroy-on-close>
-      <ElForm label-width="100px" :model="formData">
-        <ElFormItem :label="$t('common.employee')" required>
+    <ElDialog
+      v-model="dialogVisible"
+      :title="$t('application.regularization.newRegularizationApplication')"
+      width="600px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      destroy-on-close
+    >
+      <ElForm ref="formRef" label-width="100px" :model="formData" :rules="formRules">
+        <ElFormItem :label="$t('common.employee')" prop="employeeId" required>
           <div class="w-full flex gap-8px">
-            <ElInput v-model="employeeDisplayName" disabled :placeholder="$t('common.pleaseSelectEmployees')" class="flex-1" />
+            <ElInput
+              v-model="employeeDisplayName"
+              disabled
+              :placeholder="$t('common.pleaseSelectEmployees')"
+              class="flex-1"
+            />
             <ElButton type="primary" @click="employeeDialogVisible = true">{{ $t('common.selectEmployees') }}</ElButton>
           </div>
         </ElFormItem>
-        <ElFormItem :label="$t('application.regularization.regularizationDate')" required>
+        <ElFormItem :label="$t('application.regularization.regularizationDate')" prop="regularDate" required>
           <ElDatePicker
             v-model="formData.regularDate"
             type="date"
@@ -304,8 +338,12 @@ function handleSizeChange(size: number) {
             value-format="YYYY-MM-DD"
           />
         </ElFormItem>
-        <ElFormItem :label="$t('application.regularization.typeAfterRegularization')" required>
-          <ElSelect v-model="formData.newEmployeeType" :placeholder="$t('application.regularization.pleaseSelectEmployeeType')" style="width: 100%">
+        <ElFormItem :label="$t('application.regularization.typeAfterRegularization')" prop="newEmployeeType" required>
+          <ElSelect
+            v-model="formData.newEmployeeType"
+            :placeholder="$t('application.regularization.pleaseSelectEmployeeType')"
+            style="width: 100%"
+          >
             <ElOption
               v-for="item in employeeTypeOptions"
               :key="item.dictValue"
@@ -315,15 +353,27 @@ function handleSizeChange(size: number) {
           </ElSelect>
         </ElFormItem>
         <ElFormItem :label="$t('application.regularization.probationEvaluation')">
-          <ElInput v-model="formData.evaluation" type="textarea" :rows="3" :placeholder="$t('application.regularization.pleaseEnterProbationEvaluation')" />
+          <ElInput
+            v-model="formData.evaluation"
+            type="textarea"
+            :rows="3"
+            :placeholder="$t('application.regularization.pleaseEnterProbationEvaluation')"
+          />
         </ElFormItem>
         <ElFormItem :label="$t('application.common.applicationReason')">
-          <ElInput v-model="formData.reason" type="textarea" :rows="3" :placeholder="$t('application.common.pleaseEnterApplicationReason')" />
+          <ElInput
+            v-model="formData.reason"
+            type="textarea"
+            :rows="3"
+            :placeholder="$t('application.common.pleaseEnterApplicationReason')"
+          />
         </ElFormItem>
       </ElForm>
       <template #footer>
         <ElButton @click="dialogVisible = false">{{ $t('common.cancel') }}</ElButton>
-        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('application.common.submitApplication') }}</ElButton>
+        <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">
+          {{ $t('application.common.submitApplication') }}
+        </ElButton>
       </template>
     </ElDialog>
 

@@ -193,7 +193,12 @@ function handleSizeChange(size: number) {
     <ElCard class="search-card">
       <ElForm inline :model="searchParams">
         <ElFormItem :label="$t('common.company')">
-          <ElSelect v-model="searchParams.companyId" :placeholder="$t('common.pleaseSelectCompany')" clearable style="width: 150px">
+          <ElSelect
+            v-model="searchParams.companyId"
+            :placeholder="$t('common.pleaseSelectCompany')"
+            clearable
+            style="width: 150px"
+          >
             <ElOption v-for="c in companies" :key="c.id" :label="c.unitName || c.companyName" :value="c.id" />
           </ElSelect>
         </ElFormItem>
@@ -259,7 +264,7 @@ function handleSizeChange(size: number) {
           <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="100" />
           <ElTableColumn prop="employeeName" :label="$t('common.name')" width="80" />
           <ElTableColumn prop="deptName" :label="$t('common.department')" width="120" show-overflow-tooltip />
-          <ElTableColumn prop="clockTime" :label="$t('attendance.clock.clockTime')" width="160">
+          <ElTableColumn prop="clockTime" :label="$t('attendance.clock.clockTime')" width="160" sortable>
             <template #default="{ row }">{{ formatDateTime(row.clockTime) }}</template>
           </ElTableColumn>
           <ElTableColumn prop="clockType" :label="$t('common.type')" width="100" align="center">
@@ -274,7 +279,12 @@ function handleSizeChange(size: number) {
               {{ clockMethodOptions.find(o => o.value === row.clockMethod)?.label || '-' }}
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="location" :label="$t('attendance.clock.location')" min-width="150" show-overflow-tooltip />
+          <ElTableColumn
+            prop="location"
+            :label="$t('attendance.clock.location')"
+            min-width="150"
+            show-overflow-tooltip
+          />
           <ElTableColumn prop="remark" :label="$t('common.remark')" min-width="120" show-overflow-tooltip />
           <ElTableColumn :label="$t('common.action')" width="80" align="center">
             <template #default="{ row }">
@@ -297,7 +307,7 @@ function handleSizeChange(size: number) {
           v-model:current-page="pagination.current"
           v-model:page-size="pagination.pageSize"
           :total="pagination.total"
-          :page-sizes="[20, 50, 100]"
+          :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next"
           @current-change="handlePageChange"
           @size-change="handleSizeChange"

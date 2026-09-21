@@ -5,8 +5,10 @@ import type { TableColumnCtx } from 'element-plus';
 import dayjs from 'dayjs';
 import { type MonthlyAttendance, fetchMonthlyAttendance } from '@/service/api/attendance';
 import { fetchCompanyList, fetchDepartmentTree } from '@/service/api/organization';
+import { useTableColumnSetting } from '@/composables/use-table-column-setting';
 import { resolveOrgIds } from '@/utils/report';
 import { downloadFile } from '@/utils/download';
+import TableHeaderOperation from '@/components/advanced/table-header-operation.vue';
 import { $t } from '@/locales';
 
 defineOptions({ name: 'MonthlyAttendance' });
@@ -16,6 +18,27 @@ const exporting = ref(false);
 const data = ref<MonthlyAttendance[]>([]);
 const companies = ref<any[]>([]);
 const departments = ref<any[]>([]);
+
+// 表格列设置与密度（localStorage 持久化），配合 TableHeaderOperation 使用；页面原为 small 密度，沿用为初始值
+const { columnChecks, density, isColumnVisible } = useTableColumnSetting(
+  'attendance-monthly',
+  [
+    { prop: 'companyName', label: $t('common.company'), checked: true, visible: true },
+    { prop: 'employeeNo', label: $t('common.employeeNo'), checked: true, visible: true },
+    { prop: 'employeeName', label: $t('common.name'), checked: true, visible: true },
+    { prop: 'deptName', label: $t('common.department'), checked: true, visible: true },
+    { prop: 'workDays', label: $t('attendance.monthly.requiredAttendance'), checked: true, visible: true },
+    { prop: 'actualDays', label: $t('attendance.monthly.actualAttendance'), checked: true, visible: true },
+    { prop: 'lateTimes', label: $t('attendance.monthly.lateCount'), checked: true, visible: true },
+    { prop: 'totalLateMinutes', label: $t('attendance.monthly.lateMin'), checked: true, visible: true },
+    { prop: 'earlyTimes', label: $t('attendance.monthly.earlyLeaveCount'), checked: true, visible: true },
+    { prop: 'totalEarlyMinutes', label: $t('attendance.monthly.earlyLeaveMin'), checked: true, visible: true },
+    { prop: 'absentDays', label: $t('common.absent'), checked: true, visible: true },
+    { prop: 'leaveDays', label: $t('common.leave'), checked: true, visible: true },
+    { prop: 'totalWorkHours', label: $t('attendance.monthly.totalWorkHours'), checked: true, visible: true }
+  ],
+  'small'
+);
 
 const currentMonth = ref(dayjs().format('YYYY-MM'));
 const searchParams = ref({
@@ -77,7 +100,9 @@ async function loadData() {
     pagination.value.current = 1;
     // 月度汇总接口为一次性全量返回（无分页参数），数据量过大时提示缩小筛选范围
     if (data.value.length > 20000) {
-      ElMessage.warning($t('attendance.monthly.thisMonthHasTooMuchAttendanceDataAndThePageMayLagNarrowTheRangeByCompanyDepartment'));
+      ElMessage.warning(
+        $t('attendance.monthly.thisMonthHasTooMuchAttendanceDataAndThePageMayLagNarrowTheRangeByCompanyDepartment')
+      );
     }
   } finally {
     loading.value = false;
@@ -149,25 +174,50 @@ function getSummary({
 async function handleExport() {
   exporting.value = true;
   try {
-    // 与报表页保持一致：公司/部门解析为 orgIds（含子部门）
-    const { companyId, deptId } = searchParams.value;
-    let orgIds: number[] | undefined;
-    if (companyId || deptId) {
-      const resolved = resolveOrgIds(departments.value, deptId);
-      orgIds = resolved.length > 0 ? resolved : [deptId ?? companyId!];
-    }
-    await downloadFile('/attendance/monthly/export', $t('attendance.monthly.monthlyAttendanceSummaryXlsx', { month: currentMonth.value }), {
-      month: currentMonth.value,
-      orgIds: orgIds?.join(','),
-      employeeNo: searchParams.value.employeeNo,
-      employeeName: searchParams.value.employeeName
-    });
+    await downloadFile(
+      '/attendance/monthly/export',
+      $t('attendance.monthly.monthlyAttendanceSummaryXlsx', { month: currentMonth.value }),
+      buildExportParams()
+    );
     ElMessage.success($t('attendance.common.exportSuccessful'));
   } catch {
     // downloadFile 内部已提示具体错误
   } finally {
     exporting.value = false;
   }
+}
+
+/** 导出月度对账（请假/加班/缺勤工时对账表，算薪用） */
+async function handleExportReconciliation() {
+  exporting.value = true;
+  try {
+    await downloadFile(
+      '/attendance/monthly/reconciliation/export',
+      $t('attendance.monthly.monthlyReconciliationXlsx', { month: currentMonth.value }),
+      buildExportParams()
+    );
+    ElMessage.success($t('attendance.common.exportSuccessful'));
+  } catch {
+    // downloadFile 内部已提示具体错误
+  } finally {
+    exporting.value = false;
+  }
+}
+
+/** 导出查询参数：公司/部门解析为 orgIds（含子部门），与报表页口径一致 */
+function buildExportParams() {
+  const { companyId, deptId } = searchParams.value;
+  let orgIds: number[] | undefined;
+  if (companyId || deptId) {
+    const resolved = resolveOrgIds(departments.value, deptId);
+    orgIds = resolved.length > 0 ? resolved : [deptId ?? companyId!];
+  }
+  return {
+    month: currentMonth.value,
+    orgIds: orgIds?.join(','),
+    employeeNo: searchParams.value.employeeNo,
+    employeeName: searchParams.value.employeeName
+  };
 }
 </script>
 
@@ -187,7 +237,12 @@ async function handleExport() {
           />
         </ElFormItem>
         <ElFormItem :label="$t('common.company')">
-          <ElSelect v-model="searchParams.companyId" :placeholder="$t('common.pleaseSelectCompany')" clearable style="width: 150px">
+          <ElSelect
+            v-model="searchParams.companyId"
+            :placeholder="$t('common.pleaseSelectCompany')"
+            clearable
+            style="width: 150px"
+          >
             <ElOption v-for="c in companies" :key="c.id" :label="c.unitName || c.companyName" :value="c.id" />
           </ElSelect>
         </ElFormItem>
@@ -235,12 +290,35 @@ async function handleExport() {
 
     <ElCard class="flex-1">
       <template #header>
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-12px">
           <span>{{ $t('attendance.monthly.monthlyAttendanceSummary') }} {{ currentMonth }}</span>
-          <ElButton v-permission="'attendance:monthly:export'" type="primary" :loading="exporting" @click="handleExport">
-            <template #icon><icon-ep-download /></template>
-            {{ $t('common.export') }}
-          </ElButton>
+          <div class="flex flex-wrap items-center gap-8px">
+            <ElButton
+              v-permission="'attendance:monthly:export'"
+              type="primary"
+              :loading="exporting"
+              @click="handleExport"
+            >
+              <template #icon><icon-ep-download /></template>
+              {{ $t('common.export') }}
+            </ElButton>
+            <ElButton
+              v-permission="'attendance:monthly:export'"
+              :loading="exporting"
+              @click="handleExportReconciliation"
+            >
+              <template #icon><icon-ep-download /></template>
+              {{ $t('attendance.monthly.exportReconciliation') }}
+            </ElButton>
+            <TableHeaderOperation
+              v-model:columns="columnChecks"
+              v-model:density="density"
+              :loading="loading"
+              @refresh="loadData"
+            >
+              <template #default />
+            </TableHeaderOperation>
+          </div>
         </div>
       </template>
 
@@ -249,43 +327,122 @@ async function handleExport() {
         :data="pagedData"
         border
         stripe
-        size="small"
+        :size="density"
         show-summary
         :summary-method="getSummary"
       >
-        <ElTableColumn prop="companyName" :label="$t('common.company')" width="100" show-overflow-tooltip fixed="left" />
-        <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="80" fixed="left" />
-        <ElTableColumn prop="employeeName" :label="$t('common.name')" width="70" fixed="left" />
-        <ElTableColumn prop="deptName" :label="$t('common.department')" width="100" show-overflow-tooltip />
-        <ElTableColumn prop="workDays" :label="$t('attendance.monthly.requiredAttendance')" width="70" align="center" />
-        <ElTableColumn prop="actualDays" :label="$t('attendance.monthly.actualAttendance')" width="70" align="center" />
-        <ElTableColumn prop="lateTimes" :label="$t('attendance.monthly.lateCount')" width="80" align="center">
+        <ElTableColumn
+          v-if="isColumnVisible('companyName')"
+          prop="companyName"
+          :label="$t('common.company')"
+          width="100"
+          show-overflow-tooltip
+          fixed="left"
+        />
+        <ElTableColumn
+          v-if="isColumnVisible('employeeNo')"
+          prop="employeeNo"
+          :label="$t('common.employeeNo')"
+          width="80"
+          fixed="left"
+        />
+        <ElTableColumn
+          v-if="isColumnVisible('employeeName')"
+          prop="employeeName"
+          :label="$t('common.name')"
+          width="70"
+          fixed="left"
+        />
+        <ElTableColumn
+          v-if="isColumnVisible('deptName')"
+          prop="deptName"
+          :label="$t('common.department')"
+          width="100"
+          show-overflow-tooltip
+        />
+        <ElTableColumn
+          v-if="isColumnVisible('workDays')"
+          prop="workDays"
+          :label="$t('attendance.monthly.requiredAttendance')"
+          width="70"
+          align="center"
+        />
+        <ElTableColumn
+          v-if="isColumnVisible('actualDays')"
+          prop="actualDays"
+          :label="$t('attendance.monthly.actualAttendance')"
+          width="70"
+          align="center"
+        />
+        <ElTableColumn
+          v-if="isColumnVisible('lateTimes')"
+          prop="lateTimes"
+          :label="$t('attendance.monthly.lateCount')"
+          width="80"
+          align="center"
+        >
           <template #default="{ row }">
             <span :class="row.lateTimes > 0 ? 'text-red-500' : ''">{{ row.lateTimes }}</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="totalLateMinutes" :label="$t('attendance.monthly.lateMin')" width="80" align="center">
+        <ElTableColumn
+          v-if="isColumnVisible('totalLateMinutes')"
+          prop="totalLateMinutes"
+          :label="$t('attendance.monthly.lateMin')"
+          width="80"
+          align="center"
+        >
           <template #default="{ row }">
             <span :class="row.totalLateMinutes > 0 ? 'text-red-500' : ''">{{ row.totalLateMinutes }}</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="earlyTimes" :label="$t('attendance.monthly.earlyLeaveCount')" width="80" align="center">
+        <ElTableColumn
+          v-if="isColumnVisible('earlyTimes')"
+          prop="earlyTimes"
+          :label="$t('attendance.monthly.earlyLeaveCount')"
+          width="80"
+          align="center"
+        >
           <template #default="{ row }">
             <span :class="row.earlyTimes > 0 ? 'text-red-500' : ''">{{ row.earlyTimes }}</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="totalEarlyMinutes" :label="$t('attendance.monthly.earlyLeaveMin')" width="80" align="center">
+        <ElTableColumn
+          v-if="isColumnVisible('totalEarlyMinutes')"
+          prop="totalEarlyMinutes"
+          :label="$t('attendance.monthly.earlyLeaveMin')"
+          width="80"
+          align="center"
+        >
           <template #default="{ row }">
             <span :class="row.totalEarlyMinutes > 0 ? 'text-red-500' : ''">{{ row.totalEarlyMinutes }}</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="absentDays" :label="$t('common.absent')" width="60" align="center">
+        <ElTableColumn
+          v-if="isColumnVisible('absentDays')"
+          prop="absentDays"
+          :label="$t('common.absent')"
+          width="60"
+          align="center"
+        >
           <template #default="{ row }">
             <span :class="row.absentDays > 0 ? 'text-red-500 font-bold' : ''">{{ row.absentDays }}</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="leaveDays" :label="$t('common.leave')" width="60" align="center" />
-        <ElTableColumn prop="totalWorkHours" :label="$t('attendance.monthly.totalWorkHours')" min-width="80" align="center">
+        <ElTableColumn
+          v-if="isColumnVisible('leaveDays')"
+          prop="leaveDays"
+          :label="$t('common.leave')"
+          width="60"
+          align="center"
+        />
+        <ElTableColumn
+          v-if="isColumnVisible('totalWorkHours')"
+          prop="totalWorkHours"
+          :label="$t('attendance.monthly.totalWorkHours')"
+          min-width="80"
+          align="center"
+        >
           <template #default="{ row }">{{ row.totalWorkHours }}h</template>
         </ElTableColumn>
       </ElTable>
@@ -295,7 +452,7 @@ async function handleExport() {
           v-model:current-page="pagination.current"
           v-model:page-size="pagination.pageSize"
           :total="data.length"
-          :page-sizes="[20, 50, 100]"
+          :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next"
           @current-change="handlePageChange"
           @size-change="handleSizeChange"

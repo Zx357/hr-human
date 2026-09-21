@@ -86,6 +86,7 @@ declare module 'vue' {
     IconEpArrowRight: typeof import('~icons/ep/arrow-right')['default']
     IconEpArrowUp: typeof import('~icons/ep/arrow-up')['default']
     IconEpBack: typeof import('~icons/ep/back')['default']
+    IconEpBell: typeof import('~icons/ep/bell')['default']
     IconEpBottom: typeof import('~icons/ep/bottom')['default']
     IconEpCalendar: typeof import('~icons/ep/calendar')['default']
     IconEpCheck: typeof import('~icons/ep/check')['default']

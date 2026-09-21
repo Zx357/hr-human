@@ -13,11 +13,16 @@ const { formRef, validate } = useForm();
 interface FormModel {
   userName: string;
   password: string;
+  rememberMe: boolean;
 }
 
+// 记住我：仅记住用户名，凭据不落盘
+const REMEMBER_KEY = 'pwd-login-remember-username';
+
 const model = ref<FormModel>({
-  userName: '',
-  password: ''
+  userName: localStorage.getItem(REMEMBER_KEY) || '',
+  password: '',
+  rememberMe: !!localStorage.getItem(REMEMBER_KEY)
 });
 
 const rules = computed<Record<keyof FormModel, App.Global.FormRule[]>>(() => {
@@ -27,16 +32,21 @@ const rules = computed<Record<keyof FormModel, App.Global.FormRule[]>>(() => {
   return {
     userName: formRules.userName,
     password: formRules.pwd
-  };
+  } as Record<keyof FormModel, App.Global.FormRule[]>;
 });
 
 async function handleSubmit() {
   await validate();
+  if (model.value.rememberMe) {
+    localStorage.setItem(REMEMBER_KEY, model.value.userName);
+  } else {
+    localStorage.removeItem(REMEMBER_KEY);
+  }
   await authStore.login(model.value.userName, model.value.password);
 }
 
 function showForgotPasswordTip() {
-  ElMessage.info('请联系系统管理员在后台重置密码');
+  ElMessage.info($t('page.login.pwdLogin.contactAdminReset'));
 }
 </script>
 
@@ -55,8 +65,8 @@ function showForgotPasswordTip() {
     </ElFormItem>
     <ElSpace direction="vertical" :size="24" class="w-full" fill>
       <div class="flex-y-center justify-between">
-        <ElCheckbox>{{ $t('page.login.pwdLogin.rememberMe') }}</ElCheckbox>
-        <ElButton link type="primary" @click="showForgotPasswordTip">忘记密码？</ElButton>
+        <ElCheckbox v-model="model.rememberMe">{{ $t('page.login.pwdLogin.rememberMe') }}</ElCheckbox>
+        <ElButton link type="primary" @click="showForgotPasswordTip">{{ $t('page.login.pwdLogin.forgetPassword') }}</ElButton>
       </div>
       <ElButton type="primary" size="large" round block :loading="authStore.loginLoading" @click="handleSubmit">
         {{ $t('common.confirm') }}

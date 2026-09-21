@@ -194,7 +194,12 @@ function getRuleTypeTag(type: number) {
               style="width: 110px"
               @change="handleFilterChange"
             >
-              <ElOption v-for="y in yearOptions" :key="y" :label="$t('attendance.holiday.year', { year: y })" :value="y" />
+              <ElOption
+                v-for="y in yearOptions"
+                :key="y"
+                :label="$t('attendance.holiday.year', { year: y })"
+                :value="y"
+              />
             </ElSelect>
             <ElSelect
               v-model="filterRuleType"
@@ -238,28 +243,52 @@ function getRuleTypeTag(type: number) {
         <ElTableColumn prop="remark" :label="$t('common.remark')" min-width="150" show-overflow-tooltip />
         <ElTableColumn :label="$t('common.action')" width="120" align="center">
           <template #default="{ row }">
-            <ElButton v-permission="'attendance:holiday:edit'" type="primary" link size="small" @click="handleEdit(row)">{{ $t('common.edit') }}</ElButton>
-            <ElButton v-permission="'attendance:holiday:delete'" type="danger" link size="small" @click="handleDelete(row)">{{ $t('common.delete') }}</ElButton>
+            <ElButton
+              v-permission="'attendance:holiday:edit'"
+              type="primary"
+              link
+              size="small"
+              @click="handleEdit(row)"
+            >
+              {{ $t('common.edit') }}
+            </ElButton>
+            <ElButton
+              v-permission="'attendance:holiday:delete'"
+              type="danger"
+              link
+              size="small"
+              @click="handleDelete(row)"
+            >
+              {{ $t('common.delete') }}
+            </ElButton>
           </template>
         </ElTableColumn>
       </ElTable>
 
       <div class="mt-12px flex items-center justify-between">
         <span class="text-sm text-gray-400">
-          {{ $t('attendance.holiday.noteEachCompanyCanHaveOnlyOneRestRuleSingleTwoDayWeekendStatutoryHolidaysAndAdjustedWorkdaysCanHaveMultipleEntries') }}
+          {{
+            $t(
+              'attendance.holiday.noteEachCompanyCanHaveOnlyOneRestRuleSingleTwoDayWeekendStatutoryHolidaysAndAdjustedWorkdaysCanHaveMultipleEntries'
+            )
+          }}
         </span>
         <ElPagination
           v-model:current-page="pagination.current"
           v-model:page-size="pagination.pageSize"
           :total="filteredRules.length"
-          :page-sizes="[20, 50, 100]"
+          :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next"
         />
       </div>
     </ElCard>
 
     <!-- 添加/编辑弹窗 -->
-    <ElDialog v-model="dialogVisible" :title="operateType === 'add' ? $t('attendance.holiday.addRule') : $t('attendance.holiday.editRule')" width="500px">
+    <ElDialog
+      v-model="dialogVisible"
+      :title="operateType === 'add' ? $t('attendance.holiday.addRule') : $t('attendance.holiday.editRule')"
+      width="500px"
+    >
       <ElForm ref="formRef" label-width="80px" :model="dialogForm" :rules="formRules">
         <ElFormItem :label="$t('common.company')" prop="companyId">
           <ElSelect v-model="dialogForm.companyId" :placeholder="$t('common.pleaseSelectCompany')" style="width: 100%">

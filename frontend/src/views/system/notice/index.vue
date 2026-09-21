@@ -204,8 +204,8 @@ onMounted(() => {
               </ElTag>
             </template>
           </ElTableColumn>
-          <ElTableColumn prop="publishTime" :label="$t('sys.notice.publishDate')" width="120" />
-          <ElTableColumn prop="createdTime" :label="$t('common.createTime')" width="180">
+          <ElTableColumn prop="publishTime" :label="$t('sys.notice.publishDate')" width="120" sortable />
+          <ElTableColumn prop="createdTime" :label="$t('common.createTime')" width="180" sortable>
             <template #default="{ row }">{{ formatDateTime(row.createdTime) }}</template>
           </ElTableColumn>
           <ElTableColumn :label="$t('common.action')" width="150" fixed="right" align="center">
