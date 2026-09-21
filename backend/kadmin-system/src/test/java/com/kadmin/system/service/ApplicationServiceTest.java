@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.kadmin.attendance.domain.AttSchedule;
 import com.kadmin.attendance.domain.AttShiftPeriod;
+import com.kadmin.attendance.mapper.AttClockRecordMapper;
 import com.kadmin.attendance.mapper.AttScheduleMapper;
 import com.kadmin.attendance.mapper.AttShiftMapper;
 import com.kadmin.attendance.mapper.AttShiftPeriodMapper;
@@ -78,6 +79,8 @@ class ApplicationServiceTest {
     @Mock
     private AttShiftPeriodMapper shiftPeriodMapper;
     @Mock
+    private AttClockRecordMapper clockRecordMapper;
+    @Mock
     private SysApprovalFlowMapper flowMapper;
     @Mock
     private SysApprovalNodeMapper flowNodeMapper;
@@ -89,6 +92,8 @@ class ApplicationServiceTest {
     private ApplicationEventPublisher eventPublisher;
     @Mock
     private NotificationService notificationService;
+    @Mock
+    private com.kadmin.hr.service.LeaveQuotaService leaveQuotaService;
     @Mock
     private HrApplicationMapper applicationMapper;
 
@@ -107,8 +112,8 @@ class ApplicationServiceTest {
     @BeforeEach
     void setUp() {
         service = new ApplicationService(employeeMapper, sysUserMapper, scheduleMapper, shiftMapper,
-                shiftPeriodMapper, flowMapper, flowNodeMapper, approvalRecordMapper, mobileApproverMapper,
-                eventPublisher, notificationService);
+                shiftPeriodMapper, clockRecordMapper, flowMapper, flowNodeMapper, approvalRecordMapper,
+                mobileApproverMapper, eventPublisher, notificationService, leaveQuotaService);
         // ServiceImpl 基类的 baseMapper 字段注入 mock（getById/update/updateById 均走该 mapper）
         ReflectionTestUtils.setField(service, "baseMapper", applicationMapper);
     }
@@ -170,6 +175,8 @@ class ApplicationServiceTest {
 
     private AttShiftPeriod period(String start, String end) {
         AttShiftPeriod p = new AttShiftPeriod();
+        // 批量预载按时段实体的 shiftId 建立映射，与排班使用的班次(5L)保持一致
+        p.setShiftId(5L);
         p.setStartTime(start);
         p.setEndTime(end);
         return p;
@@ -270,7 +277,7 @@ class ApplicationServiceTest {
     }
 
     @Test
-    @DisplayName("审批：管理员跳过资格校验可直接审批（含本人提交的申请）")
+    @DisplayName("审批：管理员跳过资格校验可直接审批他人申请")
     void approve_adminBypassesEligibilityCheck() {
         stubFlow(List.of());
         when(applicationMapper.selectById(APP_ID)).thenReturn(pendingLeaveApplication());
@@ -278,13 +285,25 @@ class ApplicationServiceTest {
                 .thenReturn(List.of())          // 第一次 findCurrentNode：无通过记录
                 .thenReturn(List.of());         // 第二次 findCurrentNode：仍无节点
         when(applicationMapper.update(isNull(), any())).thenReturn(1);
-        // 管理员即申请人（roleId 为 ADMIN 时不再做回避校验）
-        boolean result = service.approve(APP_ID, 1, "同意", login(1L, APPLICANT_ID, "ROLE_ADMIN"), null);
+        // 管理员审批他人申请：不需要节点角色/移动端审批人资格
+        boolean result = service.approve(APP_ID, 1, "同意", login(1L, APPROVER_ID, "ROLE_ADMIN"), null);
         assertThat(result).isTrue();
         verify(approvalRecordMapper).insert(any(HrApprovalRecord.class));
         verify(applicationMapper).update(isNull(), any());
         verify(notificationService).notify(eq(APPLICANT_ID), eq("approval_result"), eq("审批通过"),
                 any(), eq(APP_ID), eq("/homePages/application"));
+    }
+
+    @Test
+    @DisplayName("审批：管理员也不能审批自己提交的申请（回避不因角色豁免）")
+    void approve_adminCannotApproveOwnApplication() {
+        stubFlow(List.of());
+        when(applicationMapper.selectById(APP_ID)).thenReturn(pendingLeaveApplication());
+        assertThatThrownBy(() -> service.approve(APP_ID, 1, "同意", login(1L, APPLICANT_ID, "ROLE_ADMIN"), null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("不能审批自己提交的申请");
+        verify(approvalRecordMapper, never()).insert(any(HrApprovalRecord.class));
+        verify(applicationMapper, never()).update(any(), any());
     }
 
     // ==================== approve：多级流转 ====================
@@ -518,7 +537,7 @@ class ApplicationServiceTest {
     @DisplayName("加班计算：休息日（无排班）整段计入加班")
     void overtimeCalculation_restDayCountsFullDuration() {
         LocalDate restDay = LocalDate.of(2026, 9, 19); // 周六
-        when(scheduleMapper.selectOne(any())).thenReturn(null);
+        when(scheduleMapper.selectList(any())).thenReturn(List.of());
 
         BigDecimal hours = service.calculateOvertimeHours(APPLICANT_ID,
                 LocalDateTime.of(restDay, LocalTime.of(9, 0)), LocalDateTime.of(restDay, LocalTime.of(18, 0)));
@@ -530,7 +549,7 @@ class ApplicationServiceTest {
     @DisplayName("加班计算：有排班时只计与班次时段的交集（自动扣除午休）")
     void overtimeCalculation_shiftDayCountsOnlyPeriodOverlap() {
         LocalDate workDay = LocalDate.of(2026, 9, 21);
-        when(scheduleMapper.selectOne(any())).thenReturn(scheduleFor(workDay, 5L));
+        when(scheduleMapper.selectList(any())).thenReturn(List.of(scheduleFor(workDay, 5L)));
         when(shiftPeriodMapper.selectList(any())).thenReturn(List.of(
                 period("09:00", "12:00"), period("13:00", "18:00")));
 
@@ -545,7 +564,7 @@ class ApplicationServiceTest {
     @DisplayName("加班计算：有排班但未配置时段时整段计入加班")
     void overtimeCalculation_shiftWithoutPeriodsCountsFullDuration() {
         LocalDate workDay = LocalDate.of(2026, 9, 21);
-        when(scheduleMapper.selectOne(any())).thenReturn(scheduleFor(workDay, 5L));
+        when(scheduleMapper.selectList(any())).thenReturn(List.of(scheduleFor(workDay, 5L)));
         when(shiftPeriodMapper.selectList(any())).thenReturn(List.of());
 
         BigDecimal hours = service.calculateOvertimeHours(APPLICANT_ID,
@@ -558,7 +577,7 @@ class ApplicationServiceTest {
     @DisplayName("加班计算：跨天加班按天切分计算（首日到23:59、次日从0点起）")
     void overtimeCalculation_crossDaySplitsByDay() {
         // 两天均无排班
-        when(scheduleMapper.selectOne(any())).thenReturn(null);
+        when(scheduleMapper.selectList(any())).thenReturn(List.of());
 
         BigDecimal hours = service.calculateOvertimeHours(APPLICANT_ID,
                 LocalDateTime.of(2026, 9, 19, 22, 0), LocalDateTime.of(2026, 9, 20, 2, 0));
@@ -571,7 +590,7 @@ class ApplicationServiceTest {
     @DisplayName("加班计算：分钟数按半小时上取整为小时（91分钟=1.52h）")
     void overtimeCalculation_minutesRoundedHalfUp() {
         LocalDate restDay = LocalDate.of(2026, 9, 19);
-        when(scheduleMapper.selectOne(any())).thenReturn(null);
+        when(scheduleMapper.selectList(any())).thenReturn(List.of());
 
         BigDecimal hours = service.calculateOvertimeHours(APPLICANT_ID,
                 LocalDateTime.of(restDay, LocalTime.of(9, 0)), LocalDateTime.of(restDay, LocalTime.of(10, 31)));
@@ -585,7 +604,7 @@ class ApplicationServiceTest {
     @DisplayName("请假计算：休息日（无排班）不计请假工时")
     void leaveCalculation_restDayCountsZero() {
         LocalDate restDay = LocalDate.of(2026, 9, 19);
-        when(scheduleMapper.selectOne(any())).thenReturn(null);
+        when(scheduleMapper.selectList(any())).thenReturn(List.of());
 
         BigDecimal hours = service.calculateLeaveHours(APPLICANT_ID,
                 LocalDateTime.of(restDay, LocalTime.of(9, 0)), LocalDateTime.of(restDay, LocalTime.of(18, 0)));
@@ -597,7 +616,7 @@ class ApplicationServiceTest {
     @DisplayName("请假计算：按班次时段交集计算（跨午休请假自动扣除午休）")
     void leaveCalculation_countsOnlyPeriodOverlap() {
         LocalDate workDay = LocalDate.of(2026, 9, 21);
-        when(scheduleMapper.selectOne(any())).thenReturn(scheduleFor(workDay, 5L));
+        when(scheduleMapper.selectList(any())).thenReturn(List.of(scheduleFor(workDay, 5L)));
         when(shiftPeriodMapper.selectList(any())).thenReturn(List.of(
                 period("09:00", "12:00"), period("13:00", "18:00")));
 
@@ -612,9 +631,9 @@ class ApplicationServiceTest {
     @DisplayName("请假计算：跨天时首日从请假时间起、非末日计至当日最后时段结束")
     void leaveCalculation_crossDayClampsToShiftPeriods() {
         // 两天同一班次
-        when(scheduleMapper.selectOne(any())).thenReturn(
+        when(scheduleMapper.selectList(any())).thenReturn(List.of(
                 scheduleFor(LocalDate.of(2026, 9, 21), 5L),
-                scheduleFor(LocalDate.of(2026, 9, 22), 5L));
+                scheduleFor(LocalDate.of(2026, 9, 22), 5L)));
         when(shiftPeriodMapper.selectList(any())).thenReturn(List.of(
                 period("09:00", "12:00"), period("13:00", "18:00")));
 

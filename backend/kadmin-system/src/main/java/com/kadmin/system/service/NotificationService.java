@@ -3,9 +3,12 @@ package com.kadmin.system.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.kadmin.common.event.NotificationCreatedEvent;
 import com.kadmin.system.domain.SysNotification;
 import com.kadmin.system.mapper.SysNotificationMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -13,10 +16,14 @@ import java.util.List;
 
 /**
  * 站内通知服务：写入、分页查询、未读数、全部已读
+ * 写入成功后发布 NotificationCreatedEvent，由 WebSocket 监听器实时推给在线员工
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class NotificationService extends ServiceImpl<SysNotificationMapper, SysNotification> {
+
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 创建通知（通知写入失败不影响主业务）
@@ -35,6 +42,9 @@ public class NotificationService extends ServiceImpl<SysNotificationMapper, SysN
             notification.setUrl(url);
             notification.setReadFlag(0);
             save(notification);
+            // 推送失败不影响通知写入（监听器内部兜底）
+            eventPublisher.publishEvent(new NotificationCreatedEvent(employeeId, notification.getId(), type, title,
+                    content));
         } catch (Exception e) {
             log.warn("写入站内通知失败: employeeId={}, type={}, refId={}", employeeId, type, refId, e);
         }

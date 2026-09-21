@@ -65,6 +65,15 @@ public class ContractController {
     }
 
     /**
+     * 合同续签：旧合同置为已续签，生成新合同（次数+1，日期/薪资可覆盖，缺省沿用旧合同）
+     */
+    @RequiresPermission("hr:contract:add")
+    @PostMapping("/renew")
+    public Result<HrContract> renew(@RequestBody HrContract entity) {
+        return Result.success(contractService.renewContract(entity));
+    }
+
+    /**
      * 删除合同
      */
     @RequiresPermission("hr:contract:delete")

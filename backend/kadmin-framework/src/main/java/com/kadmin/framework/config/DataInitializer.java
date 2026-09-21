@@ -51,6 +51,8 @@ public class DataInitializer implements CommandLineRunner {
         ensureMobileManagementMenu();
         ensureOperLogMenu();
         ensurePermissionButtonSeeds();
+        ensureLeaveQuotaTable();
+        ensureLeaveQuotaMenu();
         ensureDefaultSystemNotice();
         ensureDefaultMomentPosts();
         ensureDefaultMobileGroup();
@@ -339,6 +341,78 @@ public class DataInitializer implements CommandLineRunner {
                   KEY idx_sys_feedback_created_time (created_time)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='意见反馈'
                 """);
+    }
+
+    private void ensureLeaveQuotaTable() {
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS hr_leave_quota (
+                  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+                  employee_id BIGINT NOT NULL COMMENT '员工ID',
+                  year INT NOT NULL COMMENT '年度',
+                  leave_type VARCHAR(50) NOT NULL COMMENT '假期类型（字典 leave_type 值）',
+                  total_hours DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '额度总时长（小时）',
+                  used_hours DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '已使用时长（小时）',
+                  created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  created_by BIGINT DEFAULT NULL COMMENT '创建人',
+                  updated_by BIGINT DEFAULT NULL COMMENT '更新人',
+                  PRIMARY KEY (id),
+                  UNIQUE KEY uk_hr_leave_quota (employee_id, year, leave_type)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='假期额度'
+                """);
+    }
+
+    private void ensureLeaveQuotaMenu() {
+        SysMenu hrMenu = menuMapper.selectOne(new LambdaQueryWrapper<SysMenu>()
+                .eq(SysMenu::getMenuCode, "hr")
+                .last("LIMIT 1"));
+        if (hrMenu == null) {
+            log.warn("HR menu not found, skip leave quota menu initialization.");
+            return;
+        }
+
+        SysMenu quotaMenu = menuMapper.selectOne(new LambdaQueryWrapper<SysMenu>()
+                .eq(SysMenu::getMenuCode, "hr_leave_quota")
+                .last("LIMIT 1"));
+        if (quotaMenu == null) {
+            quotaMenu = new SysMenu();
+            quotaMenu.setParentId(hrMenu.getId());
+            quotaMenu.setMenuType(2);
+            quotaMenu.setMenuCode("hr_leave_quota");
+            quotaMenu.setMenuName("假期额度");
+            quotaMenu.setMenuNameEn("Leave Quota");
+            quotaMenu.setPath("/hr/leave-quota");
+            quotaMenu.setComponent("view.hr_leave-quota");
+            quotaMenu.setPermission("hr:leavequota:list");
+            quotaMenu.setIcon("mdi:calendar-clock");
+            quotaMenu.setSortOrder(3);
+            quotaMenu.setVisible(1);
+            quotaMenu.setStatus(1);
+            menuMapper.insert(quotaMenu);
+        }
+
+        SysMenu manageButton = menuMapper.selectOne(new LambdaQueryWrapper<SysMenu>()
+                .eq(SysMenu::getMenuCode, "hr_leavequota_manage")
+                .last("LIMIT 1"));
+        if (manageButton == null) {
+            manageButton = new SysMenu();
+            manageButton.setParentId(quotaMenu.getId());
+            manageButton.setMenuType(3);
+            manageButton.setMenuCode("hr_leavequota_manage");
+            manageButton.setMenuName("额度维护");
+            manageButton.setMenuNameEn("Manage Quota");
+            manageButton.setPath(null);
+            manageButton.setComponent(null);
+            manageButton.setPermission("hr:leavequota:manage");
+            manageButton.setIcon(null);
+            manageButton.setSortOrder(1);
+            manageButton.setVisible(1);
+            manageButton.setStatus(1);
+            menuMapper.insert(manageButton);
+        }
+
+        assignMenuToAdminRoles(quotaMenu.getId());
+        assignMenuToAdminRoles(manageButton.getId());
     }
 
     private void ensureFeedbackMenu() {

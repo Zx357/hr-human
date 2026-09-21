@@ -9,10 +9,15 @@ import com.kadmin.hr.mapper.EmployeeMapper;
 import com.kadmin.system.mapper.SysUserMapper;
 import com.kadmin.common.security.LoginUser;
 import com.kadmin.framework.security.TokenService;
+import com.kadmin.system.domain.SysOperLog;
+import com.kadmin.system.mapper.SysOperLogMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.*;
 
@@ -26,6 +31,7 @@ public class AuthService {
 
     private final SysUserMapper userMapper;
     private final EmployeeMapper employeeMapper;
+    private final SysOperLogMapper operLogMapper;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
     private final org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate;
@@ -49,11 +55,13 @@ public class AuthService {
         // 统一提示，防止用户名枚举
         if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
             recordLoginFail("PC", username);
+            recordLoginLog(username, false, "用户名或密码错误");
             throw new BusinessException("用户名或密码错误");
         }
 
         // 检查用户状态
         if (user.getStatus() != 1) {
+            recordLoginLog(username, false, "账号已禁用");
             throw new BusinessException(ResultCode.USER_DISABLED);
         }
 
@@ -79,6 +87,8 @@ public class AuthService {
         String refreshToken = tokenService.createRefreshToken(loginUser);
 
         // 返回结果 - 适配soybean-admin格式
+        recordLoginLog(username, true, null);
+
         Map<String, String> result = new HashMap<>();
         result.put("token", token);
         result.put("refreshToken", refreshToken);
@@ -100,17 +110,20 @@ public class AuthService {
         HrEmployee employee = employeeMapper.selectByEmployeeNo(employeeNo);
         if (employee == null) {
             recordLoginFail("M", employeeNo);
+            recordLoginLog(employeeNo, false, "工号或密码错误");
             throw new BusinessException("工号或密码错误");
         }
 
         // 检查员工状态（1-在职）
         Integer employeeStatus = employee.getStatus();
         if (employeeStatus != null && employeeStatus != 1) {
+            recordLoginLog(employeeNo, false, "该员工已离职，无法登录");
             throw new BusinessException("该员工已离职，无法登录");
         }
 
         if (!matchesEmployeePassword(employee, password)) {
             recordLoginFail("M", employeeNo);
+            recordLoginLog(employeeNo, false, "工号或密码错误");
             throw new BusinessException("工号或密码错误");
         }
 
@@ -134,6 +147,8 @@ public class AuthService {
         // 生成Token
         String token = tokenService.createToken(loginUser);
         String refreshToken = tokenService.createRefreshToken(loginUser);
+
+        recordLoginLog(employeeNo, true, null);
 
         // 返回结果
         Map<String, String> result = new HashMap<>();
@@ -168,6 +183,49 @@ public class AuthService {
             return true;
         }
         return false;
+    }
+
+    // ==================== 登录日志（复用操作日志表，PC"系统管理-操作日志"可查） ====================
+
+    /**
+     * 记录登录日志：成功与失败均记录，写入 sys_oper_log（模块=系统登录），
+     * 失败不抛出，不影响登录主流程
+     */
+    private void recordLoginLog(String account, boolean success, String message) {
+        try {
+            SysOperLog operLog = new SysOperLog();
+            operLog.setModule("系统登录");
+            operLog.setAction(success ? "登录成功" : "登录失败");
+            operLog.setUsername(account);
+            operLog.setStatus(success ? 1 : 0);
+            if (!success && message != null) {
+                operLog.setErrorMsg(message);
+            }
+            ServletRequestAttributes attributes =
+                    (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attributes != null) {
+                HttpServletRequest request = attributes.getRequest();
+                operLog.setRequestUri(request.getMethod() + " " + request.getRequestURI());
+                operLog.setIp(resolveClientIp(request));
+            }
+            operLog.setCreatedTime(java.time.LocalDateTime.now());
+            operLogMapper.insert(operLog);
+        } catch (Exception e) {
+            log.warn("记录登录日志失败: {}", e.getMessage());
+        }
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+            int index = ip.indexOf(',');
+            return index > 0 ? ip.substring(0, index) : ip;
+        }
+        ip = request.getHeader("X-Real-IP");
+        if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+            return ip;
+        }
+        return request.getRemoteAddr();
     }
 
     // ==================== 登录防爆破 ====================

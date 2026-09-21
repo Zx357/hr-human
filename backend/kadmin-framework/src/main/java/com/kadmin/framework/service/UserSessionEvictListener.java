@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.kadmin.common.event.EmployeeDeletedEvent;
 import com.kadmin.common.event.UserSessionEvictEvent;
 import com.kadmin.framework.security.TokenService;
+import com.kadmin.framework.websocket.ChatWebSocketSessionRegistry;
 import com.kadmin.system.domain.SysUser;
 import com.kadmin.system.mapper.SysUserMapper;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class UserSessionEvictListener {
 
     private final TokenService tokenService;
     private final SysUserMapper sysUserMapper;
+    private final ChatWebSocketSessionRegistry chatWebSocketSessionRegistry;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onUserSessionEvict(UserSessionEvictEvent event) {
@@ -31,6 +33,8 @@ public class UserSessionEvictListener {
         }
         if (event.isEmployee()) {
             tokenService.deleteUserTokenByEmployee(event.getUserId());
+            // 同步关闭其聊天 WS 长连接，避免会话已吊销但推送仍可达
+            chatWebSocketSessionRegistry.closeAllForEmployee(event.getUserId());
             log.info("已吊销员工 {} 的全部移动端登录会话", event.getUserId());
         } else {
             tokenService.deleteUserToken(event.getUserId());
@@ -57,5 +61,6 @@ public class UserSessionEvictListener {
             log.info("员工 {} 删除：已清理关联系统用户 {}", employeeId, user.getUsername());
         }
         tokenService.deleteUserTokenByEmployee(employeeId);
+        chatWebSocketSessionRegistry.closeAllForEmployee(employeeId);
     }
 }

@@ -218,6 +218,8 @@ public class MobileChatService {
                             .or(q -> q.eq(MobileChatMessage::getFromEmployeeId, targetId)
                                     .eq(MobileChatMessage::getPeerEmployeeId, employeeId)));
         } else {
+            // 群会话仅群成员可推进已读位置（与读/发消息的成员校验一致）
+            requireGroupMember(employeeId, targetId);
             wrapper.eq(MobileChatMessage::getChatType, CHAT_TYPE_GROUP)
                     .eq(MobileChatMessage::getGroupId, targetId);
         }

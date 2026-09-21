@@ -1,6 +1,7 @@
 package com.kadmin.web.controller.hr;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.kadmin.common.annotation.OperLog;
 import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.common.Result;
 import com.kadmin.hr.domain.HrTransfer;
@@ -52,14 +53,15 @@ public class TransferController {
     }
 
     @RequiresPermission("application:transfer:delete")
-    @DeleteMapping("/<built-in function id>")
+    @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         service.removeById(id);
         return Result.success();
     }
 
     @RequiresPermission("application:transfer:approve")
-    @PostMapping("/approve/<built-in function id>")
+    @PostMapping("/approve/{id}")
+    @OperLog(module = "申请审批", action = "调动审批")
     public Result<Void> approve(@PathVariable Long id, @RequestParam Integer status,
             @RequestParam(required = false) String remark) {
         Long approverId = com.kadmin.common.utils.SecurityUtils.getCurrentUserId();

@@ -44,9 +44,18 @@ public class JwtUtils {
         boolean prod = activeProfile != null && java.util.Arrays.stream(activeProfile.split(","))
                 .map(String::trim)
                 .anyMatch("prod"::equalsIgnoreCase);
-        if (prod && DEFAULT_SECRET.equals(secret)) {
+        if (!prod) {
+            return;
+        }
+        if (DEFAULT_SECRET.equals(secret)) {
             throw new IllegalStateException(
                     "生产环境(prod)检测到 JWT 密钥仍为默认值，请通过环境变量 JWT_SECRET 配置足够强度的密钥后再启动");
+        }
+        // HS256 要求至少 32 字节密钥，太短的密钥等于暴力可破解
+        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException(
+                    "生产环境(prod) JWT 密钥强度不足：要求至少 32 字节（256 位），当前 "
+                            + (secret == null ? 0 : secret.getBytes(StandardCharsets.UTF_8).length) + " 字节");
         }
     }
 

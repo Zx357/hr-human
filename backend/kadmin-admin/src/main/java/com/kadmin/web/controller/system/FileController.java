@@ -32,6 +32,7 @@ import java.util.UUID;
 public class FileController {
 
     private final FileConfigService fileConfigService;
+    private final com.kadmin.hr.mapper.EmployeeMapper employeeMapper;
 
     @Value("${file.upload.allowed-types:jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx}")
     private String allowedTypes;
@@ -40,6 +41,42 @@ public class FileController {
 
     private String getUploadPath() {
         return fileConfigService.getAbsolutePath(FileConfigService.KEY_UPLOAD_BASE);
+    }
+
+    /**
+     * 纯移动端员工（仅 ROLE_EMPLOYEE）判定：与 PermissionAspect 的约定一致。
+     * 通用文档上传（pdf/doc/xls）属于管理侧操作，移动端仅需图片上传（动态/聊天）。
+     */
+    private boolean isPureMobileEmployee() {
+        com.kadmin.common.security.LoginUser loginUser = com.kadmin.common.utils.SecurityUtils.getCurrentUser();
+        return loginUser != null && loginUser.getRoles() != null
+                && loginUser.getRoles().size() == 1
+                && loginUser.getRoles().contains("ROLE_EMPLOYEE");
+    }
+
+    /**
+     * 员工头像归属校验：仅允许为自己上传；管理员或持有 hr:employee:edit 权限的管理侧用户可为任意员工上传
+     */
+    private String checkAvatarOwnership(String employeeNo) {
+        com.kadmin.common.security.LoginUser loginUser = com.kadmin.common.utils.SecurityUtils.getCurrentUser();
+        if (loginUser == null) {
+            return "请先登录";
+        }
+        boolean admin = com.kadmin.common.utils.SecurityUtils.isAdmin();
+        boolean hrManager = loginUser.getPermissions() != null && (loginUser.getPermissions().contains("hr:employee:edit")
+                || loginUser.getPermissions().contains("hr:employee:*")
+                || loginUser.getPermissions().contains("*:*:*"));
+        if (admin || hrManager) {
+            return null;
+        }
+        if (loginUser.getEmployeeId() == null) {
+            return "无权为其他员工上传头像";
+        }
+        com.kadmin.hr.domain.HrEmployee self = employeeMapper.selectById(loginUser.getEmployeeId());
+        if (self == null || !employeeNo.equals(self.getEmployeeNo())) {
+            return "只能上传自己的头像";
+        }
+        return null;
     }
 
     private String getExtension(String filename) {
@@ -147,6 +184,10 @@ public class FileController {
     @Operation(summary = "上传文件")
     @PostMapping("/upload")
     public Result<String> upload(@RequestParam("file") MultipartFile file) {
+        // 文档上传属于管理侧操作：纯移动端员工不允许上传任意文档（图片走 /upload/image）
+        if (isPureMobileEmployee()) {
+            return Result.error("无权上传该类型文件");
+        }
         if (file.isEmpty())
             return Result.error("请选择要上传的文件");
 
@@ -238,6 +279,9 @@ public class FileController {
             return Result.error("请选择要上传的图片");
         if (!isValidEmployeeNo(employeeNo))
             return Result.error("员工工号不合法");
+        String ownershipError = checkAvatarOwnership(employeeNo);
+        if (ownershipError != null)
+            return Result.error(ownershipError);
 
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null)

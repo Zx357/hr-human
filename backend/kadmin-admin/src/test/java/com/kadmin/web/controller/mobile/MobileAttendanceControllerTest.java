@@ -54,6 +54,8 @@ class MobileAttendanceControllerTest {
     private AttShiftMapper shiftMapper;
     @Mock
     private AttLocationService attLocationService;
+    @Mock
+    private com.kadmin.hr.service.LeaveQuotaService leaveQuotaService;
 
     private MobileAttendanceController controller;
 
@@ -67,7 +69,7 @@ class MobileAttendanceControllerTest {
     @BeforeEach
     void setUp() {
         controller = new MobileAttendanceController(clockRecordMapper, dailyRecordMapper, scheduleMapper,
-                shiftMapper, attLocationService);
+                shiftMapper, attLocationService, leaveQuotaService);
     }
 
     @AfterEach

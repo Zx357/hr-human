@@ -51,6 +51,31 @@ public class MobileAttendanceController {
     private final AttScheduleMapper scheduleMapper;
     private final AttShiftMapper shiftMapper;
     private final AttLocationService attLocationService;
+    private final com.kadmin.hr.service.LeaveQuotaService leaveQuotaService;
+
+    /**
+     * 我的假期额度（员工+年度），未配置额度的类型不出现在列表中
+     */
+    @GetMapping("/leave-quota")
+    public Result<List<Map<String, Object>>> getMyLeaveQuota(@RequestParam(required = false) Integer year) {
+        LoginUser loginUser = SecurityUtils.getCurrentUser();
+        if (loginUser == null) {
+            return Result.error("请先登录");
+        }
+        Long employeeId = getCurrentEmployeeId(loginUser);
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (com.kadmin.hr.domain.HrLeaveQuota quota : leaveQuotaService.listByEmployee(employeeId, year)) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("leaveType", quota.getLeaveType());
+            item.put("year", quota.getYear());
+            item.put("totalHours", quota.getTotalHours());
+            item.put("usedHours", quota.getUsedHours());
+            item.put("remainHours", quota.getTotalHours()
+                    .subtract(quota.getUsedHours() != null ? quota.getUsedHours() : java.math.BigDecimal.ZERO));
+            list.add(item);
+        }
+        return Result.success(list);
+    }
 
     @GetMapping("/clock/info")
     public Result<Map<String, Object>> getClockInfo() {

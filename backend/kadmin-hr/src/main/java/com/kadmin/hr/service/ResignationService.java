@@ -3,11 +3,13 @@ package com.kadmin.hr.service;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.kadmin.common.event.UserSessionEvictEvent;
 import com.kadmin.hr.domain.HrEmployee;
 import com.kadmin.hr.domain.HrResignation;
 import com.kadmin.hr.mapper.EmployeeMapper;
 import com.kadmin.hr.mapper.HrResignationMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
@@ -17,6 +19,7 @@ import java.time.LocalDateTime;
 public class ResignationService extends ServiceImpl<HrResignationMapper, HrResignation> {
 
     private final EmployeeMapper employeeMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     public Page<HrResignation> getPage(int pageNum, int pageSize, String employeeName, String resignType,
             Integer status) {
@@ -48,13 +51,14 @@ public class ResignationService extends ServiceImpl<HrResignationMapper, HrResig
             throw new IllegalArgumentException("该记录已被处理，请刷新后查看");
         }
 
-        // 审批通过时，更新员工状态为离职
+        // 审批通过时，更新员工状态为离职，并吊销其移动端会话（与流程审批口径一致）
         if (status == 1) {
             HrEmployee employee = new HrEmployee();
             employee.setId(resignation.getEmployeeId());
             employee.setStatus(2); // 2-离职
             employee.setLeaveDate(resignation.getLastWorkDate()); // 设置离职日期
             employeeMapper.updateById(employee);
+            eventPublisher.publishEvent(new UserSessionEvictEvent(resignation.getEmployeeId(), true));
         }
 
         return true;

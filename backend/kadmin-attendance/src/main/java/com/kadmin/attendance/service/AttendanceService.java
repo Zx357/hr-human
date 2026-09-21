@@ -191,6 +191,7 @@ public class AttendanceService {
             int absentDays = 0;
             int leaveDays = 0;
             java.math.BigDecimal totalWorkHours = java.math.BigDecimal.ZERO;
+            java.math.BigDecimal totalOvertimeHours = java.math.BigDecimal.ZERO;
             int totalLateMinutes = 0;
             int totalEarlyMinutes = 0;
 
@@ -208,6 +209,10 @@ public class AttendanceService {
                     // 累计工时
                     if (r.getWorkHours() != null) {
                         totalWorkHours = totalWorkHours.add(r.getWorkHours());
+                    }
+                    // 累计加班工时（核算时按已审批加班单回写）
+                    if (r.getOvertimeHours() != null) {
+                        totalOvertimeHours = totalOvertimeHours.add(r.getOvertimeHours());
                     }
                     // 累计迟到/早退分钟
                     if (r.getLateMinutes() != null && r.getLateMinutes() > 0) {
@@ -243,6 +248,7 @@ public class AttendanceService {
             summary.put("absentDays", absentDays);
             summary.put("leaveDays", leaveDays);
             summary.put("totalWorkHours", totalWorkHours);
+            summary.put("totalOvertimeHours", totalOvertimeHours);
             summary.put("totalLateMinutes", totalLateMinutes);
             summary.put("totalEarlyMinutes", totalEarlyMinutes);
             result.add(summary);
@@ -384,6 +390,17 @@ public class AttendanceService {
             absenceMap.computeIfAbsent(app.getEmployeeId(), k -> new ArrayList<>()).add(app);
         }
 
+        // 7.1 批量预载已审批的加班单（核算时按天回写加班工时）
+        var overtimeMap = new java.util.HashMap<Long, List<HrApplication>>();
+        for (HrApplication app : applicationMapper.selectList(new LambdaQueryWrapper<HrApplication>()
+                .in(HrApplication::getEmployeeId, empIds)
+                .eq(HrApplication::getStatus, 1)
+                .eq(HrApplication::getAppType, "overtime")
+                .le(HrApplication::getStartTime, endDate.atTime(LocalTime.MAX))
+                .ge(HrApplication::getEndTime, startDate.atStartOfDay()))) {
+            overtimeMap.computeIfAbsent(app.getEmployeeId(), k -> new ArrayList<>()).add(app);
+        }
+
         // 8. 批量预载已有日考勤记录（复用更新，识别锁定）
         var existingMap = new java.util.HashMap<String, AttDailyRecord>();
         for (AttDailyRecord record : dailyRecordMapper.selectList(new LambdaQueryWrapper<AttDailyRecord>()
@@ -398,7 +415,7 @@ public class AttendanceService {
         while (!currentDate.isAfter(endDate)) {
             for (HrEmployee emp : employees) {
                 calculateEmployeeDailyAttendance(emp, currentDate, scheduleMap, shiftMap, periodsMap, orgCache,
-                        rules, clockMap, absenceMap, existingMap);
+                        rules, clockMap, absenceMap, overtimeMap, existingMap);
             }
             currentDate = currentDate.plusDays(1);
         }
@@ -411,7 +428,8 @@ public class AttendanceService {
             java.util.Map<String, AttSchedule> scheduleMap, java.util.Map<Long, AttShift> shiftMap,
             java.util.Map<Long, List<AttShiftPeriod>> periodsMap, java.util.Map<Long, OrgUnit> orgCache,
             List<AttCalendarRule> rules, java.util.Map<Long, List<AttClockRecord>> clockMap,
-            java.util.Map<Long, List<HrApplication>> absenceMap, java.util.Map<String, AttDailyRecord> existingMap) {
+            java.util.Map<Long, List<HrApplication>> absenceMap,
+            java.util.Map<Long, List<HrApplication>> overtimeMap, java.util.Map<String, AttDailyRecord> existingMap) {
         // 1. 检查是否是休息日（考勤日历规则挂在公司上）
         Long companyId = resolveCompanyIdFromCache(emp.getDeptId(), orgCache);
         if (isRestDay(companyId, date, rules)) {
@@ -469,11 +487,39 @@ public class AttendanceService {
                 .orElse(null);
         Integer approvedAbsenceStatus = resolveApprovedAbsenceStatus(emp.getId(), date,
                 absenceMap.getOrDefault(emp.getId(), List.of()));
+        BigDecimal dayOvertimeHours = calculateDayOvertimeHours(overtimeMap.getOrDefault(emp.getId(), List.of()), date);
 
         for (ShiftPeriodPlan plan : periodPlans) {
             calculateSinglePeriod(emp, date, shift, plan, clockRecords, shiftActualIn, shiftActualOut,
-                    approvedAbsenceStatus, existingMap);
+                    approvedAbsenceStatus, dayOvertimeHours, existingMap);
         }
+    }
+
+    /**
+     * 计算某员工在指定日期的加班工时：按已审批加班单与当日 [00:00, 24:00) 的交集时长累加（小时，2位小数）
+     */
+    private BigDecimal calculateDayOvertimeHours(List<HrApplication> overtimeApps, LocalDate date) {
+        if (overtimeApps == null || overtimeApps.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        LocalDateTime dayStart = date.atStartOfDay();
+        LocalDateTime dayEnd = date.plusDays(1).atStartOfDay();
+        long totalMinutes = 0;
+        for (HrApplication app : overtimeApps) {
+            if (app.getStartTime() == null || app.getEndTime() == null) {
+                continue;
+            }
+            LocalDateTime overlapStart = app.getStartTime().isAfter(dayStart) ? app.getStartTime() : dayStart;
+            LocalDateTime overlapEnd = app.getEndTime().isBefore(dayEnd) ? app.getEndTime() : dayEnd;
+            if (overlapEnd.isAfter(overlapStart)) {
+                totalMinutes += ChronoUnit.MINUTES.between(overlapStart, overlapEnd);
+            }
+        }
+        if (totalMinutes <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return BigDecimal.valueOf(totalMinutes)
+                .divide(BigDecimal.valueOf(60), 2, java.math.RoundingMode.HALF_UP);
     }
 
     /**
@@ -481,7 +527,7 @@ public class AttendanceService {
      */
     private void calculateSinglePeriod(HrEmployee emp, LocalDate date, AttShift shift, ShiftPeriodPlan plan,
             List<AttClockRecord> clockRecords, LocalDateTime shiftActualIn, LocalDateTime shiftActualOut,
-            Integer approvedAbsenceStatus, java.util.Map<String, AttDailyRecord> existingMap) {
+            Integer approvedAbsenceStatus, BigDecimal dayOvertimeHours, java.util.Map<String, AttDailyRecord> existingMap) {
 
         // 查找该时段的已有考勤记录
         String recordKey = emp.getId() + "|" + date + "|"
@@ -545,6 +591,13 @@ public class AttendanceService {
         dailyRecord.setEarlyMinutes(earlyMinutes);
 
         dailyRecord.setWorkHours(workHours);
+
+        // 加班工时挂在当天首时段记录上，其余时段清零，保证按记录行累加不重复计数
+        if (plan.firstPeriod()) {
+            dailyRecord.setOvertimeHours(dayOvertimeHours);
+        } else {
+            dailyRecord.setOvertimeHours(BigDecimal.ZERO);
+        }
 
         // 保存
         if (dailyRecord.getId() != null) {

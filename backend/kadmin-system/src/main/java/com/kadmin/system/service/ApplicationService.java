@@ -4,11 +4,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.kadmin.attendance.domain.AttClockRecord;
 import com.kadmin.attendance.domain.AttSchedule;
 import com.kadmin.attendance.domain.AttShiftPeriod;
+import com.kadmin.attendance.mapper.AttClockRecordMapper;
 import com.kadmin.attendance.mapper.AttScheduleMapper;
 import com.kadmin.attendance.mapper.AttShiftMapper;
 import com.kadmin.attendance.mapper.AttShiftPeriodMapper;
+import com.kadmin.common.event.AttendanceRecalcEvent;
 import com.kadmin.common.event.UserSessionEvictEvent;
 import com.kadmin.common.security.LoginUser;
 import com.kadmin.hr.domain.HrApplication;
@@ -19,6 +22,7 @@ import com.kadmin.hr.mapper.EmployeeMapper;
 import com.kadmin.hr.mapper.HrApplicationMapper;
 import com.kadmin.hr.mapper.HrApprovalRecordMapper;
 import com.kadmin.hr.mapper.HrMobileApproverMapper;
+import com.kadmin.hr.service.LeaveQuotaService;
 import com.kadmin.system.domain.SysApprovalFlow;
 import com.kadmin.system.domain.SysApprovalNode;
 import com.kadmin.system.mapper.SysApprovalFlowMapper;
@@ -51,12 +55,14 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
     private final AttScheduleMapper scheduleMapper;
     private final AttShiftMapper shiftMapper;
     private final AttShiftPeriodMapper shiftPeriodMapper;
+    private final AttClockRecordMapper clockRecordMapper;
     private final SysApprovalFlowMapper flowMapper;
     private final SysApprovalNodeMapper flowNodeMapper;
     private final HrApprovalRecordMapper approvalRecordMapper;
     private final HrMobileApproverMapper mobileApproverMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final NotificationService notificationService;
+    private final LeaveQuotaService leaveQuotaService;
 
     /**
      * 计算加班小时数
@@ -77,14 +83,14 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
         LocalDate startDate = startTime.toLocalDate();
         LocalDate endDate = endTime.toLocalDate();
 
+        // 批量预载排班与时段，避免逐天查库（长假单最多92天=184条SQL的N+1）
+        Map<LocalDate, AttSchedule> scheduleMap = loadScheduleMap(employeeId, startDate, endDate);
+        Map<Long, List<AttShiftPeriod>> periodsMap = loadPeriodsMap(scheduleMap.values());
+
         // 遍历每一天
         LocalDate currentDate = startDate;
         while (!currentDate.isAfter(endDate)) {
-            // 获取当天的排班
-            AttSchedule schedule = scheduleMapper.selectOne(
-                    new LambdaQueryWrapper<AttSchedule>()
-                            .eq(AttSchedule::getEmployeeId, employeeId)
-                            .eq(AttSchedule::getScheduleDate, currentDate));
+            AttSchedule schedule = scheduleMap.get(currentDate);
 
             // 计算当天的加班时间范围
             LocalTime dayStart, dayEnd;
@@ -101,46 +107,20 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
 
             if (schedule != null && schedule.getShiftId() != null) {
                 // 有排班：计算选择时间与班次时段的交集
-                List<AttShiftPeriod> periods = shiftPeriodMapper.selectList(
-                        new LambdaQueryWrapper<AttShiftPeriod>()
-                                .eq(AttShiftPeriod::getShiftId, schedule.getShiftId())
-                                .orderByAsc(AttShiftPeriod::getSortOrder));
+                List<AttShiftPeriod> periods = periodsMap.getOrDefault(schedule.getShiftId(), List.of());
 
-                if (periods != null && !periods.isEmpty()) {
+                if (!periods.isEmpty()) {
                     for (AttShiftPeriod period : periods) {
-                        LocalTime periodStart = LocalTime.parse(period.getStartTime());
-                        LocalTime periodEnd = LocalTime.parse(period.getEndTime());
-
-                        // 计算加班时间与班次时段的交集
-                        LocalTime overlapStart = dayStart.isAfter(periodStart) ? dayStart : periodStart;
-                        LocalTime overlapEnd = dayEnd.isBefore(periodEnd) ? dayEnd : periodEnd;
-
-                        if (overlapStart.isBefore(overlapEnd)) {
-                            long minutes = ChronoUnit.MINUTES.between(overlapStart, overlapEnd);
-                            if (minutes > 0) {
-                                BigDecimal hours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2,
-                                        RoundingMode.HALF_UP);
-                                totalHours = totalHours.add(hours);
-                            }
-                        }
+                        totalHours = totalHours.add(overlapHours(dayStart, dayEnd,
+                                LocalTime.parse(period.getStartTime()), LocalTime.parse(period.getEndTime())));
                     }
                 } else {
                     // 有排班但没有时段配置，整段时间都算加班
-                    long minutes = ChronoUnit.MINUTES.between(dayStart, dayEnd);
-                    if (minutes > 0) {
-                        BigDecimal hours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2,
-                                RoundingMode.HALF_UP);
-                        totalHours = totalHours.add(hours);
-                    }
+                    totalHours = totalHours.add(hoursBetween(dayStart, dayEnd));
                 }
             } else {
                 // 没有排班（休息日），整段时间都算加班
-                long minutes = ChronoUnit.MINUTES.between(dayStart, dayEnd);
-                if (minutes > 0) {
-                    BigDecimal hours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2,
-                            RoundingMode.HALF_UP);
-                    totalHours = totalHours.add(hours);
-                }
+                totalHours = totalHours.add(hoursBetween(dayStart, dayEnd));
             }
 
             currentDate = currentDate.plusDays(1);
@@ -166,23 +146,20 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
         LocalDate startDate = startTime.toLocalDate();
         LocalDate endDate = endTime.toLocalDate();
 
+        // 批量预载排班与时段，避免逐天查库（N+1）
+        Map<LocalDate, AttSchedule> scheduleMap = loadScheduleMap(employeeId, startDate, endDate);
+        Map<Long, List<AttShiftPeriod>> periodsMap = loadPeriodsMap(scheduleMap.values());
+
         // 遍历每一天
         LocalDate currentDate = startDate;
         while (!currentDate.isAfter(endDate)) {
-            // 获取当天的排班
-            AttSchedule schedule = scheduleMapper.selectOne(
-                    new LambdaQueryWrapper<AttSchedule>()
-                            .eq(AttSchedule::getEmployeeId, employeeId)
-                            .eq(AttSchedule::getScheduleDate, currentDate));
+            AttSchedule schedule = scheduleMap.get(currentDate);
 
             if (schedule != null && schedule.getShiftId() != null) {
                 // 获取班次时段列表
-                List<AttShiftPeriod> periods = shiftPeriodMapper.selectList(
-                        new LambdaQueryWrapper<AttShiftPeriod>()
-                                .eq(AttShiftPeriod::getShiftId, schedule.getShiftId())
-                                .orderByAsc(AttShiftPeriod::getSortOrder));
+                List<AttShiftPeriod> periods = periodsMap.getOrDefault(schedule.getShiftId(), List.of());
 
-                if (periods != null && !periods.isEmpty()) {
+                if (!periods.isEmpty()) {
                     // 计算当天的请假时间范围
                     LocalTime dayStart, dayEnd;
 
@@ -202,21 +179,8 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
 
                     // 遍历每个时段，计算与请假时间的交集
                     for (AttShiftPeriod period : periods) {
-                        LocalTime periodStart = LocalTime.parse(period.getStartTime());
-                        LocalTime periodEnd = LocalTime.parse(period.getEndTime());
-
-                        // 计算请假时间与时段的交集
-                        LocalTime overlapStart = dayStart.isAfter(periodStart) ? dayStart : periodStart;
-                        LocalTime overlapEnd = dayEnd.isBefore(periodEnd) ? dayEnd : periodEnd;
-
-                        if (overlapStart.isBefore(overlapEnd)) {
-                            long minutes = ChronoUnit.MINUTES.between(overlapStart, overlapEnd);
-                            if (minutes > 0) {
-                                BigDecimal hours = BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2,
-                                        RoundingMode.HALF_UP);
-                                totalHours = totalHours.add(hours);
-                            }
-                        }
+                        totalHours = totalHours.add(overlapHours(dayStart, dayEnd,
+                                LocalTime.parse(period.getStartTime()), LocalTime.parse(period.getEndTime())));
                     }
                 }
             }
@@ -225,6 +189,62 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
         }
 
         return totalHours;
+    }
+
+    /**
+     * 批量预载员工在日期区间内的排班（日期 -> 排班）
+     */
+    private Map<LocalDate, AttSchedule> loadScheduleMap(Long employeeId, LocalDate startDate, LocalDate endDate) {
+        List<AttSchedule> schedules = scheduleMapper.selectList(new LambdaQueryWrapper<AttSchedule>()
+                .eq(AttSchedule::getEmployeeId, employeeId)
+                .between(AttSchedule::getScheduleDate, startDate, endDate));
+        Map<LocalDate, AttSchedule> map = new HashMap<>();
+        for (AttSchedule schedule : schedules) {
+            map.put(schedule.getScheduleDate(), schedule);
+        }
+        return map;
+    }
+
+    /**
+     * 批量预载排班涉及班次的时段列表（班次ID -> 时段列表，按时段顺序）
+     */
+    private Map<Long, List<AttShiftPeriod>> loadPeriodsMap(java.util.Collection<AttSchedule> schedules) {
+        java.util.Set<Long> shiftIds = new java.util.HashSet<>();
+        for (AttSchedule schedule : schedules) {
+            if (schedule.getShiftId() != null) {
+                shiftIds.add(schedule.getShiftId());
+            }
+        }
+        if (shiftIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, List<AttShiftPeriod>> map = new HashMap<>();
+        for (AttShiftPeriod period : shiftPeriodMapper.selectList(new LambdaQueryWrapper<AttShiftPeriod>()
+                .in(AttShiftPeriod::getShiftId, shiftIds)
+                .orderByAsc(AttShiftPeriod::getSortOrder))) {
+            map.computeIfAbsent(period.getShiftId(), k -> new ArrayList<>()).add(period);
+        }
+        return map;
+    }
+
+    /**
+     * 两时间段的交集小时数（2位小数，半单位进位），无交集返回0
+     */
+    private BigDecimal overlapHours(LocalTime aStart, LocalTime aEnd, LocalTime bStart, LocalTime bEnd) {
+        LocalTime overlapStart = aStart.isAfter(bStart) ? aStart : bStart;
+        LocalTime overlapEnd = aEnd.isBefore(bEnd) ? aEnd : bEnd;
+        if (!overlapStart.isBefore(overlapEnd)) {
+            return BigDecimal.ZERO;
+        }
+        return hoursBetween(overlapStart, overlapEnd);
+    }
+
+    private BigDecimal hoursBetween(LocalTime start, LocalTime end) {
+        long minutes = ChronoUnit.MINUTES.between(start, end);
+        if (minutes <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
     }
 
     public Page<HrApplication> getPage(int pageNum, int pageSize, String employeeName, String employeeNo,
@@ -272,15 +292,16 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
         Long approveBy = loginUser.getEmployeeId() != null ? loginUser.getEmployeeId() : loginUser.getUserId();
         boolean admin = loginUser.getRoles() != null && loginUser.getRoles().contains("ROLE_ADMIN");
 
+        // 任何人不能审批自己提交的申请（管理员同样回避，防止自批离职/调动等敏感单）
+        if (approveBy.equals(application.getEmployeeId())) {
+            throw new IllegalArgumentException("不能审批自己提交的申请");
+        }
+
         List<SysApprovalNode> nodes = getActiveFlowNodes(application.getAppType());
         SysApprovalNode currentNode = findCurrentNode(id, nodes);
 
-        // 审批资格校验：管理员 / PC当前节点角色 / 移动端指定审批人（含类型与回避校验）
+        // 审批资格校验：管理员 / PC当前节点角色 / 移动端指定审批人（含类型校验）
         if (!admin) {
-            // 任何人不能审批自己提交的申请
-            if (approveBy.equals(application.getEmployeeId())) {
-                throw new IllegalArgumentException("不能审批自己提交的申请");
-            }
             boolean eligible;
             if (currentNode != null && approverRoleIds != null && !approverRoleIds.isEmpty()) {
                 eligible = currentNode.getRoleId() != null && approverRoleIds.contains(currentNode.getRoleId());
@@ -654,7 +675,107 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
             employee.setLeaveDate(application.getLastWorkDate());
             employeeMapper.updateById(employee);
             eventPublisher.publishEvent(new UserSessionEvictEvent(application.getEmployeeId(), true));
+        } else if ("makeup".equals(appType)) {
+            // 补卡：补写打卡记录（方式=手动补卡），并重算当日考勤
+            applyMakeupApproval(application);
+        } else if ("leave".equals(appType)) {
+            // 请假：扣减假期额度（仅该员工该假期类型配置了额度时生效）
+            applyLeaveQuotaDeduction(application);
+        } else if ("overtime".equals(appType)) {
+            // 加班：重算受影响日期的考勤，加班工时在核算时按已审批加班单回写
+            if (application.getStartTime() != null && application.getEndTime() != null) {
+                eventPublisher.publishEvent(new AttendanceRecalcEvent(application.getEmployeeId(),
+                        application.getStartTime().toLocalDate(), application.getEndTime().toLocalDate()));
+            }
         }
         // 奖励和惩罚暂不需要更新员工信息
+    }
+
+    /**
+     * 补卡审批通过：按申请单补写缺失的打卡记录（已有同类型打卡时保留原记录），并触发当日考勤重算
+     */
+    private void applyMakeupApproval(HrApplication application) {
+        LocalDateTime makeupTime = application.getStartTime();
+        if (application.getEmployeeId() == null || makeupTime == null) {
+            return;
+        }
+        LocalDate makeupDate = makeupTime.toLocalDate();
+        int clockType = resolveMakeupClockType(application);
+
+        Long existing = clockRecordMapper.selectCount(new LambdaQueryWrapper<AttClockRecord>()
+                .eq(AttClockRecord::getEmployeeId, application.getEmployeeId())
+                .eq(AttClockRecord::getClockDate, makeupDate)
+                .eq(AttClockRecord::getClockType, clockType));
+        if (existing != null && existing > 0) {
+            return; // 已有真实打卡，不覆盖
+        }
+
+        AttClockRecord record = new AttClockRecord();
+        record.setEmployeeId(application.getEmployeeId());
+        record.setClockDate(makeupDate);
+        record.setClockTime(makeupTime);
+        record.setClockType(clockType);
+        record.setClockMethod(3); // 3-手动补卡
+        record.setRemark("补卡申请单 #" + application.getId() + " 审批通过自动补写");
+        record.setCreateTime(LocalDateTime.now());
+        clockRecordMapper.insert(record);
+
+        eventPublisher.publishEvent(new AttendanceRecalcEvent(application.getEmployeeId(), makeupDate, makeupDate));
+    }
+
+    /**
+     * 推断补卡类型：优先按申请类别/标题中的"上班/下班"字样；
+     * 否则按当日已有打卡推断缺失的卡（只有上班卡→补下班，只有下班卡→补上班）；
+     * 都无法判定时按时间上午/下午划分
+     */
+    private int resolveMakeupClockType(HrApplication application) {
+        String marker = (application.getCategory() == null ? "" : application.getCategory())
+                + (application.getTitle() == null ? "" : application.getTitle());
+        if (marker.contains("下班")) {
+            return 2;
+        }
+        if (marker.contains("上班")) {
+            return 1;
+        }
+        LocalDate makeupDate = application.getStartTime().toLocalDate();
+        boolean hasClockIn = countClockType(application.getEmployeeId(), makeupDate, 1) > 0;
+        boolean hasClockOut = countClockType(application.getEmployeeId(), makeupDate, 2) > 0;
+        if (hasClockIn && !hasClockOut) {
+            return 2;
+        }
+        if (!hasClockIn && hasClockOut) {
+            return 1;
+        }
+        return application.getStartTime().getHour() < 12 ? 1 : 2;
+    }
+
+    private long countClockType(Long employeeId, LocalDate date, int clockType) {
+        Long count = clockRecordMapper.selectCount(new LambdaQueryWrapper<AttClockRecord>()
+                .eq(AttClockRecord::getEmployeeId, employeeId)
+                .eq(AttClockRecord::getClockDate, date)
+                .eq(AttClockRecord::getClockType, clockType));
+        return count != null ? count : 0;
+    }
+
+    /**
+     * 请假审批通过后扣减假期额度：
+     * 仅当该员工该假期类型（申请单 title 存字典值）配置了年度额度时校验并扣减，未配置额度不拦截；
+     * 余额不足抛出异常使审批整体回滚，提示管理员先调整额度
+     */
+    private void applyLeaveQuotaDeduction(HrApplication application) {
+        if (application.getEmployeeId() == null || application.getStartTime() == null) {
+            return;
+        }
+        BigDecimal hours = application.getDuration();
+        if (hours == null || hours.compareTo(BigDecimal.ZERO) <= 0) {
+            hours = calculateLeaveHours(application.getEmployeeId(), application.getStartTime(),
+                    application.getEndTime());
+        }
+        if (hours == null || hours.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+        int year = application.getStartTime().toLocalDate().getYear();
+        leaveQuotaService.deductForApprovedLeave(application.getEmployeeId(), year, application.getTitle(), hours,
+                application.getId());
     }
 }

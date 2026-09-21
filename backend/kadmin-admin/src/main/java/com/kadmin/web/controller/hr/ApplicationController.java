@@ -1,5 +1,6 @@
 package com.kadmin.web.controller.hr;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kadmin.common.annotation.RequiresPermission;
 import com.kadmin.common.Result;
@@ -167,6 +168,15 @@ public class ApplicationController {
             }
         }
         entity.setStatus(0);
+        String timeError = validateTimeRange(entity.getAppType(), entity.getStartTime(), entity.getEndTime());
+        if (timeError != null) {
+            return Result.error(timeError);
+        }
+        String overlapError = checkTimeOverlap(entity.getEmployeeId(), entity.getAppType(),
+                entity.getStartTime(), entity.getEndTime(), null);
+        if (overlapError != null) {
+            return Result.error(overlapError);
+        }
         service.save(entity);
         // 通知移动端审批人（失败不影响提交）
         service.notifyApproversOnSubmit(entity);
@@ -174,7 +184,7 @@ public class ApplicationController {
     }
 
     /**
-     * 修改申请：仅申请人本人且待审批状态，且不允许改状态/审批字段
+     * 修改申请：仅申请人本人且待审批状态，且不允许改状态/审批字段/归属/类型
      */
     @PutMapping
     public Result<Void> update(@RequestBody HrApplication entity) {
@@ -197,13 +207,64 @@ public class ApplicationController {
                 return Result.error("仅待审批的申请可以修改");
             }
         }
-        // 状态/审批字段不允许通过该接口修改
+        // 状态/审批字段不允许通过该接口修改；归属员工与申请类型同样锁定，防止越权篡改
         entity.setStatus(null);
+        entity.setEmployeeId(existing.getEmployeeId());
+        entity.setAppType(existing.getAppType());
         entity.setApproveBy(null);
         entity.setApproveTime(null);
         entity.setApproveRemark(null);
+        // 时间段按"提交值+存量值"合并后校验
+        LocalDateTime start = entity.getStartTime() != null ? entity.getStartTime() : existing.getStartTime();
+        LocalDateTime end = entity.getEndTime() != null ? entity.getEndTime() : existing.getEndTime();
+        String timeError = validateTimeRange(existing.getAppType(), start, end);
+        if (timeError != null) {
+            return Result.error(timeError);
+        }
+        String overlapError = checkTimeOverlap(existing.getEmployeeId(), existing.getAppType(), start, end,
+                existing.getId());
+        if (overlapError != null) {
+            return Result.error(overlapError);
+        }
         service.updateById(entity);
         return Result.success();
+    }
+
+    /**
+     * 时间段基础校验：结束不得早于开始（离职等无时间段类型放行）
+     */
+    private String validateTimeRange(String appType, LocalDateTime start, LocalDateTime end) {
+        if (!isTimeRangeType(appType) || start == null || end == null) {
+            return null;
+        }
+        if (end.isBefore(start)) {
+            return "结束时间不能早于开始时间";
+        }
+        return null;
+    }
+
+    private boolean isTimeRangeType(String appType) {
+        return "leave".equals(appType) || "overtime".equals(appType)
+                || "business".equals(appType) || "exchange".equals(appType) || "makeup".equals(appType);
+    }
+
+    /**
+     * 同员工同类型的在途/已通过申请时间段重叠校验（换休/补卡等点状时间段天然不重叠，无需检查）
+     */
+    private String checkTimeOverlap(Long employeeId, String appType, LocalDateTime start, LocalDateTime end,
+            Long excludeId) {
+        if (!isTimeRangeType(appType) || "makeup".equals(appType) || employeeId == null
+                || start == null || end == null) {
+            return null;
+        }
+        long count = service.count(new LambdaQueryWrapper<HrApplication>()
+                .eq(HrApplication::getEmployeeId, employeeId)
+                .eq(HrApplication::getAppType, appType)
+                .in(HrApplication::getStatus, 0, 1)
+                .ne(excludeId != null, HrApplication::getId, excludeId)
+                .le(HrApplication::getStartTime, end)
+                .ge(HrApplication::getEndTime, start));
+        return count > 0 ? "该时间段已存在同类型申请，请勿重复提交" : null;
     }
 
     /**
@@ -232,7 +293,11 @@ public class ApplicationController {
         boolean mobileEmployee = loginUser.getRoles() != null && loginUser.getRoles().size() == 1
                 && loginUser.getRoles().contains("ROLE_EMPLOYEE");
         List<Long> roleIds = mobileEmployee ? null : sysUserMapper.selectRoleIdsByUserId(loginUser.getUserId());
-        service.approve(id, status, remark, loginUser, roleIds);
+        boolean approved = service.approve(id, status, remark, loginUser, roleIds);
+        if (!approved) {
+            // 并发场景下申请已被其他审批人处理，条件更新失败
+            return Result.error("审批失败：该申请可能已被其他审批人处理，请刷新后查看");
+        }
         return Result.success();
     }
 

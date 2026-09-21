@@ -29,10 +29,18 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
-        // 目前只需识别心跳应答；其余消息静默忽略
+        // 只识别心跳帧：pong=客户端应答服务端心跳；ping=客户端主动保活，回 pong 供客户端做死链检测
         String payload = message.getPayload();
         if (payload.contains("\"pong\"")) {
             log.debug("聊天WS心跳应答: sessionId={}", session.getId());
+        } else if (payload.contains("\"ping\"")) {
+            try {
+                synchronized (session) {
+                    session.sendMessage(new TextMessage("{\"type\":\"pong\"}"));
+                }
+            } catch (Exception ignored) {
+                // 发送失败由传输错误/关闭回调清理
+            }
         }
     }
 

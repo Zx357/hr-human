@@ -94,6 +94,21 @@ public class ChatWebSocketSessionRegistry {
     }
 
     /**
+     * 关闭指定员工的全部在线连接（登出/禁用/离职吊销会话时调用），
+     * 强制其回到重新握手流程（未吊销 token 时客户端可正常重连）
+     */
+    public void closeAllForEmployee(Long employeeId) {
+        Set<WebSocketSession> sessions = sessionsByEmployee.remove(employeeId);
+        if (sessions == null || sessions.isEmpty()) {
+            return;
+        }
+        for (WebSocketSession session : sessions) {
+            closeQuietly(session);
+        }
+        log.info("聊天WS会话吊销关闭: employeeId={}, 连接数={}", employeeId, sessions.size());
+    }
+
+    /**
      * 单连接发送：检查存活 + synchronized(session) 串行发送，
      * IO 异常时关闭并清理该 session（推送失败静默，不影响调用方）
      */

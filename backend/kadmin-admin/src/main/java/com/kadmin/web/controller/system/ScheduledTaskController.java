@@ -41,6 +41,13 @@ public class ScheduledTaskController {
     private final HrCertificateMapper certificateMapper;
     private final EmployeeMapper employeeMapper;
     private final NotificationService notificationService;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    /**
+     * 补偿扫描窗口（天）与单次最大补算日期数：限制失败/宕机积压时的单次负载
+     */
+    private static final int COMPENSATE_LOOKBACK_DAYS = 7;
+    private static final int COMPENSATE_MAX_DATES_PER_RUN = 10;
 
     /**
      * 每日凌晨2点自动核算前一日的日考勤
@@ -54,6 +61,47 @@ public class ScheduledTaskController {
             log.info("定时任务完成：{} 日考勤核算成功", yesterday);
         } catch (Exception e) {
             log.error("定时任务失败：{} 日考勤核算异常", yesterday, e);
+        }
+    }
+
+    /**
+     * 每日凌晨2点40分补偿扫描：找出最近N天"有排班但没有任何日考勤记录"的日期并补算
+     * 覆盖两类缺口：每日核算任务失败（核算整体事务回滚，无残留记录）、服务宕机错过任务；
+     * calculateDailyAttendance 幂等（已锁定的记录跳过、已有记录复用更新），重复补算无副作用
+     */
+    @Scheduled(cron = "0 40 2 * * ?")
+    public void compensateMissingAttendance() {
+        LocalDate startDate = LocalDate.now().minusDays(COMPENSATE_LOOKBACK_DAYS);
+        LocalDate endDate = LocalDate.now().minusDays(1);
+        try {
+            List<LocalDate> missingDates = jdbcTemplate.query(
+                    "SELECT DISTINCT s.schedule_date FROM att_schedule s " +
+                            "WHERE s.schedule_date BETWEEN ? AND ? AND s.shift_id IS NOT NULL " +
+                            "AND NOT EXISTS (SELECT 1 FROM att_daily_record r " +
+                            "WHERE r.employee_id = s.employee_id AND r.att_date = s.schedule_date) " +
+                            "ORDER BY s.schedule_date",
+                    (rs, rowNum) -> rs.getObject("schedule_date", LocalDate.class),
+                    java.sql.Date.valueOf(startDate), java.sql.Date.valueOf(endDate));
+            if (missingDates.isEmpty()) {
+                return;
+            }
+            log.warn("发现缺失日考勤的日期 {}（最近{}天），开始补算", missingDates, COMPENSATE_LOOKBACK_DAYS);
+            int limit = Math.min(missingDates.size(), COMPENSATE_MAX_DATES_PER_RUN);
+            for (int i = 0; i < limit; i++) {
+                LocalDate date = missingDates.get(i);
+                try {
+                    attendanceService.calculateDailyAttendance(date, date, null, null, null, null);
+                    log.info("补算 {} 日考勤完成", date);
+                } catch (Exception e) {
+                    log.error("补算 {} 日考勤失败，等待下轮扫描重试", date, e);
+                }
+            }
+            if (missingDates.size() > limit) {
+                log.warn("本轮补算 {} 个日期，剩余 {} 个日期积压待下轮处理",
+                        limit, missingDates.size() - limit);
+            }
+        } catch (Exception e) {
+            log.error("考勤补偿扫描异常", e);
         }
     }
 
@@ -96,10 +144,47 @@ public class ScheduledTaskController {
                         certificate.getId(), null);
                 count++;
             }
+            // 生日提醒：未来 7 天内过生日的在职员工（去重键含年份，每年提醒一次）
+            for (HrEmployee employee : employeeMapper.selectList(new LambdaQueryWrapper<HrEmployee>()
+                    .eq(HrEmployee::getStatus, 1)
+                    .isNotNull(HrEmployee::getBirthDate))) {
+                LocalDate birthday = nextAnnualDate(employee.getBirthDate(), now);
+                if (birthday != null && !birthday.isAfter(now.plusDays(7))) {
+                    notificationService.notifyOnce(employee.getId(), "birthday", "生日提醒",
+                            "你的生日 " + birthday + " 将至，提前祝你生日快乐！",
+                            (long) birthday.getYear(), null);
+                    count++;
+                }
+            }
+            // 入职周年提醒：未来 7 天内到周年日的在职员工
+            for (HrEmployee employee : employeeMapper.selectList(new LambdaQueryWrapper<HrEmployee>()
+                    .eq(HrEmployee::getStatus, 1)
+                    .isNotNull(HrEmployee::getEntryDate))) {
+                LocalDate anniversary = nextAnnualDate(employee.getEntryDate(), now);
+                if (anniversary != null && !anniversary.isAfter(now.plusDays(7))) {
+                    int years = anniversary.getYear() - employee.getEntryDate().getYear();
+                    notificationService.notifyOnce(employee.getId(), "anniversary", "入职周年提醒",
+                            "你将于 " + anniversary + " 迎来入职 " + years + " 周年，感谢你的付出！",
+                            (long) anniversary.getYear(), null);
+                    count++;
+                }
+            }
             log.info("到期提醒扫描完成，共处理 {} 条", count);
         } catch (Exception e) {
             log.error("到期提醒扫描异常", e);
         }
+    }
+
+    /**
+     * 计算年度日期（生日/周年）的下一次发生日期
+     * 2月29日在平年顺延为2月28日（LocalDate.withYear 行为）
+     */
+    private LocalDate nextAnnualDate(LocalDate annualDate, LocalDate now) {
+        if (annualDate == null) {
+            return null;
+        }
+        LocalDate thisYear = annualDate.withYear(now.getYear());
+        return thisYear.isAfter(now) ? thisYear : annualDate.withYear(now.getYear() + 1);
     }
 
     /**

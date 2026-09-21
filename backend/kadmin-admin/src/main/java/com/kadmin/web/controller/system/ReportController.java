@@ -2,6 +2,7 @@ package com.kadmin.web.controller.system;
 
 import com.kadmin.common.Result;
 import com.kadmin.common.utils.SqlFilter;
+import com.kadmin.organization.mapper.OrgUnitMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,25 +28,19 @@ import java.util.Map;
 public class ReportController {
 
     private final JdbcTemplate jdbcTemplate;
+    private final OrgUnitMapper orgUnitMapper;
 
     /**
      * 人事统计汇总
      *
-     * @param companyId 公司ID（可选，按 dept 向上归属过滤）
-     * @param deptId    部门ID（可选）
+     * @param companyId 公司ID（可选，展开为该公司及全部下级组织）
+     * @param deptId    部门ID（可选，展开为该部门及全部下级组织）
      */
     @GetMapping("/employee/summary")
     public Result<Map<String, Object>> employeeSummary(
             @RequestParam(required = false) Long companyId,
             @RequestParam(required = false) Long deptId) {
-        SqlFilter filter = SqlFilter.create();
-        if (deptId != null) {
-            filter.append(" AND (dept_id = ? OR dept_id IN (SELECT id FROM org_unit WHERE parent_id = ?))",
-                    deptId, deptId);
-        } else if (companyId != null) {
-            filter.append(" AND (company_id = ? OR dept_id IN (SELECT id FROM org_unit WHERE company_id = ?))",
-                    companyId, companyId);
-        }
+        SqlFilter filter = buildOrgFilter(companyId, deptId);
 
         Map<String, Object> result = new LinkedHashMap<>();
 
@@ -107,12 +102,8 @@ public class ReportController {
 
         SqlFilter filter = SqlFilter.create()
                 .append(" AND r.att_date BETWEEN ? AND ?", Date.valueOf(startDate), Date.valueOf(endDate));
-        if (deptId != null) {
-            filter.append(" AND e.dept_id IN (SELECT id FROM org_unit WHERE id = ? OR parent_id = ?)",
-                    deptId, deptId);
-        } else if (companyId != null) {
-            filter.append(" AND e.dept_id IN (SELECT id FROM org_unit WHERE company_id = ?)", companyId);
-        }
+        SqlFilter orgFilter = buildOrgFilter(companyId, deptId, "e.dept_id");
+        filter.append(orgFilter.getSql(), orgFilter.getParams());
 
         Map<String, Object> result = new LinkedHashMap<>();
 
@@ -246,6 +237,39 @@ public class ReportController {
             list.add(item);
         }, params.toArray());
         return list;
+    }
+
+    /**
+     * 构造组织维度过滤：公司/部门均展开为该组织及全部下级组织的 dept_id IN (...) 条件，
+     * 与考勤模块 expandOrgIds 口径一致（hr_employee 已无 company_id 列，不能直接按公司过滤）
+     */
+    private SqlFilter buildOrgFilter(Long companyId, Long deptId) {
+        return buildOrgFilter(companyId, deptId, "dept_id");
+    }
+
+    /**
+     * 同 {@link #buildOrgFilter(Long, Long)}，列名可带表别名（如 "e.dept_id"）
+     */
+    private SqlFilter buildOrgFilter(Long companyId, Long deptId, String deptColumn) {
+        Long orgId = deptId != null ? deptId : companyId;
+        SqlFilter filter = SqlFilter.create();
+        if (orgId == null) {
+            return filter;
+        }
+        List<Long> orgIds = orgUnitMapper.selectOrgAndChildIds(orgId);
+        if (orgIds.isEmpty()) {
+            return filter.append(" AND 1=0");
+        }
+        StringBuilder placeholders = new StringBuilder();
+        List<Object> params = new ArrayList<>();
+        for (Long id : orgIds) {
+            if (placeholders.length() > 0) {
+                placeholders.append(", ");
+            }
+            placeholders.append("?");
+            params.add(id);
+        }
+        return filter.append(" AND " + deptColumn + " IN (" + placeholders + ")", params.toArray());
     }
 
     private List<Map<String, Object>> ageBuckets(SqlFilter filter) {
