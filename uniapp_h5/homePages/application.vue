@@ -44,9 +44,10 @@
 
 <script setup>
 import { ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 import { getHomeMessages } from '@/api/home'
+import { toastRequestError } from '@/utils/common'
 
 // 使用 composable 获取自定义导航栏高度
 const { vuex_custom_bar_height } = useCustomBarHeight()
@@ -77,7 +78,8 @@ const loadMessages = async () => {
       avatar: item.avatar
     }))
   } catch (error) {
-    uni.showToast({ icon: 'none', title: '加载申请列表失败' })
+    // 本页为应用消息页;request.js 已 toast 过的错误不重复提示
+    toastRequestError(error, '加载消息失败')
   } finally {
     loading.value = false
   }
@@ -99,6 +101,15 @@ const openMessage = (item) => {
 
 onShow(() => {
   loadMessages()
+})
+
+// 下拉刷新
+onPullDownRefresh(async () => {
+  try {
+    await loadMessages()
+  } finally {
+    uni.stopPullDownRefresh()
+  }
 })
 </script>
 

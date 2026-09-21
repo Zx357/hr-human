@@ -86,7 +86,7 @@
 	      "path": "application",
 	      "style": {
 	        "navigationBarTitleText": "应用消息",
-	        "enablePullDownRefresh": false
+	        "enablePullDownRefresh": true
 	      }
 	    }]
 	}, {
@@ -95,7 +95,7 @@
 	      "path": "message",
 	      "style": {
 	        "navigationBarTitleText": "互动消息",
-	        "enablePullDownRefresh": false
+	        "enablePullDownRefresh": true
 	      }
 	    },
 	    {
@@ -109,7 +109,7 @@
 	      "path": "details",
 	      "style": {
 	        "navigationBarTitleText": "发布详情",
-	        "enablePullDownRefresh": false
+	        "enablePullDownRefresh": true
 	      }
 	    }]
 	}, {

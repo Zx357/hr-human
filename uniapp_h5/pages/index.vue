@@ -157,11 +157,11 @@ const currentTabComponent = () => {
   return refs[currentIndex.value]?.value || null
 }
 
-// 刷新当前激活 tab 的子组件数据
-const refreshCurrentTab = async () => {
+// 刷新当前激活 tab 的子组件数据(force=true 供下拉刷新绕过子组件内部节流)
+const refreshCurrentTab = async (force = false) => {
   const component = currentTabComponent()
   try {
-    await component?.refresh?.()
+    await component?.refresh?.(force)
   } catch (error) {
   }
 }
@@ -172,11 +172,11 @@ const switchTabbar = (index) => {
   refreshCurrentTab()
 }
 
-// 下拉刷新
+// 下拉刷新(强制绕过节流)
 const onRefresh = async () => {
   if (refreshing.value) return
   refreshing.value = true
-  await refreshCurrentTab()
+  await refreshCurrentTab(true)
   refreshing.value = false
 }
 
@@ -210,7 +210,13 @@ onLoad((options = {}) => {
 })
 
 // 页面显示时只刷新当前激活 tab(各子组件首次数据在自身 onMounted 中加载)
+// 首次 onShow 跳过刷新：子组件 onMounted 已经拉取过，避免冷启动同一接口请求两遍
+let hasShownOnce = false
 onShow(() => {
+  if (!hasShownOnce) {
+    hasShownOnce = true
+    return
+  }
   refreshCurrentTab()
 })
 </script>

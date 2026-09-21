@@ -399,7 +399,7 @@ defineExpose({
       opacity: 1;
       transform: scale(1, 1);
       background-size: 100% 100%;
-      background-image: url(https://resource.tuniaokj.com/images/cool_bg_image/6.png);
+      background-image: none;
     }
 
     &__left {
@@ -424,7 +424,7 @@ defineExpose({
           opacity: 1;
           transform: scale(1, 1);
           background-size: 100% 100%;
-          background-image: url(https://resource.tuniaokj.com/images/cool_bg_image/icon_bg5.png);
+          background-image: none;
         }
       }
 

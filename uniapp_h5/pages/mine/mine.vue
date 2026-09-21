@@ -107,6 +107,7 @@ import { useStore } from 'vuex'
 import { getMonthAttendance } from '@/api/attendance'
 import { getMyApplications } from '@/api/application'
 import { getNoticeList } from '@/api/system/notice'
+import { toastRequestError } from '@/utils/common'
 
 const store = useStore()
 
@@ -131,7 +132,10 @@ async function loadMyStats() {
   }
   const total = (r) => {
     if (r.status !== 'fulfilled') return 0
-    const d = r.value.data
+    // rows 风格响应的 total 在扁平化信封上(request.js 已透传)
+    const envelope = r.value
+    if (envelope && envelope.total !== undefined && !Array.isArray(envelope.data)) return Number(envelope.total)
+    const d = envelope?.data
     if (Array.isArray(d)) return d.length
     return Number(d?.total || 0)
   }
@@ -210,7 +214,8 @@ function handleLogout() {
         uni.reLaunch({ url: '/pages/login' })
       } catch (error) {
         uni.hideLoading()
-        uni.showToast({ icon: 'none', title: error || '退出失败' })
+        // request.js 已 toast 过的错误不重复提示,其余取 error.message 可读文案
+        toastRequestError(error, '退出失败')
       }
     }
   })

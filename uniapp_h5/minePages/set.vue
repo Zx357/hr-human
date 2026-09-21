@@ -73,6 +73,7 @@ import { useStore } from 'vuex'
 import { onShow } from '@dcloudio/uni-app'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 import { uploadEmployeeAvatar } from '@/api/employee'
+import { toastRequestError } from '@/utils/common'
 
 const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
@@ -178,7 +179,8 @@ function handleLogout() {
         uni.reLaunch({ url: '/pages/login' })
       } catch (error) {
         uni.hideLoading()
-        uni.showToast({ icon: 'none', title: error || '退出失败' })
+        // request.js 已 toast 过的错误不重复提示,其余取 error.message 可读文案
+        toastRequestError(error, '退出失败')
       }
     }
   })

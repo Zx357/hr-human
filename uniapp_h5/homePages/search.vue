@@ -117,6 +117,7 @@ const FEATURE_PAGES = [
   { name: '换休申请', keywords: '换休 调休 换休申请 exchange', url: '/workPages/exchange' },
   { name: '离职申请', keywords: '离职 离职申请 resign', url: '/workPages/resign' },
   { name: '费用报销', keywords: '报销 费用 报销申请 cost', url: '/workPages/cost' },
+  { name: '设备申请', keywords: '设备 设备申请 device', url: '/workPages/device' },
   { name: '考勤打卡', keywords: '打卡 考勤 上下班 clock time', url: '/workPages/time' },
   { name: '考勤日历', keywords: '考勤 日历 考勤记录 calendar', url: '/workPages/calendar' },
   { name: '请假记录', keywords: '请假 记录 申请记录 leave-record 我的申请', url: '/homePages/application' }
@@ -168,6 +169,7 @@ const searchFeaturesTab = (keyword) => {
 
 // 执行搜索(同事/公告/功能)
 const doSearch = async () => {
+  if (searching.value) return
   const keyword = inputValue.value.trim()
   if (!keyword) {
     uni.showToast({ title: '请输入搜索关键词', icon: 'none' })

@@ -107,6 +107,7 @@ import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 import { getApplicationDetail, approveApplication } from '@/api/application'
+import { toastRequestError } from '@/utils/common'
 
 const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
@@ -277,7 +278,8 @@ async function submitApprove(status) {
     uni.showToast({ title: status === 1 ? '已通过' : '已拒绝', icon: 'success' })
     setTimeout(loadDetail, 500)
   } catch (e) {
-    uni.showToast({ title: '操作失败', icon: 'none' })
+    // request.js 已 toast 过的错误不重复提示,避免双重弹窗
+    toastRequestError(e, '操作失败')
   }
 }
 </script>

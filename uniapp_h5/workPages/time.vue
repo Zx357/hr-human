@@ -162,10 +162,9 @@ isH5Platform = true
 const IS_H5 = isH5Platform
 
 // 高德地图配置(H5 端 <map> 组件渲染使用;微信小程序端为原生腾讯地图,无需 key)
-// 兼容读取旧的 googleMaps 配置项
-const amapConfig = config ? (config.amap || config.googleMaps) || {} : {}
+const amapConfig = config ? config.amap || {} : {}
 // H5 端是否已配置高德 Key(与 manifest.json 的 h5.sdkConfigs.maps.amap 需同时配置)
-const hasAmapKey = !!(amapConfig.key || amapConfig.apiKey)
+const hasAmapKey = !!amapConfig.key
 
 const mapLatitude = ref(DEFAULT_MAP_POINT.latitude)
 const mapLongitude = ref(DEFAULT_MAP_POINT.longitude)
@@ -208,24 +207,37 @@ const currentDateText = ref('')
 // 考勤信息加载失败标记(展示重试入口)
 const clockInfoFailed = ref(false)
 let timer = null
-// 首次 onShow 标记:onLoad 已做过全量刷新,首次显示不重复定位
+// 首次 onShow 标记:onLoad 已通过 refreshPage 做过全量刷新(考勤信息+定位),首次显示不再重复请求
 let pageShownOnce = false
 
 const hasLocation = computed(() => latitude.value !== null && longitude.value !== null)
 const hasCompanyLocation = computed(() => companyLat.value !== null && companyLng.value !== null)
+// 定位精度容差(与后端 MobileAttendanceController#resolveAccuracyToleranceMeters 完全一致):
+// accuracy 无效/<=0/>200 时容差 0,否则取 min(round(accuracy), 80),双端(H5/小程序)统一生效
+const accuracyToleranceMeters = () => {
+  const accuracy = Number(locationAccuracy.value)
+  if (!Number.isFinite(accuracy) || accuracy <= 0 || accuracy > 200) return 0
+  return Math.min(Math.round(accuracy), 80)
+}
 const effectiveClockRange = computed(() => {
   if (clockRange.value === null || clockRange.value === undefined) return null
-  const baseRange = Number(clockRange.value)
-  if (!IS_H5 || !Number.isFinite(Number(locationAccuracy.value))) return baseRange
-
-  const accuracy = Number(locationAccuracy.value)
-  if (accuracy <= 0 || accuracy > 200) return baseRange
-  return baseRange + Math.min(Math.round(accuracy), 80)
+  return Number(clockRange.value) + accuracyToleranceMeters()
 })
 const withinClockRange = computed(() => {
   if (!attendanceConfigured.value) return true
   if (!hasCompanyLocation.value || !hasLocation.value || distance.value === null || effectiveClockRange.value === null) return false
-  return distance.value <= effectiveClockRange.value
+  // 与后端一致:遍历全部已配置打卡点,任意一个满足 距离 <= 打卡范围+精度容差 即通过
+  const tolerance = accuracyToleranceMeters()
+  const locations = clockLocations.value.length ? clockLocations.value : [{
+    latitude: companyLat.value,
+    longitude: companyLng.value,
+    range: clockRange.value
+  }]
+  return locations.some((item) => {
+    if (item.latitude === null || item.longitude === null || item.range === null) return false
+    const itemDistance = calculateDistanceMeters(latitude.value, longitude.value, item.latitude, item.longitude)
+    return itemDistance <= Number(item.range) + tolerance
+  })
 })
 const canClockAction = computed(() => {
   if (!attendanceConfigured.value) return true
@@ -249,6 +261,7 @@ const locationBadgeText = computed(() => {
 const locationIssueText = computed(() => {
   if (locationFailureReason.value === 'insecure-context') return '当前 H5 页面需要 HTTPS 才能定位'
   if (locationFailureReason.value === 'unsupported') return '当前浏览器不支持定位'
+  if (locationFailureReason.value === 'not-declared') return '小程序未声明定位权限，请更新小程序版本'
   if (locationFailureReason.value === 'permission-denied') return '请开启定位权限后刷新'
   if (locationFailureReason.value === 'timeout') return '定位超时，请刷新定位'
   if (locationFailureReason.value === 'unavailable') return '暂时无法获取当前位置'
@@ -264,9 +277,10 @@ const warningText = computed(() => {
   return '今日打卡已完成'
 })
 const distanceDisplay = computed(() => distance.value === null ? '--' : formatDistance(distance.value))
+// 允许半径展示为"打卡范围+精度容差"的实际放行半径,与后端判定口径一致
 const rangeDisplay = computed(() => {
   if (clockRange.value === null || clockRange.value === undefined || clockRange.value <= 0) return '--'
-  return `${clockRange.value}米`
+  return `${effectiveClockRange.value}米`
 })
 const locationAccuracyDisplay = computed(() => {
   if (!Number.isFinite(Number(locationAccuracy.value))) return '--'
@@ -290,9 +304,10 @@ onLoad(() => {
 })
 
 onShow(() => {
-  loadClockInfo()
-  // 返回页面(如从系统设置开启定位后)时刷新定位;首次显示由 onLoad 的 refreshPage 负责,避免重复定位
+  // 首次显示由 onLoad 的 refreshPage 完成全量刷新(考勤信息+定位),跳过避免双请求
   if (pageShownOnce) {
+    loadClockInfo()
+    // 返回页面(如从系统设置开启定位后)时刷新定位
     getLocation(false)
   }
   pageShownOnce = true
@@ -513,6 +528,8 @@ function resolveLocationFailureReason(error) {
   if (/unavailable|position unavailable/i.test(message)) return 'unavailable'
   if (/secure context|only secure origins|insecure/i.test(message)) return 'insecure-context'
   if (/not support|unsupported|not available/i.test(message)) return 'unsupported'
+  // 微信小程序端 manifest 未声明定位权限时,API 直接报 "api scope is not declared"
+  if (/scope is not declared|requiredPrivateInfos/i.test(message)) return 'not-declared'
   return 'unknown'
 }
 
@@ -527,6 +544,8 @@ function promptEnableLocation() {
     content = '当前 H5 页面未启用 HTTPS，浏览器不会提供定位能力。请改用 HTTPS 域名访问后再刷新页面。'
   } else if (locationFailureReason.value === 'unsupported') {
     content = '当前浏览器不支持网页定位，请改用微信、Edge、Chrome 或 Safari 打开后再尝试打卡。'
+  } else if (locationFailureReason.value === 'not-declared') {
+    content = '当前小程序版本未声明定位权限，无法进行打卡定位。请将小程序更新到最新版本后再试。'
   }
 
   uni.showModal({

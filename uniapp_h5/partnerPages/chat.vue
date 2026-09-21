@@ -29,6 +29,9 @@
       </view>
       <view v-if="loadingHistory" class="tn-text-center tn-color-gray tn-padding-sm">加载历史消息...</view>
       <view v-if="loading" class="tn-text-center tn-color-gray tn-padding">加载中...</view>
+      <view v-else-if="missingTarget" class="tn-text-center tn-color-gray--disabled tn-padding-xl">
+        会话不存在或已失效，请返回后重新进入
+      </view>
       <view v-else-if="!messages.length" class="tn-text-center tn-color-gray--disabled tn-padding-xl">
         暂无消息，发送第一条消息吧
       </view>
@@ -101,10 +104,9 @@ import { getChatMessages, sendChatMessage, markConversationRead } from '@/api/ch
 import { refreshChatUnreadBadge } from '@/utils/chat-badge'
 import { uploadImageToServer } from '@/utils/upload'
 import {
-  connectChatSocket,
-  closeChatSocket,
-  isChatSocketOpen,
-  onChatMessage
+  connect,
+  isOpen,
+  on
 } from '@/utils/websocket'
 
 const { vuex_custom_bar_height } = useCustomBarHeight()
@@ -116,6 +118,8 @@ const targetId = ref(null)
 const peerName = ref('聊天')
 const messages = ref([])
 const loading = ref(true)
+// 页面参数缺失(targetId 为空):展示空态提示而非永远"加载中"
+const missingTarget = ref(false)
 const sending = ref(false)
 const draft = ref('')
 const scrollInto = ref('')
@@ -128,6 +132,9 @@ let silentLoading = false
 // 连续加载失败计数(恢复成功后重置,连续失败 3 次提示一次网络异常)
 let loadFailCount = 0
 let loadFailToastShown = false
+// 已读上报节流:800ms 窗口合并,窗口结束时仍有新消息则补发一次(尾触发)
+let markReadTimer = null
+let markReadPending = false
 
 // ===== WebSocket 实时化 =====
 // WS 消息处理函数注销器(onLoad 注册,onUnload/H5 卸载时注销)
@@ -261,7 +268,14 @@ const timeChipText = (item) => {
 }
 
 const loadMessages = async (silent = false) => {
-  if (!targetId.value) return
+  // 页面参数缺失(targetId 为空):早退并清理 loading,给出空态提示,避免永远"加载中"
+  if (!targetId.value) {
+    missingTarget.value = true
+    loading.value = false
+    silentLoading = false
+    return
+  }
+  missingTarget.value = false
   // 轮询加固:上一次静默拉取未返回则跳过本轮,避免请求堆积
   if (silent && silentLoading) return
   if (!silent) {
@@ -286,8 +300,8 @@ const loadMessages = async (silent = false) => {
       const added = appendMessages(list)
       if (added) {
         scrollToBottom()
-        // 停留在聊天页期间拉到新消息,同步标记已读,避免未读角标不清零
-        markConversationRead({ chatType: chatType.value, targetId: targetId.value }).catch(() => {})
+        // 停留在聊天页期间拉到新消息,同步标记已读(节流),避免未读角标不清零
+        markReadThrottled()
       }
     } else {
       messages.value = list
@@ -321,6 +335,10 @@ const sendMessage = async ({ content, msgType = 1 }) => {
       uni.showToast({ title: '发送失败，请重试', icon: 'none' })
     }
   } catch (error) {
+    // 发送失败恢复输入:仅当输入框已被清空/为空时回填,避免覆盖请求期间新输入的内容
+    if (msgType === 1 && !draft.value) {
+      draft.value = content
+    }
     uni.showToast({ icon: 'none', title: '发送失败，请重试' })
   } finally {
     sending.value = false
@@ -367,23 +385,62 @@ const startPolling = () => {
   stopPolling()
   pollTimer = setInterval(() => {
     // WS 在线时暂停轮询;断开/重连中/连接失败时自动回退 4 秒轮询兜底(不劣于纯轮询现状)
-    if (isChatSocketOpen()) return
+    if (isOpen()) return
     loadMessages(true)
   }, 4000)
 }
 
+// 已读上报节流(800ms 尾触发):首条消息立即上报合并窗口内后续消息,
+// 窗口结束时若仍有未上报的新消息再补发一次,避免每条消息打一次接口
+const markReadThrottled = () => {
+  if (!targetId.value) return
+  if (markReadTimer) {
+    markReadPending = true
+    return
+  }
+  markConversationRead({ chatType: chatType.value, targetId: targetId.value }).catch(() => {})
+  markReadTimer = setTimeout(() => {
+    markReadTimer = null
+    if (markReadPending) {
+      markReadPending = false
+      markReadThrottled()
+    }
+  }, 800)
+}
+
+const stopMarkReadThrottle = () => {
+  if (markReadTimer) {
+    clearTimeout(markReadTimer)
+    markReadTimer = null
+  }
+  markReadPending = false
+}
+
 // ===== WebSocket 实时消息处理 =====
 
-// 推送消息是否属于当前会话
-const belongsToCurrentConversation = (msg) => {
+// 当前会话在后端推送帧里的 conversationId(单聊 S+对方员工ID,群聊 G+群ID,与后端 ChatMessagePushService 约定一致)
+const conversationIdOf = () => {
+  return (Number(chatType.value) === 1 ? 'G' : 'S') + targetId.value
+}
+
+// 推送消息是否属于当前会话:优先按后端 conversationId 匹配,
+// 字段级判断兜底(含自己换设备发送的消息:from 是自己且 peer 指向当前会话)
+const belongsToCurrentConversation = (data) => {
+  const msg = data && data.message
   if (msg == null || targetId.value == null) return false
+  if (data.conversationId) {
+    if (String(data.conversationId) === String(conversationIdOf())) return true
+    // conversationId 不匹配时仍走字段兜底(换设备自己发的消息 conversationId 指向自己)
+  }
   if (Number(msg.chatType) !== Number(chatType.value)) return false
   if (Number(chatType.value) === 1) {
     return Number(msg.groupId) === Number(targetId.value)
   }
-  // 单聊:对方发来的消息(常规)或对端ID指向当前会话(兜底)
+  // 单聊:对方发来的消息,或自己(其他设备)发的且对端是当前会话
   return Number(msg.fromEmployeeId) === Number(targetId.value) ||
-    Number(msg.peerEmployeeId) === Number(targetId.value)
+    Number(msg.peerEmployeeId) === Number(targetId.value) ||
+    (Number(msg.fromEmployeeId) === Number(myEmployeeId.value) &&
+      Number(msg.peerEmployeeId) === Number(targetId.value))
 }
 
 // 拉取进行中收到推送:延迟补一次增量拉取,防止推送消息被进行中的全量/增量结果覆盖
@@ -391,7 +448,7 @@ const scheduleWsCatchUp = () => {
   if (wsCatchUpTimer) return
   wsCatchUpTimer = setTimeout(() => {
     wsCatchUpTimer = null
-    if (isChatSocketOpen() && !loading.value && !silentLoading) {
+    if (isOpen() && !loading.value && !silentLoading) {
       loadMessages(true)
     }
   }, 800)
@@ -405,12 +462,12 @@ const handleWsChatMessage = (data) => {
     scheduleWsCatchUp()
     return
   }
-  if (!belongsToCurrentConversation(msg)) return
+  if (!belongsToCurrentConversation(data)) return
   const added = appendMessages([msg])
   if (added) {
     scrollToBottom()
-    // 停留在聊天页收到新消息,同步标记已读,避免未读角标不清零
-    markConversationRead({ chatType: chatType.value, targetId: targetId.value }).catch(() => {})
+    // 停留在聊天页收到新消息,同步标记已读(节流),避免未读角标不清零
+    markReadThrottled()
   }
 }
 
@@ -422,10 +479,10 @@ const handleWsUnreadTotal = (data) => {
 
 const registerWsHandlers = () => {
   if (!offWsChatMessage) {
-    offWsChatMessage = onChatMessage('chat_message', handleWsChatMessage)
+    offWsChatMessage = on('chat_message', handleWsChatMessage)
   }
   if (!offWsUnreadTotal) {
-    offWsUnreadTotal = onChatMessage('unread_total', handleWsUnreadTotal)
+    offWsUnreadTotal = on('unread_total', handleWsUnreadTotal)
   }
 }
 
@@ -442,6 +499,7 @@ const unregisterWsHandlers = () => {
     clearTimeout(wsCatchUpTimer)
     wsCatchUpTimer = null
   }
+  stopMarkReadThrottle()
 }
 
 onLoad((options) => {
@@ -451,7 +509,7 @@ onLoad((options) => {
   if (options?.name) {
     peerName.value = decodeURIComponent(options.name)
   }
-  // 注册 WS 消息分发(token 为空时 connectChatSocket 不连接,自动走轮询)
+  // 注册 WS 消息分发(全局单例连接由登录/启动/onShow 建立/token 为空时自动走轮询)
   registerWsHandlers()
 })
 
@@ -462,34 +520,34 @@ onShow(() => {
   if (targetId.value) {
     markConversationRead({ chatType: chatType.value, targetId: targetId.value }).catch(() => {})
   }
-  // 建立/恢复 WS 实时连接(幂等,token 为空自动跳过);在线时轮询空转,断开时轮询兜底
-  connectChatSocket()
+  // 建立/恢复全局 WS 单例连接(幂等,token 为空自动跳过);在线时轮询空转,断开时轮询兜底
+  connect()
   // 轮询兜底刷新(先清理旧定时器,避免重复轮询)
   startPolling()
 })
 
 onHide(() => {
   stopPolling()
-  closeChatSocket()
+  // 全局 WS 单例保持连接(其他页面仍实时收推送),此处仅停止本页轮询
   // 离开聊天页(或切后台)时刷新全局未读数,让 tabbar 首页角标及时清零/更新
   refreshChatUnreadBadge()
 })
 
 onUnload(() => {
   stopPolling()
-  closeChatSocket()
+  // 仅注销本页订阅,不断开全局 WS 单例
   unregisterWsHandlers()
   refreshChatUnreadBadge()
 })
 
 // #ifdef H5
-// H5 端页面切到后台时暂停轮询(WS 保持连接,推送仍会送达),回到前台恢复
+// H5 端页面切到后台时暂停轮询(WS 单例保持连接,推送仍会送达),回到前台恢复
 const handleVisibilityChange = () => {
   if (document.hidden) {
     stopPolling()
   } else {
     loadMessages(true)
-    connectChatSocket()
+    connect()
     startPolling()
   }
 }
@@ -501,7 +559,7 @@ onBeforeUnmount(() => {
     document.removeEventListener('visibilitychange', handleVisibilityChange)
   }
   stopPolling()
-  closeChatSocket()
+  // 仅注销本页订阅,不断开全局 WS 单例
   unregisterWsHandlers()
 })
 // #endif

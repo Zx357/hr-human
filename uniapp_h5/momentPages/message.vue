@@ -52,6 +52,8 @@
             <tn-icon class="tn-color-gray tn-padding-top-xs" name="right"></tn-icon>
           </view>
         </view>
+        <!-- 接口一次最多拉 50 条,返回不足时说明已全部加载 -->
+        <view v-if="allLoaded" class="tn-color-gray--disabled tn-text-center tn-text-sm tn-padding">已加载全部</view>
       </view>
 
       <view v-if="!messages.length" class="tn-padding-xl">
@@ -69,6 +71,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { onPullDownRefresh } from '@dcloudio/uni-app'
 import { useStore } from 'vuex'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 import config from '@/config'
@@ -91,6 +94,9 @@ const summary = ref({
 })
 
 const messages = ref([])
+// 互动消息一次最多拉 50 条;返回条数不足时标记已全部加载,列表底部提示
+const MESSAGE_LIMIT = 50
+const allLoaded = ref(false)
 
 const summaryList = computed(() => [
   { name: '收到的赞', icon: 'like-fill', bgColor: '#FB6A67', count: Number(summary.value.likeCount || 0) },
@@ -140,13 +146,23 @@ const loadSummary = async () => {
 
 const loadMessages = async () => {
   try {
-    const res = await getMomentMessageList(50)
+    const res = await getMomentMessageList(MESSAGE_LIMIT)
     const list = Array.isArray(res.data) ? res.data : []
     messages.value = list.map(normalizeMessage)
+    allLoaded.value = list.length < MESSAGE_LIMIT
   } catch (error) {
     uni.showToast({ title: '加载失败', icon: 'none' })
   }
 }
+
+// 下拉刷新
+onPullDownRefresh(async () => {
+  try {
+    await Promise.all([loadSummary(), loadMessages()])
+  } finally {
+    uni.stopPullDownRefresh()
+  }
+})
 
 // 进入页面即标记已读,并同步清零 tabbar 时光角标与本地摘要未读数
 const markRead = async () => {

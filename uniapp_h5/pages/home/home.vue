@@ -32,7 +32,7 @@
       <!-- 全部接口加载失败:提示 + 重试 -->
       <view v-else-if="homeLoadFailed && !messageList.length" class="msg-card">
         <view class="msg-empty">首页数据加载失败</view>
-        <view class="msg-retry" @click="loadHomeData">点击重试</view>
+        <view class="msg-retry" @click="loadHomeData(true)">点击重试</view>
       </view>
 
       <view v-else class="msg-card">
@@ -63,7 +63,7 @@
 </template>
 
 <script setup>
-  import { computed, onMounted, ref } from 'vue'
+  import { computed, onMounted, onUnmounted, ref } from 'vue'
   import { useStore } from 'vuex'
   import { getHomeStats, getHomeMessages, getNotificationTop, getNotificationUnreadCount, markAllNotificationsRead } from '@/api/home'
   import { getMomentMessages } from '@/api/moment'
@@ -211,7 +211,16 @@
   const homeLoading = ref(false)
   const homeLoadFailed = ref(false)
 
-  const loadHomeData = async () => {
+  // 全量刷新节流:首页一次刷新并发 7 个请求,15 秒内切回首页不重复全量刷新
+  // (下拉刷新/手动重试等 force 调用除外;首次进入 lastHomeLoadAt 为 0 必刷)
+  const HOME_REFRESH_INTERVAL = 15000
+  let lastHomeLoadAt = 0
+
+  const loadHomeData = async (force = false) => {
+    if (!force && lastHomeLoadAt && Date.now() - lastHomeLoadAt < HOME_REFRESH_INTERVAL) {
+      return
+    }
+    lastHomeLoadAt = Date.now()
     homeLoading.value = true
     homeLoadFailed.value = false
     const [statsResult, messageResult, noticeResult, momentResult, chatUnreadResult, ntfResult, ntfUnreadResult] = await Promise.allSettled([
@@ -268,7 +277,23 @@
   // 首次挂载加载数据,后续由父页面切换/下拉时刷新
   onMounted(() => {
     loadHomeData()
+    // WS 实时通知:websocket 单例把非聊天业务帧(type=notification 等)广播到 ws-notification,
+    // 这里按帧内未读数就地更新角标并轻量拉取最新通知列表,不触发整页刷新
+    uni.$on('ws-notification', handleWsNotification)
   })
+
+  onUnmounted(() => {
+    uni.$off('ws-notification', handleWsNotification)
+  })
+
+  function handleWsNotification(data) {
+    if (data && typeof data.unreadCount === 'number') {
+      notificationUnread.value = data.unreadCount
+    }
+    getNotificationTop(10).then((res) => {
+      notifications.value = normalizeList(res.data)
+    }).catch(() => {})
+  }
 
   // 供 pages/index.vue 调用:刷新
   defineExpose({

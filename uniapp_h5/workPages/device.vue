@@ -105,10 +105,14 @@ import { ref } from 'vue'
 import { useStore } from 'vuex'
 import { submitApplication } from '@/api/application'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
+import { toastRequestError } from '@/utils/common'
 
 // 使用 composable 获取自定义导航栏高度
 const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
+
+// useStore 必须在 setup 顶层同步调用(事件函数内调用会因脱离 inject 上下文返回 undefined)
+const store = useStore()
 
 defineOptions({ name: 'TemplateDevice' })
 
@@ -142,7 +146,6 @@ async function submitApply() {
     uni.showToast({ title: '请填写设备用途', icon: 'none' })
     return
   }
-  const store = useStore()
   const employeeInfo = store.getters.employeeInfo || uni.getStorageSync('userInfo') || {}
   const employeeId = store.getters.id || employeeInfo.id
   if (!employeeId) {
@@ -171,7 +174,8 @@ async function submitApply() {
     }
   } catch (error) {
     uni.hideLoading()
-    uni.showToast({ title: error || '提交失败，请重试', icon: 'none' })
+    // request.js 已 toast 过的错误不重复提示,其余取 error.message 可读文案
+    toastRequestError(error, '提交失败，请重试')
     setTimeout(() => {
       uni.redirectTo({ url: '/workPages/prompt?result=fail&title=设备申请' })
     }, 1200)

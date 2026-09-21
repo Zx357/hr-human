@@ -48,15 +48,21 @@
         <view class="section-title" :style="{ borderColor: pageConfig.accent }">{{ pageConfig.formTitle }}</view>
 
         <template v-if="type === 'leave'">
-          <picker :range="leaveTypes" :value="selectedIndex(leaveTypes, form.leaveType)" @change="setSelect('leaveType', leaveTypes, $event)">
+          <picker :range="leaveTypeLabels" :value="leaveTypeIndex" @change="setLeaveType($event)">
             <view class="field-row">
               <view>
                 <view class="field-label">请假类型 <text>*</text></view>
-                <view class="field-value" :class="{ placeholder: !form.leaveType }">{{ form.leaveType || '请选择' }}</view>
+                <view class="field-value" :class="{ placeholder: !form.leaveType }">{{ leaveTypeText || '请选择' }}</view>
               </view>
               <tn-icon name="right"></tn-icon>
             </view>
           </picker>
+          <view class="field-row" v-if="leaveBalanceText">
+            <view>
+              <view class="field-label">剩余额度</view>
+              <view class="field-value quota-value">{{ leaveBalanceText }}</view>
+            </view>
+          </view>
           <FDateTimeRow label="开始时间" :date="form.startDate" :time="form.startTime" @date="form.startDate = $event" @time="form.startTime = $event" />
           <FDateTimeRow label="结束时间" :date="form.endDate" :time="form.endTime" @date="form.endDate = $event" @time="form.endTime = $event" />
           <FDurationBox :loading="calculating" :value="leaveHours" unit="小时" />
@@ -170,6 +176,8 @@
 import { computed, defineComponent, h, onMounted, reactive, ref, watch } from 'vue'
 import { useStore } from 'vuex'
 import { calculateLeaveHours, calculateOvertimeHours, submitApplication } from '@/api/application'
+import { getMyLeaveQuota } from '@/api/attendance'
+import { leaveTypeLabel } from '@/utils/common'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 import FDateRow from './form-date-row.vue'
 import FTimeRow from './form-time-row.vue'
@@ -407,7 +415,16 @@ const pageMap = {
   }
 }
 
-const leaveTypes = ['事假', '病假', '年假', '婚假', '产假', '陪产假', '丧假']
+// 请假类型:label 用于展示,value 为后端字典值(与 PC 端提交口径一致,title 存字典值)
+const leaveTypes = [
+  { label: '事假', value: '2' },
+  { label: '病假', value: '3' },
+  { label: '年假', value: '1' },
+  { label: '婚假', value: '4' },
+  { label: '产假', value: '5' },
+  { label: '陪产假', value: '6' },
+  { label: '丧假', value: '7' }
+]
 const cardTypes = ['上班补卡', '下班补卡']
 const resignTypes = ['主动离职', '协商离职']
 const resignReasons = ['个人发展', '薪资待遇', '工作环境', '家庭原因', '健康原因', '其他原因']
@@ -469,6 +486,7 @@ watch(
 
 onMounted(() => {
   storageUser.value = uni.getStorageSync('userInfo') || {}
+  loadLeaveQuota()
 })
 
 function getInitialForm() {
@@ -498,6 +516,45 @@ function selectedIndex(options, value) {
 
 function setSelect(field, options, event) {
   form[field] = options[Number(event.detail.value)] || ''
+}
+
+// ===== 请假类型(label/value)与额度余额 =====
+const leaveQuotas = ref([])
+
+const leaveTypeLabels = computed(() => leaveTypes.map((item) => item.label))
+const leaveTypeIndex = computed(() => {
+  const index = leaveTypes.findIndex((item) => item.value === form.leaveType)
+  return index >= 0 ? index : 0
+})
+const leaveTypeText = computed(() => leaveTypeLabel(form.leaveType))
+
+function setLeaveType(event) {
+  const selected = leaveTypes[Number(event.detail.value)]
+  form.leaveType = selected ? selected.value : ''
+}
+
+// 当前所选类型的额度:接口只返回配置了额度的记录,未配置则不展示余额行
+const leaveQuotaOfType = computed(() => {
+  if (!form.leaveType) return null
+  return leaveQuotas.value.find((item) => String(item.leaveType) === String(form.leaveType)) || null
+})
+
+const leaveBalanceText = computed(() => {
+  if (!leaveQuotaOfType.value) return ''
+  const total = Number(leaveQuotaOfType.value.totalHours || 0)
+  const used = Number(leaveQuotaOfType.value.usedHours || 0)
+  const remain = Math.max(0, Math.round((total - used) * 100) / 100)
+  return `${remain} 小时（共 ${total} 小时）`
+})
+
+function loadLeaveQuota() {
+  if (props.type !== 'leave') return
+  getMyLeaveQuota(new Date().getFullYear()).then((res) => {
+    leaveQuotas.value = Array.isArray(res.data) ? res.data : []
+  }).catch(() => {
+    // 额度接口失败不影响申请表单,只是不显示余额行
+    leaveQuotas.value = []
+  })
 }
 
 function parseDate(value) {
@@ -900,6 +957,11 @@ async function handleSubmit() {
 .placeholder {
   color: #aeb8c8;
   font-weight: 400;
+}
+
+.quota-value {
+  color: #22a873;
+  font-weight: 700;
 }
 
 .field-arrow {

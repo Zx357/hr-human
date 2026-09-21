@@ -76,6 +76,7 @@ import { reactive, ref } from 'vue'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 import { useStore } from 'vuex'
 import { mobileChangePassword } from '@/api/login'
+import { toastRequestError } from '@/utils/common'
 
 const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
@@ -122,7 +123,8 @@ const submit = async () => {
       uni.reLaunch({ url: '/pages/login' })
     }, 1200)
   } catch (error) {
-    uni.showToast({ title: (error && error.msg) || '修改失败，请重试', icon: 'none' })
+    // request.js 已 toast 过的错误不重复提示
+    toastRequestError(error, '修改失败，请重试')
   } finally {
     submitting.value = false
   }

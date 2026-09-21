@@ -69,6 +69,8 @@
           :fontSize="28"
           text-color="#FFFFFF"
           shape="round"
+          :loading="submitting"
+          :disabled="submitting"
           @click="submitGroup"
         >
           <text class="">创建群聊</text>
@@ -98,6 +100,7 @@
   const employees = ref([])
   const loadingEmployees = ref(true)
   const selectedIds = ref([])
+  const submitting = ref(false)
 
   const listData = computed(() => groupContacts(employees.value.map((item) => ({
     id: item.id,
@@ -135,6 +138,7 @@
   }
 
   const submitGroup = async () => {
+    if (submitting.value) return
     if (!selectedIds.value.length) {
       uni.showToast({
         title: '请选择群成员',
@@ -142,6 +146,7 @@
       })
       return
     }
+    submitting.value = true
     try {
       await createContactGroup({
         groupName: `工作群(${selectedIds.value.length + 1}人)`,
@@ -155,6 +160,8 @@
         uni.redirectTo({ url: '/partnerPages/group' })
       }, 500)
     } catch (error) {
+    } finally {
+      submitting.value = false
     }
   }
   

@@ -4,6 +4,7 @@ import { useStore } from 'vuex'
 import updateCustomBarInfo from './libs/updateCustomBarInfo.js'
 import { getToken, setToken } from '@/utils/auth'
 import { requireLoginFromLaunch } from '@/utils/auth-guard'
+import { connect as connectWs } from '@/utils/websocket'
 
 const store = useStore()
 let userInfoLoaded = false
@@ -25,16 +26,10 @@ function checkLogin(options = {}) {
 onLaunch((options) => {
   checkLogin(options)
 
-  uni.getSystemInfo({
-    success: function (e) {
-      // #ifndef H5
-      // 获取手机系统版本
-      const system = e.system.toLowerCase()
-      const platform = e.platform.toLowerCase()
-     
-      // #endif
-    }
-  })
+  // 本地已有 token(上次登录未退出):启动即建立全局 WS 单例连接(幂等)
+  if (getToken()) {
+    connectWs()
+  }
 
   // 获取设备的状态栏信息和自定义顶栏信息
   updateCustomBarInfo().then((res) => {
@@ -61,10 +56,12 @@ onLaunch((options) => {
               content: '新版本已经准备就绪，是否需要重新启动应用？',
               success: (res) => {
                 if (res.confirm) {
-                  // 更新前保留登录态:先暂存 token,清理后恢复,避免更新后强制重新登录
+                  // 更新前保留登录态与记住的账号:先暂存,清理后恢复,避免更新后强制重新登录/丢失预填工号
                   const token = getToken()
+                  const rememberedEmployeeNo = uni.getStorageSync('rememberedEmployeeNo')
                   uni.clearStorageSync() // 更新完成后刷新storage的数据
                   if (token) setToken(token)
+                  if (rememberedEmployeeNo) uni.setStorageSync('rememberedEmployeeNo', rememberedEmployeeNo)
                   updateManager.applyUpdate()
                 }
               }

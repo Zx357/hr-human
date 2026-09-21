@@ -105,6 +105,7 @@ import { ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 import { getPendingApprovals, approveApplication } from '@/api/application'
+import { toastRequestError } from '@/utils/common'
 
 const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
@@ -165,7 +166,10 @@ function normalizeRecords(data) {
   return data?.records || data?.rows || data?.list || []
 }
 
-function normalizeTotal(data, records) {
+function normalizeTotal(res, records) {
+  // rows 风格响应的 total 在扁平化信封上(request.js 已透传)
+  if (res && res.total !== undefined && !Array.isArray(res.data)) return Number(res.total)
+  const data = res?.data
   if (Array.isArray(data)) return data.length
   return Number(data?.total ?? records.length)
 }
@@ -191,10 +195,15 @@ async function loadList(reset = false) {
     }
 
     list.value = reset ? next : list.value.concat(next)
-    const total = normalizeTotal(res.data, records)
-    finished.value = list.value.length >= total || records.length < pageSize
+    const total = normalizeTotal(res, records)
+    // "other" tab 是客户端过滤,列表长度不等于请求到的总数:只能靠"不足一页"判定结束
+    finished.value = tab === 'other'
+      ? records.length < pageSize
+      : (list.value.length >= total || records.length < pageSize)
     pageNum.value += 1
   } catch (e) {
+    // 加载失败留痕;request.js 已 toast 过的错误不重复提示
+    console.warn('加载待办列表失败:', e)
   } finally {
     if (seq === requestSeq) loading.value = false
     refreshing.value = false
@@ -246,7 +255,8 @@ function approve(item) {
         uni.showToast({ title: '已通过', icon: 'success' })
         refresh()
       } catch (e) {
-        uni.showToast({ title: '操作失败', icon: 'none' })
+        // request.js 已 toast 过的错误不重复提示,避免双重弹窗
+        toastRequestError(e, '操作失败')
       }
     }
   })
@@ -278,7 +288,8 @@ async function confirmReject() {
     closeReject()
     refresh()
   } catch (e) {
-    uni.showToast({ title: '操作失败', icon: 'none' })
+    // request.js 已 toast 过的错误不重复提示,避免双重弹窗
+    toastRequestError(e, '操作失败')
   } finally {
     rejectSubmitting.value = false
   }

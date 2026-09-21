@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "scripts": {
     "dev:h5": "cross-env UNI_INPUT_DIR=. uni",
-    "build:h5": "cross-env UNI_INPUT_DIR=. uni build"
+    "build:h5": "cross-env UNI_INPUT_DIR=. uni build",
+    "dev:mp-weixin": "cross-env UNI_INPUT_DIR=. uni -p mp-weixin",
+    "build:mp-weixin": "cross-env UNI_INPUT_DIR=. uni build -p mp-weixin"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-alpha-5020520260829001",

@@ -208,7 +208,7 @@
 </template>
 
 <script setup>
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 import { useStore } from 'vuex'
 import config from '@/config'
@@ -357,8 +357,19 @@ const loadPost = async () => {
   }
 }
 
+// 下拉刷新：重拉动态详情与评论
+onPullDownRefresh(async () => {
+  try {
+    await Promise.all([loadPost(), loadComments()])
+  } finally {
+    uni.stopPullDownRefresh()
+  }
+})
+
+let likePending = false
 const toggleLike = async () => {
-  if (!post.value) return
+  if (!post.value || likePending) return
+  likePending = true
   const target = post.value
   const oldLiked = !!target.liked
   const oldLikeCount = Number(target.likeCount || 0)
@@ -374,6 +385,8 @@ const toggleLike = async () => {
   } catch (error) {
     target.liked = oldLiked
     target.likeCount = oldLikeCount
+  } finally {
+    likePending = false
   }
 }
 

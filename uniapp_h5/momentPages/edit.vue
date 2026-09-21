@@ -48,6 +48,7 @@
         <tn-image-upload
           ref="imageUpload"
           :custom-upload-handler="uploadImageHandler"
+          :sizeType="['compressed']"
           :width="236"
           :height="236"
           :fileList="fileList"

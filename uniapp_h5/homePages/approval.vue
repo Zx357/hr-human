@@ -92,6 +92,7 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useStore } from 'vuex'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 import { getMyApplications, cancelApplication } from '@/api/application'
+import { toastRequestError } from '@/utils/common'
 
 const store = useStore()
 const { vuex_custom_bar_height } = useCustomBarHeight()
@@ -152,7 +153,10 @@ function normalizeRecords(data) {
   return data?.records || data?.rows || data?.list || []
 }
 
-function normalizeTotal(data, records) {
+function normalizeTotal(res, records) {
+  // rows 风格响应的 total 在扁平化信封上(request.js 已透传)
+  if (res && res.total !== undefined && !Array.isArray(res.data)) return Number(res.total)
+  const data = res?.data
   if (Array.isArray(data)) return data.length
   return Number(data?.total ?? records.length)
 }
@@ -182,7 +186,7 @@ async function loadList(reset = false) {
     if (seq !== requestSeq) return
     const records = normalizeRecords(res.data)
     list.value = reset ? records : list.value.concat(records)
-    const total = normalizeTotal(res.data, records)
+    const total = normalizeTotal(res, records)
     finished.value = list.value.length >= total || records.length < pageSize
     pageNum.value += 1
   } catch (e) {
@@ -293,6 +297,9 @@ function cancelItem(item) {
         uni.showToast({ title: '已撤销', icon: 'success' })
         refresh()
       } catch (e) {
+        // 撤销失败至少留痕;request.js 已 toast 过的错误不重复提示
+        console.warn('撤销申请失败:', e)
+        toastRequestError(e, '撤销失败，请重试')
       }
     }
   })

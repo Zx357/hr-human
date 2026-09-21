@@ -77,14 +77,15 @@
             <view class="" style="margin-left: 90rpx;">
            
               <view class="blogger__desc tn-margin-top-sm tn-margin-bottom-sm tn-text-justify tn-flex-col-center tn-flex-row-left" @click="goDetail(item)">
-                <view v-for="(label_item,label_index) in item.label" :key="label_index" class="blogger__desc__label tn-float-left tn-margin-right">
-                  <text class="blogger__desc__label--prefix tn-icon-topics-fill"></text> 
-                  <text class="tn-text-df">{{ label_item }}</text>
-                </view>
-                <!-- 不用限制长度了，因为发布的时候限制长度了-->
-                 
+                <!-- 有正文就显示正文;无正文时才用话题标签替代展示(原逻辑在选了≥4个话题时会隐藏正文) -->
+                <text v-if="item.desc" class="blogger__desc__content tn-flex-1 tn-text-justify tn-text-df">{{ item.desc }}</text>
+                <template v-else>
+                  <view v-for="(label_item,label_index) in item.label" :key="label_index" class="blogger__desc__label tn-float-left tn-margin-right">
+                    <text class="blogger__desc__label--prefix tn-icon-topics-fill"></text>
+                    <text class="tn-text-df">{{ label_item }}</text>
+                  </view>
+                </template>
               </view>
-              <text v-if="!item.label || item.label.length < 4" class="blogger__desc__content tn-flex-1 tn-text-justify tn-text-df">{{ item.desc }}</text> 
               
               <block v-if="item.mainImage">
                 <view v-if="[1,2,4].indexOf(item.mainImage.length) != -1" class="tn-padding-top-xs" @click="goDetail(item)">
@@ -183,6 +184,7 @@
   import { useStore } from 'vuex'
   import config from '@/config'
   import { deleteMoment, getMomentMessages, getMomentPosts, toggleMomentLike } from '@/api/moment'
+  import { toastRequestError } from '@/utils/common'
 
   const store = useStore()
 
@@ -218,7 +220,8 @@
           content.value = content.value.filter((post) => String(post.id) !== String(item.id))
           uni.showToast({ title: '已删除', icon: 'success' })
         } catch (error) {
-          uni.showToast({ title: (error && error.msg) || '删除失败，请重试', icon: 'none' })
+          // request.js 已 toast 过的错误不重复提示
+          toastRequestError(error, '删除失败，请重试')
         }
       }
     })
@@ -390,12 +393,12 @@ const tabChange = (index) => {
   loadMoments()
 }
 
-// 点赞防抖:请求进行中忽略重复点击,保留乐观更新与失败回滚
-const likePending = ref(false)
+// 点赞防重:按动态 id 记录请求进行中的条目,不同动态可并发点赞,同一条忽略重复点击
+const likePendingIds = new Set()
 
 const toggleLike = async (item) => {
-  if (likePending.value) return
-  likePending.value = true
+  if (!item || item.id == null || likePendingIds.has(String(item.id))) return
+  likePendingIds.add(String(item.id))
   const oldLiked = !!item.liked
   const oldLikeCount = Number(item.likeCount || 0)
   item.liked = !oldLiked
@@ -411,7 +414,7 @@ const toggleLike = async (item) => {
     item.liked = oldLiked
     item.likeCount = oldLikeCount
   } finally {
-    likePending.value = false
+    likePendingIds.delete(String(item.id))
   }
 }
 

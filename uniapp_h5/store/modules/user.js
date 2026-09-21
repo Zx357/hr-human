@@ -3,11 +3,14 @@ import storage from '@/utils/storage'
 import constant from '@/utils/constant'
 import { login, logout, getCurrentEmployee } from '@/api/login'
 import { getToken, removeToken, setToken } from '@/utils/auth'
+import { connect as connectWs, disconnect as disconnectWs } from '@/utils/websocket'
 
 const baseUrl = config.baseUrl
 const defAva = '/static/author.jpg'
 
 function clearLocalSession(commit) {
+  // 退出登录/会话过期:断开全局 WS 单例(不触发重连),并清零 tabbar 角标
+  disconnectWs()
   commit('SET_TOKEN', '')
   commit('SET_ID', '')
   commit('SET_NAME', '')
@@ -15,6 +18,7 @@ function clearLocalSession(commit) {
   commit('SET_ROLES', [])
   commit('SET_PERMISSIONS', [])
   commit('SET_EMPLOYEE_INFO', null)
+  commit('SET_UNREAD_BADGE', { chatUnread: 0, momentUnread: 0, workTodo: 0 })
   removeToken()
   storage.clean()
   uni.removeStorageSync('userInfo')
@@ -72,6 +76,8 @@ const user = {
             if (res.code === 200 && res.data && res.data.token) {
               setToken(res.data.token)
               commit('SET_TOKEN', res.data.token)
+              // 登录成功:建立全局 WS 单例连接(幂等,失败自动退避重连)
+              connectWs()
               resolve()
             } else {
               reject(res.msg || '登录失败')

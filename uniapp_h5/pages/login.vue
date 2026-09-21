@@ -66,6 +66,14 @@
                 <text class="">{{ loading ? '登录中...' : '登 录' }}</text>
               </tn-button>
             </view>
+
+            <!-- 记住账号 -->
+            <view class="login__remember tn-flex tn-flex-row-center" @click="rememberAccount = !rememberAccount">
+              <view class="login__remember__checkbox tn-flex tn-flex-row-center tn-flex-col-center" :class="{ 'login__remember__checkbox--checked': rememberAccount }">
+                <tn-icon v-if="rememberAccount" name="check" class="tn-color-white" size="26rpx"></tn-icon>
+              </view>
+              <text class="tn-padding-left-xs tn-color-gray tn-text-sm">记住账号</text>
+            </view>
           </view>
 
           <!-- 忘记密码提示(员工账号由管理员统一开通与重置) -->
@@ -97,8 +105,18 @@ const loginForm = ref({
   password: ''
 })
 
+// 记住账号:登录成功后保存工号,下次进入预填(默认勾选;不记住密码,仅工号)
+const REMEMBER_KEY = 'rememberedEmployeeNo'
+const rememberAccount = ref(true)
+
 onLoad((options = {}) => {
   redirectUrl.value = resolveRedirectUrl(options.redirect)
+
+  // 上次勾选"记住账号"登录成功时保存过工号,预填
+  const remembered = uni.getStorageSync(REMEMBER_KEY)
+  if (remembered) {
+    loginForm.value.employeeNo = String(remembered)
+  }
 
   if (getToken()) {
     uni.reLaunch({ url: redirectUrl.value })
@@ -136,15 +154,22 @@ async function handleLogin() {
       employeeNo,
       password: loginForm.value.password
     })
+    // 登录成功:按勾选状态保存/清除记住的工号
+    if (rememberAccount.value) {
+      uni.setStorageSync(REMEMBER_KEY, employeeNo)
+    } else {
+      uni.removeStorageSync(REMEMBER_KEY)
+    }
     await store.dispatch('GetInfo')
     uni.hideLoading()
     uni.reLaunch({ url: redirectUrl.value })
   } catch (error) {
     uni.hideLoading()
-    uni.showToast({
-      icon: 'none',
-      title: error || '登录失败'
-    })
+    // 适配 request.js 错误契约:error 为 Error 对象时取 message;已 toast 过的不重复提示
+    const message = typeof error === 'string' ? error : (error && error.message) || ''
+    if (!(error && error._toastShown)) {
+      uni.showToast({ icon: 'none', title: message || '登录失败' })
+    }
   } finally {
     loading.value = false
   }
@@ -185,6 +210,27 @@ async function handleLogin() {
   .login__forgot {
     margin-top: 36rpx;
     padding: 10rpx 0;
+  }
+
+  /* 记住账号 */
+  .login__remember {
+    justify-content: center;
+    margin-top: 30rpx;
+
+    &__checkbox {
+      width: 36rpx;
+      height: 36rpx;
+      box-sizing: border-box;
+      border: 2rpx solid #C5CAD5;
+      border-radius: 8rpx;
+      background-color: #FFFFFF;
+      transition: all 0.2s;
+
+      &--checked {
+        border-color: #3668FC;
+        background-color: #3668FC;
+      }
+    }
   }
 
   /* 悬浮 */

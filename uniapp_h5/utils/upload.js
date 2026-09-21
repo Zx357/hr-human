@@ -1,27 +1,6 @@
 import config from '@/config'
 import { getToken } from '@/utils/auth'
-import store from '@/store'
-
-// 与 request.js 的 handleAuthExpired 对齐:防止过期后多处同时触发重复跳转
-let authExpiredRedirecting = false
-
-/**
- * 上传会话过期处理:清本地会话并回到登录页(带防重复跳转)
- */
-function handleAuthExpired(reject) {
-  const message = '登录状态已过期，请重新登录。'
-  if (!authExpiredRedirecting) {
-    authExpiredRedirecting = true
-    uni.showToast({ icon: 'none', title: message })
-    store.dispatch('ClearSession').finally(() => {
-      uni.reLaunch({ url: '/pages/login' })
-      setTimeout(() => {
-        authExpiredRedirecting = false
-      }, 500)
-    })
-  }
-  reject(message)
-}
+import { handleAuthExpired } from '@/utils/auth-expired'
 
 /**
  * 上传图片到后端 /file/upload/image
@@ -34,6 +13,7 @@ export function uploadImageToServer(filePath) {
       url: config.baseUrl + '/file/upload/image',
       filePath,
       name: 'file',
+      timeout: 60000,
       header: {
         Authorization: 'Bearer ' + getToken()
       },
@@ -62,38 +42,6 @@ export function uploadImageToServer(filePath) {
       },
       fail(error) {
         reject(error.errMsg || '上传失败')
-      }
-    })
-  })
-}
-
-/**
- * 选择图片并上传到后端
- * @param {number} count 选择张数
- * @returns {Promise<string|string[]>} 上传后的 URL，单张返回字符串
- */
-export function chooseAndUpload(count = 1) {
-  return new Promise((resolve, reject) => {
-    uni.chooseImage({
-      count,
-      success: async (res) => {
-        const paths = res.tempFilePaths || []
-        try {
-          uni.showLoading({ title: '上传中', mask: true })
-          const urls = []
-          for (const path of paths) {
-            urls.push(await uploadImageToServer(path))
-          }
-          uni.hideLoading()
-          resolve(count === 1 ? urls[0] : urls)
-        } catch (error) {
-          uni.hideLoading()
-          uni.showToast({ title: typeof error === 'string' ? error : '上传失败', icon: 'none' })
-          reject(error)
-        }
-      },
-      fail: (error) => {
-        reject(error)
       }
     })
   })

@@ -79,8 +79,9 @@ const vuex_custom_bar_height = computed(() => store.state.vuex_custom_bar_height
 const pendingCount = ref(0)
 const weekAttendance = ref({})
 // 申请菜单宫格与考勤统计(模板中使用,缺失会直接 ReferenceError)
+// 考勤统计直接用构建函数初始化,后续接口返回后在 loadWeekAttendance 中更新,避免 setup 顶层与 onMounted 重复初始化
 const icons = ref([])
-const attendance = ref([])
+const attendance = ref(buildAttendanceItems())
 const currentTime = ref('--:--')
 const currentSeconds = ref('--')
 const colorList = ['#4B98FE', '#FFAC00', '#00D05E', '#FB6A67', '#957BFE', '#00B9FE', '#CC52E2']
@@ -122,8 +123,6 @@ const entryDaysLabel = computed(() => {
   const diff = Math.floor((Date.now() - entry.getTime()) / (1000 * 60 * 60 * 24))
   return diff >= 0 ? `已入职 ${diff} 天` : '欢迎使用'
 })
-
-attendance.value = buildAttendanceItems()
 
 onMounted(() => {
   updateClock()

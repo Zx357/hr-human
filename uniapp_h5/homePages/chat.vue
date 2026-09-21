@@ -74,14 +74,17 @@
 
 <script setup>
 import { ref } from 'vue'
-import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
+import { onShow, onHide, onUnload, onPullDownRefresh } from '@dcloudio/uni-app'
+import { useStore } from 'vuex'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 import config from '@/config'
 import { getConversations } from '@/api/chat'
+import { connect as connectWs, on as onWsMessage } from '@/utils/websocket'
 
 // 使用 composable 获取自定义导航栏高度
 const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
+const store = useStore()
 
 defineOptions({
   name: 'TemplateChat'
@@ -89,6 +92,10 @@ defineOptions({
 
 const conversations = ref([])
 const loading = ref(true)
+
+// WS 订阅注销器(onShow 注册,onHide/onUnload 注销;仅取消订阅,不断开全局单例)
+let offWsChatMessage = null
+let offWsUnreadTotal = null
 
 const formatAvatar = (avatar) => {
   if (!avatar) return ''
@@ -129,7 +136,8 @@ const normalizeConversation = (item) => {
     key: `${chatType}-${item.targetId}`,
     chatType,
     targetId: item.targetId,
-    name: item.name || (chatType === 2 ? '单聊' : '群聊'),
+    // 会话无名时:单聊兜底"同事",群聊兜底"群聊"
+    name: item.name || (chatType === 2 ? '同事' : '群聊'),
     avatar: formatAvatar(item.avatar) || (chatType === 2 ? '/static/author.jpg' : ''),
     lastMessage: formatLastMessage(item.lastMessage),
     unreadCount: Number(item.unreadCount || 0),
@@ -138,13 +146,16 @@ const normalizeConversation = (item) => {
   }
 }
 
-const loadConversations = async () => {
+const loadConversations = async (silent = false) => {
   try {
     const res = await getConversations()
     const list = Array.isArray(res.data) ? res.data : []
     conversations.value = list.map(normalizeConversation)
   } catch (error) {
-    uni.showToast({ title: '加载失败', icon: 'none' })
+    // 推送触发的静默刷新不打扰用户,仅用户手动进入/下拉时提示
+    if (!silent) {
+      uni.showToast({ title: '加载失败', icon: 'none' })
+    }
   } finally {
     loading.value = false
   }
@@ -164,9 +175,54 @@ const goContacts = () => {
   })
 }
 
-// 页面显示时刷新会话(从聊天页返回后未读数/最后消息保持最新)
+// ===== WebSocket 实时刷新 =====
+
+// 新消息推送:静默刷新会话列表(最后消息/未读数/排序)
+const handleWsChatMessage = () => {
+  loadConversations(true)
+}
+
+// 未读总数推送:直接更新 tabbar 角标(免一次 REST 查询)
+const handleWsUnreadTotal = (data) => {
+  if (!data) return
+  store.commit('SET_UNREAD_BADGE', { chatUnread: Number(data.total || 0) })
+}
+
+const registerWsHandlers = () => {
+  if (!offWsChatMessage) {
+    offWsChatMessage = onWsMessage('chat_message', handleWsChatMessage)
+  }
+  if (!offWsUnreadTotal) {
+    offWsUnreadTotal = onWsMessage('unread_total', handleWsUnreadTotal)
+  }
+}
+
+const unregisterWsHandlers = () => {
+  if (offWsChatMessage) {
+    offWsChatMessage()
+    offWsChatMessage = null
+  }
+  if (offWsUnreadTotal) {
+    offWsUnreadTotal()
+    offWsUnreadTotal = null
+  }
+}
+
+// 页面显示时刷新会话(从聊天页返回后未读数/最后消息保持最新),并接入全局 WS 推送
 onShow(() => {
   loadConversations()
+  registerWsHandlers()
+  // 建立/恢复全局 WS 单例连接(幂等;连接由登录/启动时建立,此处兜底重试)
+  connectWs()
+})
+
+onHide(() => {
+  // 仅注销订阅,不断开全局 WS 单例(推送仍会更新角标)
+  unregisterWsHandlers()
+})
+
+onUnload(() => {
+  unregisterWsHandlers()
 })
 
 onPullDownRefresh(async () => {

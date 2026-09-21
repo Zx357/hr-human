@@ -55,7 +55,7 @@
               </view>
             </view>
             <view class="tn-text-justify clamp-text-2 tn-padding-top-xs tn-color-gray--dark">
-             事由：{{ item.title }}
+             事由：{{ leaveTypeLabel(item.title) }}
             </view>
             <view class="tn-text-justify clamp-text-1 tn-padding-top-xs tn-color-gray--dark">
              开始：{{ item.startTime }}
@@ -85,6 +85,7 @@ import { onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app'
 import { useStore } from 'vuex'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 import { getMyApplications } from '@/api/application'
+import { leaveTypeLabel } from '@/utils/common'
 
 // 使用 composable 获取自定义导航栏高度
 const { vuex_custom_bar_height } = useCustomBarHeight()
