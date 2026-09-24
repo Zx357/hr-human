@@ -278,6 +278,20 @@
 	      "navigationBarTitleText": "功能导航",
 	      "enablePullDownRefresh": false
 	      }
+	    },
+	    {
+	      "path": "payslip",
+	      "style": {
+	      "navigationBarTitleText": "我的工资条",
+	      "enablePullDownRefresh": true
+	      }
+	    },
+	    {
+	      "path": "payslip-detail",
+	      "style": {
+	      "navigationBarTitleText": "工资条明细",
+	      "enablePullDownRefresh": false
+	      }
 	    }
 	    ]
 	}],

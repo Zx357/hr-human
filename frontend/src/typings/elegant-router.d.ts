@@ -46,8 +46,8 @@ declare module "@elegant-router/types" {
     "home": "/home";
     "hr": "/hr";
     "hr_contract": "/hr/contract";
-    "hr_leave-quota": "/hr/leave-quota";
     "hr_employee": "/hr/employee";
+    "hr_leave-quota": "/hr/leave-quota";
     "iframe-page": "/iframe-page/:url";
     "login": "/login/:module(pwd-login|code-login|register|reset-pwd|bind-wechat)?";
     "organization": "/organization";
@@ -55,6 +55,11 @@ declare module "@elegant-router/types" {
     "report": "/report";
     "report_attendance": "/report/attendance";
     "report_employee": "/report/employee";
+    "salary": "/salary";
+    "salary_archive": "/salary/archive";
+    "salary_item": "/salary/item";
+    "salary_payroll": "/salary/payroll";
+    "salary_scheme": "/salary/scheme";
     "system": "/system";
     "system_dict": "/system/dict";
     "system_feedback": "/system/feedback";
@@ -109,6 +114,7 @@ declare module "@elegant-router/types" {
     | "login"
     | "organization"
     | "report"
+    | "salary"
     | "system"
     | "user-center"
   >;
@@ -154,11 +160,15 @@ declare module "@elegant-router/types" {
     | "attendance_shift"
     | "home"
     | "hr_contract"
-    | "hr_leave-quota"
     | "hr_employee"
+    | "hr_leave-quota"
     | "organization_org-structure"
     | "report_attendance"
     | "report_employee"
+    | "salary_archive"
+    | "salary_item"
+    | "salary_payroll"
+    | "salary_scheme"
     | "system_dict"
     | "system_feedback"
     | "system_file-config"

@@ -303,6 +303,121 @@ declare namespace App {
         noPending: string;
         noNotice: string;
       };
+      salary: {
+        common: {
+          /** 方向 */
+          direction: string;
+          /** 取值类型 */
+          valueType: string;
+          /** 收入 */
+          income: string;
+          /** 扣款 */
+          deduction: string;
+          valueTypeFixed: string;
+          valueTypeRatio: string;
+          valueTypeAttendance: string;
+          valueTypeManual: string;
+          enabled: string;
+          disabled: string;
+          sortOrder: string;
+        },
+        item: {
+          title: string;
+          addItem: string;
+          editItem: string;
+          itemName: string;
+          itemCode: string;
+          codePattern: string;
+          pleaseInputName: string;
+          pleaseInputCode: string;
+          config: string;
+          ratioBaseCode: string;
+          ratioBaseCodeTip: string;
+          ratioValue: string;
+          attRule: string;
+          unitPrice: string;
+          tolerance: string;
+          manualTip: string;
+          confirmDelete: string;
+          ruleLateTimes: string;
+          ruleLateMinutes: string;
+          ruleAbsentDays: string;
+          rulePersonalLeaveHours: string;
+          ruleOvertimeHours: string;
+          ruleFullAttendance: string;
+          ruleAttendDays: string;
+        },
+        scheme: {
+          title: string;
+          keyword: string;
+          keywordTip: string;
+          addScheme: string;
+          editScheme: string;
+          schemeName: string;
+          schemeCode: string;
+          schemeCodeTip: string;
+          pleaseInputName: string;
+          itemCount: string;
+          configItems: string;
+          confirmDelete: string;
+          items: string;
+          selectItemToAdd: string;
+          defaultAmount: string;
+          moveUp: string;
+          moveDown: string;
+          orderTip: string;
+        },
+        archive: {
+          title: string;
+          archivedOnly: string;
+          scheme: string;
+          notBound: string;
+          effectiveDate: string;
+          bind: string;
+          rebind: string;
+          adjustItems: string;
+          unbind: string;
+          confirmUnbind: string;
+          bindDialogTitle: string;
+          pleaseSelectScheme: string;
+          bindTip: string;
+          amount: string;
+          itemsDialogTitle: string;
+        },
+        payroll: {
+          title: string;
+          createBatch: string;
+          createAndCompute: string;
+          createSuccess: string;
+          employeeCount: string;
+          totalGross: string;
+          totalNet: string;
+          viewPayslips: string;
+          payslipList: string;
+          viewDetail: string;
+          payslipDetail: string;
+          compute: string;
+          computeConfirm: string;
+          computeSuccess: string;
+          confirm: string;
+          confirmTip: string;
+          publish: string;
+          publishTip: string;
+          publishSuccess: string;
+          unlock: string;
+          unlockTip: string;
+          /** 删除批次将同时删除其下所有工资条明细，确定删除？ */
+          deleteTip: string;
+          statusComputing: string;
+          statusComputed: string;
+          statusConfirmed: string;
+          statusPublished: string;
+          grossPay: string;
+          totalDeduction: string;
+          netPay: string;
+        }
+      },
+
       system: {
         title: string;
         updateTitle: string;

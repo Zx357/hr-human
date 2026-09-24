@@ -49,6 +49,10 @@
           <view class="quick-icon purple"><tn-icon name="help-fill"></tn-icon></view>
           <text>帮助中心</text>
         </view>
+        <view class="quick-item" @click="go('/minePages/payslip')">
+          <view class="quick-icon green"><tn-icon name="money-fill"></tn-icon></view>
+          <text>工资条</text>
+        </view>
       </view>
 
       <view class="info-card">
@@ -396,6 +400,11 @@ function handleLogout() {
 .purple {
   color: #957bfe;
   background: rgba(149, 123, 254, 0.12);
+}
+
+.green {
+  color: #22a873;
+  background: rgba(34, 168, 115, 0.12);
 }
 
 .info-card {

@@ -432,6 +432,63 @@ export const generatedRoutes: GeneratedRoute[] = [
     ]
   },
   {
+    name: 'salary',
+    path: '/salary',
+    component: 'layout.base',
+    meta: {
+      title: 'salary',
+      i18nKey: 'route.salary',
+      order: 4,
+      icon: 'mdi:cash-multiple'
+    },
+    children: [
+      {
+        name: 'salary_archive',
+        path: '/salary/archive',
+        component: 'view.salary_archive',
+        meta: {
+          title: 'salary_archive',
+          i18nKey: 'route.salary_archive',
+          order: 3,
+          icon: 'mdi:account-cash'
+        }
+      },
+      {
+        name: 'salary_item',
+        path: '/salary/item',
+        component: 'view.salary_item',
+        meta: {
+          title: 'salary_item',
+          i18nKey: 'route.salary_item',
+          order: 1,
+          icon: 'mdi:ticket-confirmation'
+        }
+      },
+      {
+        name: 'salary_payroll',
+        path: '/salary/payroll',
+        component: 'view.salary_payroll',
+        meta: {
+          title: 'salary_payroll',
+          i18nKey: 'route.salary_payroll',
+          order: 4,
+          icon: 'mdi:calculator-variant'
+        }
+      },
+      {
+        name: 'salary_scheme',
+        path: '/salary/scheme',
+        component: 'view.salary_scheme',
+        meta: {
+          title: 'salary_scheme',
+          i18nKey: 'route.salary_scheme',
+          order: 2,
+          icon: 'mdi:clipboard-list-outline'
+        }
+      }
+    ]
+  },
+  {
     name: 'system',
     path: '/system',
     component: 'layout.base',
