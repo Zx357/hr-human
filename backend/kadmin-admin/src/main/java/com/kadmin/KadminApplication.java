@@ -14,7 +14,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.kadmin.hr.mapper",
         "com.kadmin.attendance.mapper",
         "com.kadmin.organization.mapper",
-        "com.kadmin.mobile.mapper"
+        "com.kadmin.mobile.mapper",
+        "com.kadmin.salary.mapper"
 })
 @EnableScheduling
 public class KadminApplication {

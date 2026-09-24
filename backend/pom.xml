@@ -22,6 +22,7 @@
         <module>kadmin-organization</module>
         <module>kadmin-hr</module>
         <module>kadmin-attendance</module>
+        <module>kadmin-salary</module>
         <module>kadmin-mobile</module>
         <module>kadmin-system</module>
         <module>kadmin-framework</module>
@@ -67,6 +68,11 @@
             <dependency>
                 <groupId>com.kadmin</groupId>
                 <artifactId>kadmin-attendance</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.kadmin</groupId>
+                <artifactId>kadmin-salary</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

@@ -53,6 +53,8 @@ public class DataInitializer implements CommandLineRunner {
         ensurePermissionButtonSeeds();
         ensureLeaveQuotaTable();
         ensureLeaveQuotaMenu();
+        ensureSalaryTables();
+        ensureSalaryMenu();
         ensureDefaultSystemNotice();
         ensureDefaultMomentPosts();
         ensureDefaultMobileGroup();
@@ -341,6 +343,238 @@ public class DataInitializer implements CommandLineRunner {
                   KEY idx_sys_feedback_created_time (created_time)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='意见反馈'
                 """);
+    }
+
+    private void ensureSalaryTables() {
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS sal_salary_item_def (
+                  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+                  item_code VARCHAR(50) NOT NULL COMMENT '薪资项编码(小写字母/数字/下划线)',
+                  item_name VARCHAR(100) NOT NULL COMMENT '薪资项名称',
+                  direction TINYINT NOT NULL DEFAULT 1 COMMENT '方向：1-收入 2-扣款',
+                  value_type TINYINT NOT NULL DEFAULT 1 COMMENT '取值类型：1-固定 2-比例 3-考勤联动 4-手工 5-公式(预留)',
+                  ratio_base_code VARCHAR(50) DEFAULT NULL COMMENT '比例基项编码(value_type=2)',
+                  ratio_value DECIMAL(8,4) DEFAULT NULL COMMENT '比例值(value_type=2,如0.12)',
+                  att_rule VARCHAR(30) DEFAULT NULL COMMENT '考勤联动规则(value_type=3)',
+                  unit_price DECIMAL(12,2) DEFAULT NULL COMMENT '单价/固定给付(value_type=3)',
+                  tolerance INT DEFAULT NULL COMMENT '容忍值(迟到次数/分钟豁免)',
+                  formula VARCHAR(200) DEFAULT NULL COMMENT '公式(value_type=5预留)',
+                  enabled TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用：1-是 0-否',
+                  sort_order INT NOT NULL DEFAULT 0 COMMENT '排序',
+                  remark VARCHAR(255) DEFAULT NULL COMMENT '备注',
+                  created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  created_by BIGINT DEFAULT NULL COMMENT '创建人',
+                  updated_by BIGINT DEFAULT NULL COMMENT '更新人',
+                  PRIMARY KEY (id),
+                  UNIQUE KEY uk_sal_item_code (item_code)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='薪资项定义'
+                """);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS sal_salary_scheme (
+                  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+                  scheme_code VARCHAR(50) DEFAULT NULL COMMENT '方案编码',
+                  scheme_name VARCHAR(100) NOT NULL COMMENT '方案名称',
+                  enabled TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用：1-是 0-否',
+                  sort_order INT NOT NULL DEFAULT 0 COMMENT '排序',
+                  remark VARCHAR(255) DEFAULT NULL COMMENT '备注',
+                  created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  created_by BIGINT DEFAULT NULL COMMENT '创建人',
+                  updated_by BIGINT DEFAULT NULL COMMENT '更新人',
+                  PRIMARY KEY (id),
+                  UNIQUE KEY uk_sal_scheme_code (scheme_code)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='薪资方案'
+                """);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS sal_scheme_item (
+                  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+                  scheme_id BIGINT NOT NULL COMMENT '方案ID',
+                  item_id BIGINT NOT NULL COMMENT '薪资项ID',
+                  default_amount DECIMAL(12,2) DEFAULT NULL COMMENT 'FIXED项默认金额',
+                  sort_order INT NOT NULL DEFAULT 0 COMMENT '排序(计算顺序,比例项只能引用前面的项)',
+                  created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  created_by BIGINT DEFAULT NULL COMMENT '创建人',
+                  updated_by BIGINT DEFAULT NULL COMMENT '更新人',
+                  PRIMARY KEY (id),
+                  UNIQUE KEY uk_sal_scheme_item (scheme_id, item_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='薪资方案明细'
+                """);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS sal_salary_archive (
+                  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+                  employee_id BIGINT NOT NULL COMMENT '员工ID',
+                  scheme_id BIGINT NOT NULL COMMENT '薪资方案ID',
+                  effective_date DATE DEFAULT NULL COMMENT '生效日期',
+                  remark VARCHAR(255) DEFAULT NULL COMMENT '备注',
+                  created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  created_by BIGINT DEFAULT NULL COMMENT '创建人',
+                  updated_by BIGINT DEFAULT NULL COMMENT '更新人',
+                  PRIMARY KEY (id),
+                  UNIQUE KEY uk_sal_archive_employee (employee_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工薪资档案'
+                """);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS sal_salary_archive_item (
+                  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+                  archive_id BIGINT NOT NULL COMMENT '档案ID',
+                  item_id BIGINT NOT NULL COMMENT '薪资项ID',
+                  amount DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT '金额(可覆盖方案默认)',
+                  created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  created_by BIGINT DEFAULT NULL COMMENT '创建人',
+                  updated_by BIGINT DEFAULT NULL COMMENT '更新人',
+                  PRIMARY KEY (id),
+                  UNIQUE KEY uk_sal_archive_item (archive_id, item_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工薪资档案明细'
+                """);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS sal_payroll_batch (
+                  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+                  pay_month CHAR(7) NOT NULL COMMENT '核算月份 yyyy-MM',
+                  company_id BIGINT NOT NULL COMMENT '核算公司ID',
+                  status TINYINT NOT NULL DEFAULT 0 COMMENT '状态：0-核算中 1-已核算 2-已确认 3-已发放',
+                  employee_count INT DEFAULT 0 COMMENT '核算人数',
+                  total_gross DECIMAL(14,2) DEFAULT 0 COMMENT '应发合计',
+                  total_net DECIMAL(14,2) DEFAULT 0 COMMENT '实发合计',
+                  remark VARCHAR(255) DEFAULT NULL COMMENT '备注',
+                  created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  created_by BIGINT DEFAULT NULL COMMENT '创建人',
+                  updated_by BIGINT DEFAULT NULL COMMENT '更新人',
+                  PRIMARY KEY (id),
+                  UNIQUE KEY uk_sal_batch (pay_month, company_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工资核算批次'
+                """);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS sal_payroll_payslip (
+                  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+                  batch_id BIGINT NOT NULL COMMENT '批次ID',
+                  employee_id BIGINT NOT NULL COMMENT '员工ID',
+                  employee_no VARCHAR(50) DEFAULT NULL COMMENT '工号快照',
+                  employee_name VARCHAR(50) DEFAULT NULL COMMENT '姓名快照',
+                  gross_pay DECIMAL(14,2) NOT NULL DEFAULT 0 COMMENT '应发合计',
+                  total_deduction DECIMAL(14,2) NOT NULL DEFAULT 0 COMMENT '扣款合计',
+                  net_pay DECIMAL(14,2) NOT NULL DEFAULT 0 COMMENT '实发',
+                  read_flag TINYINT DEFAULT 0 COMMENT '员工已读：0-未读 1-已读',
+                  read_time DATETIME DEFAULT NULL COMMENT '已读时间',
+                  confirm_flag TINYINT DEFAULT 0 COMMENT '员工已确认：0-未确认 1-已确认',
+                  confirm_time DATETIME DEFAULT NULL COMMENT '确认时间',
+                  created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  created_by BIGINT DEFAULT NULL COMMENT '创建人',
+                  updated_by BIGINT DEFAULT NULL COMMENT '更新人',
+                  PRIMARY KEY (id),
+                  UNIQUE KEY uk_sal_payslip (batch_id, employee_id),
+                  KEY idx_sal_payslip_employee (employee_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工工资条'
+                """);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS sal_payroll_item (
+                  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+                  payslip_id BIGINT NOT NULL COMMENT '工资条ID',
+                  item_id BIGINT DEFAULT NULL COMMENT '薪资项ID',
+                  item_code VARCHAR(50) DEFAULT NULL COMMENT '项编码快照',
+                  item_name VARCHAR(100) DEFAULT NULL COMMENT '项名称快照',
+                  direction TINYINT DEFAULT 1 COMMENT '方向：1-收入 2-扣款',
+                  value_type TINYINT DEFAULT 1 COMMENT '取值类型快照',
+                  amount DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT '金额',
+                  source VARCHAR(200) DEFAULT NULL COMMENT '取值来源说明',
+                  sort_order INT DEFAULT 0 COMMENT '排序',
+                  created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  created_by BIGINT DEFAULT NULL COMMENT '创建人',
+                  updated_by BIGINT DEFAULT NULL COMMENT '更新人',
+                  PRIMARY KEY (id),
+                  KEY idx_sal_payroll_item_payslip (payslip_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工资条明细行'
+                """);
+    }
+
+    private void ensureSalaryMenu() {
+        SysMenu salaryRoot = menuMapper.selectOne(new LambdaQueryWrapper<SysMenu>()
+                .eq(SysMenu::getMenuCode, "salary")
+                .last("LIMIT 1"));
+        if (salaryRoot == null) {
+            salaryRoot = new SysMenu();
+            salaryRoot.setParentId(0L);
+            salaryRoot.setMenuType(1);
+            salaryRoot.setMenuCode("salary");
+            salaryRoot.setMenuName("薪资管理");
+            salaryRoot.setMenuNameEn("Salary Management");
+            salaryRoot.setPath("/salary");
+            salaryRoot.setComponent("layout.base");
+            salaryRoot.setIcon("mdi:cash-multiple");
+            salaryRoot.setSortOrder(10);
+            salaryRoot.setVisible(1);
+            salaryRoot.setStatus(1);
+            menuMapper.insert(salaryRoot);
+        }
+
+        SysMenu itemMenu = ensureSalaryChildMenu(salaryRoot.getId(), "salary_item",
+                "薪资项定义", "Salary Items", "/salary/item", "view.salary_item",
+                "sal:item:list", "mdi:ticket-confirmation", 1);
+        SysMenu schemeMenu = ensureSalaryChildMenu(salaryRoot.getId(), "salary_scheme",
+                "薪资方案", "Salary Schemes", "/salary/scheme", "view.salary_scheme",
+                "sal:scheme:list", "mdi:clipboard-list-outline", 2);
+        SysMenu archiveMenu = ensureSalaryChildMenu(salaryRoot.getId(), "salary_archive",
+                "薪资档案", "Salary Archives", "/salary/archive", "view.salary_archive",
+                "sal:archive:list", "mdi:account-cash", 3);
+        SysMenu payrollMenu = ensureSalaryChildMenu(salaryRoot.getId(), "salary_payroll",
+                "工资核算", "Payroll", "/salary/payroll", "view.salary_payroll",
+                "sal:payroll:list", "mdi:calculator-variant", 4);
+
+        assignMenuToAdminRoles(salaryRoot.getId());
+        assignMenuToAdminRoles(itemMenu.getId());
+        assignMenuToAdminRoles(schemeMenu.getId());
+        assignMenuToAdminRoles(archiveMenu.getId());
+        assignMenuToAdminRoles(payrollMenu.getId());
+
+        ensureMenuButton(itemMenu.getId(), "salary_item_manage", "维护薪资项", "sal:item:manage", 1);
+        ensureMenuButton(schemeMenu.getId(), "salary_scheme_manage", "维护方案", "sal:scheme:manage", 1);
+        ensureMenuButton(archiveMenu.getId(), "salary_archive_manage", "维护档案", "sal:archive:manage", 1);
+        ensureMenuButton(payrollMenu.getId(), "salary_payroll_manage", "核算/确认/发放", "sal:payroll:manage", 1);
+        ensureMenuButton(payrollMenu.getId(), "salary_payroll_export", "导出工资表", "sal:payroll:export", 2);
+    }
+
+    /**
+     * 薪资子菜单幂等创建（存在则校正关键字段）
+     */
+    private SysMenu ensureSalaryChildMenu(Long parentId, String menuCode, String menuName, String menuNameEn,
+            String path, String component, String permission, String icon, int sortOrder) {
+        SysMenu menu = menuMapper.selectOne(new LambdaQueryWrapper<SysMenu>()
+                .eq(SysMenu::getMenuCode, menuCode)
+                .last("LIMIT 1"));
+        if (menu == null) {
+            menu = new SysMenu();
+            menu.setParentId(parentId);
+            menu.setMenuType(2);
+            menu.setMenuCode(menuCode);
+            menu.setMenuName(menuName);
+            menu.setMenuNameEn(menuNameEn);
+            menu.setPath(path);
+            menu.setComponent(component);
+            menu.setPermission(permission);
+            menu.setIcon(icon);
+            menu.setSortOrder(sortOrder);
+            menu.setVisible(1);
+            menu.setStatus(1);
+            menuMapper.insert(menu);
+            return menu;
+        }
+        boolean changed = false;
+        changed |= setMenuField(menu, parentId, menu.getParentId(), menu::setParentId);
+        changed |= setMenuField(menu, menuName, menu.getMenuName(), menu::setMenuName);
+        changed |= setMenuField(menu, menuNameEn, menu.getMenuNameEn(), menu::setMenuNameEn);
+        changed |= setMenuField(menu, path, menu.getPath(), menu::setPath);
+        changed |= setMenuField(menu, component, menu.getComponent(), menu::setComponent);
+        changed |= setMenuField(menu, permission, menu.getPermission(), menu::setPermission);
+        if (changed) {
+            menuMapper.updateById(menu);
+        }
+        return menu;
     }
 
     private void ensureLeaveQuotaTable() {

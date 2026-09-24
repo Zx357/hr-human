@@ -97,7 +97,7 @@ public class SecurityConfig {
                         // ===== PC管理端接口（仅管理员） =====
                         .requestMatchers("/system/**", "/organization/**", "/calendar/**",
                                 "/attendance/**", "/employee/**", "/hr/**", "/org-unit/**", "/file/**",
-                                "/reminder/**", "/report/**")
+                                "/reminder/**", "/report/**", "/salary/**")
                         .hasRole("ADMIN")
                         .anyRequest().authenticated())
                 // 认证失败处理：返回JSON而非默认403页面
