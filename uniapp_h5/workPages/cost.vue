@@ -189,7 +189,7 @@ async function submitApply() {
     const res = await submitApplication({
       employeeId,
       status: 0,
-      appType: 'expense',
+      appType: 'cost',
       title: `${array.value[index.value]}报销`,
       startTime: result.value,
       amount: Number(amount.value),

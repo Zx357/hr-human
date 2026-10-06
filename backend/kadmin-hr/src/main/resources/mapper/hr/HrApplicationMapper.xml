@@ -205,6 +205,32 @@
         ORDER BY a.created_time DESC
     </select>
 
+    <select id="selectDetailById" resultType="com.kadmin.hr.domain.HrApplication">
+        SELECT a.*,
+            e.name as employee_name, e.employee_no, e.entry_date,
+            d.unit_name as dept_name,
+            CASE
+                WHEN d.unit_type = 2 THEN d.unit_name
+                WHEN p1.unit_type = 2 THEN p1.unit_name
+                WHEN p2.unit_type = 2 THEN p2.unit_name
+                WHEN p3.unit_type = 2 THEN p3.unit_name
+                ELSE NULL
+            END as company_name,
+            fd.unit_name as from_dept_name,
+            td.unit_name as to_dept_name,
+            h.name as handover_to_name
+        FROM hr_application a
+        LEFT JOIN hr_employee e ON a.employee_id = e.id
+        LEFT JOIN org_unit d ON e.dept_id = d.id
+        LEFT JOIN org_unit p1 ON d.parent_id = p1.id
+        LEFT JOIN org_unit p2 ON p1.parent_id = p2.id
+        LEFT JOIN org_unit p3 ON p2.parent_id = p3.id
+        LEFT JOIN org_unit fd ON a.from_dept_id = fd.id
+        LEFT JOIN org_unit td ON a.to_dept_id = td.id
+        LEFT JOIN hr_employee h ON a.handover_to = h.id
+        WHERE a.id = #{id}
+    </select>
+
     <select id="selectMobilePendingCount" resultType="java.lang.Long">
         SELECT COUNT(*)
         FROM hr_application a

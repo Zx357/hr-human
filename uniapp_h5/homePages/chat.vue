@@ -31,7 +31,7 @@
             <view v-if="item.unreadCount > 0" class="conv-item__badge">{{ formatBadge(item.unreadCount) }}</view>
           </view>
 
-          <view class="tn-flex-1 tn-padding-left-sm" style="min-width: 0;">
+          <view class="tn-flex-1 tn-padding-left-sm" style="min-width: 0; flex-direction: column;">
             <view class="tn-flex tn-flex-row-between tn-flex-col-center">
               <text class="conv-item__name tn-text-ellipsis">{{ item.name }}</text>
               <text class="conv-item__time tn-color-gray--disabled tn-text-xs">{{ item.timeText }}</text>

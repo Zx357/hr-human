@@ -113,12 +113,16 @@ const user = {
             commit('SET_AVATAR', defAva)
             resolve(res)
           })
-          .catch(() => {
+          .catch((error) => {
             // 员工信息拉取失败:不伪造成功状态,提示用户并保留 token(网络波动时下次进入重试)
             commit('SET_ROLES', ['ROLE_EMPLOYEE'])
             commit('SET_NAME', '员工')
             commit('SET_AVATAR', defAva)
-            uni.showToast({ icon: 'none', title: '员工信息加载失败，部分功能不可用' })
+            // 401 过期场景 request.js 已 toast"登录状态已过期"并清会话跳登录页,
+            // 这里按错误契约跳过二次提示,避免登录页叠出"员工信息加载失败"造成困惑
+            if (!(error && error._toastShown)) {
+              uni.showToast({ icon: 'none', title: '员工信息加载失败，部分功能不可用' })
+            }
             resolve({})
           })
       })

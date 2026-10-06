@@ -130,6 +130,7 @@ const typeMap = {
   transfer: '调动申请',
   reward: '奖励申请',
   punish: '惩罚申请',
+  cost: '费用报销',
   expense: '费用报销',
   device: '设备申请'
 }
@@ -144,7 +145,9 @@ const typeColors = {
   regularization: '#00B9FE',
   transfer: '#FE871B',
   reward: '#FFAC00',
-  punish: '#FB6A67'
+  punish: '#FB6A67',
+  cost: '#00C8B0',
+  device: '#8767FE'
 }
 
 const statusMap = {
@@ -152,6 +155,24 @@ const statusMap = {
   1: { name: '已通过', color: '#00C8B0', bg: 'rgba(0, 200, 176, 0.12)' },
   2: { name: '已拒绝', color: '#FB6A67', bg: 'rgba(251, 106, 103, 0.12)' },
   3: { name: '已撤销', color: '#9AA4B2', bg: 'rgba(154, 164, 178, 0.14)' }
+}
+
+// 与 sys_dict_data 的 transfer_type / resign_type 字典值保持一致;
+// 历史数据里这两个字段可能存的是字典值(1/2/3)或已翻译的文本,非数字时原样展示
+const TRANSFER_TYPES = { 1: '部门调动', 2: '职位变更', 3: '部门+职位变更' }
+const RESIGN_TYPES = { 1: '主动离职', 2: '被动离职', 3: '合同到期', 4: '退休' }
+
+function dictOrRaw(map, value) {
+  if (value === null || value === undefined || value === '') return ''
+  return map[value] ?? String(value)
+}
+
+function transferTypeLabel(value) {
+  return dictOrRaw(TRANSFER_TYPES, value)
+}
+
+function resignTypeLabel(value) {
+  return dictOrRaw(RESIGN_TYPES, value)
 }
 
 const canApprove = computed(() => mode.value === 'approve' && Number(detail.value?.status) === 0)
@@ -165,13 +186,13 @@ const infoRows = computed(() => {
     { label: '时长', value: item.duration ? `${item.duration}小时` : '' },
     { label: '转正日期', value: item.regularDate },
     { label: '试用期结束', value: item.probationEndDate },
-    { label: '调动类型', value: item.transferType },
+    { label: '调动类型', value: transferTypeLabel(item.transferType) },
     { label: '原部门', value: item.fromDeptName },
     { label: '新部门', value: item.toDeptName },
     { label: '原职位', value: item.fromPosition },
     { label: '新职位', value: item.toPosition },
     { label: '生效日期', value: item.effectDate },
-    { label: '离职类型', value: item.resignType },
+    { label: '离职类型', value: resignTypeLabel(item.resignType) },
     { label: '最后工作日', value: item.lastWorkDate },
     { label: '交接人', value: item.handoverToName },
     { label: '类别', value: item.category },

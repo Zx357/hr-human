@@ -163,8 +163,9 @@ const IS_H5 = isH5Platform
 
 // 高德地图配置(H5 端 <map> 组件渲染使用;微信小程序端为原生腾讯地图,无需 key)
 const amapConfig = config ? config.amap || {} : {}
-// H5 端是否已配置高德 Key(与 manifest.json 的 h5.sdkConfigs.maps.amap 需同时配置)
-const hasAmapKey = !!amapConfig.key
+// H5 端是否已配置高德 Key(与 manifest.json 的 h5.sdkConfigs.maps.amap 需同时配置);
+// 脚手架占位符 YOUR_AMAP_KEY 视为未配置,走下方文字降级卡片,避免渲染空白地图
+const hasAmapKey = !!amapConfig.key && !/^your_amap_key$/i.test(String(amapConfig.key).trim())
 
 const mapLatitude = ref(DEFAULT_MAP_POINT.latitude)
 const mapLongitude = ref(DEFAULT_MAP_POINT.longitude)

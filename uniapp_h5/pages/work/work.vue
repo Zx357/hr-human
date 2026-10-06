@@ -85,14 +85,16 @@ const attendance = ref(buildAttendanceItems())
 const currentTime = ref('--:--')
 const currentSeconds = ref('--')
 const colorList = ['#4B98FE', '#FFAC00', '#00D05E', '#FB6A67', '#957BFE', '#00B9FE', '#CC52E2']
-const topMenuOrder = ['请假申请', '加班申请', '补卡申请', '离职申请', '出差申请', '换休申请']
+const topMenuOrder = ['请假申请', '加班申请', '补卡申请', '离职申请', '出差申请', '换休申请', '费用报销', '设备申请']
 const topMenuColorMap = {
   '请假申请': '#4B98FE',
   '加班申请': '#FFAC00',
   '补卡申请': '#00D05E',
   '离职申请': '#FB6A67',
   '出差申请': '#957BFE',
-  '换休申请': '#00B9FE'
+  '换休申请': '#00B9FE',
+  '费用报销': '#00C8B0',
+  '设备申请': '#8767FE'
 }
 let clockTimer = null
 
@@ -226,7 +228,9 @@ function getFallbackMenus() {
     { title: '补卡申请', icon: 'edit-form', color: topMenuColorMap['补卡申请'], url: '/workPages/replace' },
     { title: '离职申请', icon: 'reduce-circle-fill', color: topMenuColorMap['离职申请'], url: '/workPages/resign' },
     { title: '出差申请', icon: 'suitcase-fill', color: topMenuColorMap['出差申请'], url: '/workPages/travel' },
-    { title: '换休申请', icon: 'menu-grille-fill', color: topMenuColorMap['换休申请'], url: '/workPages/exchange' }
+    { title: '换休申请', icon: 'menu-grille-fill', color: topMenuColorMap['换休申请'], url: '/workPages/exchange' },
+    { title: '费用报销', icon: 'money-fill', color: topMenuColorMap['费用报销'], url: '/workPages/cost' },
+    { title: '设备申请', icon: 'mouse-fill', color: topMenuColorMap['设备申请'], url: '/workPages/device' }
   ]
 }
 
@@ -246,6 +250,8 @@ function matchTopMenuTitle(name) {
   if (name.includes('离职')) return '离职申请'
   if (name.includes('出差')) return '出差申请'
   if (name.includes('换休') || name.includes('调休')) return '换休申请'
+  if (name.includes('报销')) return '费用报销'
+  if (name.includes('设备')) return '设备申请'
   return ''
 }
 
@@ -260,6 +266,7 @@ function iconForName(name) {
   if (name.includes('调动')) return 'transfer-fill'
   if (name.includes('审批')) return 'seal'
   if (name.includes('报销')) return 'money-fill'
+  if (name.includes('设备')) return 'mouse-fill'
   return 'menu-fill'
 }
 
@@ -270,6 +277,8 @@ function routeForName(name) {
   if (name.includes('离职')) return '/workPages/resign'
   if (name.includes('出差')) return '/workPages/travel'
   if (name.includes('换休') || name.includes('调休')) return '/workPages/exchange'
+  if (name.includes('报销')) return '/workPages/cost'
+  if (name.includes('设备')) return '/workPages/device'
   return ''
 }
 

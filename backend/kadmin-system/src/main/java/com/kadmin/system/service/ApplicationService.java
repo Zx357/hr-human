@@ -247,6 +247,16 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
         return BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
     }
 
+    /**
+     * 申请详情(关联员工姓名、部门、公司等展示字段;移动端审批详情与 PC 详情共用)
+     */
+    public HrApplication getApplicationDetail(Long id) {
+        if (id == null) {
+            return null;
+        }
+        return baseMapper.selectDetailById(id);
+    }
+
     public Page<HrApplication> getPage(int pageNum, int pageSize, String employeeName, String employeeNo,
             String appType, Integer status, Long employeeId, LocalDate beginTime, LocalDate endTime) {
         return baseMapper.selectPageWithEmployee(new Page<>(pageNum, pageSize), employeeName, employeeNo, appType,

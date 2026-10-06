@@ -228,6 +228,7 @@ const typeIconMap = {
   transfer: 'transfer-fill',
   reward: 'medal-fill',
   punish: 'warning-fill',
+  cost: 'money-fill',
   expense: 'money-fill',
   device: 'mouse-fill'
 }

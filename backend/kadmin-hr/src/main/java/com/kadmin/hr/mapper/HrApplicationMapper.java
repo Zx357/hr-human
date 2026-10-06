@@ -25,4 +25,6 @@ public interface HrApplicationMapper extends BaseMapper<HrApplication> {
                         @Param("appType") String appType, @Param("approverEmployeeId") Long approverEmployeeId);
 
         Long selectMobilePendingCount(@Param("approverEmployeeId") Long approverEmployeeId);
+
+        HrApplication selectDetailById(@Param("id") Long id);
 }

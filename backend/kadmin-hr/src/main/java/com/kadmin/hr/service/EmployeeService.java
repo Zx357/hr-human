@@ -98,7 +98,43 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
             wrapper.eq(HrEmployee::getStatus, status);
         }
         wrapper.orderByAsc(HrEmployee::getName);
-        return list(wrapper);
+        List<HrEmployee> employees = list(wrapper);
+        employees.forEach(this::fillDeptAndCompanyNames);
+        return employees;
+    }
+
+    /**
+     * 回显部门和公司名称（组织架构统一使用 org_unit：1-集团，2-公司，3-部门）。
+     * 列表与详情共用;移动端通讯录列表依赖 deptName 展示。
+     */
+    private void fillDeptAndCompanyNames(HrEmployee employee) {
+        if (employee == null || employee.getDeptId() == null || employee.getDeptName() != null) {
+            return;
+        }
+        OrgUnit deptUnit = orgUnitMapper.selectById(employee.getDeptId());
+        if (deptUnit == null) {
+            return;
+        }
+        employee.setDeptName(deptUnit.getUnitName());
+
+        // 向上查找到公司节点
+        OrgUnit cursor = deptUnit;
+        int guard = 0;
+        while (cursor != null && cursor.getParentId() != null && cursor.getParentId() != 0L
+                && guard++ < 20) {
+            if (cursor.getUnitType() != null && cursor.getUnitType() == OrgUnit.TYPE_COMPANY) {
+                employee.setCompanyName(cursor.getUnitName());
+                break;
+            }
+            cursor = orgUnitMapper.selectById(cursor.getParentId());
+        }
+
+        // 如果部门本身就是公司节点
+        if (employee.getCompanyName() == null
+                && deptUnit.getUnitType() != null
+                && deptUnit.getUnitType() == OrgUnit.TYPE_COMPANY) {
+            employee.setCompanyName(deptUnit.getUnitName());
+        }
     }
 
     /**
@@ -141,32 +177,8 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
                     new LambdaQueryWrapper<HrEmployeeExtra>()
                             .eq(HrEmployeeExtra::getEmployeeId, id)));
 
-            // 回显部门和公司名称（组织架构统一使用 org_unit：1-集团，2-公司，3-部门）
-            if (employee.getDeptId() != null) {
-                OrgUnit deptUnit = orgUnitMapper.selectById(employee.getDeptId());
-                if (deptUnit != null) {
-                    employee.setDeptName(deptUnit.getUnitName());
-
-                    // 向上查找到公司节点
-                    OrgUnit cursor = deptUnit;
-                    int guard = 0;
-                    while (cursor != null && cursor.getParentId() != null && cursor.getParentId() != 0L
-                            && guard++ < 20) {
-                        if (cursor.getUnitType() != null && cursor.getUnitType() == OrgUnit.TYPE_COMPANY) {
-                            employee.setCompanyName(cursor.getUnitName());
-                            break;
-                        }
-                        cursor = orgUnitMapper.selectById(cursor.getParentId());
-                    }
-
-                    // 如果部门本身就是公司节点
-                    if (employee.getCompanyName() == null
-                            && deptUnit.getUnitType() != null
-                            && deptUnit.getUnitType() == OrgUnit.TYPE_COMPANY) {
-                        employee.setCompanyName(deptUnit.getUnitName());
-                    }
-                }
-            }
+            // 回显部门和公司名称（与列表接口共用回填逻辑）
+            fillDeptAndCompanyNames(employee);
 
             // 密码哈希不回显给任何调用方（含管理员与本人）；改密走独立接口
             employee.setPassword(null);

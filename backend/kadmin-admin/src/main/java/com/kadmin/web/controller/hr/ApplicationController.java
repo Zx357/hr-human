@@ -136,7 +136,8 @@ public class ApplicationController {
 
     @GetMapping("/{id}")
     public Result<HrApplication> getById(@PathVariable Long id) {
-        HrApplication application = service.getById(id);
+        // 关联员工姓名/部门等展示字段(移动端审批详情、PC 详情共用)
+        HrApplication application = service.getApplicationDetail(id);
         // 非管理员仅可查看自己的申请
         LoginUser loginUser = SecurityUtils.getCurrentUser();
         if (application != null && loginUser != null) {

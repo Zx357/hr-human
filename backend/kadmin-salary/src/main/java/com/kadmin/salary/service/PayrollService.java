@@ -40,6 +40,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -386,11 +387,30 @@ public class PayrollService extends ServiceImpl<SalPayrollBatchMapper, SalPayrol
         if (publishedBatchIds.isEmpty()) {
             return new Page<>(pageNum, pageSize);
         }
-        return payslipMapper.selectPage(new Page<>(pageNum, pageSize),
+        Page<SalPayrollPayslip> page = payslipMapper.selectPage(new Page<>(pageNum, pageSize),
                 new LambdaQueryWrapper<SalPayrollPayslip>()
                         .eq(SalPayrollPayslip::getEmployeeId, employeeId)
                         .in(SalPayrollPayslip::getBatchId, publishedBatchIds)
                         .orderByDesc(SalPayrollPayslip::getId));
+        fillYearMonth(page.getRecords());
+        return page;
+    }
+
+    /**
+     * 工资月份存放在批次表上,列表行需要批量回填供移动端展示
+     */
+    private void fillYearMonth(List<SalPayrollPayslip> payslips) {
+        if (payslips == null || payslips.isEmpty()) {
+            return;
+        }
+        List<Long> batchIds = payslips.stream().map(SalPayrollPayslip::getBatchId)
+                .filter(Objects::nonNull).distinct().toList();
+        if (batchIds.isEmpty()) {
+            return;
+        }
+        Map<Long, String> monthByBatch = listByIds(batchIds).stream()
+                .collect(Collectors.toMap(SalPayrollBatch::getId, SalPayrollBatch::getYearMonth, (a, b) -> a));
+        payslips.forEach(p -> p.setYearMonth(monthByBatch.get(p.getBatchId())));
     }
 
     /**

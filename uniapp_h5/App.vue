@@ -24,14 +24,8 @@ function checkLogin(options = {}) {
 }
 
 onLaunch((options) => {
-  checkLogin(options)
-
-  // 本地已有 token(上次登录未退出):启动即建立全局 WS 单例连接(幂等)
-  if (getToken()) {
-    connectWs()
-  }
-
-  // 获取设备的状态栏信息和自定义顶栏信息
+  // 导航栏高度必须最先落地:所有自定义导航页面的顶部 padding 都依赖它,
+  // 拿到 0 会导致搜索栏等内容整体滑到固定导航栏底下
   updateCustomBarInfo().then((res) => {
     store.commit('$tStore', {
       name: 'vuex_status_bar_height',
@@ -42,6 +36,17 @@ onLaunch((options) => {
       value: res.customBarHeight
     })
   }).catch(() => {})
+
+  checkLogin(options)
+
+  // 本地已有 token(上次登录未退出):启动即建立全局 WS 单例连接(幂等)
+  if (getToken()) {
+    try {
+      connectWs()
+    } catch (e) {
+      // WS 建连失败不阻塞启动,socket 内部有退避重连
+    }
+  }
 
   // #ifdef MP-WEIXIN
   // 更新检测
