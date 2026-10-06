@@ -23,8 +23,6 @@ export interface Shift {
   earlyMinutes?: number;
   workHours?: number;
   isNextDay?: number;
-  restStartTime?: string;
-  restEndTime?: string;
   status?: number;
   remark?: string;
   periods?: ShiftPeriod[];

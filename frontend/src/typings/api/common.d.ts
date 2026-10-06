@@ -104,75 +104,6 @@ declare namespace Api {
       sortOrder?: number;
     }
 
-    /** 公司（兼容旧接口） */
-    interface Company {
-      id: number;
-      parentId?: number;
-      companyCode: string;
-      companyName: string;
-      shortName?: string;
-      legalPerson?: string;
-      taxNumber?: string;
-      address?: string;
-      phone?: string;
-      email?: string;
-      website?: string;
-      description?: string;
-      sortOrder?: number;
-      status: number;
-      createdTime?: string;
-      updatedTime?: string;
-    }
-
-    /** 公司表单 */
-    interface CompanyForm {
-      parentId?: number;
-      companyCode: string;
-      companyName: string;
-      shortName?: string;
-      legalPerson?: string;
-      taxNumber?: string;
-      address?: string;
-      phone?: string;
-      email?: string;
-      website?: string;
-      description?: string;
-      sortOrder?: number;
-      status?: number;
-    }
-
-    /** 部门 */
-    interface Department {
-      id: number;
-      companyId: number;
-      parentId?: number;
-      deptCode: string;
-      deptName: string;
-      leaderId?: number;
-      phone?: string;
-      email?: string;
-      description?: string;
-      sortOrder?: number;
-      status: number;
-      createdTime?: string;
-      updatedTime?: string;
-      children?: Department[];
-    }
-
-    /** 部门表单 */
-    interface DepartmentForm {
-      companyId: number;
-      parentId?: number;
-      deptCode: string;
-      deptName: string;
-      leaderId?: number;
-      phone?: string;
-      email?: string;
-      description?: string;
-      sortOrder?: number;
-      status?: number;
-    }
-
     /** 组织统计数据 */
     interface OrgStatistics {
       /** 员工总数 */
@@ -614,10 +545,7 @@ declare namespace Api {
       dictLabel: string;
       dictLabelEn?: string;
       dictValue: string;
-      cssClass?: string;
-      listClass?: string;
       sortOrder: number;
-      isDefault: number;
       status: number;
       remark?: string;
       createdTime?: string;
@@ -631,10 +559,7 @@ declare namespace Api {
       dictLabel: string;
       dictLabelEn?: string;
       dictValue: string;
-      cssClass?: string;
-      listClass?: string;
       sortOrder?: number;
-      isDefault?: number;
       status?: number;
       remark?: string;
     }

@@ -892,13 +892,7 @@ public class DataInitializer implements CommandLineRunner {
         seedPermissionButton("attendance_location", "attendance_location_add", "新增打卡点", "attendance:location:add", 1);
         seedPermissionButton("attendance_location", "attendance_location_edit", "编辑打卡点", "attendance:location:edit", 2);
         seedPermissionButton("attendance_location", "attendance_location_delete", "删除打卡点", "attendance:location:delete", 3);
-        // 组织架构（公司/部门）
-        seedPermissionButton("organization_org-structure", "organization_company_add", "新增公司", "org:company:add", 1);
-        seedPermissionButton("organization_org-structure", "organization_company_edit", "编辑公司", "org:company:edit", 2);
-        seedPermissionButton("organization_org-structure", "organization_company_delete", "删除公司", "org:company:delete", 3);
-        seedPermissionButton("organization_org-structure", "organization_department_add", "新增部门", "org:department:add", 4);
-        seedPermissionButton("organization_org-structure", "organization_department_edit", "编辑部门", "org:department:edit", 5);
-        seedPermissionButton("organization_org-structure", "organization_department_delete", "删除部门", "org:department:delete", 6);
+        // 组织架构（统一 org_unit 树）
         // 人事-合同导出、员工导入
         seedPermissionButton("hr_contract", "hr_contract_export", "导出台账", "hr:contract:export", 4);
         seedPermissionButton("hr_employee", "hr_employee_import", "导入", "hr:employee:import", 5);

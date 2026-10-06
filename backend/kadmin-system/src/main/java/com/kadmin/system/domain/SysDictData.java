@@ -35,16 +35,6 @@ public class SysDictData extends BaseEntity {
     private String dictValue;
 
     /**
-     * CSS样式
-     */
-    private String cssClass;
-
-    /**
-     * 列表样式
-     */
-    private String listClass;
-
-    /**
      * 排序
      */
     private Integer sortOrder;
@@ -53,11 +43,6 @@ public class SysDictData extends BaseEntity {
      * 状态：0-禁用，1-启用
      */
     private Integer status;
-
-    /**
-     * 是否默认：0-否，1-是
-     */
-    private Integer isDefault;
 
     /**
      * 多语言标签（非数据库字段）

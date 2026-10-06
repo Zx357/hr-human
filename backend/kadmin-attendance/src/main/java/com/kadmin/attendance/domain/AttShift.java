@@ -42,12 +42,6 @@ public class AttShift {
     /** 是否跨天 */
     private Integer isNextDay;
 
-    /** 休息开始时间 */
-    private LocalTime restStartTime;
-
-    /** 休息结束时间 */
-    private LocalTime restEndTime;
-
     /** 状态 1-启用 0-禁用 */
     private Integer status;
 

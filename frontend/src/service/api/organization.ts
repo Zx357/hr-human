@@ -95,7 +95,7 @@ export function checkOrgUnitCode(unitCode: string, excludeId?: number) {
 
 // ==================== 兼容旧接口 ====================
 
-/** 获取所有公司列表（兼容） */
+/** 获取所有公司列表（org_unit 中 unitType=公司 的节点） */
 export function fetchCompanyList() {
   return request<Api.Organization.OrgUnit[]>({
     url: '/org-unit/companies',
@@ -103,119 +103,11 @@ export function fetchCompanyList() {
   });
 }
 
-/** 获取部门树形结构（兼容） */
+/** 获取部门树形结构（org_unit 中某公司下的部门节点） */
 export function fetchDepartmentTree(companyId?: number) {
   return request<Api.Organization.OrgUnit[]>({
     url: '/org-unit/depts',
     method: 'get',
     params: { parentId: companyId }
-  });
-}
-
-// ==================== 旧接口（保留兼容） ====================
-
-/** 分页查询公司列表 */
-export function fetchCompanyPage(params: {
-  pageNum?: number;
-  pageSize?: number;
-  companyName?: string;
-  status?: number;
-}) {
-  return request<Api.Common.PageResult<Api.Organization.Company>>({
-    url: '/organization/company/page',
-    method: 'get',
-    params
-  });
-}
-
-/** 获取公司详情 */
-export function fetchCompanyById(id: number) {
-  return request<Api.Organization.Company>({
-    url: `/organization/company/${id}`,
-    method: 'get'
-  });
-}
-
-/** 创建公司 */
-export function createCompany(data: Api.Organization.CompanyForm) {
-  return request<boolean>({
-    url: '/organization/company',
-    method: 'post',
-    data
-  });
-}
-
-/** 更新公司 */
-export function updateCompany(id: number, data: Api.Organization.CompanyForm) {
-  return request<boolean>({
-    url: `/organization/company/${id}`,
-    method: 'put',
-    data
-  });
-}
-
-/** 删除公司 */
-export function deleteCompany(id: number) {
-  return request<boolean>({
-    url: `/organization/company/${id}`,
-    method: 'delete'
-  });
-}
-
-/** 分页查询部门列表 */
-export function fetchDepartmentPage(params: {
-  pageNum?: number;
-  pageSize?: number;
-  companyId?: number;
-  deptName?: string;
-  status?: number;
-}) {
-  return request<Api.Common.PageResult<Api.Organization.Department>>({
-    url: '/organization/department/page',
-    method: 'get',
-    params
-  });
-}
-
-/** 获取部门列表 */
-export function fetchDepartmentList(companyId?: number) {
-  return request<Api.Organization.Department[]>({
-    url: '/organization/department/list',
-    method: 'get',
-    params: { companyId }
-  });
-}
-
-/** 获取部门详情 */
-export function fetchDepartmentById(id: number) {
-  return request<Api.Organization.Department>({
-    url: `/organization/department/${id}`,
-    method: 'get'
-  });
-}
-
-/** 创建部门 */
-export function createDepartment(data: Api.Organization.DepartmentForm) {
-  return request<boolean>({
-    url: '/organization/department',
-    method: 'post',
-    data
-  });
-}
-
-/** 更新部门 */
-export function updateDepartment(id: number, data: Api.Organization.DepartmentForm) {
-  return request<boolean>({
-    url: `/organization/department/${id}`,
-    method: 'put',
-    data
-  });
-}
-
-/** 删除部门 */
-export function deleteDepartment(id: number) {
-  return request<boolean>({
-    url: `/organization/department/${id}`,
-    method: 'delete'
   });
 }
