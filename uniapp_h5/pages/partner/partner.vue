@@ -58,9 +58,9 @@
       class="tn-margin-top-sm"
       :style="{ paddingTop: vuex_custom_bar_height + 40 + 'px' }"
     >
-      <view class="" v-if="current == 0">
+      <view class="contact-card" v-if="current == 0">
         <view id="list-anchor"></view>
-        <tn-index-list :data="listData" :height="height">
+        <tn-index-list :data="listData" :height="height" title-bg-color="#F8F7F8">
           <template #default="{ data }">
             <view class="list-data" @click="openUser(data)">
               <image
@@ -79,10 +79,9 @@
         </tn-index-list>
       </view>
 
-      <view class="" v-if="current == 1">
+      <view class="contact-card org-card" v-if="current == 1">
         <view
-          class="tn-flex tn-flex-col-center"
-          style="margin: 50rpx 0rpx 50rpx 30rpx"
+          class="tn-flex tn-flex-col-center org-item"
           v-for="item in orgList"
           :key="item.id"
           @click="openOrg(item)"
@@ -571,10 +570,28 @@ defineExpose({
 }
 /* 组织架构行名称截断 end */
 
+/* 列表卡片:与首页白底圆角描边卡片同款 */
+.contact-card {
+  margin: 20rpx 24rpx 0;
+  background: #ffffff;
+  border-radius: 16rpx;
+  border: 1rpx solid #EEF0F4;
+  overflow: hidden;
+}
+
+.org-item {
+  padding: 30rpx 30rpx;
+}
+
+.org-item + .org-item {
+  border-top: 1rpx solid #F8F7F8;
+}
+
 /* 列表数据样式 start */
 .list-data {
   display: flex;
   padding: 30rpx;
+  border-bottom: 1rpx solid #F8F7F8;
 
   .image {
     width: 90rpx;

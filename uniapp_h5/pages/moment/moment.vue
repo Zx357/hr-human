@@ -21,7 +21,7 @@
     <view class="" :style="{paddingTop: 20 + 'px'}">
       
       <view class="tn-flex tn-flex-row-center">
-        <view class="tn-flex tn-flex-col-center tn-bg-gray--light" style="border-radius: 100rpx;" @click="tn('/momentPages/message')">
+        <view class="tn-flex tn-flex-col-center moment-message-pill" @click="tn('/momentPages/message')">
           <view class="" style="padding: 10rpx;">
             <view class="message-pic">
               <view class="message-image" style="background-image:url('/static/author.jpg');width: 50rpx;height: 50rpx;background-size: cover;">
@@ -42,7 +42,7 @@
            
         <!-- 图文信息 -->
         <block v-for="(item,index) in currentContent" :key="item.id || index">
-          <view class="blogger__item tn-margin-bottom-sm tn-margin-top-sm">
+          <view class="blogger__item">
             <view class="blogger__author tn-flex tn-flex-row-between tn-flex-col-center">
               <view class="justify__author__info" @click="goUser(item)">
                 <view class="tn-flex tn-flex-row-center">
@@ -462,6 +462,14 @@ defineExpose({
     max-width: 640px;
     margin: 0 auto;
   }
+
+  /* 互动消息入口:白底描边胶囊,与首页搜索卡同款 */
+  .moment-message-pill {
+    background: #ffffff;
+    border: 1rpx solid #EEF0F4;
+    border-radius: 100rpx;
+    box-shadow: 0 4rpx 16rpx rgba(29, 37, 65, 0.04);
+  }
   
 /* 自定义导航栏内容 start */
   .custom-nav {
@@ -619,7 +627,12 @@ defineExpose({
   /* 文章内容 start*/
     .blogger {
       &__item {
+        margin: 0 24rpx 24rpx;
         padding: 30rpx;
+        background: #ffffff;
+        border-radius: 16rpx;
+        border: 1rpx solid #EEF0F4;
+        overflow: hidden;
       }
       
       &__author {
