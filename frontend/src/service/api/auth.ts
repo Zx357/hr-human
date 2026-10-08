@@ -22,6 +22,14 @@ export function fetchGetUserInfo() {
   return request<Api.Auth.UserInfo>({ url: '/auth/info' });
 }
 
+/** Logout */
+export function fetchLogout() {
+  return request<null>({
+    url: '/auth/logout',
+    method: 'post'
+  });
+}
+
 /**
  * Refresh token
  *

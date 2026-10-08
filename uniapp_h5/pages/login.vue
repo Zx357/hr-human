@@ -28,6 +28,7 @@
                 placeholder-class="input-placeholder"
                 placeholder="请输入工号"
                 confirm-type="next"
+                @input="onEmployeeNoInput"
               />
             </view>
           </view>
@@ -76,10 +77,13 @@
             </view>
           </view>
 
-          <!-- 忘记密码提示(员工账号由管理员统一开通与重置) -->
-          <view class="login__forgot tn-color-gray tn-text-sm" @tap.stop="showForgotTip">
-            忘记密码？请联系管理员重置
-          </view>
+            <!-- 连续失败提示:本地计数"还可尝试 N 次",以后端锁定消息为准 -->
+            <view v-if="failHint" class="login__fail-hint">{{ failHint }}</view>
+
+            <!-- 忘记密码提示(员工账号由管理员统一开通与重置) -->
+            <view class="login__forgot tn-color-gray tn-text-sm" @tap.stop="showForgotTip">
+              忘记密码？请联系管理员重置
+            </view>
         </view>
       </view>
 
@@ -108,6 +112,28 @@ const loginForm = ref({
 // 记住账号:登录成功后保存工号,下次进入预填(默认勾选;不记住密码,仅工号)
 const REMEMBER_KEY = 'rememberedEmployeeNo'
 const rememberAccount = ref(true)
+
+// ===== 登录防爆破提示 =====
+// 后端策略:连续错 5 次锁 10 分钟,错误 message 含剩余分钟数(以接口返回为准)。
+// 前端仅本地计数展示"还可尝试 N 次",换账号或登录成功时清零。
+const MAX_FAIL_ATTEMPTS = 5
+const failCount = ref(0)
+const failHint = ref('')
+
+// 后端锁定类消息(如"密码错误次数过多，账户已锁定，请 N 分钟后重试")时不叠加本地提示
+const isLockMessage = (message) => /锁定|分钟|稍后再试/.test(String(message || ''))
+
+function resetFailState() {
+  failCount.value = 0
+  failHint.value = ''
+}
+
+// 换账号输入时清空失败计数提示
+function onEmployeeNoInput() {
+  if (failCount.value > 0 && failCount.value < MAX_FAIL_ATTEMPTS) {
+    resetFailState()
+  }
+}
 
 onLoad((options = {}) => {
   redirectUrl.value = resolveRedirectUrl(options.redirect)
@@ -154,7 +180,8 @@ async function handleLogin() {
       employeeNo,
       password: loginForm.value.password
     })
-    // 登录成功:按勾选状态保存/清除记住的工号
+    // 登录成功:清空失败计数,按勾选状态保存/清除记住的工号
+    resetFailState()
     if (rememberAccount.value) {
       uni.setStorageSync(REMEMBER_KEY, employeeNo)
     } else {
@@ -165,10 +192,23 @@ async function handleLogin() {
     uni.reLaunch({ url: redirectUrl.value })
   } catch (error) {
     uni.hideLoading()
-    // 适配 request.js 错误契约:error 为 Error 对象时取 message;已 toast 过的不重复提示
+    // 适配 request.js 错误契约:error 为 Error 对象时取 message;已 toast 过的不重复提示。
+    // 后端返回的 message(含锁定剩余分钟信息)直接展示
     const message = typeof error === 'string' ? error : (error && error.message) || ''
     if (!(error && error._toastShown)) {
       uni.showToast({ icon: 'none', title: message || '登录失败' })
+    }
+    // 本地失败计数:锁定/超次场景以后端消息为准,其余展示"还可尝试 N 次"
+    if (!isLockMessage(message)) {
+      failCount.value += 1
+      const remaining = MAX_FAIL_ATTEMPTS - failCount.value
+      if (remaining > 0) {
+        failHint.value = `连续失败 ${failCount.value} 次，还可尝试 ${remaining} 次`
+      } else {
+        failHint.value = '错误次数过多，账号可能被临时锁定，请稍后再试'
+      }
+    } else {
+      failHint.value = message
     }
   } finally {
     loading.value = false
@@ -210,6 +250,17 @@ async function handleLogin() {
   .login__forgot {
     margin-top: 36rpx;
     padding: 10rpx 0;
+  }
+
+  /* 连续失败提示 */
+  .login__fail-hint {
+    margin-top: 30rpx;
+    padding: 14rpx 28rpx;
+    border-radius: 12rpx;
+    background: rgba(251, 106, 103, 0.08);
+    color: #E34D59;
+    font-size: 25rpx;
+    text-align: center;
   }
 
   /* 记住账号 */

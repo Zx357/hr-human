@@ -33,4 +33,14 @@ public class MobileChatReadState extends BaseEntity {
      * 已读到的最后一条消息ID
      */
     private Long lastReadMessageId;
+
+    /**
+     * 是否置顶：0-否 1-是（会话列表排序时置顶优先）
+     */
+    private Integer sticky;
+
+    /**
+     * 是否从会话列表隐藏：0-否 1-是（仅隐藏会话入口，不删除消息记录，发新消息自动取消）
+     */
+    private Integer hidden;
 }

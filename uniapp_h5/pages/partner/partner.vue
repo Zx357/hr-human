@@ -238,7 +238,7 @@ const loadContacts = async () => {
     const res = await getEmployeeList({ status: 1 });
     employees.value = normalizeList(res.data);
   } catch (error) {
-    uni.showToast({ icon: "none", title: "加载通讯录失败" });
+    // request.js 已统一错误提示,这里不再重复 toast
   }
 };
 
@@ -247,7 +247,7 @@ const loadOrganizations = async () => {
     const res = await getOrgTreeWithCount();
     organizations.value = normalizeList(res.data);
   } catch (error) {
-    uni.showToast({ icon: "none", title: "加载组织架构失败" });
+    // request.js 已统一错误提示,这里不再重复 toast
   }
 };
 

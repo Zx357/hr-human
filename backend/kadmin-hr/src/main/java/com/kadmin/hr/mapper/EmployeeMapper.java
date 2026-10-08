@@ -30,4 +30,11 @@ public interface EmployeeMapper extends BaseMapper<HrEmployee> {
      */
     @Select("SELECT MAX(employee_no) FROM hr_employee WHERE employee_no LIKE CONCAT(#{prefix}, '%')")
     String selectMaxEmployeeNo(@Param("prefix") String prefix);
+
+    /**
+     * 查询员工关联 PC 账号（sys_user）的状态：1-启用 0-禁用
+     * 返回 null 表示该员工未关联系统账号（纯移动端员工）
+     */
+    @Select("SELECT u.status FROM sys_user u WHERE u.employee_id = #{employeeId} LIMIT 1")
+    Integer selectSysUserStatusByEmployeeId(@Param("employeeId") Long employeeId);
 }

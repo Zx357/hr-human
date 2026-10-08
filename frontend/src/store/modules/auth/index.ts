@@ -2,7 +2,7 @@ import { computed, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { defineStore } from 'pinia';
 import { useLoading } from '@sa/hooks';
-import { fetchGetUserInfo, fetchLogin } from '@/service/api';
+import { fetchGetUserInfo, fetchLogin, fetchLogout } from '@/service/api';
 import { useRouterPush } from '@/hooks/common/router';
 import { localStg } from '@/utils/storage';
 import { SetupStoreId } from '@/enum';
@@ -88,10 +88,22 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
   }
 
   /**
+   * Logout: notify backend first (ignore failure), then clear local token and redirect to login
+   */
+  async function logout() {
+    try {
+      await fetchLogout();
+    } catch {
+      // 后端登出失败不阻塞本地登出
+    }
+    await resetStore();
+  }
+
+  /**
    * Login
    *
    * @param userName User name
-   * @param password Password
+   * @param password User password
    * @param [redirect=true] Whether to redirect after login. Default is `true`
    */
   async function login(userName: string, password: string, redirect = true) {
@@ -175,6 +187,7 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     isLogin,
     loginLoading,
     resetStore,
+    logout,
     login,
     initUserInfo
   };

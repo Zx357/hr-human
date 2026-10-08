@@ -36,13 +36,6 @@ public class LeaveQuotaService extends ServiceImpl<HrLeaveQuotaMapper, HrLeaveQu
     private final EmployeeMapper employeeMapper;
 
     /**
-     * 假期类型展示名（与字典 leave_type 的 value 对应，仅用于后端提示消息）
-     */
-    private static final Map<String, String> LEAVE_TYPE_LABELS = Map.of(
-            "1", "年假", "2", "事假", "3", "病假",
-            "4", "婚假", "5", "产假", "6", "陪产假", "7", "丧假");
-
-    /**
      * 分页查询额度（支持按员工姓名/工号、年度、假期类型过滤）
      */
     public Page<HrLeaveQuota> pageQuotas(int pageNum, int pageSize, Integer year, String leaveType,
@@ -203,6 +196,7 @@ public class LeaveQuotaService extends ServiceImpl<HrLeaveQuotaMapper, HrLeaveQu
     }
 
     private String quotaLabel(String leaveType) {
-        return LEAVE_TYPE_LABELS.getOrDefault(leaveType, "假期(" + leaveType + ")");
+        return com.kadmin.hr.constant.LeaveTypeConstants.LEAVE_TYPE_LABELS
+                .getOrDefault(leaveType, "假期(" + leaveType + ")");
     }
 }

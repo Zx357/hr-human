@@ -51,6 +51,7 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   salary_item: () => import("@/views/salary/item/index.vue"),
   salary_payroll: () => import("@/views/salary/payroll/index.vue"),
   salary_scheme: () => import("@/views/salary/scheme/index.vue"),
+  system_config: () => import("@/views/system/config/index.vue"),
   system_dict: () => import("@/views/system/dict/index.vue"),
   system_feedback: () => import("@/views/system/feedback/index.vue"),
   "system_file-config": () => import("@/views/system/file-config/index.vue"),

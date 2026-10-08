@@ -17,6 +17,7 @@ const local: App.I18n.Schema = {
       valueTypeRatio: "比例",
       valueTypeAttendance: "考勤联动",
       valueTypeManual: "手工",
+      valueTypeFormulaDisabled: "公式（暂未支持）",
       enabled: "启用",
       disabled: "停用",
       sortOrder: "排序"
@@ -45,7 +46,8 @@ const local: App.I18n.Schema = {
       rulePersonalLeaveHours: "事假小时",
       ruleOvertimeHours: "加班工时",
       ruleFullAttendance: "全勤判定",
-      ruleAttendDays: "出勤天数"
+      ruleAttendDays: "出勤天数",
+      enabledFilter: "启用状态"
     },
     scheme: {
       title: "薪资方案",
@@ -65,7 +67,9 @@ const local: App.I18n.Schema = {
       defaultAmount: "默认金额",
       moveUp: "上移",
       moveDown: "下移",
-      orderTip: "顺序即计算顺序；比例项只能引用排在前面的项"
+      orderTip: "顺序即计算顺序；比例项只能引用排在前面的项",
+      nameMaxLength: "名称不能超过 50 个字符",
+      schemeCodePattern: "编码仅允许字母/数字/下划线/连字符"
     },
     archive: {
       title: "员工薪资档案",
@@ -82,7 +86,11 @@ const local: App.I18n.Schema = {
       pleaseSelectScheme: "请选择薪资方案",
       bindTip: "换绑将按新方案重新展开固定项明细（原个人调整被重置）",
       amount: "金额（元）",
-      itemsDialogTitle: "调整固定项金额"
+      itemsDialogTitle: "调整固定项金额",
+      batchBind: "批量绑定方案",
+      batchBindCount: "批量绑定方案（{count}）",
+      batchBindDialogTitle: "批量绑定薪资方案",
+      batchBindTip: "将为勾选的 {count} 名员工绑定所选方案，已有档案的员工将按新方案重置明细"
     },
     payroll: {
       title: "工资核算",
@@ -113,7 +121,11 @@ const local: App.I18n.Schema = {
       statusPublished: "已发放",
       grossPay: "应发",
       totalDeduction: "扣款合计",
-      netPay: "实发"
+      netPay: "实发",
+      payslipProgress: "工资条进度",
+      readProgress: "已读",
+      confirmProgress: "已确认",
+      exportFileName: "工资表-{month}.xlsx"
     }
   },
 
@@ -131,6 +143,7 @@ const local: App.I18n.Schema = {
     addSuccess: '添加成功',
     backToHome: '返回首页',
     batchDelete: '批量删除',
+    batchDeleteCount: '批量删除（{count}）',
     cancel: '取消',
     close: '关闭',
     check: '勾选',
@@ -582,6 +595,7 @@ const local: App.I18n.Schema = {
     system_role: '角色管理',
     system_menu: '菜单管理',
     system_dict: '字典管理',
+    system_config: '参数配置',
     system_feedback: '意见反馈',
     system_notice: '公告管理',
     'system_mobile-menu': '移动端菜单',
@@ -1254,6 +1268,28 @@ const local: App.I18n.Schema = {
       passwordResetSuccessfully: "密码重置成功",
       userList: "用户列表"
     },
+    config: {
+      paramConfig: "参数配置",
+      addConfig: "新增配置",
+      editConfig: "编辑配置",
+      configKey: "配置键",
+      configName: "配置名称",
+      configValue: "配置值",
+      group: "分组",
+      groupMap: "地图配置",
+      groupWechat: "微信配置",
+      isPublic: "是否公开",
+      publicTip: "公开配置可被登录用户通过公开接口读取，请勿将敏感密钥设为公开",
+      searchPlaceholder: "配置键 / 配置名称",
+      pleaseEnterConfigKey: "请输入配置键",
+      pleaseEnterConfigName: "请输入配置名称",
+      pleaseEnterConfigValue: "请输入配置值",
+      keyFormatTip: "建议使用 xx.xx.xx 格式（如 map.google.key）",
+      keyFormatConfirm: "配置键建议使用 xx.xx.xx 格式（如 map.google.key），是否仍要保存？",
+      saveAnyway: "仍然保存",
+      deleteConfirm: "确定删除该配置项吗？删除后依赖该配置的功能将降级",
+      topTip: "地图等外部服务的密钥统一在此配置，保存后立即生效"
+    },
     dict: {
       dictionaryName: "字典名称",
       dictionaryCode: "字典编码",
@@ -1306,6 +1342,7 @@ const local: App.I18n.Schema = {
       pleaseSelectAnIcon: "请选择图标",
       iconBackgroundColor: "图标背景色",
       eGPagesApplyLeaveIndex: "如：/pages/apply/leave/index",
+      pleaseSelectRoutePath: "请选择移动端已注册的页面路由",
       menuGroup: "菜单分组"
     }
   },
@@ -1532,6 +1569,7 @@ const local: App.I18n.Schema = {
       startImport: "开始导入",
       emergencyPhone: "紧急电话",
       areYouSureYouWantToDeleteThisEmployee: "确定删除该员工吗？",
+      confirmBatchDelete: "确定删除选中的 {count} 名员工？删除后其档案数据将一并移除",
       basicInfo: "基本信息",
       miniProgramPassword: "小程序密码",
       pleaseSelectGender: "请选择性别",
@@ -1692,18 +1730,16 @@ const local: App.I18n.Schema = {
       myLocation: "我的位置",
       detailedAddressNotObtained: "未获取到详细地址",
       selectedLocation: "已选位置 ({lat}, {lng})",
-      googleMapsApiKeyIsNotConfiguredPleaseSetViteGoogleMapsApiKeyFirst: "当前未配置 Google Maps API Key，请先补充 VITE_GOOGLE_MAPS_API_KEY。",
-      noMatchingPlaceFoundOrGeocodingPlacesIsNotEnabledForTheCurrentGoogleMapsKey: "未找到匹配地点，或当前 Google Maps Key 未开通 Geocoding / Places 服务。",
-      googleRejectedTheSearchRequestCheckThatPlacesApiAndGeocodingApiAreEnabledForTheKeyAndTheCurrentOriginIsAllowed: "Google 拒绝了搜索请求，请检查 Key 是否已启用 Places API 和 Geocoding API，并放行当前访问来源。",
+      amapKeyIsNotConfiguredPleaseSetMapAmapKeyInSystemConfigOrEnvViteAmapKey: "当前未配置高德地图 Key，请先在后台「系统参数配置」中配置 map.amap.key（2021-12 后申请的 Key 还需配套 map.amap.security-code），或在环境变量中配置 VITE_AMAP_KEY。",
+      amapRejectedTheRequestCheckTheKeyAndSecurityCode: "高德拒绝了请求，请检查 Key 与安全密钥是否配套（2021-12-02 后申请的 Key 必须配置 jscode，后台参数配置 map.amap.security-code）。",
       noMatchingPlaceFoundTryAMoreCompleteAddressOrEnterLatitudeLongitudeDirectly: "没有找到匹配地点，请尝试输入更完整的地址或直接输入经纬度。",
-      googleMapsQuotaIsTemporarilyLimitedTryAgainLaterOrCheckBillingSettings: "Google Maps 查询额度暂时受限，请稍后再试或检查计费配置。",
       enterAPlaceAddressOrLatLngBeforeSearching: "请输入地点、地址或经纬度后再搜索",
       locatedByLatLngPleaseConfirmTheMapPoint: "已按经纬度定位，请确认地图点位",
       locatedToTheSearchResultPleaseConfirmTheMapPoint: "已定位到搜索结果，请确认地图点位",
       theFullAddressOfThisLocationCannotBeResolvedAutomaticallyLatitudeLongitudeKept: "该位置无法自动解析完整地址，已保留经纬度",
       myLocationSelected: "已选中我的位置",
       cannotGetYourLocationMakeSureBrowserGeolocationIsEnabledHttpsIsRecommendedInProduction: "无法获取我的位置，请确认浏览器定位权限已开启；线上访问建议使用 HTTPS。",
-      failedToLoadGoogleMapsCheckTheApiKeyPlacesGeocodingSettingsAndNetworkAccessToMapsGoogleapisCom: "Google 地图加载失败，请检查 API Key、Places/Geocoding 配置和当前网络是否可访问 maps.googleapis.com",
+      failedToLoadAmapCheckTheKeySecurityCodeAndNetworkAccessToWebapiAmapCom: "高德地图加载失败，请检查 Key、安全密钥和当前网络是否可访问 webapi.amap.com",
       pleaseFillInTheOfficeAddressOrCurrentClockAddressFirst: "请先填写办公地址或当前打卡地址",
       pleaseSelectAClockLocationOnTheMapFirst: "请先在地图上选择打卡位置",
       searchLocate: "搜索定位",
@@ -1715,8 +1751,7 @@ const local: App.I18n.Schema = {
       confirmFill: "确认并回填",
       selectClockLocation: "选择打卡位置",
       searchAddressParkBuildingOrLandmarkOrEnterLatLngLngLat: "搜索地址、园区、楼宇、地标，或输入经纬度（经度,纬度）",
-      searchAndPickOnGoogleMapsTheAddressIsFilledAutomaticallyAfterClickingTheMapAndConvertedBackToGcj02WhenSaved: "这里使用 Google 地图搜索和选点，点击地图后会自动回填地址；保存到后台时会自动换算回 GCJ-02 坐标。",
-      googleMapsApiKeyIsNotConfiguredPleaseAddViteGoogleMapsApiKeyToTheFrontendEnv: "当前未配置 Google Maps API Key，请在前端环境变量中补充 VITE_GOOGLE_MAPS_API_KEY。",
+      searchAndPickOnAmapTheAddressIsFilledAutomaticallyAfterClickingTheMapCoordinatesAreStoredAsGcj02: "这里使用高德地图搜索和选点，点击地图后自动回填地址；坐标以 GCJ-02 保存（与移动端打卡地图一致）。",
       mapLoading: "地图加载中...",
       currentLocation: "当前地点：{}"
     }
@@ -1907,7 +1942,13 @@ const local: App.I18n.Schema = {
     changePassword: "修改密码",
     currentPassword: "当前密码",
     confirmNewPassword: "确认新密码",
-    employeeId: "员工ID"
+    employeeId: "员工ID",
+    changeAvatar: "更换头像",
+    noLinkedEmployeeForAvatar: "当前账号未关联员工，无法上传头像",
+    myLeaveQuota: "我的假期额度",
+    quotaSummary: "已用 {used} / 总额 {total} 小时",
+    quotaRemaining: "剩余 {remaining} 小时",
+    noLeaveQuota: "暂无假期额度"
   },
 
   component: {

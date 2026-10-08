@@ -16,6 +16,7 @@ const local: App.I18n.Schema = {
       valueTypeRatio: "Ratio",
       valueTypeAttendance: "Attendance",
       valueTypeManual: "Manual",
+      valueTypeFormulaDisabled: "Formula (not supported yet)",
       enabled: "Enabled",
       disabled: "Disabled",
       sortOrder: "Sort"
@@ -44,7 +45,8 @@ const local: App.I18n.Schema = {
       rulePersonalLeaveHours: "Personal Leave Hours",
       ruleOvertimeHours: "Overtime Hours",
       ruleFullAttendance: "Full Attendance",
-      ruleAttendDays: "Attend Days"
+      ruleAttendDays: "Attend Days",
+      enabledFilter: "Enabled status"
     },
     scheme: {
       title: "Salary Schemes",
@@ -64,7 +66,9 @@ const local: App.I18n.Schema = {
       defaultAmount: "Default Amount",
       moveUp: "Up",
       moveDown: "Down",
-      orderTip: "Order is the computing order; ratio items may only reference items before them"
+      orderTip: "Order is the computing order; ratio items may only reference items before them",
+      nameMaxLength: "Name cannot exceed 50 characters",
+      schemeCodePattern: "Code allows letters, digits, underscore and hyphen only"
     },
     archive: {
       title: "Employee Salary Archives",
@@ -81,7 +85,11 @@ const local: App.I18n.Schema = {
       pleaseSelectScheme: "Please select a scheme",
       bindTip: "Rebinding re-expands fixed items from the new scheme (personal overrides are reset)",
       amount: "Amount (CNY)",
-      itemsDialogTitle: "Adjust Fixed Item Amounts"
+      itemsDialogTitle: "Adjust Fixed Item Amounts",
+      batchBind: "Batch Bind Scheme",
+      batchBindCount: "Batch Bind ({count})",
+      batchBindDialogTitle: "Batch Bind Salary Scheme",
+      batchBindTip: "The selected scheme will be bound to {count} employees; existing archives will be reset to the new scheme"
     },
     payroll: {
       title: "Payroll",
@@ -112,7 +120,11 @@ const local: App.I18n.Schema = {
       statusPublished: "Published",
       grossPay: "Gross",
       totalDeduction: "Deductions",
-      netPay: "Net"
+      netPay: "Net",
+      payslipProgress: "Payslip Progress",
+      readProgress: "Read",
+      confirmProgress: "Confirmed",
+      exportFileName: "Payroll-{month}.xlsx"
     }
   },
 
@@ -130,6 +142,7 @@ const local: App.I18n.Schema = {
     addSuccess: 'Add Success',
     backToHome: 'Back to home',
     batchDelete: 'Batch Delete',
+    batchDeleteCount: 'Batch Delete ({count})',
     cancel: 'Cancel',
     close: 'Close',
     check: 'Check',
@@ -581,6 +594,7 @@ const local: App.I18n.Schema = {
     system_role: 'Role Management',
     system_menu: 'Menu Management',
     system_dict: 'Dictionary Management',
+    system_config: 'System Config',
     system_feedback: 'Feedback',
     system_notice: 'Notice Management',
     'system_mobile-menu': 'Mobile Menu',
@@ -1253,6 +1267,28 @@ const local: App.I18n.Schema = {
       passwordResetSuccessfully: "Password reset successfully",
       userList: "User List"
     },
+    config: {
+      paramConfig: "System Config",
+      addConfig: "New Config",
+      editConfig: "Edit Config",
+      configKey: "Config Key",
+      configName: "Config Name",
+      configValue: "Config Value",
+      group: "Group",
+      groupMap: "Map Config",
+      groupWechat: "WeChat Config",
+      isPublic: "Public",
+      publicTip: "Public configs can be read by any logged-in user via the public API. Do not mark sensitive keys as public",
+      searchPlaceholder: "Config key / name",
+      pleaseEnterConfigKey: "Please enter config key",
+      pleaseEnterConfigName: "Please enter config name",
+      pleaseEnterConfigValue: "Please enter config value",
+      keyFormatTip: "Recommended format: xx.xx.xx (e.g. map.google.key)",
+      keyFormatConfirm: "The config key is recommended to be in xx.xx.xx format (e.g. map.google.key). Save anyway?",
+      saveAnyway: "Save Anyway",
+      deleteConfirm: "Are you sure you want to delete this config? Features depending on it will fall back to defaults",
+      topTip: "Keys for external services such as maps are configured here and take effect immediately after saving"
+    },
     dict: {
       dictionaryName: "Dictionary Name",
       dictionaryCode: "Dictionary Code",
@@ -1305,6 +1341,7 @@ const local: App.I18n.Schema = {
       pleaseSelectAnIcon: "Please select an icon",
       iconBackgroundColor: "Icon Background Color",
       eGPagesApplyLeaveIndex: "e.g. /pages/apply/leave/index",
+      pleaseSelectRoutePath: "Please select a route registered in the mobile app",
       menuGroup: "Menu Group"
     }
   },
@@ -1531,6 +1568,7 @@ const local: App.I18n.Schema = {
       startImport: "Start Import",
       emergencyPhone: "Emergency Phone",
       areYouSureYouWantToDeleteThisEmployee: "Are you sure you want to delete this employee?",
+      confirmBatchDelete: "Delete the {count} selected employees? Their profile data will also be removed",
       basicInfo: "Basic Info",
       miniProgramPassword: "Mini Program Password",
       pleaseSelectGender: "Please select gender",
@@ -1691,18 +1729,16 @@ const local: App.I18n.Schema = {
       myLocation: "My Location",
       detailedAddressNotObtained: "Detailed address not obtained",
       selectedLocation: "Selected location ({lat}, {lng})",
-      googleMapsApiKeyIsNotConfiguredPleaseSetViteGoogleMapsApiKeyFirst: "Google Maps API Key is not configured. Please set VITE_GOOGLE_MAPS_API_KEY first.",
-      noMatchingPlaceFoundOrGeocodingPlacesIsNotEnabledForTheCurrentGoogleMapsKey: "No matching place found, or Geocoding / Places is not enabled for the current Google Maps key.",
-      googleRejectedTheSearchRequestCheckThatPlacesApiAndGeocodingApiAreEnabledForTheKeyAndTheCurrentOriginIsAllowed: "Google rejected the search request. Check that Places API and Geocoding API are enabled for the key and the current origin is allowed.",
+      amapKeyIsNotConfiguredPleaseSetMapAmapKeyInSystemConfigOrEnvViteAmapKey: "AMap key is not configured. Please set map.amap.key in backend System Config (with map.amap.security-code for keys created after 2021-12), or set VITE_AMAP_KEY in the env.",
+      amapRejectedTheRequestCheckTheKeyAndSecurityCode: "AMap rejected the request. Check that the key and security code (jscode, required for keys created after 2021-12-02) match.",
       noMatchingPlaceFoundTryAMoreCompleteAddressOrEnterLatitudeLongitudeDirectly: "No matching place found. Try a more complete address or enter latitude/longitude directly.",
-      googleMapsQuotaIsTemporarilyLimitedTryAgainLaterOrCheckBillingSettings: "Google Maps quota is temporarily limited. Try again later or check billing settings.",
       enterAPlaceAddressOrLatLngBeforeSearching: "Enter a place, address or lat/lng before searching",
       locatedByLatLngPleaseConfirmTheMapPoint: "Located by lat/lng. Please confirm the map point.",
       locatedToTheSearchResultPleaseConfirmTheMapPoint: "Located to the search result. Please confirm the map point.",
       theFullAddressOfThisLocationCannotBeResolvedAutomaticallyLatitudeLongitudeKept: "The full address of this location cannot be resolved automatically. Latitude/longitude kept.",
       myLocationSelected: "My location selected",
       cannotGetYourLocationMakeSureBrowserGeolocationIsEnabledHttpsIsRecommendedInProduction: "Cannot get your location. Make sure browser geolocation is enabled; HTTPS is recommended in production.",
-      failedToLoadGoogleMapsCheckTheApiKeyPlacesGeocodingSettingsAndNetworkAccessToMapsGoogleapisCom: "Failed to load Google Maps. Check the API key, Places/Geocoding settings and network access to maps.googleapis.com",
+      failedToLoadAmapCheckTheKeySecurityCodeAndNetworkAccessToWebapiAmapCom: "Failed to load AMap. Check the key, security code and network access to webapi.amap.com",
       pleaseFillInTheOfficeAddressOrCurrentClockAddressFirst: "Please fill in the office address or current clock address first",
       pleaseSelectAClockLocationOnTheMapFirst: "Please select a clock location on the map first",
       searchLocate: "Search & Locate",
@@ -1714,8 +1750,7 @@ const local: App.I18n.Schema = {
       confirmFill: "Confirm & Fill",
       selectClockLocation: "Select Clock Location",
       searchAddressParkBuildingOrLandmarkOrEnterLatLngLngLat: "Search address, park, building or landmark, or enter lat/lng (lng, lat)",
-      searchAndPickOnGoogleMapsTheAddressIsFilledAutomaticallyAfterClickingTheMapAndConvertedBackToGcj02WhenSaved: "Search and pick on Google Maps; the address is filled automatically after clicking the map and converted back to GCJ-02 when saved.",
-      googleMapsApiKeyIsNotConfiguredPleaseAddViteGoogleMapsApiKeyToTheFrontendEnv: "Google Maps API Key is not configured. Please add VITE_GOOGLE_MAPS_API_KEY to the frontend env.",
+      searchAndPickOnAmapTheAddressIsFilledAutomaticallyAfterClickingTheMapCoordinatesAreStoredAsGcj02: "Search and pick on AMap; the address is filled automatically after clicking the map. Coordinates are stored as GCJ-02 (same as the mobile clock-in map).",
       mapLoading: "Map loading...",
       currentLocation: "Current location: {name}"
     }
@@ -1906,7 +1941,13 @@ const local: App.I18n.Schema = {
     changePassword: "Change Password",
     currentPassword: "Current Password",
     confirmNewPassword: "Confirm New Password",
-    employeeId: "Employee ID"
+    employeeId: "Employee ID",
+    changeAvatar: "Change Avatar",
+    noLinkedEmployeeForAvatar: "This account has no linked employee, avatar upload is unavailable",
+    myLeaveQuota: "My Leave Quota",
+    quotaSummary: "Used {used} / Total {total} h",
+    quotaRemaining: "Remaining {remaining} h",
+    noLeaveQuota: "No leave quota"
   },
 
   component: {

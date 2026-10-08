@@ -209,4 +209,33 @@ public class SysUserService extends ServiceImpl<SysUserMapper, SysUser> {
         }
         return success;
     }
+
+    /**
+     * 个人中心：更新当前登录用户本人的基本资料（昵称/手机号/头像），
+     * 不允许通过该接口触碰角色/状态/密码等敏感字段；管理员和普通用户均可用
+     *
+     * @param name 显示名（写入 nickname 字段，sys_user 无独立 name 列）
+     */
+    @Transactional
+    public boolean updateOwnProfile(Long userId, String name, String phone, String avatar) {
+        if (userId == null) {
+            throw new IllegalArgumentException("请先登录");
+        }
+        if (!StringUtils.hasText(name) && !StringUtils.hasText(phone) && !StringUtils.hasText(avatar)) {
+            throw new IllegalArgumentException("没有需要更新的资料");
+        }
+        SysUser user = new SysUser();
+        user.setId(userId);
+        if (StringUtils.hasText(name)) {
+            user.setNickname(name.trim());
+        }
+        if (StringUtils.hasText(phone)) {
+            user.setPhone(phone.trim());
+        }
+        if (StringUtils.hasText(avatar)) {
+            user.setAvatar(avatar.trim());
+        }
+        // 仅更新传入的展示字段，角色/状态/密码一律不动
+        return updateById(user);
+    }
 }

@@ -14,13 +14,14 @@
     <view class="oa-backgroup" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
 
       <!-- 会话列表 -->
-      <view v-if="conversations.length" class="tn-bg-white">
+      <view v-if="conversations.length" class="conv-list tn-bg-white">
         <view
           v-for="(item, index) in conversations"
           :key="item.key"
           class="conv-item tn-flex tn-flex-col-center"
           :class="{ 'conv-item--border': index !== conversations.length - 1 }"
           @click="goChat(item)"
+          @longpress="onConversationLongPress(item)"
         >
           <!-- 头像:单聊显示对方头像,群聊无头像时显示默认群图标 -->
           <view class="conv-item__avatar-box">
@@ -33,7 +34,10 @@
 
           <view class="tn-flex-1 tn-padding-left-sm" style="min-width: 0; flex-direction: column;">
             <view class="tn-flex tn-flex-row-between tn-flex-col-center">
-              <text class="conv-item__name tn-text-ellipsis">{{ item.name }}</text>
+              <view class="conv-item__name-wrap">
+                <view v-if="item.sticky" class="conv-item__sticky">置顶</view>
+                <text class="conv-item__name tn-text-ellipsis">{{ item.name }}</text>
+              </view>
               <text class="conv-item__time tn-color-gray--disabled tn-text-xs">{{ item.timeText }}</text>
             </view>
             <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-padding-top-xs">
@@ -78,8 +82,9 @@ import { onShow, onHide, onUnload, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useStore } from 'vuex'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 import config from '@/config'
-import { getConversations } from '@/api/chat'
-import { connect as connectWs, on as onWsMessage } from '@/utils/websocket'
+import { getConversations, updateConversationSettings, hideConversation, chatTypeToTargetType } from '@/api/chat'
+import { connect as connectWs, on as onWsMessage, isOpen as wsIsOpen } from '@/utils/websocket'
+import { toastRequestError } from '@/utils/common'
 
 // 使用 composable 获取自定义导航栏高度
 const { vuex_custom_bar_height } = useCustomBarHeight()
@@ -141,6 +146,7 @@ const normalizeConversation = (item) => {
     avatar: formatAvatar(item.avatar) || (chatType === 2 ? '/static/author.jpg' : ''),
     lastMessage: formatLastMessage(item.lastMessage),
     unreadCount: Number(item.unreadCount || 0),
+    sticky: Number(item.sticky || 0),
     timeText: formatTime(item.lastMessageTime),
     typeText: chatType === 2 ? '' : '群聊'
   }
@@ -150,15 +156,69 @@ const loadConversations = async (silent = false) => {
   try {
     const res = await getConversations()
     const list = Array.isArray(res.data) ? res.data : []
+    // 列表渲染按后端返回顺序(置顶优先),前端不重排
     conversations.value = list.map(normalizeConversation)
   } catch (error) {
-    // 推送触发的静默刷新不打扰用户,仅用户手动进入/下拉时提示
+    // 推送触发的静默刷新不打扰用户,仅用户手动进入/下拉时提示(request.js 已统一 toast,不重复提示)
     if (!silent) {
-      uni.showToast({ title: '加载失败', icon: 'none' })
+      toastRequestError(error, '加载失败')
     }
   } finally {
     loading.value = false
   }
+}
+
+// ===== 会话管理:长按操作(置顶/取消置顶、删除会话) =====
+
+function onConversationLongPress(item) {
+  if (!item?.targetId) return
+  const sticky = Number(item.sticky) === 1
+  uni.showActionSheet({
+    itemList: [sticky ? '取消置顶' : '置顶', '删除该会话'],
+    success: (res) => {
+      if (res.tapIndex === 0) {
+        toggleSticky(item)
+      } else if (res.tapIndex === 1) {
+        confirmRemoveConversation(item)
+      }
+    }
+  })
+}
+
+// 置顶/取消置顶:调会话设置契约接口后本地更新并重排(置顶优先)
+async function toggleSticky(item) {
+  const nextSticky = Number(item.sticky) === 1 ? 0 : 1
+  try {
+    await updateConversationSettings({
+      targetType: chatTypeToTargetType(item.chatType),
+      targetId: item.targetId,
+      sticky: nextSticky
+    })
+    item.sticky = nextSticky
+    conversations.value = [...conversations.value].sort((a, b) => Number(b.sticky || 0) - Number(a.sticky || 0))
+    uni.showToast({ icon: 'none', title: nextSticky === 1 ? '已置顶' : '已取消置顶' })
+  } catch (error) {
+    toastRequestError(error, '操作失败')
+  }
+}
+
+// 删除(隐藏)会话:调契约接口后本地移除
+function confirmRemoveConversation(item) {
+  uni.showModal({
+    title: '删除会话',
+    content: `删除与「${item.name}」的会话吗？删除后将不再显示。`,
+    confirmColor: '#FB6A67',
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await hideConversation(chatTypeToTargetType(item.chatType), item.targetId)
+        conversations.value = conversations.value.filter((conv) => conv.key !== item.key)
+        uni.showToast({ icon: 'none', title: '会话已删除' })
+      } catch (error) {
+        toastRequestError(error, '删除失败')
+      }
+    }
+  })
 }
 
 // 点击会话进入聊天页(partnerPages/chat 接收 type=single|group / targetId / name)
@@ -208,21 +268,45 @@ const unregisterWsHandlers = () => {
   }
 }
 
+// ===== 轮询兜底:WS 未连接时每 10 秒拉一次会话列表,连上 WS 自动停止 =====
+
+let pollTimer = null
+
+const stopPolling = () => {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+const startPolling = () => {
+  stopPolling()
+  pollTimer = setInterval(() => {
+    // WS 在线时停止轮询(连接推送已覆盖),断开/重连中自动回退轮询兜底
+    if (wsIsOpen()) return
+    loadConversations(true)
+  }, 10000)
+}
+
 // 页面显示时刷新会话(从聊天页返回后未读数/最后消息保持最新),并接入全局 WS 推送
 onShow(() => {
   loadConversations()
   registerWsHandlers()
   // 建立/恢复全局 WS 单例连接(幂等;连接由登录/启动时建立,此处兜底重试)
   connectWs()
+  // WS 断开期间的轮询兜底(连上 WS 后空转,不再请求)
+  startPolling()
 })
 
 onHide(() => {
-  // 仅注销订阅,不断开全局 WS 单例(推送仍会更新角标)
+  // 仅注销订阅与轮询,不断开全局 WS 单例(推送仍会更新角标)
   unregisterWsHandlers()
+  stopPolling()
 })
 
 onUnload(() => {
   unregisterWsHandlers()
+  stopPolling()
 })
 
 onPullDownRefresh(async () => {
@@ -319,6 +403,24 @@ onPullDownRefresh(async () => {
       font-size: 20rpx;
       line-height: 28rpx;
       text-align: center;
+    }
+
+    &__name-wrap {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 10rpx;
+    }
+
+    &__sticky {
+      flex-shrink: 0;
+      padding: 2rpx 14rpx;
+      border-radius: 999rpx;
+      background: rgba(255, 172, 0, 0.14);
+      color: #FF9F2E;
+      font-size: 20rpx;
+      font-weight: 600;
     }
 
     &__name {

@@ -340,12 +340,8 @@ async function submitApprove(status) {
   margin-bottom: 22rpx;
   padding: 28rpx;
   background: #fff;
-  border-radius: 20rpx;
-  box-shadow: 0 10rpx 30rpx rgba(29, 37, 65, 0.06);
-}
-
-.hero-card {
-  background: linear-gradient(135deg, #eaf3ff, #fff);
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(17, 31, 46, 0.06);
 }
 
 .hero-top,
@@ -553,7 +549,7 @@ async function submitApprove(status) {
 }
 
 .approve-btn {
-  background: linear-gradient(135deg, #4b98fe, #3d7eff);
+  background: #3668fc;
 }
 
 .loading-state {

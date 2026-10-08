@@ -1,7 +1,15 @@
 <script setup lang="tsx">
 import { onMounted, ref } from 'vue';
-import { ElMessage, ElPopconfirm } from 'element-plus';
-import { type SalaryItemDef, type SalaryScheme, type SalarySchemeItem, deleteScheme, fetchSchemeDetail, fetchSchemePage, fetchSalaryItems, saveScheme } from '@/service/api/salary';
+import { ElMessage, ElPopconfirm, type FormInstance, type FormRules } from 'element-plus';
+import {
+  type SalaryItemDef,
+  type SalaryScheme,
+  deleteScheme,
+  fetchSalaryItems,
+  fetchSchemeDetail,
+  fetchSchemePage,
+  saveScheme
+} from '@/service/api/salary';
 import { $t } from '@/locales';
 
 defineOptions({ name: 'SalaryScheme' });
@@ -50,6 +58,21 @@ function handleSizeChange() {
 const dialogVisible = ref(false);
 const submitLoading = ref(false);
 const itemPool = ref<SalaryItemDef[]>([]);
+const formRef = ref<FormInstance>();
+
+const formRules: FormRules = {
+  schemeName: [
+    { required: true, whitespace: true, message: $t('salary.scheme.pleaseInputName'), trigger: 'blur' },
+    { max: 50, message: $t('salary.scheme.nameMaxLength'), trigger: 'blur' }
+  ],
+  schemeCode: [
+    {
+      pattern: /^[a-zA-Z0-9_-]{0,50}$/,
+      message: $t('salary.scheme.schemeCodePattern'),
+      trigger: 'blur'
+    }
+  ]
+};
 
 const formData = ref<{
   id?: number;
@@ -133,10 +156,8 @@ function moveItem(index: number, offset: -1 | 1) {
 }
 
 async function handleSubmit() {
-  if (!formData.value.schemeName?.trim()) {
-    ElMessage.warning($t('salary.scheme.pleaseInputName'));
-    return;
-  }
+  const valid = await formRef.value?.validate().catch(() => false);
+  if (!valid) return;
   submitLoading.value = true;
   try {
     await saveScheme({
@@ -254,11 +275,11 @@ async function handleDelete(id?: number) {
       destroy-on-close
       :close-on-click-modal="false"
     >
-      <ElForm label-width="100px">
-        <ElFormItem :label="$t('salary.scheme.schemeName')" required>
-          <ElInput v-model="formData.schemeName" :placeholder="$t('salary.scheme.pleaseInputName')" />
+      <ElForm ref="formRef" label-width="100px" :model="formData" :rules="formRules">
+        <ElFormItem :label="$t('salary.scheme.schemeName')" prop="schemeName">
+          <ElInput v-model="formData.schemeName" :placeholder="$t('salary.scheme.pleaseInputName')" maxlength="50" />
         </ElFormItem>
-        <ElFormItem :label="$t('salary.scheme.schemeCode')">
+        <ElFormItem :label="$t('salary.scheme.schemeCode')" prop="schemeCode">
           <ElInput v-model="formData.schemeCode" :placeholder="$t('salary.scheme.schemeCodeTip')" />
         </ElFormItem>
         <ElFormItem :label="$t('common.status')">

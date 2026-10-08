@@ -58,3 +58,88 @@ export function markConversationRead(data) {
     data
   })
 }
+
+// ===== 群聊管理(后端契约接口) =====
+
+// 群成员列表 → [{employeeId,name,avatar,isOwner}]
+export function getGroupMembers(groupId) {
+  return request({
+    url: `/mobile/chat/group/${groupId}/members`,
+    method: 'get'
+  })
+}
+
+// 添加群成员 {memberIds:[number]}
+export function addGroupMembers(groupId, memberIds) {
+  return request({
+    url: `/mobile/chat/group/${groupId}/members`,
+    method: 'post',
+    data: { memberIds }
+  })
+}
+
+// 移除群成员(群主)
+export function removeGroupMember(groupId, employeeId) {
+  return request({
+    url: `/mobile/chat/group/${groupId}/members/${employeeId}`,
+    method: 'delete'
+  })
+}
+
+// 退出群聊(普通成员,群主不可退)
+export function leaveGroup(groupId) {
+  return request({
+    url: `/mobile/chat/group/${groupId}/leave`,
+    method: 'post'
+  })
+}
+
+// 修改群名(群主) {name}
+export function renameGroup(groupId, name) {
+  return request({
+    url: `/mobile/chat/group/${groupId}/name`,
+    method: 'put',
+    data: { name }
+  })
+}
+
+// 解散群聊(群主)
+export function dissolveGroup(groupId) {
+  return request({
+    url: `/mobile/chat/group/${groupId}`,
+    method: 'delete'
+  })
+}
+
+// ===== 会话管理(后端契约接口) =====
+
+// 会话管理契约 targetType:1-单聊 2-群聊,与会话列表的 chatType(1-群聊 2-单聊)取值相反,调用前需换算
+export function chatTypeToTargetType(chatType) {
+  return Number(chatType) === 1 ? 2 : 1
+}
+
+// 会话设置:置顶/取消置顶 {targetType:1|2, targetId, sticky:0|1}
+export function updateConversationSettings(data) {
+  return request({
+    url: '/mobile/chat/conversation/settings',
+    method: 'put',
+    data
+  })
+}
+
+// 隐藏(删除)会话
+export function hideConversation(targetType, targetId) {
+  return request({
+    url: '/mobile/chat/conversation',
+    method: 'delete',
+    params: { targetType, targetId }
+  })
+}
+
+// 撤回消息(2分钟内,本人)
+export function recallChatMessage(messageId) {
+  return request({
+    url: `/mobile/chat/message/${messageId}/recall`,
+    method: 'put'
+  })
+}

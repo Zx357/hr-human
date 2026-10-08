@@ -37,6 +37,15 @@ export function fetchLeaveQuotaList(params: { employeeId: number; year?: number 
   });
 }
 
+/** 当前登录用户某年度的额度列表（PC 个人中心展示余额用） */
+export function fetchMyLeaveQuota(year?: number) {
+  return request<LeaveQuota[]>({
+    url: '/hr/leave-quota/my',
+    method: 'get',
+    params: { year }
+  });
+}
+
 /** 新增/更新额度（按 员工+年度+类型 幂等） */
 export function saveLeaveQuota(data: LeaveQuota) {
   return request<LeaveQuota>({

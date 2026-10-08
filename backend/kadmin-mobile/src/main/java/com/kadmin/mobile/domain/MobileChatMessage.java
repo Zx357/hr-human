@@ -24,10 +24,16 @@ public class MobileChatMessage extends BaseEntity {
     private String content;
     /** 消息类型：1-文本 2-图片 */
     private Integer msgType;
+    /** 消息状态：0-正常 1-已撤回 */
+    private Integer status;
 
     @TableField(exist = false)
     private String fromName;
 
     @TableField(exist = false)
     private String fromAvatar;
+
+    /** 已撤回标记（查询返回时由 status 推导，不入库） */
+    @TableField(exist = false)
+    private Boolean recalled;
 }

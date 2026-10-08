@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.kadmin.common.Result;
 import com.kadmin.common.annotation.RequiresPermission;
+import com.kadmin.common.utils.SecurityUtils;
 import com.kadmin.system.domain.SysRole;
 import com.kadmin.system.domain.SysUser;
 import com.kadmin.system.service.SysUserService;
@@ -176,6 +177,22 @@ public class SysUserController {
     }
 
     /**
+     * 个人中心：更新当前登录用户本人资料（name/phone/avatar 可选），
+     * 不触碰角色/状态/密码；管理员和普通用户均可用
+     */
+    @Operation(summary = "更新个人资料")
+    @PutMapping("/profile")
+    public Result<Boolean> updateProfile(@RequestBody ProfileRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        if (userId == null) {
+            return Result.error("请先登录");
+        }
+        boolean success = userService.updateOwnProfile(userId, request.getName(), request.getPhone(),
+                request.getAvatar());
+        return success ? Result.success(true) : Result.error("更新失败");
+    }
+
+    /**
      * 用户请求DTO
      */
     @Data
@@ -206,5 +223,16 @@ public class SysUserController {
     @Data
     public static class StatusRequest {
         private Integer status;
+    }
+
+    /**
+     * 个人资料请求DTO
+     */
+    @Data
+    public static class ProfileRequest {
+        /** 显示名（对应 sys_user.nickname） */
+        private String name;
+        private String phone;
+        private String avatar;
     }
 }

@@ -120,6 +120,7 @@ const typeMap = {
   reward: '奖励申请',
   punish: '惩罚申请',
   expense: '费用报销',
+  cost: '费用报销',
   device: '设备申请'
 }
 
@@ -298,8 +299,7 @@ function cancelItem(item) {
         uni.showToast({ title: '已撤销', icon: 'success' })
         refresh()
       } catch (e) {
-        // 撤销失败至少留痕;request.js 已 toast 过的错误不重复提示
-        console.warn('撤销申请失败:', e)
+        // request.js 已 toast 过的错误不重复提示
         toastRequestError(e, '撤销失败，请重试')
       }
     }

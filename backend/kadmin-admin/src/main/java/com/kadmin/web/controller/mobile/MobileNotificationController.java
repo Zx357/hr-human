@@ -77,6 +77,18 @@ public class MobileNotificationController {
         return Result.success(data);
     }
 
+    /**
+     * 通知未读数（新版角标契约：直接返回数字，区别于上面的 {count:n} 包装）
+     */
+    @GetMapping("/notification/unread-count")
+    public Result<Long> notificationUnreadCount() {
+        Long employeeId = currentEmployeeId();
+        if (employeeId == null) {
+            return Result.error("请先登录");
+        }
+        return Result.success(notificationService.unreadCount(employeeId));
+    }
+
     @PostMapping("/notifications/{id}/read")
     public Result<Void> markRead(@PathVariable Long id) {
         Long employeeId = currentEmployeeId();

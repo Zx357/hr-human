@@ -317,6 +317,8 @@ declare namespace App {
           valueTypeRatio: string;
           valueTypeAttendance: string;
           valueTypeManual: string;
+          /** 公式（暂未支持） */
+          valueTypeFormulaDisabled: string;
           enabled: string;
           disabled: string;
           sortOrder: string;
@@ -346,6 +348,8 @@ declare namespace App {
           ruleOvertimeHours: string;
           ruleFullAttendance: string;
           ruleAttendDays: string;
+          /** 启用状态筛选 */
+          enabledFilter: string;
         },
         scheme: {
           title: string;
@@ -366,6 +370,10 @@ declare namespace App {
           moveUp: string;
           moveDown: string;
           orderTip: string;
+          /** 名称长度上限提示 */
+          nameMaxLength: string;
+          /** 方案编码格式提示 */
+          schemeCodePattern: string;
         },
         archive: {
           title: string;
@@ -383,6 +391,13 @@ declare namespace App {
           bindTip: string;
           amount: string;
           itemsDialogTitle: string;
+          /** 批量绑定方案 */
+          batchBind: string;
+          /** 批量绑定方案（{count}） */
+          batchBindCount: string;
+          batchBindDialogTitle: string;
+          /** 批量绑定提示（{count}） */
+          batchBindTip: string;
         },
         payroll: {
           title: string;
@@ -415,6 +430,14 @@ declare namespace App {
           grossPay: string;
           totalDeduction: string;
           netPay: string;
+          /** 工资条进度 */
+          payslipProgress: string;
+          /** 已读 */
+          readProgress: string;
+          /** 已确认 */
+          confirmProgress: string;
+          /** 工资表-{month}.xlsx */
+          exportFileName: string;
         }
       },
 
@@ -431,6 +454,8 @@ declare namespace App {
         addSuccess: string;
         backToHome: string;
         batchDelete: string;
+        /** 批量删除（{count}） */
+        batchDeleteCount: string;
         cancel: string;
         close: string;
         check: string;
@@ -1822,6 +1847,48 @@ declare namespace App {
           /** 用户列表 */
           userList: string;
         };
+        config: {
+          /** 参数配置 */
+          paramConfig: string;
+          /** 新增配置 */
+          addConfig: string;
+          /** 编辑配置 */
+          editConfig: string;
+          /** 配置键 */
+          configKey: string;
+          /** 配置名称 */
+          configName: string;
+          /** 配置值 */
+          configValue: string;
+          /** 分组 */
+          group: string;
+          /** 地图配置 */
+          groupMap: string;
+          /** 微信配置 */
+          groupWechat: string;
+          /** 是否公开 */
+          isPublic: string;
+          /** 公开配置可被登录用户通过公开接口读取，请勿将敏感密钥设为公开 */
+          publicTip: string;
+          /** 配置键 / 配置名称 */
+          searchPlaceholder: string;
+          /** 请输入配置键 */
+          pleaseEnterConfigKey: string;
+          /** 请输入配置名称 */
+          pleaseEnterConfigName: string;
+          /** 请输入配置值 */
+          pleaseEnterConfigValue: string;
+          /** 建议使用 xx.xx.xx 格式（如 map.google.key） */
+          keyFormatTip: string;
+          /** 配置键建议使用 xx.xx.xx 格式（如 map.google.key），是否仍要保存？ */
+          keyFormatConfirm: string;
+          /** 仍然保存 */
+          saveAnyway: string;
+          /** 确定删除该配置项吗？删除后依赖该配置的功能将降级 */
+          deleteConfirm: string;
+          /** 地图等外部服务的密钥统一在此配置，保存后立即生效 */
+          topTip: string;
+        };
         dict: {
           /** 字典名称 */
           dictionaryName: string;
@@ -1907,6 +1974,8 @@ declare namespace App {
           routePath: string;
           /** 请输入路由路径 */
           pleaseEnterRoutePath: string;
+          /** 请选择移动端已注册的页面路由 */
+          pleaseSelectRoutePath: string;
           /** 请选择菜单分组 */
           pleaseSelectAMenuGroup: string;
           /** 新增移动端菜单 */
@@ -2347,6 +2416,8 @@ declare namespace App {
           emergencyPhone: string;
           /** 确定删除该员工吗？ */
           areYouSureYouWantToDeleteThisEmployee: string;
+          /** 确定删除选中的 {count} 名员工？ */
+          confirmBatchDelete: string;
           /** 基本信息 */
           basicInfo: string;
           /** 小程序密码 */
@@ -2655,16 +2726,12 @@ declare namespace App {
           detailedAddressNotObtained: string;
           /** 已选位置 ({lat}, {lng}) */
           selectedLocation: string;
-          /** 当前未配置 Google Maps API Key，请先补充 VITE_GOOGLE_MAPS_API_KEY。 */
-          googleMapsApiKeyIsNotConfiguredPleaseSetViteGoogleMapsApiKeyFirst: string;
-          /** 未找到匹配地点，或当前 Google Maps Key 未开通 Geocoding / Places 服务。 */
-          noMatchingPlaceFoundOrGeocodingPlacesIsNotEnabledForTheCurrentGoogleMapsKey: string;
-          /** Google 拒绝了搜索请求，请检查 Key 是否已启用 Places API 和 Geocoding API，并放行当前访问来源。 */
-          googleRejectedTheSearchRequestCheckThatPlacesApiAndGeocodingApiAreEnabledForTheKeyAndTheCurrentOriginIsAllowed: string;
+          /** 当前未配置高德地图 Key，请先在后台「系统参数配置」中配置 map.amap.key，或在环境变量中配置 VITE_AMAP_KEY。 */
+          amapKeyIsNotConfiguredPleaseSetMapAmapKeyInSystemConfigOrEnvViteAmapKey: string;
+          /** 高德拒绝了请求，请检查 Key 与安全密钥是否配套。 */
+          amapRejectedTheRequestCheckTheKeyAndSecurityCode: string;
           /** 没有找到匹配地点，请尝试输入更完整的地址或直接输入经纬度。 */
           noMatchingPlaceFoundTryAMoreCompleteAddressOrEnterLatitudeLongitudeDirectly: string;
-          /** Google Maps 查询额度暂时受限，请稍后再试或检查计费配置。 */
-          googleMapsQuotaIsTemporarilyLimitedTryAgainLaterOrCheckBillingSettings: string;
           /** 请输入地点、地址或经纬度后再搜索 */
           enterAPlaceAddressOrLatLngBeforeSearching: string;
           /** 已按经纬度定位，请确认地图点位 */
@@ -2677,8 +2744,8 @@ declare namespace App {
           myLocationSelected: string;
           /** 无法获取我的位置，请确认浏览器定位权限已开启；线上访问建议使用 HTTPS。 */
           cannotGetYourLocationMakeSureBrowserGeolocationIsEnabledHttpsIsRecommendedInProduction: string;
-          /** Google 地图加载失败，请检查 API Key、Places/Geocoding 配置和当前网络是否可访问 maps.googleapis.com */
-          failedToLoadGoogleMapsCheckTheApiKeyPlacesGeocodingSettingsAndNetworkAccessToMapsGoogleapisCom: string;
+          /** 高德地图加载失败，请检查 Key、安全密钥和当前网络是否可访问 webapi.amap.com */
+          failedToLoadAmapCheckTheKeySecurityCodeAndNetworkAccessToWebapiAmapCom: string;
           /** 请先填写办公地址或当前打卡地址 */
           pleaseFillInTheOfficeAddressOrCurrentClockAddressFirst: string;
           /** 请先在地图上选择打卡位置 */
@@ -2701,10 +2768,8 @@ declare namespace App {
           selectClockLocation: string;
           /** 搜索地址、园区、楼宇、地标，或输入经纬度（经度,纬度） */
           searchAddressParkBuildingOrLandmarkOrEnterLatLngLngLat: string;
-          /** 这里使用 Google 地图搜索和选点，点击地图后会自动回填地址；保存到后台时会自动换算回 GCJ-02 坐标。 */
-          searchAndPickOnGoogleMapsTheAddressIsFilledAutomaticallyAfterClickingTheMapAndConvertedBackToGcj02WhenSaved: string;
-          /** 当前未配置 Google Maps API Key，请在前端环境变量中补充 VITE_GOOGLE_MAPS_API_KEY。 */
-          googleMapsApiKeyIsNotConfiguredPleaseAddViteGoogleMapsApiKeyToTheFrontendEnv: string;
+          /** 这里使用高德地图搜索和选点，点击地图后自动回填地址；坐标以 GCJ-02 保存。 */
+          searchAndPickOnAmapTheAddressIsFilledAutomaticallyAfterClickingTheMapCoordinatesAreStoredAsGcj02: string;
           /** 地图加载中... */
           mapLoading: string;
           /** 当前地点：{} */
@@ -3054,6 +3119,18 @@ declare namespace App {
         confirmNewPassword: string;
         /** 员工ID */
         employeeId: string;
+        /** 更换头像 */
+        changeAvatar: string;
+        /** 当前账号未关联员工，无法上传头像 */
+        noLinkedEmployeeForAvatar: string;
+        /** 我的假期额度 */
+        myLeaveQuota: string;
+        /** 已用 {used} / 总额 {total} 小时 */
+        quotaSummary: string;
+        /** 剩余 {remaining} 小时 */
+        quotaRemaining: string;
+        /** 暂无假期额度 */
+        noLeaveQuota: string;
       };
       component: {
         authImage: {

@@ -30,11 +30,11 @@
     <view class="stats-card tn-margin tn-padding tn-radius">
       <view class="stats-row tn-flex tn-flex-row-between">
         <view class="stats-item tn-text-center">
-          <view class="stats-value tn-text-xl tn-text-bold">{{ stats.normalIn }}</view>
+          <view class="stats-value tn-text-xl tn-text-bold" style="color: #00C8B0;">{{ stats.normalIn }}</view>
           <view class="tn-color-gray tn-text-sm tn-padding-top-xs">正常上班</view>
         </view>
         <view class="stats-item tn-text-center">
-          <view class="stats-value tn-text-xl tn-text-bold">{{ stats.normalOut }}</view>
+          <view class="stats-value tn-text-xl tn-text-bold" style="color: #00D05E;">{{ stats.normalOut }}</view>
           <view class="tn-color-gray tn-text-sm tn-padding-top-xs">正常下班</view>
         </view>
         <view class="stats-item tn-text-center">
@@ -301,12 +301,9 @@ onPullDownRefresh(() => {
 }
 
 .stats-card {
-  background: linear-gradient(135deg, #4b98fe 0%, #3668fc 100%);
-  color: #ffffff;
-
-  .stats-item .tn-color-gray {
-    color: rgba(255, 255, 255, 0.8) !important;
-  }
+  background: #ffffff;
+  border: 1rpx solid rgba(17, 31, 46, 0.06);
+  border-radius: 16rpx;
 }
 
 .stats-row {

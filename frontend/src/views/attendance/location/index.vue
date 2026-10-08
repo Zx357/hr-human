@@ -11,7 +11,7 @@ import {
 } from '@/service/api/attendance';
 import { fetchEmployeePage } from '@/service/api/hr';
 import { fetchOrgTree } from '@/service/api/organization';
-import AttendanceLocationPicker from '@/views/organization/org-structure/components/attendance-location-picker.vue';
+import AttendanceLocationPicker from '@/components/business/attendance-location-picker.vue';
 import { $t } from '@/locales';
 
 defineOptions({ name: 'AttendanceLocation' });

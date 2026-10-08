@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_LANGUAGE, GOOGLE_MAPS_REGION } from '@/constants/map-sdk';
-import { gcj02ToWgs84, wgs84ToGcj02 } from '@/utils/coord-transform';
-import { loadGoogleMapsApi } from '@/utils/google-maps';
+import { wgs84ToGcj02 } from '@/utils/coord-transform';
+import { loadAmapApi, resolveAmapConfig } from '@/utils/amap';
 import { $t } from '@/locales';
 
 interface Props {
@@ -45,16 +44,17 @@ const searchKeyword = ref('');
 const selectedAddress = ref('');
 const selectedLatitude = ref<number>();
 const selectedLongitude = ref<number>();
+// 运行时解析的高德 Key：后台参数配置优先，env 兜底，解析前先用 env 值兜底展示
+const amapKeyReady = ref(false);
 
-const defaultCenter = { lat: 39.90923, lng: 116.397428 };
+const defaultCenter: [number, number] = [116.397428, 39.90923];
 const serviceTimeout = 8000;
 
-let googleMaps: any = null;
+let AMapNS: any = null;
 let map: any = null;
 let marker: any = null;
 let geocoder: any = null;
-let placesService: any = null;
-let mapClickListener: any = null;
+let placeSearch: any = null;
 
 const preferredKeyword = computed(() => props.address?.trim() || props.referenceAddress?.trim() || '');
 const hasSelection = computed(() => hasCoordinatePair(selectedLatitude.value, selectedLongitude.value));
@@ -125,40 +125,30 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string)
   });
 }
 
-function createLatLng(latitude: number, longitude: number) {
-  return new googleMaps.LatLng(latitude, longitude);
-}
-
 function hideMarker() {
   marker?.setMap(null);
 }
 
-function updateMarkerFromGcj(longitude: number, latitude: number, zoom = 16) {
-  if (!googleMaps || !map || !marker) {
-    return;
-  }
-
-  const [wgsLatitude, wgsLongitude] = gcj02ToWgs84(latitude, longitude);
-  const point = createLatLng(wgsLatitude, wgsLongitude);
-  marker.setPosition(point);
-  marker.setMap(map);
-  map.setCenter(point);
-  map.setZoom(zoom);
-}
-
-function applySelectionFromGcj(longitude: number, latitude: number, address?: string) {
+/**
+ * 高德 JS API 与后端存储同为 GCJ-02 坐标系，选中/回显坐标直接使用，无需换算
+ */
+function applySelection(longitude: number, latitude: number, address?: string, zoom = 16) {
   const roundedLongitude = roundCoordinate(longitude);
   const roundedLatitude = roundCoordinate(latitude);
 
   selectedLongitude.value = roundedLongitude;
   selectedLatitude.value = roundedLatitude;
   selectedAddress.value = address?.trim() || getFallbackAddress(roundedLongitude, roundedLatitude);
-  updateMarkerFromGcj(roundedLongitude, roundedLatitude);
-}
 
-function applySelectionFromWgs84(longitude: number, latitude: number, address?: string) {
-  const [gcjLatitude, gcjLongitude] = wgs84ToGcj02(latitude, longitude);
-  applySelectionFromGcj(gcjLongitude, gcjLatitude, address);
+  if (!map || !marker) {
+    return;
+  }
+
+  const position: [number, number] = [roundedLongitude, roundedLatitude];
+  marker.setPosition(position);
+  marker.setMap(map);
+  map.setCenter(position);
+  map.setZoom(zoom);
 }
 
 function normalizeAddressText(value?: string) {
@@ -170,6 +160,7 @@ function mergeAddressParts(parts: Array<string | undefined>) {
   return Array.from(new Set(normalizedParts)).join(' ');
 }
 
+/** 逆地理编码（GCJ-02 坐标 → 地址） */
 function reverseGeocode(longitude: number, latitude: number) {
   return withTimeout(
     new Promise<string>((resolve, reject) => {
@@ -178,13 +169,13 @@ function reverseGeocode(longitude: number, latitude: number) {
         return;
       }
 
-      geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results: any[], status: string) => {
-        if (status !== googleMaps.GeocoderStatus.OK || !results?.length) {
+      geocoder.getAddress([longitude, latitude], (status: string, result: any) => {
+        if (status !== 'complete' || !result?.regeocode?.formattedAddress) {
           reject(new Error('Reverse geocoding failed'));
           return;
         }
 
-        resolve(results[0]?.formatted_address || '');
+        resolve(result.regeocode.formattedAddress);
       });
     }),
     serviceTimeout,
@@ -192,114 +183,74 @@ function reverseGeocode(longitude: number, latitude: number) {
   );
 }
 
+/** 地址关键词 → GCJ-02 坐标（地理编码） */
 function geocodeAddress(keyword: string) {
   return withTimeout(
-    new Promise<any>((resolve, reject) => {
+    new Promise<{ longitude: number; latitude: number; address: string }>((resolve, reject) => {
       if (!geocoder) {
         reject(new Error('Geocoder is not ready'));
         return;
       }
 
-      geocoder.geocode(
-        {
-          address: keyword,
-          region: GOOGLE_MAPS_REGION
-        },
-        (results: any[], status: string) => {
-          if (status !== googleMaps.GeocoderStatus.OK || !results?.length) {
-            reject(new Error(`Geocode failed: ${status}`));
-            return;
-          }
-
-          resolve(results[0]);
+      geocoder.getLocation(keyword, (status: string, result: any) => {
+        const first = result?.geocodes?.[0];
+        if (status !== 'complete' || !first?.location) {
+          reject(new Error(`Geocode failed: ${status}`));
+          return;
         }
-      );
+
+        resolve({
+          longitude: first.location.getLng(),
+          latitude: first.location.getLat(),
+          address: first.formattedAddress || keyword
+        });
+      });
     }),
     serviceTimeout,
     'Geocode timeout'
   );
 }
 
+/** POI 关键词搜索 → 第一个结果（GCJ-02） */
 function searchPlace(keyword: string) {
   return withTimeout(
-    new Promise<any>((resolve, reject) => {
-      if (!placesService) {
-        reject(new Error('PlacesService is not ready'));
+    new Promise<{ longitude: number; latitude: number; address: string }>((resolve, reject) => {
+      if (!placeSearch) {
+        reject(new Error('PlaceSearch is not ready'));
         return;
       }
 
-      placesService.textSearch(
-        {
-          query: keyword,
-          region: GOOGLE_MAPS_REGION
-        },
-        (results: any[], status: string) => {
-          if (status !== googleMaps.places.PlacesServiceStatus.OK || !results?.length) {
-            reject(new Error(`Place search failed: ${status}`));
-            return;
-          }
-
-          resolve(results[0]);
+      placeSearch.search(keyword, (status: string, result: any) => {
+        const poi = result?.poiList?.pois?.[0];
+        if (status !== 'complete' || !poi?.location) {
+          reject(new Error(`Place search failed: ${status}`));
+          return;
         }
-      );
+
+        resolve({
+          longitude: poi.location.getLng(),
+          latitude: poi.location.getLat(),
+          address: mergeAddressParts([poi.address, poi.name]) || keyword
+        });
+      });
     }),
     serviceTimeout,
     'Place search timeout'
   );
 }
 
-function getPlaceDetails(placeId: string) {
-  return withTimeout(
-    new Promise<any>((resolve, reject) => {
-      if (!placesService) {
-        reject(new Error('PlacesService is not ready'));
-        return;
-      }
-
-      placesService.getDetails(
-        {
-          placeId,
-          fields: ['name', 'formatted_address', 'geometry']
-        },
-        (result: any, status: string) => {
-          if (status !== googleMaps.places.PlacesServiceStatus.OK || !result) {
-            reject(new Error(`Place details failed: ${status}`));
-            return;
-          }
-
-          resolve(result);
-        }
-      );
-    }),
-    serviceTimeout,
-    'Place details timeout'
-  );
-}
-
-function getSearchFailureMessage() {
-  if (!GOOGLE_MAPS_API_KEY) {
-    return $t('org.mapPicker.googleMapsApiKeyIsNotConfiguredPleaseSetViteGoogleMapsApiKeyFirst');
-  }
-
-  return $t('org.mapPicker.noMatchingPlaceFoundOrGeocodingPlacesIsNotEnabledForTheCurrentGoogleMapsKey');
-}
-
-function getGoogleSearchFailureMessage(error: unknown) {
+function getSearchFailureMessage(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
 
-  if (message.includes('REQUEST_DENIED')) {
-    return $t('org.mapPicker.googleRejectedTheSearchRequestCheckThatPlacesApiAndGeocodingApiAreEnabledForTheKeyAndTheCurrentOriginIsAllowed');
+  if (message.includes('INVALID_USER_SCODE') || message.includes('USERKEY_PLAT_NOMATCH')) {
+    return $t('org.mapPicker.amapRejectedTheRequestCheckTheKeyAndSecurityCode');
   }
 
-  if (message.includes('ZERO_RESULTS')) {
-    return $t('org.mapPicker.noMatchingPlaceFoundTryAMoreCompleteAddressOrEnterLatitudeLongitudeDirectly');
+  if (!amapKeyReady.value) {
+    return $t('org.mapPicker.amapKeyIsNotConfiguredPleaseSetMapAmapKeyInSystemConfigOrEnvViteAmapKey');
   }
 
-  if (message.includes('OVER_QUERY_LIMIT')) {
-    return $t('org.mapPicker.googleMapsQuotaIsTemporarilyLimitedTryAgainLaterOrCheckBillingSettings');
-  }
-
-  return getSearchFailureMessage();
+  return $t('org.mapPicker.noMatchingPlaceFoundTryAMoreCompleteAddressOrEnterLatitudeLongitudeDirectly');
 }
 
 async function restoreSelection() {
@@ -307,12 +258,11 @@ async function restoreSelection() {
   searchKeyword.value = preferredKeyword.value;
 
   if (hasCoordinateValue) {
-    applySelectionFromGcj(props.longitude as number, props.latitude as number, props.address);
+    applySelection(props.longitude as number, props.latitude as number, props.address);
 
     if (!props.address?.trim()) {
       try {
-        const [wgsLatitude, wgsLongitude] = gcj02ToWgs84(props.latitude as number, props.longitude as number);
-        const address = await reverseGeocode(wgsLongitude, wgsLatitude);
+        const address = await reverseGeocode(props.longitude as number, props.latitude as number);
         selectedAddress.value = address || getFallbackAddress(props.longitude as number, props.latitude as number);
       } catch {
         selectedAddress.value = getFallbackAddress(props.longitude as number, props.latitude as number);
@@ -335,45 +285,6 @@ async function restoreSelection() {
   map?.setZoom(11);
 }
 
-async function resolveLocationByKeyword(keyword: string) {
-  try {
-    const place = await searchPlace(keyword);
-    const details = place?.place_id ? await getPlaceDetails(place.place_id).catch(() => null) : null;
-    const location = details?.geometry?.location || place?.geometry?.location;
-    if (location) {
-      const longitude = location.lng();
-      const latitude = location.lat();
-      const reverseAddress = await reverseGeocode(longitude, latitude).catch(() => '');
-
-      return {
-        longitude,
-        latitude,
-        address:
-          mergeAddressParts([
-            reverseAddress,
-            details?.formatted_address,
-            place.formatted_address,
-            details?.name || place.name
-          ]) || keyword
-      };
-    }
-  } catch {
-    // Fall through to geocode search.
-  }
-
-  const geocode = await geocodeAddress(keyword);
-  const location = geocode?.geometry?.location;
-  if (!location) {
-    return null;
-  }
-
-  return {
-    longitude: location.lng(),
-    latitude: location.lat(),
-    address: geocode.formatted_address || keyword
-  };
-}
-
 async function locateByKeyword(keyword: string, showMessage = true) {
   const normalizedKeyword = keyword.trim();
   if (!normalizedKeyword) {
@@ -385,30 +296,36 @@ async function locateByKeyword(keyword: string, showMessage = true) {
 
   searching.value = true;
   try {
+    // 直接输入经纬度：按 GCJ-02 处理（与存储坐标系一致），仅补地址
     const coordinateLocation = parseCoordinateKeyword(normalizedKeyword);
     if (coordinateLocation) {
-      const [wgsLatitude, wgsLongitude] = gcj02ToWgs84(coordinateLocation.latitude, coordinateLocation.longitude);
-      const address = await reverseGeocode(wgsLongitude, wgsLatitude).catch(() => '');
-      applySelectionFromGcj(coordinateLocation.longitude, coordinateLocation.latitude, address || normalizedKeyword);
+      const address = await reverseGeocode(coordinateLocation.longitude, coordinateLocation.latitude).catch(() => '');
+      applySelection(coordinateLocation.longitude, coordinateLocation.latitude, address || normalizedKeyword);
       if (showMessage) {
         ElMessage.success($t('org.mapPicker.locatedByLatLngPleaseConfirmTheMapPoint'));
       }
       return;
     }
 
-    const result = await resolveLocationByKeyword(normalizedKeyword);
+    let result: { longitude: number; latitude: number; address: string } | null = null;
+    try {
+      result = await searchPlace(normalizedKeyword);
+    } catch {
+      result = await geocodeAddress(normalizedKeyword).catch(() => null);
+    }
+
     if (!result) {
       throw new Error('Location not found');
     }
 
-    applySelectionFromWgs84(result.longitude, result.latitude, result.address);
+    applySelection(result.longitude, result.latitude, result.address);
     if (showMessage) {
       ElMessage.success($t('org.mapPicker.locatedToTheSearchResultPleaseConfirmTheMapPoint'));
     }
   } catch (error) {
-    console.warn('Google Maps search failed:', error);
+    console.warn('AMap search failed:', error);
     if (showMessage) {
-      ElMessage.warning(getGoogleSearchFailureMessage(error));
+      ElMessage.warning(getSearchFailureMessage(error));
     }
   } finally {
     searching.value = false;
@@ -416,19 +333,19 @@ async function locateByKeyword(keyword: string, showMessage = true) {
 }
 
 async function handleMapClick(event: any) {
-  const latLng = event?.latLng;
-  if (!latLng) {
+  const lnglat = event?.lnglat;
+  if (!lnglat) {
     return;
   }
 
   locating.value = true;
   try {
-    const longitude = latLng.lng();
-    const latitude = latLng.lat();
+    const longitude = lnglat.getLng();
+    const latitude = lnglat.getLat();
     const address = await reverseGeocode(longitude, latitude);
-    applySelectionFromWgs84(longitude, latitude, address);
+    applySelection(longitude, latitude, address);
   } catch {
-    applySelectionFromWgs84(latLng.lng(), latLng.lat());
+    applySelection(lnglat.getLng(), lnglat.getLat());
     ElMessage.warning($t('org.mapPicker.theFullAddressOfThisLocationCannotBeResolvedAutomaticallyLatitudeLongitudeKept'));
   } finally {
     locating.value = false;
@@ -458,11 +375,11 @@ async function handleUseMyLocation() {
   locating.value = true;
   try {
     const position = await getCurrentBrowserPosition();
-    const longitude = position.coords.longitude;
-    const latitude = position.coords.latitude;
-    const address = await reverseGeocode(longitude, latitude).catch(() => '');
+    // 浏览器定位返回 WGS-84，高德使用 GCJ-02，需换算后使用
+    const [gcjLatitude, gcjLongitude] = wgs84ToGcj02(position.coords.latitude, position.coords.longitude);
+    const address = await reverseGeocode(gcjLongitude, gcjLatitude).catch(() => '');
 
-    applySelectionFromWgs84(longitude, latitude, address || $t('org.mapPicker.myLocation'));
+    applySelection(gcjLongitude, gcjLatitude, address || $t('org.mapPicker.myLocation'));
     ElMessage.success($t('org.mapPicker.myLocationSelected'));
   } catch (error) {
     console.warn('Browser geolocation failed:', error);
@@ -475,12 +392,11 @@ async function handleUseMyLocation() {
 async function handleOpened() {
   loading.value = true;
   try {
-    googleMaps = await loadGoogleMapsApi({
-      apiKey: GOOGLE_MAPS_API_KEY,
-      language: GOOGLE_MAPS_LANGUAGE,
-      region: GOOGLE_MAPS_REGION,
-      libraries: ['places']
-    });
+    // key/安全密钥优先从后台「系统参数配置」读取（模块级缓存），env 仅兜底，均无则走报错路径
+    const amapConfig = await resolveAmapConfig();
+    amapKeyReady.value = Boolean(amapConfig.key);
+
+    AMapNS = await loadAmapApi(amapConfig);
 
     await nextTick();
 
@@ -488,38 +404,30 @@ async function handleOpened() {
       return;
     }
 
-    map = new googleMaps.Map(mapContainerRef.value, {
+    map = new AMapNS.Map(mapContainerRef.value, {
       center: defaultCenter,
       zoom: 11,
-      disableDefaultUI: true,
-      zoomControl: true,
-      fullscreenControl: false,
-      streetViewControl: false,
-      mapTypeControl: false,
-      gestureHandling: 'greedy'
+      viewMode: '2D'
     });
 
-    marker = new googleMaps.Marker({
+    marker = new AMapNS.Marker({
       clickable: false
     });
-    geocoder = new googleMaps.Geocoder();
-    placesService = googleMaps.places ? new googleMaps.places.PlacesService(map) : null;
-    mapClickListener = map.addListener('click', handleMapClick);
+    geocoder = new AMapNS.Geocoder();
+    placeSearch = new AMapNS.PlaceSearch({
+      pageSize: 1,
+      extensions: 'base'
+    });
+    map.on('click', handleMapClick);
 
     hideMarker();
     await restoreSelection();
-    googleMaps.event.trigger(map, 'resize');
-    window.setTimeout(() => {
-      googleMaps.event.trigger(map, 'resize');
-      if (!hasSelection.value) {
-        map?.setCenter(defaultCenter);
-        map?.setZoom(11);
-      }
-    }, 120);
   } catch {
-    ElMessage.error(
-      $t('org.mapPicker.failedToLoadGoogleMapsCheckTheApiKeyPlacesGeocodingSettingsAndNetworkAccessToMapsGoogleapisCom')
-    );
+    if (!amapKeyReady.value) {
+      ElMessage.warning($t('org.mapPicker.amapKeyIsNotConfiguredPleaseSetMapAmapKeyInSystemConfigOrEnvViteAmapKey'));
+    } else {
+      ElMessage.error($t('org.mapPicker.failedToLoadAmapCheckTheKeySecurityCodeAndNetworkAccessToWebapiAmapCom'));
+    }
     dialogVisible.value = false;
   } finally {
     loading.value = false;
@@ -531,20 +439,19 @@ function runAsyncTask(task: Promise<unknown>) {
 }
 
 function destroyMap() {
-  if (mapClickListener) {
-    mapClickListener.remove();
-  }
-
   if (marker) {
     marker.setMap(null);
   }
 
-  mapClickListener = null;
+  if (map) {
+    map.destroy();
+  }
+
   marker = null;
-  geocoder = null;
-  placesService = null;
   map = null;
-  googleMaps = null;
+  geocoder = null;
+  placeSearch = null;
+  AMapNS = null;
 }
 
 function handleClosed() {
@@ -553,6 +460,7 @@ function handleClosed() {
   loading.value = false;
   locating.value = false;
   searching.value = false;
+  amapKeyReady.value = false;
 }
 
 function handleSearch() {
@@ -615,7 +523,7 @@ function handleConfirm() {
       </div>
 
       <ElAlert
-        :title="$t('org.mapPicker.searchAndPickOnGoogleMapsTheAddressIsFilledAutomaticallyAfterClickingTheMapAndConvertedBackToGcj02WhenSaved')"
+        :title="$t('org.mapPicker.searchAndPickOnAmapTheAddressIsFilledAutomaticallyAfterClickingTheMapCoordinatesAreStoredAsGcj02')"
         type="info"
         :closable="false"
         show-icon
@@ -623,8 +531,8 @@ function handleConfirm() {
       />
 
       <ElAlert
-        v-if="!GOOGLE_MAPS_API_KEY"
-        :title="$t('org.mapPicker.googleMapsApiKeyIsNotConfiguredPleaseAddViteGoogleMapsApiKeyToTheFrontendEnv')"
+        v-if="!amapKeyReady"
+        :title="$t('org.mapPicker.amapKeyIsNotConfiguredPleaseSetMapAmapKeyInSystemConfigOrEnvViteAmapKey')"
         type="warning"
         :closable="false"
         show-icon

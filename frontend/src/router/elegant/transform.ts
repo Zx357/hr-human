@@ -207,6 +207,7 @@ const routeMap: RouteMap = {
   "salary_payroll": "/salary/payroll",
   "salary_scheme": "/salary/scheme",
   "system": "/system",
+  "system_config": "/system/config",
   "system_dict": "/system/dict",
   "system_feedback": "/system/feedback",
   "system_file-config": "/system/file-config",

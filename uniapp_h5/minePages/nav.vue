@@ -162,22 +162,22 @@ function openItem(item) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 32rpx;
-  border-radius: 24rpx;
-  color: #ffffff;
-  background: linear-gradient(135deg, #5a7ec8, #7fa1de);
-  box-shadow: 0 18rpx 42rpx rgba(90, 126, 200, 0.22);
+  padding: 32rpx 28rpx;
+  border-radius: 16rpx;
+  background: #ffffff;
+  border: 1rpx solid rgba(17, 31, 46, 0.06);
 }
 
 .summary-title {
-  font-size: 36rpx;
+  font-size: 32rpx;
   font-weight: 800;
+  color: #1d2541;
 }
 
 .summary-desc {
   max-width: 440rpx;
   margin-top: 12rpx;
-  color: rgba(255, 255, 255, 0.82);
+  color: #8a94a6;
   font-size: 24rpx;
   line-height: 1.5;
 }
@@ -189,9 +189,10 @@ function openItem(item) {
   align-items: center;
   justify-content: center;
   flex: none;
-  border-radius: 30rpx;
+  border-radius: 24rpx;
   font-size: 48rpx;
-  background: rgba(255, 255, 255, 0.18);
+  color: #3668fc;
+  background: rgba(54, 104, 252, 0.1);
 }
 
 .section {
@@ -228,9 +229,9 @@ function openItem(item) {
   display: flex;
   align-items: center;
   padding: 24rpx;
-  border-radius: 22rpx;
+  border-radius: 16rpx;
   background: #ffffff;
-  box-shadow: 0 16rpx 46rpx rgba(55, 74, 105, 0.06);
+  border: 1rpx solid rgba(17, 31, 46, 0.06);
 }
 
 .item-icon {

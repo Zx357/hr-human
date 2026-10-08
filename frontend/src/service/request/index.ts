@@ -99,13 +99,21 @@ export const request = createFlatRequest(
     onError(error) {
       // when the request is fail, you can show error message
 
+      // the logout api failure is silently ignored: local logout must not be blocked by the backend
+      if (error.config?.url?.includes('/auth/logout')) {
+        return;
+      }
+
       let message = error.message;
       let backendErrorCode = '';
 
       // get backend error message and code
-      if (error.code === BACKEND_ERROR_CODE) {
-        message = error.response?.data?.msg || $t('request.operationFailed');
-        backendErrorCode = String(error.response?.data?.code || '');
+      // - BACKEND_ERROR_CODE: http 200 but business code mismatch
+      // - error.response: http status error (e.g. 400), the body still carries { code, msg/message }
+      if (error.code === BACKEND_ERROR_CODE || error.response) {
+        const body = error.response?.data as { code?: string | number; msg?: string; message?: string } | undefined;
+        backendErrorCode = String(body?.code ?? '');
+        message = body?.msg || body?.message || error.message || $t('request.operationFailed');
       }
 
       // the error message is displayed in the modal

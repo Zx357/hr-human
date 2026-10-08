@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import type { FormInstance, FormRules } from 'element-plus';
+import type { FormInstance, FormRules, UploadProps, UploadRequestOptions } from 'element-plus';
 import { ElMessage } from 'element-plus';
+import dayjs from 'dayjs';
 import { request } from '@/service/request';
+import { fetchEmployeeById } from '@/service/api/hr';
+import { updateUserProfile } from '@/service/api/system';
+import { type LeaveQuota, fetchMyLeaveQuota } from '@/service/api/leave-quota';
+import { getFileUrl, uploadEmployeeAvatar } from '@/service/api/file';
 import { useAuthStore } from '@/store/modules/auth';
+import { useDictOptions } from '@/composables/use-dict-options';
 import { $t } from '@/locales';
 
 defineOptions({ name: 'UserCenter' });
@@ -23,6 +29,7 @@ type UserDetail = {
   phone?: string;
   gender?: number;
   status?: number;
+  avatar?: string;
   employeeId?: number;
   createdTime?: string;
   updatedTime?: string;
@@ -57,6 +64,12 @@ const passwordForm = reactive({
   newPassword: '',
   confirmPassword: ''
 });
+
+// ===== 真实员工头像 =====
+const avatarUploading = ref(false);
+const employeeNo = ref('');
+const avatarPath = ref('');
+const avatarUrl = computed(() => (avatarPath.value ? getFileUrl(avatarPath.value) : ''));
 
 const displayName = computed(() => profileForm.nickname || profileForm.username || authStore.userInfo.userName || '-');
 const avatarText = computed(() => displayName.value.slice(0, 1).toUpperCase());
@@ -140,6 +153,90 @@ function fillProfileFallback() {
   profileForm.roleIds = [];
   profileForm.createdTime = '';
   profileForm.updatedTime = '';
+  avatarPath.value = '';
+  employeeNo.value = '';
+}
+
+// ===== 真实员工头像：加载与上传 =====
+/** 拉取关联员工信息，取真实员工头像与工号（账号未关联员工时静默跳过） */
+async function loadEmployeeInfo() {
+  if (!profileForm.employeeId) return;
+  try {
+    const res = await fetchEmployeeById(profileForm.employeeId);
+    if (res.data) {
+      employeeNo.value = res.data.employeeNo || '';
+      avatarPath.value = res.data.avatar || '';
+    }
+  } catch {
+    // 员工信息获取失败不影响个人中心展示
+  }
+}
+
+const beforeAvatarUpload: UploadProps['beforeUpload'] = rawFile => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  if (!allowedTypes.includes(rawFile.type)) {
+    ElMessage.error($t('hr.employee.onlyJpgPngGifWebpImagesAreSupported'));
+    return false;
+  }
+  if (rawFile.size / 1024 / 1024 > 5) {
+    ElMessage.error($t('hr.employee.imageSizeCannotExceed5mb'));
+    return false;
+  }
+  return true;
+};
+
+async function handleAvatarUpload(options: UploadRequestOptions) {
+  if (!employeeNo.value) {
+    ElMessage.warning($t('userCenter.noLinkedEmployeeForAvatar'));
+    return;
+  }
+  avatarUploading.value = true;
+  try {
+    const res = await uploadEmployeeAvatar(options.file, employeeNo.value);
+    const path = res.data;
+    if (path) {
+      // 上传成功后经自助资料接口持久化头像
+      const { error } = await updateUserProfile({ avatar: path });
+      if (!error) {
+        avatarPath.value = path;
+        ElMessage.success($t('hr.employee.avatarUploadedSuccessfully'));
+      }
+    }
+  } catch {
+    // 请求层已统一弹错
+  } finally {
+    avatarUploading.value = false;
+  }
+}
+
+// ===== 我的假期额度 =====
+const leaveQuotaLoading = ref(false);
+const leaveQuotas = ref<LeaveQuota[]>([]);
+const quotaYear = dayjs().year();
+const { getDictLabel: getLeaveTypeLabel } = useDictOptions('leave_type');
+
+async function loadLeaveQuotas() {
+  leaveQuotaLoading.value = true;
+  try {
+    const res = await fetchMyLeaveQuota(quotaYear);
+    leaveQuotas.value = res.data || [];
+  } catch {
+    // 请求层已统一弹错
+  } finally {
+    leaveQuotaLoading.value = false;
+  }
+}
+
+function quotaRemaining(quota: LeaveQuota) {
+  const total = Number(quota.totalHours || 0);
+  const used = Number(quota.usedHours || 0);
+  return Math.max(total - used, 0);
+}
+
+function quotaPercent(quota: LeaveQuota) {
+  const total = Number(quota.totalHours || 0);
+  if (!total) return 0;
+  return Math.min(Math.round((Number(quota.usedHours || 0) / total) * 100), 100);
 }
 
 async function loadRoles() {
@@ -182,10 +279,13 @@ async function loadProfile() {
   } finally {
     loading.value = false;
   }
+
+  // 关联员工存在时回显真实员工头像（不阻塞主流程）
+  loadEmployeeInfo();
 }
 
 async function saveProfile() {
-  if (!profileForm.id || !detailLoaded.value) {
+  if (!detailLoaded.value) {
     ElMessage.warning($t('userCenter.currentAccountProfileIsNotLoadedYet'));
     return;
   }
@@ -196,20 +296,10 @@ async function saveProfile() {
   saving.value = true;
 
   try {
-    const { error } = await request({
-      url: '/system/user',
-      method: 'put',
-      data: {
-        id: profileForm.id,
-        username: profileForm.username,
-        nickname: profileForm.nickname,
-        email: profileForm.email,
-        phone: profileForm.phone,
-        gender: profileForm.gender,
-        status: profileForm.status,
-        employeeId: profileForm.employeeId,
-        roleIds: profileForm.roleIds
-      }
+    // 自助资料更新：仅提交昵称/手机号（及头像），不改角色/状态
+    const { error } = await updateUserProfile({
+      name: profileForm.nickname.trim() || undefined,
+      phone: profileForm.phone || undefined
     });
 
     if (!error) {
@@ -256,6 +346,7 @@ async function changePassword() {
 
 onMounted(() => {
   loadProfile();
+  loadLeaveQuotas();
 });
 </script>
 
@@ -263,7 +354,20 @@ onMounted(() => {
   <div class="user-center-page">
     <ElCard class="profile-card" shadow="never">
       <div class="profile-hero">
-        <div class="avatar">{{ avatarText }}</div>
+        <div class="avatar-wrap">
+          <div class="avatar">
+            <img v-if="avatarUrl" :src="avatarUrl" :alt="displayName" />
+            <template v-else>{{ avatarText }}</template>
+          </div>
+          <ElUpload
+            :show-file-list="false"
+            :before-upload="beforeAvatarUpload"
+            :http-request="handleAvatarUpload"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+          >
+            <ElButton size="small" :loading="avatarUploading">{{ $t('userCenter.changeAvatar') }}</ElButton>
+          </ElUpload>
+        </div>
         <div class="profile-main">
           <div class="profile-name">{{ displayName }}</div>
           <div class="profile-subtitle">
@@ -304,6 +408,31 @@ onMounted(() => {
               <ElTag v-if="!roleNames.length" type="info" effect="plain">{{ $t('userCenter.noRolesAssigned') }}</ElTag>
             </div>
           </div>
+        </ElCard>
+
+        <ElCard v-loading="leaveQuotaLoading" shadow="never" class="info-card mt-16px">
+          <template #header>
+            <div class="card-title">
+              <SvgIcon icon="ph:calendar-check" />
+              <span>{{ $t('userCenter.myLeaveQuota') }} · {{ quotaYear }}</span>
+            </div>
+          </template>
+
+          <template v-if="leaveQuotas.length">
+            <div v-for="quota in leaveQuotas" :key="`${quota.year}-${quota.leaveType}`" class="quota-item">
+              <div class="quota-row">
+                <span class="quota-type">{{ getLeaveTypeLabel(quota.leaveType) || quota.leaveType }}</span>
+                <span class="quota-value">
+                  {{ $t('userCenter.quotaSummary', { used: Number(quota.usedHours || 0), total: Number(quota.totalHours || 0) }) }}
+                </span>
+              </div>
+              <ElProgress :percentage="quotaPercent(quota)" :stroke-width="8" :show-text="false" />
+              <div class="quota-remaining">
+                {{ $t('userCenter.quotaRemaining', { remaining: quotaRemaining(quota) }) }}
+              </div>
+            </div>
+          </template>
+          <ElEmpty v-else :description="$t('userCenter.noLeaveQuota')" :image-size="60" />
         </ElCard>
       </ElCol>
 
@@ -428,6 +557,13 @@ onMounted(() => {
   gap: 18px;
 }
 
+.avatar-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
 .avatar {
   display: flex;
   width: 72px;
@@ -440,6 +576,13 @@ onMounted(() => {
   color: #fff;
   font-size: 32px;
   font-weight: 700;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .profile-main {
@@ -501,6 +644,41 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.quota-item {
+  padding: 6px 0;
+}
+
+.quota-item + .quota-item {
+  border-top: 1px solid var(--el-border-color-lighter);
+  margin-top: 6px;
+  padding-top: 12px;
+}
+
+.quota-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.quota-type {
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.quota-value {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+
+.quota-remaining {
+  margin-top: 4px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
 }
 
 @media (max-width: 768px) {

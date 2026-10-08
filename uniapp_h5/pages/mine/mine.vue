@@ -271,8 +271,8 @@ function handleLogout() {
 }
 
 .avatar-fallback {
-  color: #fff;
-  background: linear-gradient(135deg, #8eb0d8, #b7c7d9);
+  color: #3668fc;
+  background: #eef1f7;
   font-size: 42rpx;
   font-weight: 800;
   display: flex;

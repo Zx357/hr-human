@@ -1,116 +1,105 @@
 <template>
-	<view class="oa-content tn-safe-area-inset-bottom">
+  <view class="edit-page">
     <!-- 顶部自定义导航 -->
-    <tn-navbar fixed bg-color="#ffffff00" :placeholder="false" customBack>
-      <template #back><view class='tn-custom-nav-bar__back'
-        @click="goBack">
-        <tn-icon class='icon' name='left'></tn-icon>
-        <tn-icon class='icon' name='home-capsule-fill'></tn-icon>
-      </view></template>
+    <tn-navbar fixed home-icon="" :bottom-shadow="false" bg-color="#FFFFFF" :placeholder="false">
+      <template #back>
+        <view class="nav-back" @click="goBack">
+          <tn-icon name="left-arrow"></tn-icon>
+        </view>
+      </template>
+      <view class="nav-title">
+        <text>发布动态</text>
+      </view>
     </tn-navbar>
-		
-    <view class="tn-safe-area-inset-bottom" :style="{paddingTop: vuex_custom_bar_height + 'px'}">
-      
-      <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-padding-top tn-margin">
-        <view class="tn-flex justify-content-item">
-          <view class="tn-bg-black tn-color-white tn-text-center" style="border-radius: 100rpx;margin-right: 8rpx;width: 45rpx;height: 45rpx;line-height: 45rpx;">
-            <tn-icon class="" name="topics" style="font-size: 30rpx;"></tn-icon>
+
+    <view class="page-content" :style="{ paddingTop: vuex_custom_bar_height + 28 + 'px' }">
+      <!-- 内容卡片 -->
+      <view class="section-card">
+        <view class="card-head">
+          <view class="section-title">想说点什么</view>
+          <view class="head-hint">500字内</view>
+        </view>
+        <textarea
+          v-model="postContent"
+          class="content-textarea"
+          maxlength="500"
+          placeholder="说点什么，万一火了呢"
+          placeholder-style="color:#AEB8C8"
+        ></textarea>
+        <view class="textarea-count">{{ postContent.length }}/500</view>
+      </view>
+
+      <!-- 图片卡片 -->
+      <view class="section-card">
+        <view class="card-head">
+          <view class="section-title">添加图片</view>
+          <view class="head-action" @tap="clear">
+            <text>清空上传</text>
+            <tn-icon name="delete"></tn-icon>
           </view>
-          <view class="tn-text-lg tn-padding-right-xs tn-text-bold">想说点什么 *</view>
         </view>
-        <view class="justify-content-item tn-text-df tn-color-grey">
-          <text class="tn-padding-xs">500字内</text>
-          <tn-icon name="keyboard-circle"></tn-icon>
-        </view>
-      </view>
-      
-      <view class="tn-margin tn-bg-gray--light tn-padding" style="border-radius: 10rpx;">
-        <textarea v-model="postContent" maxlength="500" placeholder="说点什么 , 万一火了呢" placeholder-style="color:#AAAAAA" style="height: 160rpx;"></textarea>
-      </view>
-      
-      <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-padding-top-xl tn-margin">
-        <view class="tn-flex justify-content-item">
-          <view class="tn-bg-black tn-color-white tn-text-center" style="border-radius: 100rpx;margin-right: 8rpx;width: 45rpx;height: 45rpx;line-height: 45rpx;">
-            <tn-icon class="" name="image" style="font-size: 30rpx;"></tn-icon>
-          </view>
-          <view class="tn-text-lg tn-padding-right-xs tn-text-bold">发点什么（文字或图片）</view>
-        </view>
-        <view class="justify-content-item tn-text-df tn-color-grey" @tap="clear">
-          <text class="tn-padding-xs">清空上传</text>
-          <tn-icon name="delete"></tn-icon>
+        <view class="upload-wrap">
+          <tn-image-upload
+            ref="imageUpload"
+            :custom-upload-handler="uploadImageHandler"
+            :sizeType="['compressed']"
+            :width="236"
+            :height="236"
+            :fileList="fileList"
+            :disabled="disabled"
+            :autoUpload="autoUpload"
+            :maxCount="maxCount"
+            :showUploadList="showUploadList"
+            :showProgress="showProgress"
+            :deleteable="deleteable"
+            :customBtn="customBtn"
+            @sort-list="onSortList"
+          />
         </view>
       </view>
-      
-      
-      
-      
-      <view class="tn-margin-left tn-padding-top-xs">
-        <tn-image-upload
-          ref="imageUpload"
-          :custom-upload-handler="uploadImageHandler"
-          :sizeType="['compressed']"
-          :width="236"
-          :height="236"
-          :fileList="fileList"
-          :disabled="disabled"
-          :autoUpload="autoUpload"
-          :maxCount="maxCount"
-          :showUploadList="showUploadList"
-          :showProgress="showProgress"
-          :deleteable="deleteable"
-          :customBtn="customBtn"
-          @sort-list="onSortList"
-        />
-      
-      </view>
-      
-      <view class="tn-flex tn-flex-row-between tn-flex-col-center tn-padding-top-xl tn-margin">
-        <view class="tn-flex justify-content-item">
-          <view class="tn-bg-black tn-color-white tn-text-center" style="border-radius: 100rpx;margin-right: 8rpx;width: 45rpx;height: 45rpx;line-height: 45rpx;">
-            <tn-icon class="" name="tag" style="font-size: 30rpx;"></tn-icon>
-          </view>
-          <view class="tn-text-lg tn-padding-right-xs tn-text-bold">话题标签</view>
+
+      <!-- 话题标签卡片 -->
+      <view class="section-card">
+        <view class="card-head">
+          <view class="section-title">话题标签</view>
+          <view class="head-hint">多选</view>
         </view>
-        <view class="justify-content-item tn-text-df tn-color-grey">
-          <text class="tn-padding-xs">多选</text>
-          <tn-icon name="constellation"></tn-icon>
-        </view>
-      </view>
-      
-      <view class="tn-tag-content tn-margin tn-text-justify">
-        <view v-for="(item, index) in tags" :key="index" class="tn-tag-content__item tn-margin-right tn-round tn-text-sm tn-text-bold" :class="[item.select ? `tn-bg-${item.color}--light tn-color-${item.color}` : 'tn-bg-gray--light tn-color-gray--dark']"  @click="handleTagsClick(index)">
-          <text :class="['tn-padding-right-xs tn-icon-' + item.icon]"></text> {{ item.title }}
-        </view>
-      </view>
-      
-      <!-- 悬浮按钮-->
-      <view class="tn-flex tn-footerfixed">
-        <view class="tn-flex-1 justify-content-item tn-margin-sm tn-text-center">
-          <view class="tn-padding-xs tn-text-sm tn-margin-bottom-xs" style="opacity: 0.6;">
-            <tn-icon class="tn-color-gray tn-padding-right-xs" name="tip-fill"></tn-icon> 
-            <text class="tn-color-gray">文明公约</text>
-          </view>
-          <tn-button
-            bg-color="#3668fc"
-            :custom-style="{padding:'40rpx 0'}"
-            width="70%"
-            :fontSize="28"
-            text-color="#FFFFFF"
-            shape="round"
-            :loading="submitting"
-            :disabled="submitting"
-            @tap="upload"
+        <view class="tag-list">
+          <view
+            v-for="(item, index) in tags"
+            :key="index"
+            class="tag-chip"
+            :class="{ 'tag-chip--active': item.select }"
+            @click="handleTagsClick(index)"
           >
-            <text class="">{{ submitting ? '发 布 中' : '发 布 时 刻' }}</text>
-          </tn-button>
+            {{ item.title }}
+          </view>
         </view>
       </view>
-      
     </view>
-    
-    <view class='tn-tabbar-height'></view>
-    
-	</view>
+
+    <!-- 底部提交栏 -->
+    <view class="footer-bar">
+      <view class="footer-tip">
+        <tn-icon name="tip-fill"></tn-icon>
+        <text>文明公约</text>
+      </view>
+      <tn-button
+        width="100%"
+        height="88"
+        shape="round"
+        bg-color="#3668FC"
+        text-color="#FFFFFF"
+        :font-size="30"
+        bold
+        :loading="submitting"
+        :disabled="submitting"
+        @tap="upload"
+      >
+        <text>{{ submitting ? '发布中...' : '发布动态' }}</text>
+      </tn-button>
+    </view>
+  </view>
 </template>
 
 <script setup>
@@ -268,85 +257,150 @@ const onSortList = (list) => {
 </script>
 
 <style lang="scss" scoped>
-  /* 胶囊*/
-  .tn-custom-nav-bar__back {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    display: flex;
-    justify-content: space-evenly;
-    align-items: center;
-    box-sizing: border-box;
-    background-color: rgba(0, 0, 0, 0.15);
-    border-radius: 1000rpx;
-    border: 1rpx solid rgba(255, 255, 255, 0.5);
-    color: #FFFFFF;
-    font-size: 18px;
-    
-    .icon {
-      display: block;
-      flex: 1;
-      margin: auto;
-      text-align: center;
-    }
-    
-    &:before {
-      content: " ";
-      width: 1rpx;
-      height: 110%;
-      position: absolute;
-      top: 22.5%;
-      left: 0;
-      right: 0;
-      margin: auto;
-      transform: scale(0.5);
-      transform-origin: 0 0;
-      pointer-events: none;
-      box-sizing: border-box;
-      opacity: 0.7;
-      background-color: #FFFFFF;
-    }
-  }
-  
-  .oa-content{
-    max-width: 640px;
-    margin: 0 auto;
-    min-height: 100vh;
-    padding-bottom: 60rpx;
-    padding-bottom: calc(80rpx + env(safe-area-inset-bottom) / 2);
-    padding-bottom: calc(80rpx + constant(safe-area-inset-bottom));
-  }
-  
-  /* 底部悬浮按钮 start*/
-  .tn-tabbar-height {
-  	min-height: 180rpx;
-  	height: calc(220rpx + env(safe-area-inset-bottom) / 2);
-    height: calc(220rpx + constant(safe-area-inset-bottom));
-  }
-  .tn-footerfixed {
-    max-width: 640px;
-    margin: 0 auto;
-    position: fixed;
-    width: 100%;
-    bottom: calc(30rpx + env(safe-area-inset-bottom));
-    z-index: 1024;
-    box-shadow: 0 1rpx 6rpx rgba(0, 0, 0, 0);
-    
-  }
-  /* 底部悬浮按钮 end*/
-  
-  /* 标签内容 start*/
-  .tn-tag-content {
-    &__item {
-      display: inline-block;
-      line-height: 45rpx;
-      padding: 10rpx 30rpx;
-      margin: 20rpx 20rpx 5rpx 0rpx;
-      
-      &--prefix {
-        padding-right: 10rpx;
-      }  
-    }
-  }
-  /* 标签内容 end*/
+.edit-page {
+  max-width: 640px;
+  min-height: 100vh;
+  margin: 0 auto;
+  background: #f7f8fa;
+  color: #1d2541;
+}
+
+.nav-back {
+  width: 72rpx;
+  height: 52rpx;
+  margin-left: 18rpx;
+  border-radius: 999rpx;
+  background: rgba(29, 37, 65, 0.08);
+  color: #1d2541;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34rpx;
+}
+
+.nav-title {
+  width: 100%;
+  text-align: center;
+  color: #1d2541;
+  font-size: 34rpx;
+  font-weight: 800;
+}
+
+.page-content {
+  padding: 0 24rpx 240rpx;
+  box-sizing: border-box;
+}
+
+/* 表单卡片 */
+.section-card {
+  margin-bottom: 20rpx;
+  padding: 28rpx;
+  border-radius: 16rpx;
+  background: #ffffff;
+  border: 1rpx solid rgba(17, 31, 46, 0.06);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-title {
+  padding-left: 16rpx;
+  border-left: 6rpx solid #3668fc;
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.head-hint {
+  color: #9aa4b2;
+  font-size: 24rpx;
+}
+
+.head-action {
+  display: flex;
+  align-items: center;
+  color: #9aa4b2;
+  font-size: 24rpx;
+}
+
+/* 内容输入 */
+.content-textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 190rpx;
+  margin-top: 20rpx;
+  padding: 22rpx;
+  border-radius: 16rpx;
+  background: #f7f8fa;
+  color: #1d2541;
+  font-size: 28rpx;
+  line-height: 1.55;
+}
+
+.textarea-count {
+  margin-top: 12rpx;
+  text-align: right;
+  color: #9aa4b2;
+  font-size: 22rpx;
+}
+
+/* 图片上传 */
+.upload-wrap {
+  margin-top: 20rpx;
+}
+
+/* 话题标签 */
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 20rpx;
+}
+
+.tag-chip {
+  padding: 12rpx 30rpx;
+  margin: 0 16rpx 16rpx 0;
+  border-radius: 999rpx;
+  background: #f3f5f9;
+  color: #657189;
+  font-size: 24rpx;
+}
+
+.tag-chip--active {
+  background: rgba(54, 104, 252, 0.1);
+  color: #3668fc;
+  font-weight: 600;
+}
+
+/* 底部提交栏 */
+.footer-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 20rpx 28rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 -12rpx 36rpx rgba(70, 84, 110, 0.08);
+  box-sizing: border-box;
+}
+
+.footer-tip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14rpx;
+  color: #9aa4b2;
+  font-size: 24rpx;
+}
+
+.footer-tip .tn-icon,
+.footer-tip text {
+  margin: 0 4rpx;
+}
 </style>

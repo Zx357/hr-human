@@ -69,7 +69,8 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useStore } from 'vuex'
-import { getClockInfo, getHomeStats } from '@/api/attendance'
+import { getClockInfo } from '@/api/attendance'
+import { getHomeStats } from '@/api/home'
 import { getMobileMenus } from '@/api/menu'
 
 const store = useStore()
@@ -85,7 +86,6 @@ const attendance = ref(buildAttendanceItems())
 const currentTime = ref('--:--')
 const currentSeconds = ref('--')
 const colorList = ['#4B98FE', '#FFAC00', '#00D05E', '#FB6A67', '#957BFE', '#00B9FE', '#CC52E2']
-const topMenuOrder = ['请假申请', '加班申请', '补卡申请', '离职申请', '出差申请', '换休申请', '费用报销', '设备申请']
 const topMenuColorMap = {
   '请假申请': '#4B98FE',
   '加班申请': '#FFAC00',
@@ -95,6 +95,28 @@ const topMenuColorMap = {
   '换休申请': '#00B9FE',
   '费用报销': '#00C8B0',
   '设备申请': '#8767FE'
+}
+// pages.json 中注册的页面路由：后台配置的菜单 path 命中才允许展示
+const VALID_ROUTES = new Set([
+  '/homePages/search', '/homePages/chat', '/homePages/pending', '/homePages/notice',
+  '/homePages/approval', '/homePages/approval-details', '/homePages/application',
+  '/momentPages/message', '/momentPages/edit', '/momentPages/details',
+  '/workPages/leave', '/workPages/leave-record', '/workPages/time', '/workPages/cost',
+  '/workPages/travel', '/workPages/device', '/workPages/overtime', '/workPages/replace',
+  '/workPages/resign', '/workPages/exchange', '/workPages/calendar',
+  '/partnerPages/group', '/partnerPages/user', '/partnerPages/create',
+  '/partnerPages/dept-members', '/partnerPages/chat',
+  '/minePages/nav', '/minePages/feedback', '/minePages/set', '/minePages/password',
+  '/minePages/help', '/minePages/payslip', '/minePages/payslip-detail'
+])
+// 历史种子数据中的 /pages/apply/* 旧路径 → 实际页面
+const LEGACY_PATH_MAP = {
+  '/pages/apply/leave/index': '/workPages/leave',
+  '/pages/apply/overtime/index': '/workPages/overtime',
+  '/pages/apply/card/index': '/workPages/replace',
+  '/pages/apply/travel/index': '/workPages/travel',
+  '/pages/apply/resign/index': '/workPages/resign',
+  '/pages/apply/exchange/index': '/workPages/exchange'
 }
 let clockTimer = null
 
@@ -170,7 +192,7 @@ async function loadMenus() {
     const res = await getMobileMenus()
     if (res.code === 200) {
       const menus = normalizeMenus(res.data)
-      icons.value = menus.length ? mergeTopMenus(menus) : getFallbackMenus()
+      icons.value = menus.length ? menus : getFallbackMenus()
     }
   } catch (error) {
     icons.value = getFallbackMenus()
@@ -208,17 +230,17 @@ function normalizeMenus(payload) {
 
   const seen = new Set()
   return rawMenus.filter(Boolean).map((item, index) => {
-    const title = item.menuName || item.title || item.name || '功能'
-    const supportedTitle = matchTopMenuTitle(title)
-    if (!supportedTitle || seen.has(supportedTitle)) return null
-    seen.add(supportedTitle)
+    const title = String(item.menuName || item.title || item.name || '').trim()
+    const url = resolveMenuUrl(item.path || item.url, title)
+    if (!url || seen.has(url)) return null
+    seen.add(url)
     return {
-      title: supportedTitle,
-      icon: iconForName(supportedTitle),
-      color: topMenuColorMap[supportedTitle] || colorList[index % colorList.length],
-      url: normalizeMenuUrl(item.path || item.url, supportedTitle)
+      title: title || '功能',
+      icon: iconForName(title) || item.icon || 'menu-fill',
+      color: normalizeColor(item.color) || colorForName(title) || colorList[index % colorList.length],
+      url
     }
-  }).filter(Boolean).sort((a, b) => topMenuOrder.indexOf(a.title) - topMenuOrder.indexOf(b.title))
+  }).filter(Boolean)
 }
 
 function getFallbackMenus() {
@@ -232,15 +254,6 @@ function getFallbackMenus() {
     { title: '费用报销', icon: 'money-fill', color: topMenuColorMap['费用报销'], url: '/workPages/cost' },
     { title: '设备申请', icon: 'mouse-fill', color: topMenuColorMap['设备申请'], url: '/workPages/device' }
   ]
-}
-
-function mergeTopMenus(menus) {
-  const menuMap = new Map(getFallbackMenus().map((item) => [item.title, item]))
-  menus.forEach((item) => {
-    const fallback = menuMap.get(item.title) || {}
-    menuMap.set(item.title, { ...fallback, ...item })
-  })
-  return topMenuOrder.map((title) => menuMap.get(title)).filter(Boolean)
 }
 
 function matchTopMenuTitle(name) {
@@ -282,11 +295,26 @@ function routeForName(name) {
   return ''
 }
 
-function normalizeMenuUrl(url, title) {
-  const route = routeForName(title)
-  if (!url) return route
-  if (url.includes('/pages/apply/') || url.includes('pages/apply/')) return route
-  return url.startsWith('/') ? url : `/${url}`
+function resolveMenuUrl(rawUrl, title) {
+  let url = String(rawUrl || '').trim()
+  if (!url) return routeForName(title)
+  if (LEGACY_PATH_MAP[url]) return LEGACY_PATH_MAP[url]
+  if (url.includes('/pages/apply/')) return routeForName(title)
+  if (!url.startsWith('/')) url = `/${url}`
+  // 允许携带 query 参数，按去掉 query 后的基础路径校验是否为已注册页面
+  const base = url.split('?')[0].replace(/\/+$/, '')
+  if (VALID_ROUTES.has(base)) return url
+  return routeForName(title)
+}
+
+function colorForName(name) {
+  const supportedTitle = matchTopMenuTitle(name)
+  return supportedTitle ? topMenuColorMap[supportedTitle] : ''
+}
+
+function normalizeColor(raw) {
+  const value = String(raw || '').trim()
+  return /^#[0-9a-fA-F]{6}$/.test(value) || /^#[0-9a-fA-F]{3}$/.test(value) ? value : ''
 }
 
 function buildAttendanceItems() {

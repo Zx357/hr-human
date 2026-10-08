@@ -18,6 +18,20 @@ export function getEmployeeDetail(id) {
 }
 
 /**
+ * 自助修改绑定手机号(需校验当前登录密码)
+ * 后端契约接口: PUT /mobile/employee/phone {phone, password}
+ * @param {string} phone 新手机号
+ * @param {string} password 当前登录密码
+ */
+export function updateMyPhone(phone, password) {
+  return request({
+    url: '/mobile/employee/phone',
+    method: 'put',
+    data: { phone, password }
+  })
+}
+
+/**
  * 上传员工头像
  * 后端接口: POST /file/upload/employee/avatar (multipart: file + employeeNo)
  * @param {string} filePath 本地临时文件路径

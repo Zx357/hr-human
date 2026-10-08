@@ -10,6 +10,13 @@
       <view class="tn-flex tn-flex-col-center tn-flex-row-center ">
         <text class="tn-text-bold tn-text-xl tn-color-black">{{ peerName }}</text>
       </view>
+      <!-- 群聊头部右侧"群信息"入口 -->
+      <template v-if="chatType === 1" #right>
+        <view class="group-info-btn" @click="goGroupInfo">
+          <tn-icon name="team" class="group-info-btn__icon"></tn-icon>
+          <text>群信息</text>
+        </view>
+      </template>
     </tn-navbar>
 
     <!-- 消息列表 -->
@@ -51,15 +58,21 @@
           <image class="chat-msg__avatar" :src="formatAvatar(item.fromAvatar)" mode="aspectFill" />
           <view class="chat-msg__main">
             <view class="chat-msg__name tn-color-gray tn-text-xs">{{ item.fromName || '成员' }}</view>
+            <!-- 已撤回消息:灰色系统提示样式,不渲染原内容 -->
+            <view v-if="isRecalled(item)" class="chat-msg__recalled">
+              <tn-icon name="refresh" class="chat-msg__recalled-icon"></tn-icon>
+              <text>{{ isMine(item) ? '你撤回了一条消息' : `${item.fromName || '对方'}撤回了一条消息` }}</text>
+            </view>
             <!-- 图片消息:点击预览,不用文本气泡样式 -->
             <image
-              v-if="Number(item.msgType) === 2"
+              v-else-if="Number(item.msgType) === 2"
               class="chat-msg__image"
               :src="formatImageUrl(item.content)"
               mode="widthFix"
               @click="previewImage(item)"
+              @longpress="onMessageLongPress(item)"
             />
-            <view v-else class="chat-msg__bubble">{{ item.content }}</view>
+            <view v-else class="chat-msg__bubble" @longpress="onMessageLongPress(item)">{{ item.content }}</view>
           </view>
         </view>
       </template>
@@ -100,9 +113,10 @@ import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { useStore } from 'vuex'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 import config from '@/config'
-import { getChatMessages, sendChatMessage, markConversationRead } from '@/api/chat'
+import { getChatMessages, sendChatMessage, markConversationRead, recallChatMessage } from '@/api/chat'
 import { refreshChatUnreadBadge } from '@/utils/chat-badge'
 import { uploadImageToServer } from '@/utils/upload'
+import { toastRequestError } from '@/utils/common'
 import {
   connect,
   isOpen,
@@ -140,6 +154,7 @@ let markReadPending = false
 // WS 消息处理函数注销器(onLoad 注册,onUnload/H5 卸载时注销)
 let offWsChatMessage = null
 let offWsUnreadTotal = null
+let offWsRecall = null
 // 拉取进行中收到推送时,延迟补一次增量拉取(防止推送消息被拉取结果覆盖)
 let wsCatchUpTimer = null
 
@@ -153,6 +168,74 @@ const myEmployeeId = computed(() => {
 
 const isMine = (item) => {
   return String(item.fromEmployeeId) === String(myEmployeeId.value)
+}
+
+// ===== 消息撤回 =====
+// 撤回时间窗:2 分钟(与后端校验一致)
+const RECALL_WINDOW_MS = 2 * 60 * 1000
+
+// 后端历史消息会把撤回消息的 content 替换并带 recalled 标记,前端按标记渲染灰色提示
+const isRecalled = (item) => {
+  return Number(item.recalled) === 1 || item.recalled === true
+}
+
+// 消息时间戳(毫秒)
+const messageTime = (item) => {
+  const time = new Date(String(item.createdTime || '').replace(/-/g, '/').replace('T', ' '))
+  return Number.isFinite(time.getTime()) ? time.getTime() : 0
+}
+
+// 自己发送且发送时间在 2 分钟内的消息才可撤回(超时旧消息不显示撤回选项)
+const canRecall = (item) => {
+  if (!item?.id || isRecalled(item) || !isMine(item)) return false
+  const sentAt = messageTime(item)
+  if (!sentAt) return false
+  return Date.now() - sentAt <= RECALL_WINDOW_MS
+}
+
+// 长按消息:自己 2 分钟内发送的消息弹出撤回
+const onMessageLongPress = (item) => {
+  if (!canRecall(item)) return
+  uni.showActionSheet({
+    itemList: ['撤回'],
+    success: (res) => {
+      if (res.tapIndex === 0) recallMessage(item)
+    }
+  })
+}
+
+// 调撤回契约接口,成功后本地把消息替换为 recalled 状态(后端会向对方推送撤回)
+const recallMessage = async (item) => {
+  try {
+    await recallChatMessage(item.id)
+    item.recalled = 1
+    item.content = ''
+    uni.showToast({ icon: 'none', title: '已撤回' })
+  } catch (error) {
+    toastRequestError(error, '撤回失败')
+  }
+}
+
+// ===== 群信息入口 =====
+const goGroupInfo = () => {
+  if (!targetId.value) return
+  uni.navigateTo({
+    url: `/partnerPages/group-info?groupId=${targetId.value}&name=${encodeURIComponent(peerName.value)}`
+  })
+}
+
+// 群名修改/解散事件:group-info 页操作后同步聊天页标题
+const handleGroupRenamed = (data) => {
+  if (data && Number(data.groupId) === Number(targetId.value) && data.name) {
+    peerName.value = data.name
+  }
+}
+
+const handleGroupDissolved = (data) => {
+  if (data && Number(data.groupId) === Number(targetId.value)) {
+    uni.showToast({ icon: 'none', title: '群聊已解散' })
+    setTimeout(() => uni.navigateBack(), 600)
+  }
 }
 
 const formatAvatar = (avatar) => {
@@ -477,12 +560,24 @@ const handleWsUnreadTotal = (data) => {
   store.commit('SET_UNREAD_BADGE', { chatUnread: Number(data.total || 0) })
 }
 
+// 撤回推送:属于当前会话则把本地对应消息置为已撤回(轮询兜底之外实时生效)
+const handleWsRecall = (data) => {
+  const msg = data && data.message
+  if (!msg || msg.id == null) return
+  if (data.conversationId && String(data.conversationId) !== String(conversationIdOf())) return
+  const local = messages.value.find((item) => Number(item.id) === Number(msg.id))
+  if (local) local.recalled = 1
+}
+
 const registerWsHandlers = () => {
   if (!offWsChatMessage) {
     offWsChatMessage = on('chat_message', handleWsChatMessage)
   }
   if (!offWsUnreadTotal) {
     offWsUnreadTotal = on('unread_total', handleWsUnreadTotal)
+  }
+  if (!offWsRecall) {
+    offWsRecall = on('chat_message_recall', handleWsRecall)
   }
 }
 
@@ -494,6 +589,10 @@ const unregisterWsHandlers = () => {
   if (offWsUnreadTotal) {
     offWsUnreadTotal()
     offWsUnreadTotal = null
+  }
+  if (offWsRecall) {
+    offWsRecall()
+    offWsRecall = null
   }
   if (wsCatchUpTimer) {
     clearTimeout(wsCatchUpTimer)
@@ -511,6 +610,9 @@ onLoad((options) => {
   }
   // 注册 WS 消息分发(全局单例连接由登录/启动/onShow 建立/token 为空时自动走轮询)
   registerWsHandlers()
+  // 群管理事件:group-info 页改群名/解散后同步本页标题与退出
+  uni.$on('group-renamed', handleGroupRenamed)
+  uni.$on('group-dissolved', handleGroupDissolved)
 })
 
 onShow(() => {
@@ -537,6 +639,8 @@ onUnload(() => {
   stopPolling()
   // 仅注销本页订阅,不断开全局 WS 单例
   unregisterWsHandlers()
+  uni.$off('group-renamed', handleGroupRenamed)
+  uni.$off('group-dissolved', handleGroupDissolved)
   refreshChatUnreadBadge()
 })
 
@@ -561,6 +665,8 @@ onBeforeUnmount(() => {
   stopPolling()
   // 仅注销本页订阅,不断开全局 WS 单例
   unregisterWsHandlers()
+  uni.$off('group-renamed', handleGroupRenamed)
+  uni.$off('group-dissolved', handleGroupDissolved)
 })
 // #endif
 </script>
@@ -647,6 +753,41 @@ onBeforeUnmount(() => {
     max-width: 300rpx;
     border-radius: 12rpx;
     background-color: #f4f5f9;
+  }
+
+  /* 已撤回消息:灰色系统提示 */
+  &__recalled {
+    display: inline-flex;
+    align-items: center;
+    padding: 8rpx 16rpx;
+    border-radius: 12rpx;
+    background-color: rgba(29, 37, 65, 0.05);
+    color: #9aa4b2;
+    font-size: 23rpx;
+    line-height: 1.5;
+  }
+
+  &__recalled-icon {
+    margin-right: 8rpx;
+    font-size: 24rpx;
+  }
+}
+
+/* 群信息入口 */
+.group-info-btn {
+  display: flex;
+  align-items: center;
+  margin-right: 24rpx;
+  padding: 10rpx 22rpx;
+  border-radius: 999rpx;
+  background: rgba(54, 104, 252, 0.1);
+  color: #3668fc;
+  font-size: 24rpx;
+  font-weight: 600;
+
+  &__icon {
+    margin-right: 6rpx;
+    font-size: 28rpx;
   }
 }
 

@@ -129,6 +129,36 @@
           <FDateRow label="换休日" v-model="form.endDate" />
           <FTextAreaRow label="换休原因" v-model="form.reason" placeholder="请填写换休原因" />
         </template>
+
+        <template v-if="type === 'cost'">
+          <picker :range="costTypes" :value="selectedIndex(costTypes, form.costType)" @change="setSelect('costType', costTypes, $event)">
+            <view class="field-row">
+              <view>
+                <view class="field-label">报销类型 <text>*</text></view>
+                <view class="field-value" :class="{ placeholder: !form.costType }">{{ form.costType || '请选择' }}</view>
+              </view>
+              <tn-icon name="right"></tn-icon>
+            </view>
+          </picker>
+          <FDateTimeRow label="发生时间" :date="form.costDate" :time="form.costTime" @date="form.costDate = $event" @time="form.costTime = $event" />
+          <FInputRow label="费用金额" type="digit" v-model="form.amount" placeholder="请输入金额" />
+          <FTextAreaRow label="费用说明" v-model="form.reason" placeholder="请简单写一下报销事由" />
+        </template>
+
+        <template v-if="type === 'device'">
+          <picker :range="deviceTypes" :value="selectedIndex(deviceTypes, form.deviceType)" @change="setSelect('deviceType', deviceTypes, $event)">
+            <view class="field-row">
+              <view>
+                <view class="field-label">设备类型 <text>*</text></view>
+                <view class="field-value" :class="{ placeholder: !form.deviceType }">{{ form.deviceType || '请选择' }}</view>
+              </view>
+              <tn-icon name="right"></tn-icon>
+            </view>
+          </picker>
+          <FInputRow label="设备名称" v-model="form.deviceName" placeholder="请输入设备名称" />
+          <FInputRow label="设备数量" type="number" v-model="form.deviceCount" placeholder="请输入数量" />
+          <FTextAreaRow label="设备用途" v-model="form.reason" placeholder="请简单写一下设备事由" />
+        </template>
       </view>
 
       <view class="section-card tips-card" v-if="type === 'resign'">
@@ -412,6 +442,22 @@ const pageMap = {
     icon: 'menu-grille-fill',
     accent: '#4A9AB7',
     gradient: 'linear-gradient(135deg, #88D3EA 0%, #58AFCD 50%, #3C89A8 100%)'
+  },
+  cost: {
+    title: '费用报销',
+    formTitle: '报销信息',
+    desc: '填写报销类型、金额和费用说明',
+    icon: 'money-fill',
+    accent: '#2BA184',
+    gradient: 'linear-gradient(135deg, #6BD8C4 0%, #35B5A0 52%, #219180 100%)'
+  },
+  device: {
+    title: '设备申请',
+    formTitle: '设备信息',
+    desc: '填写设备类型、名称、数量和用途',
+    icon: 'computer-fill',
+    accent: '#5B7AC0',
+    gradient: 'linear-gradient(135deg, #8FA6DA 0%, #6C86C2 50%, #4F69A6 100%)'
   }
 }
 
@@ -428,6 +474,9 @@ const leaveTypes = [
 const cardTypes = ['上班补卡', '下班补卡']
 const resignTypes = ['主动离职', '协商离职']
 const resignReasons = ['个人发展', '薪资待遇', '工作环境', '家庭原因', '健康原因', '其他原因']
+// 报销/设备类型选项与旧 cost.vue、device.vue 手写表单保持一致
+const costTypes = ['餐饮费', '礼品费', '活动费', '物料费', '补助费', '交通费', '招待费', '医疗费', '出差费', '其他费用']
+const deviceTypes = ['个人设备', '部门设备', '公司设备', '其他用途']
 
 const storageUser = ref({})
 const submitting = ref(false)
@@ -505,7 +554,14 @@ function getInitialForm() {
     resignType: '',
     resignReason: '',
     lastWorkDate: '',
-    handover: ''
+    handover: '',
+    costType: '',
+    costDate: '',
+    costTime: '',
+    amount: '',
+    deviceType: '',
+    deviceName: '',
+    deviceCount: ''
   }
 }
 
@@ -683,6 +739,20 @@ function validateForm() {
     if (!form.reason.trim()) return '请填写换休原因'
   }
 
+  if (props.type === 'cost') {
+    if (!form.costType) return '请选择报销类型'
+    if (!form.costDate || !form.costTime) return '请选择发生时间'
+    if (!form.amount || Number(form.amount) <= 0) return '请填写费用金额'
+    if (!form.reason.trim()) return '请填写费用说明'
+  }
+
+  if (props.type === 'device') {
+    if (!form.deviceType) return '请选择设备类型'
+    if (!form.deviceName.trim()) return '请填写设备名称'
+    if (!form.deviceCount || Number(form.deviceCount) <= 0) return '请填写设备数量'
+    if (!form.reason.trim()) return '请填写设备用途'
+  }
+
   return ''
 }
 
@@ -751,6 +821,28 @@ function buildPayload() {
       lastWorkDate: form.lastWorkDate,
       reason: `离职原因: ${form.resignReason}\n详细说明: ${form.reason}`,
       remark: form.handover ? `工作交接: ${form.handover}` : ''
+    }
+  }
+
+  if (props.type === 'cost') {
+    return {
+      ...base,
+      appType: 'cost',
+      title: `${form.costType}报销`,
+      // 发生时间精确到分,与旧 cost.vue 手写表单的 startTime 格式一致(yyyy-MM-dd HH:mm)
+      startTime: `${form.costDate} ${form.costTime}`,
+      amount: Number(form.amount),
+      reason: form.reason.trim()
+    }
+  }
+
+  if (props.type === 'device') {
+    return {
+      ...base,
+      appType: 'device',
+      title: `${form.deviceType}申请`,
+      reason: form.reason.trim(),
+      remark: `设备名称: ${form.deviceName.trim()}; 设备数量: ${form.deviceCount}`
     }
   }
 

@@ -28,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 员工服务
@@ -99,8 +101,38 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
         }
         wrapper.orderByAsc(HrEmployee::getName);
         List<HrEmployee> employees = list(wrapper);
-        employees.forEach(this::fillDeptAndCompanyNames);
+        // 批量预载组织链后内存回填，替代逐员工查部门/公司（参照 AttendanceService 的批量预载模式）
+        Map<Long, OrgUnit> orgCache = preloadOrgChain(employees);
+        employees.forEach(employee -> fillDeptAndCompanyNames(employee, orgCache));
         return employees;
+    }
+
+    /**
+     * 批量预载员工部门及其上级组织链（公司归属逐级向上查找）：
+     * 先一次 in 查所有部门，再把缺失的父节点循环补齐，循环内纯内存
+     */
+    private Map<Long, OrgUnit> preloadOrgChain(List<HrEmployee> employees) {
+        Map<Long, OrgUnit> orgCache = new java.util.HashMap<>();
+        Set<Long> pendingOrgIds = new java.util.LinkedHashSet<>();
+        for (HrEmployee employee : employees) {
+            if (employee.getDeptId() != null) {
+                pendingOrgIds.add(employee.getDeptId());
+            }
+        }
+        while (!pendingOrgIds.isEmpty()) {
+            List<Long> toLoad = pendingOrgIds.stream().filter(id -> !orgCache.containsKey(id)).toList();
+            pendingOrgIds.clear();
+            if (toLoad.isEmpty()) {
+                break;
+            }
+            for (OrgUnit unit : orgUnitMapper.selectBatchIds(toLoad)) {
+                orgCache.put(unit.getId(), unit);
+                if (unit.getParentId() != null && unit.getParentId() != 0) {
+                    pendingOrgIds.add(unit.getParentId());
+                }
+            }
+        }
+        return orgCache;
     }
 
     /**
@@ -115,6 +147,40 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
         if (deptUnit == null) {
             return;
         }
+        Map<Long, OrgUnit> orgCache = new java.util.HashMap<>();
+        orgCache.put(deptUnit.getId(), deptUnit);
+        if (deptUnit.getParentId() != null && deptUnit.getParentId() != 0) {
+            Set<Long> pending = new java.util.LinkedHashSet<>();
+            pending.add(deptUnit.getParentId());
+            while (!pending.isEmpty()) {
+                List<Long> toLoad = pending.stream().toList();
+                pending.clear();
+                for (OrgUnit unit : orgUnitMapper.selectBatchIds(toLoad)) {
+                    orgCache.put(unit.getId(), unit);
+                    if (unit.getParentId() != null && unit.getParentId() != 0 && !orgCache.containsKey(unit.getParentId())) {
+                        pending.add(unit.getParentId());
+                    }
+                }
+            }
+        }
+        fillDeptAndCompanyNames(employee, orgCache);
+    }
+
+    /**
+     * 从预载的组织缓存回填部门/公司名称（无缓存时逐级查库兜底）
+     */
+    private void fillDeptAndCompanyNames(HrEmployee employee, Map<Long, OrgUnit> orgCache) {
+        if (employee == null || employee.getDeptId() == null || employee.getDeptName() != null) {
+            return;
+        }
+        OrgUnit deptUnit = orgCache.get(employee.getDeptId());
+        if (deptUnit == null) {
+            deptUnit = orgUnitMapper.selectById(employee.getDeptId());
+            if (deptUnit == null) {
+                return;
+            }
+            orgCache.put(deptUnit.getId(), deptUnit);
+        }
         employee.setDeptName(deptUnit.getUnitName());
 
         // 向上查找到公司节点
@@ -126,7 +192,14 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, HrEmployee> {
                 employee.setCompanyName(cursor.getUnitName());
                 break;
             }
-            cursor = orgUnitMapper.selectById(cursor.getParentId());
+            OrgUnit parent = orgCache.get(cursor.getParentId());
+            if (parent == null) {
+                parent = orgUnitMapper.selectById(cursor.getParentId());
+                if (parent != null) {
+                    orgCache.put(parent.getId(), parent);
+                }
+            }
+            cursor = parent;
         }
 
         // 如果部门本身就是公司节点

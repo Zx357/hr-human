@@ -37,11 +37,11 @@ public class AuthService {
     private final org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate;
 
     /**
-     * 登录失败锁定：同一账号 15 分钟内失败 5 次锁定
+     * 登录失败锁定：同一账号连续失败 5 次锁定 10 分钟（Redis 计数，成功登录清零）
      */
     private static final String LOGIN_FAIL_PREFIX = "login_fail:";
     private static final int LOGIN_FAIL_MAX = 5;
-    private static final long LOGIN_FAIL_TTL_MINUTES = 15;
+    private static final long LOGIN_FAIL_TTL_MINUTES = 10;
 
     /**
      * 登录 - 适配soybean-admin前端
@@ -231,9 +231,20 @@ public class AuthService {
     // ==================== 登录防爆破 ====================
 
     private void assertNotLocked(String scene, String account) {
-        Object fails = redisTemplate.opsForValue().get(LOGIN_FAIL_PREFIX + scene + ":" + account);
+        String key = LOGIN_FAIL_PREFIX + scene + ":" + account;
+        Object fails = redisTemplate.opsForValue().get(key);
         if (fails instanceof Number count && count.intValue() >= LOGIN_FAIL_MAX) {
-            throw new BusinessException("失败次数过多，账号已临时锁定，请" + LOGIN_FAIL_TTL_MINUTES + "分钟后重试");
+            // 按剩余 TTL 提示解锁时间（Redis 键过期即自动解锁）
+            long remainMinutes = 1;
+            try {
+                Long remainSeconds = redisTemplate.getExpire(key, java.util.concurrent.TimeUnit.SECONDS);
+                if (remainSeconds != null && remainSeconds > 0) {
+                    remainMinutes = (remainSeconds + 59) / 60;
+                }
+            } catch (Exception e) {
+                log.warn("查询登录锁定剩余时间失败: {}", e.getMessage());
+            }
+            throw new BusinessException("账号已锁定，请 " + remainMinutes + " 分钟后重试");
         }
     }
 

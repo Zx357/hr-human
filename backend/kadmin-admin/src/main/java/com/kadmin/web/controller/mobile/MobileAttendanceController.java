@@ -350,9 +350,13 @@ public class MobileAttendanceController {
             boolean isNormalIn = false;
             boolean isNormalOut = false;
             boolean isExcused = false;
+            boolean hasAccountedStatus = false;
+            Integer accountedStatus = null;
 
             if (!dayDailyRecords.isEmpty()) {
                 Integer status = mergeDailyStatus(dayDailyRecords);
+                accountedStatus = status;
+                hasAccountedStatus = true;
                 isLate = status == 2 || status == 7;
                 isEarly = status == 3 || status == 7;
                 isExcused = status == 5 || status == 6;
@@ -384,7 +388,13 @@ public class MobileAttendanceController {
                 if (isEarly) {
                     earlyDays++;
                 }
-                if (!isExcused && (clockInRecord == null || clockOutRecord == null)) {
+                if (hasAccountedStatus) {
+                    // 已核算日：旷工口径以考勤核算结果（status=4 旷工）为准
+                    if (accountedStatus != null && accountedStatus == 4) {
+                        absentDays++;
+                    }
+                } else if (!isExcused && (clockInRecord == null || clockOutRecord == null)) {
+                    // 未核算日：按缺打卡推断旷工（历史兜底口径）
                     absentDays++;
                 }
             }

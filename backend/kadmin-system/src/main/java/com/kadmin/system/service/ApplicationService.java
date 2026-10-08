@@ -362,7 +362,12 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
             entity.setApproveRemark(remark);
             entity.setApproveBy(approveBy);
             entity.setApproveTime(LocalDateTime.now());
-            return updateById(entity);
+            boolean updated = updateById(entity);
+            // 流转到下一节点：通知下一节点角色下的审批人（通知失败不影响流转）
+            if (updated) {
+                notifyApproversOnFlowAdvance(application, nextCurrent);
+            }
+            return updated;
         }
 
         // 最后一个节点通过：条件更新置为已通过并执行业务联动
@@ -513,13 +518,17 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
     }
 
     /**
-     * 申请提交后通知移动端审批人（不含申请人本人；通知失败不影响提交）
+     * 申请提交后通知审批人（不含申请人本人；通知失败不影响提交）：
+     * 1. hr_mobile_approver 配置的移动端审批人（按类型过滤）
+     * 2. 当前待审批节点角色（sys_approval_node.role_id）下所有启用账号关联的在职员工
+     * （notifyOnce 按 员工+类型+业务ID 去重，两类通知来源共存互不重复）
      */
     public void notifyApproversOnSubmit(HrApplication application) {
         try {
             List<HrMobileApprover> approvers = mobileApproverMapper.selectList(null);
             String applicantName = resolveEmployeeName(application.getEmployeeId());
             String label = appTypeLabel(application.getAppType());
+            String content = (applicantName != null ? applicantName : "同事") + "提交了" + label + "申请，请及时处理";
             for (HrMobileApprover approver : approvers) {
                 Long approverEmployeeId = approver.getEmployeeId();
                 if (approverEmployeeId == null || approverEmployeeId.equals(application.getEmployeeId())) {
@@ -529,11 +538,64 @@ public class ApplicationService extends ServiceImpl<HrApplicationMapper, HrAppli
                     continue;
                 }
                 notificationService.notifyOnce(approverEmployeeId, "approval_todo", "待审批提醒",
-                        (applicantName != null ? applicantName : "同事") + "提交了" + label + "申请，请及时处理",
-                        application.getId(), "/homePages/pending");
+                        content, application.getId(), "/homePages/pending");
             }
+            // 补充：按当前待审批节点的角色通知（PC 审批人通常按角色配置在审批流节点上）
+            SysApprovalNode currentNode = findCurrentNode(application.getId(),
+                    getActiveFlowNodes(application.getAppType()));
+            notifyRoleApprovers(currentNode, application, content);
         } catch (Exception e) {
             log.warn("提交申请通知审批人失败: applicationId={}", application != null ? application.getId() : null, e);
+        }
+    }
+
+    /**
+     * 按审批节点角色通知待办：节点配置了 role_id 时，找出该角色下所有启用账号关联的在职员工，
+     * notifyOnce 发送 approval_todo（与移动端指定审批人通知去重共存）
+     */
+    private void notifyRoleApprovers(SysApprovalNode node, HrApplication application, String content) {
+        if (node == null || node.getRoleId() == null || application == null) {
+            return;
+        }
+        try {
+            List<Long> employeeIds = sysUserMapper.selectEnabledEmployeeIdsByRoleId(node.getRoleId());
+            for (Long employeeId : employeeIds) {
+                if (employeeId == null || employeeId.equals(application.getEmployeeId())) {
+                    continue;
+                }
+                notificationService.notifyOnce(employeeId, "approval_todo", "待审批提醒",
+                        content, application.getId(), "/homePages/pending");
+            }
+        } catch (Exception e) {
+            log.warn("按角色通知审批人失败: applicationId={}, roleId={}",
+                    application.getId(), node.getRoleId(), e);
+        }
+    }
+
+    /**
+     * 审批流转到下一节点时通知下一节点审批人：
+     * 移动端指定审批人（按类型）+ 下一节点角色下的启用员工，notifyOnce 去重共存
+     */
+    private void notifyApproversOnFlowAdvance(HrApplication application, SysApprovalNode nextNode) {
+        try {
+            String applicantName = resolveEmployeeName(application.getEmployeeId());
+            String label = appTypeLabel(application.getAppType());
+            String content = (applicantName != null ? applicantName : "同事") + "的" + label
+                    + "申请已流转到你这一级，请及时处理";
+            for (HrMobileApprover approver : mobileApproverMapper.selectList(null)) {
+                Long approverEmployeeId = approver.getEmployeeId();
+                if (approverEmployeeId == null || approverEmployeeId.equals(application.getEmployeeId())) {
+                    continue;
+                }
+                if (!appTypesMatch(approver.getAppTypes(), application.getAppType())) {
+                    continue;
+                }
+                notificationService.notifyOnce(approverEmployeeId, "approval_todo", "待审批提醒",
+                        content, application.getId(), "/homePages/pending");
+            }
+            notifyRoleApprovers(nextNode, application, content);
+        } catch (Exception e) {
+            log.warn("流转通知下一节点审批人失败: applicationId={}", application.getId(), e);
         }
     }
 

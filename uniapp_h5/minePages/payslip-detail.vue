@@ -9,29 +9,51 @@
       <view class="nav-title">
         <text>工资条明细</text>
       </view>
+      <template #right>
+        <!-- 金额显示/隐藏切换(页面级,默认遮挡) -->
+        <view class="eye-btn" @click="toggleAmountVisible">
+          <tn-icon :name="amountVisible ? 'eye' : 'eye-hide'" />
+        </view>
+      </template>
     </tn-navbar>
 
     <view class="page-content" :style="{ paddingTop: vuex_custom_bar_height + 28 + 'px' }">
+      <!-- 加载中 -->
       <view v-if="loading && !detail" class="state-tip">加载中...</view>
 
-      <template v-else-if="detail">
+      <!-- 加载失败:提示 + 重试(替代原 detail 为 null 时的白屏) -->
+      <view v-else-if="loadFailed && !detail" class="state-tip">
+        <view class="fail-icon">
+          <tn-icon name="notice-no"></tn-icon>
+        </view>
+        <view class="fail-text">工资条加载失败</view>
+        <view class="retry-btn" @click="retryLoad">点击重试</view>
+      </view>
+
+      <!-- 参数缺失 -->
+      <view v-else-if="!detail" class="state-tip">未找到工资条，请返回列表重新进入</view>
+
+      <template v-else>
+        <!-- 汇总卡片(白卡片,替代旧渐变 hero) -->
         <view class="hero-card">
           <view class="hero-month">{{ yearMonth }} · {{ detail.employeeName }}</view>
-          <view class="hero-net">¥{{ formatAmount(detail.netPay) }}</view>
+          <view class="hero-net">{{ amountVisible ? '¥' + formatAmount(detail.netPay) : '¥ •••••' }}</view>
           <view class="hero-sub">
-            <text>应发 {{ formatAmount(detail.grossPay) }}</text>
-            <text>扣款 {{ formatAmount(detail.totalDeduction) }}</text>
+            <text>应发 {{ amountVisible ? formatAmount(detail.grossPay) : '•••••' }}</text>
+            <text>扣款 {{ amountVisible ? formatAmount(detail.totalDeduction) : '•••••' }}</text>
           </view>
+          <view v-if="detail.confirmFlag" class="hero-confirmed">已确认</view>
         </view>
 
         <view class="section-card">
           <view class="section-title income">收入明细</view>
+          <view v-if="!incomeItems.length" class="empty-tip">本月无收入项</view>
           <view v-for="item in incomeItems" :key="item.id" class="item-row">
             <view class="item-info">
               <text class="item-name">{{ item.itemName }}</text>
               <text class="item-source">{{ item.source }}</text>
             </view>
-            <text class="item-amount income-amount">+{{ formatAmount(item.amount) }}</text>
+            <text class="item-amount income-amount">+{{ amountVisible ? formatAmount(item.amount) : '••••' }}</text>
           </view>
         </view>
 
@@ -43,7 +65,7 @@
               <text class="item-name">{{ item.itemName }}</text>
               <text class="item-source">{{ item.source }}</text>
             </view>
-            <text class="item-amount deduction-amount">-{{ formatAmount(item.amount) }}</text>
+            <text class="item-amount deduction-amount">-{{ amountVisible ? formatAmount(item.amount) : '••••' }}</text>
           </view>
         </view>
 
@@ -52,8 +74,8 @@
             width="100%"
             height="88"
             shape="round"
-            :bg-color="detail.confirmFlag ? '#EEF3F8' : '#22A873'"
-            :text-color="detail.confirmFlag ? '#66758D' : '#FFFFFF'"
+            :bg-color="detail.confirmFlag ? '#F1F3F7' : '#3668FC'"
+            :text-color="detail.confirmFlag ? '#9AA4B2' : '#FFFFFF'"
             :font-size="30"
             bold
             :disabled="detail.confirmFlag || confirming"
@@ -79,34 +101,53 @@ const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
 
 const loading = ref(true)
+const loadFailed = ref(false)
 const confirming = ref(false)
 const detail = ref(null)
 const yearMonth = ref('')
 const incomeItems = ref([])
 const deductionItems = ref([])
+const payslipId = ref(null)
+
+// 金额默认遮挡,点击右上角眼睛图标切换
+const amountVisible = ref(false)
 
 function formatAmount(value) {
   return Number(value || 0).toFixed(2)
 }
 
+function toggleAmountVisible() {
+  amountVisible.value = !amountVisible.value
+}
+
 async function loadData(id) {
-  if (!id) {
+  payslipId.value = id || payslipId.value
+  if (!payslipId.value) {
     loading.value = false
+    loadFailed.value = false
     return
   }
   loading.value = true
+  loadFailed.value = false
   try {
-    const res = await getMyPayslipDetail(id)
+    const res = await getMyPayslipDetail(payslipId.value)
     detail.value = res.data?.payslip || null
     yearMonth.value = res.data?.yearMonth || ''
     const items = res.data?.items || []
     incomeItems.value = items.filter(item => item.direction === 1)
     deductionItems.value = items.filter(item => item.direction === 2)
+    // 详情加载成功但无数据时也算失败态(避免白屏)
+    if (!detail.value) loadFailed.value = true
   } catch (error) {
+    loadFailed.value = true
     toastRequestError(error, '加载工资条失败')
   } finally {
     loading.value = false
   }
+}
+
+function retryLoad() {
+  loadData()
 }
 
 async function handleConfirm() {
@@ -128,13 +169,13 @@ onLoad((options) => {
 })
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .detail-page {
   max-width: 640px;
   min-height: 100vh;
   margin: 0 auto;
-  background: #f3f6fa;
-  color: #16233a;
+  background: #F7F8FA;
+  color: #1d2541;
 }
 
 .nav-back {
@@ -142,8 +183,8 @@ onLoad((options) => {
   height: 52rpx;
   margin-left: 18rpx;
   border-radius: 999rpx;
-  background: #eef3f8;
-  color: #5d6f89;
+  background: rgba(29, 37, 65, 0.08);
+  color: #1d2541;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -153,9 +194,23 @@ onLoad((options) => {
 .nav-title {
   width: 100%;
   text-align: center;
-  color: #111827;
+  color: #1d2541;
   font-size: 34rpx;
   font-weight: 800;
+}
+
+/* 右上角金额显示切换 */
+.eye-btn {
+  margin-right: 24rpx;
+  width: 68rpx;
+  height: 52rpx;
+  border-radius: 999rpx;
+  background: rgba(29, 37, 65, 0.08);
+  color: #1d2541;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34rpx;
 }
 
 .page-content {
@@ -165,29 +220,61 @@ onLoad((options) => {
 
 .state-tip {
   padding: 120rpx 0;
-  color: #9aa6b6;
+  color: #9aa4b2;
   font-size: 26rpx;
   text-align: center;
 }
 
+.fail-icon {
+  margin: 0 auto;
+  width: 110rpx;
+  height: 110rpx;
+  border-radius: 50%;
+  background: rgba(251, 106, 103, 0.1);
+  color: #fb6a67;
+  font-size: 58rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fail-text {
+  margin-top: 22rpx;
+  color: #1d2541;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.retry-btn {
+  margin: 24rpx auto 0;
+  width: fit-content;
+  padding: 12rpx 48rpx;
+  border-radius: 999rpx;
+  color: #3668fc;
+  font-size: 25rpx;
+  font-weight: 600;
+  background: rgba(54, 104, 252, 0.1);
+}
+
+/* 汇总卡片 */
 .hero-card {
-  margin-top: 24rpx;
+  position: relative;
   padding: 36rpx 32rpx;
-  border-radius: 24rpx;
-  color: #ffffff;
-  background: linear-gradient(135deg, #4a9ab7 0%, #3c89a8 50%, #2f7390 100%);
-  box-shadow: 0 24rpx 54rpx rgba(78, 103, 142, 0.16);
+  border-radius: 16rpx;
+  background: #ffffff;
+  border: 1rpx solid rgba(17, 31, 46, 0.06);
 }
 
 .hero-month {
   font-size: 26rpx;
-  opacity: 0.86;
+  color: #657189;
 }
 
 .hero-net {
   margin-top: 12rpx;
   font-size: 56rpx;
   font-weight: 900;
+  color: #1d2541;
 }
 
 .hero-sub {
@@ -195,21 +282,32 @@ onLoad((options) => {
   gap: 32rpx;
   margin-top: 10rpx;
   font-size: 24rpx;
-  opacity: 0.86;
+  color: #8b98aa;
+}
+
+.hero-confirmed {
+  position: absolute;
+  top: 28rpx;
+  right: 28rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(0, 200, 176, 0.12);
+  color: #00a08a;
+  font-size: 22rpx;
 }
 
 .section-card {
-  margin-top: 24rpx;
+  margin-top: 20rpx;
   padding: 28rpx 28rpx 10rpx;
-  border-radius: 24rpx;
+  border-radius: 16rpx;
   background: #ffffff;
-  box-shadow: 0 18rpx 50rpx rgba(69, 87, 116, 0.08);
+  border: 1rpx solid rgba(17, 31, 46, 0.06);
 }
 
 .section-title {
   margin-bottom: 10rpx;
   padding-left: 16rpx;
-  border-left: 6rpx solid #22a873;
+  border-left: 6rpx solid #3668fc;
   font-size: 30rpx;
   font-weight: 800;
 }
@@ -223,7 +321,7 @@ onLoad((options) => {
   align-items: center;
   justify-content: space-between;
   padding: 22rpx 0;
-  border-bottom: 1rpx solid #eef2f7;
+  border-bottom: 1rpx solid #f3f2f7;
 }
 
 .item-info {
@@ -233,12 +331,12 @@ onLoad((options) => {
 }
 
 .item-name {
-  color: #1b2740;
+  color: #1d2541;
   font-size: 28rpx;
 }
 
 .item-source {
-  color: #9aa6b6;
+  color: #9aa4b2;
   font-size: 22rpx;
 }
 
@@ -248,7 +346,7 @@ onLoad((options) => {
 }
 
 .income-amount {
-  color: #16233a;
+  color: #1d2541;
 }
 
 .deduction-amount {
@@ -257,7 +355,7 @@ onLoad((options) => {
 
 .empty-tip {
   padding: 24rpx 0;
-  color: #9aa6b6;
+  color: #9aa4b2;
   font-size: 24rpx;
   text-align: center;
 }

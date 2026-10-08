@@ -113,26 +113,55 @@ const menuGroupOptions = [
   { label: $t('sys.mobileMenu.applicationCenter'), value: 'apply' }
 ];
 
-// 图标选项
+// 图标选项( tuniaoui 图标名,与移动端实际渲染的图标库一致 )
 const iconOptions = [
-  'calendar',
-  'clock',
-  'checkbox',
-  'location',
-  'auth',
-  'redo',
-  'closeempty',
-  'refreshempty',
-  'person',
-  'settings',
-  'home',
-  'chat',
-  'email',
-  'phone',
-  'camera',
-  'image',
-  'folder',
-  'star'
+  'calendar-fill',
+  'time-fill',
+  'edit-form',
+  'suitcase-fill',
+  'reduce-circle-fill',
+  'menu-grille-fill',
+  'money-fill',
+  'mouse-fill',
+  'menu-fill',
+  'notice-fill',
+  'location-fill',
+  'my-job-fill',
+  'transfer-fill',
+  'seal',
+  'warning-fill',
+  'notebook-fill',
+  'rocket-fill',
+  'reload-planet-fill'
+];
+
+// 移动端 pages.json 已注册的页面路由(配置后移动端工作台按此跳转)
+const routeOptions = [
+  { label: '请假申请', value: '/workPages/leave' },
+  { label: '加班申请', value: '/workPages/overtime' },
+  { label: '补卡申请', value: '/workPages/replace' },
+  { label: '出差申请', value: '/workPages/travel' },
+  { label: '换休申请', value: '/workPages/exchange' },
+  { label: '离职申请', value: '/workPages/resign' },
+  { label: '费用报销', value: '/workPages/cost' },
+  { label: '设备申请', value: '/workPages/device' },
+  { label: '考勤打卡', value: '/workPages/time' },
+  { label: '考勤日历', value: '/workPages/calendar' },
+  { label: '请假记录', value: '/workPages/leave-record' },
+  { label: '沟通交流', value: '/homePages/chat' },
+  { label: '待办事项', value: '/homePages/pending' },
+  { label: '系统公告', value: '/homePages/notice' },
+  { label: '审批进程', value: '/homePages/approval' },
+  { label: '应用消息', value: '/homePages/application' },
+  { label: '全局搜索', value: '/homePages/search' },
+  { label: '互动消息', value: '/momentPages/message' },
+  { label: '发布内容', value: '/momentPages/edit' },
+  { label: '我的群聊', value: '/partnerPages/group' },
+  { label: '发起群聊', value: '/partnerPages/create' },
+  { label: '我的工资条', value: '/minePages/payslip' },
+  { label: '意见反馈', value: '/minePages/feedback' },
+  { label: '帮助中心', value: '/minePages/help' },
+  { label: '快捷导航', value: '/minePages/nav' }
 ];
 
 // 颜色选项
@@ -323,10 +352,10 @@ async function swapSort(row1: MobileMenu, row2: MobileMenu) {
         <ElTable v-loading="loading" :data="tableData" border height="100%">
           <ElTableColumn prop="menuName" :label="$t('sys.common.menuName')" min-width="120" />
           <ElTableColumn prop="menuCode" :label="$t('sys.common.menuCode')" min-width="100" />
-          <ElTableColumn prop="icon" :label="$t('common.icon')" width="80" align="center">
+          <ElTableColumn prop="icon" :label="$t('common.icon')" width="110" align="center">
             <template #default="{ row }">
               <view class="icon-preview" :style="{ backgroundColor: row.iconBgColor }">
-                <UniIcons :type="row.icon" size="16" color="#fff" />
+                <span class="icon-name">{{ row.icon }}</span>
               </view>
             </template>
           </ElTableColumn>
@@ -419,7 +448,9 @@ async function swapSort(row1: MobileMenu, row2: MobileMenu) {
           </div>
         </ElFormItem>
         <ElFormItem :label="$t('sys.mobileMenu.routePath')" prop="path">
-          <ElInput v-model="formData.path" :placeholder="$t('sys.mobileMenu.eGPagesApplyLeaveIndex')" />
+          <ElSelect v-model="formData.path" :placeholder="$t('sys.mobileMenu.pleaseSelectRoutePath')" filterable style="width: 100%">
+            <ElOption v-for="route in routeOptions" :key="route.value" :label="`${route.label}（${route.value}）`" :value="route.value" />
+          </ElSelect>
         </ElFormItem>
         <ElFormItem :label="$t('sys.mobileMenu.menuGroup')" prop="menuGroup">
           <ElRadioGroup v-model="formData.menuGroup">
@@ -482,6 +513,15 @@ async function swapSort(row1: MobileMenu, row2: MobileMenu) {
   width: 32px;
   height: 32px;
   border-radius: 6px;
+}
+
+.icon-name {
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #fff;
+  font-size: 10px;
 }
 
 .color-picker {

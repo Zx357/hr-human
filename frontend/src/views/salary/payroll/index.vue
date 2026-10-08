@@ -83,6 +83,15 @@ async function loadCompanies() {
   companies.value = res.data || [];
 }
 
+function handleReset() {
+  searchParams.value = {
+    yearMonth: undefined as string | undefined,
+    companyId: undefined as number | undefined
+  };
+  currentPage.value = 1;
+  loadBatches();
+}
+
 onMounted(() => {
   loadCompanies();
   loadBatches();
@@ -170,7 +179,7 @@ async function handleExport(row: PayrollBatch) {
   try {
     await downloadFile(
       `/salary/payroll/${row.id}/export`,
-      `工资表-${row.yearMonth}.xlsx`
+      $t('salary.payroll.exportFileName', { month: row.yearMonth })
     );
     ElMessage.success($t('attendance.common.exportSuccessful'));
   } catch {
@@ -229,19 +238,25 @@ async function loadPayslips() {
 
 // ===== 工资条明细抽屉 =====
 const detailDrawerVisible = ref(false);
+const detailLoading = ref(false);
 const detailYearMonth = ref('');
 const detailPayslip = ref<Payslip | null>(null);
 const incomeItems = ref<PayrollItem[]>([]);
 const deductionItems = ref<PayrollItem[]>([]);
 
 async function openDetail(row: Payslip) {
-  const res = await fetchPayslipDetail(row.id!);
-  detailPayslip.value = res.data?.payslip || null;
-  detailYearMonth.value = res.data?.yearMonth || '';
-  const items = res.data?.items || [];
-  incomeItems.value = items.filter(item => item.direction === 1);
-  deductionItems.value = items.filter(item => item.direction === 2);
   detailDrawerVisible.value = true;
+  detailLoading.value = true;
+  try {
+    const res = await fetchPayslipDetail(row.id!);
+    detailPayslip.value = res.data?.payslip || null;
+    detailYearMonth.value = res.data?.yearMonth || '';
+    const items = res.data?.items || [];
+    incomeItems.value = items.filter(item => item.direction === 1);
+    deductionItems.value = items.filter(item => item.direction === 2);
+  } finally {
+    detailLoading.value = false;
+  }
 }
 
 // ===== 手工项金额编辑 =====
@@ -305,6 +320,10 @@ function formatAmount(value?: number) {
             <template #icon><icon-ep-search /></template>
             {{ $t('common.search') }}
           </ElButton>
+          <ElButton @click="handleReset">
+            <template #icon><icon-ep-refresh /></template>
+            {{ $t('common.reset') }}
+          </ElButton>
         </ElFormItem>
       </ElForm>
     </ElCard>
@@ -334,6 +353,15 @@ function formatAmount(value?: number) {
         </ElTableColumn>
         <ElTableColumn prop="totalNet" :label="$t('salary.payroll.totalNet')" width="130" align="right">
           <template #default="{ row }">{{ formatAmount(row.totalNet) }}</template>
+        </ElTableColumn>
+        <ElTableColumn :label="$t('salary.payroll.payslipProgress')" width="130" align="center">
+          <template #default="{ row }">
+            <div v-if="row.total !== undefined && row.total !== null" class="text-12px leading-18px">
+              <div>{{ $t('salary.payroll.readProgress') }} {{ row.readCount ?? 0 }}/{{ row.total }}</div>
+              <div>{{ $t('salary.payroll.confirmProgress') }} {{ row.confirmCount ?? 0 }}/{{ row.total }}</div>
+            </div>
+            <span v-else class="text-gray-400">-</span>
+          </template>
         </ElTableColumn>
         <ElTableColumn prop="remark" :label="$t('common.remark')" min-width="120" show-overflow-tooltip />
         <ElTableColumn :label="$t('common.action')" width="330" align="center" fixed="right">
@@ -469,7 +497,7 @@ function formatAmount(value?: number) {
             v-model="payslipSearch.employeeNo"
             :placeholder="$t('common.employeeNo')"
             clearable
-            style="width: 110px"
+            style="min-width: 180px"
             @keyup.enter="loadPayslips"
           />
         </ElFormItem>
@@ -478,7 +506,7 @@ function formatAmount(value?: number) {
             v-model="payslipSearch.employeeName"
             :placeholder="$t('common.name')"
             clearable
-            style="width: 110px"
+            style="min-width: 180px"
             @keyup.enter="loadPayslips"
           />
         </ElFormItem>
@@ -531,10 +559,11 @@ function formatAmount(value?: number) {
 
     <!-- 工资条明细抽屉 -->
     <ElDrawer v-model="detailDrawerVisible" :title="$t('salary.payroll.payslipDetail')" size="440px" append-to-body>
+      <div v-loading="detailLoading">
       <template v-if="detailPayslip">
         <div class="mb-16px rounded-8px bg-gray-50 p-16px dark:bg-gray-800">
           <div class="text-14px text-gray-500">{{ detailYearMonth }} · {{ detailPayslip.employeeName }}</div>
-          <div class="mt-8px text-28px font-bold" style="color: #22a873">
+          <div class="mt-8px text-28px font-bold payslip-net">
             ¥{{ formatAmount(detailPayslip.netPay) }}
           </div>
           <div class="mt-4px text-12px text-gray-400">
@@ -574,9 +603,36 @@ function formatAmount(value?: number) {
             <div class="text-14px">{{ item.itemName }}</div>
             <div class="text-12px text-gray-400">{{ item.source }}</div>
           </div>
-          <span class="font-bold" style="color: #e85b65">{{ formatAmount(item.amount) }}</span>
+          <div class="flex items-center gap-4px">
+            <template v-if="canEditItem(item) && editingItemId === item.id">
+              <ElInputNumber v-model="editingAmount" :min="0" :precision="2" :controls="false" size="small" style="width: 110px" />
+              <ElButton type="primary" link size="small" @click="saveItemAmount">{{ $t('common.save') }}</ElButton>
+            </template>
+            <template v-else>
+              <span class="font-bold payslip-deduction">{{ formatAmount(item.amount) }}</span>
+              <ElButton
+                v-if="canEditItem(item)"
+                link
+                size="small"
+                @click="startEditItem(item)"
+              >
+                {{ $t('common.edit') }}
+              </ElButton>
+            </template>
+          </div>
         </div>
       </template>
+      </div>
     </ElDrawer>
   </div>
 </template>
+
+<style scoped>
+.payslip-net {
+  color: var(--el-color-success);
+}
+
+.payslip-deduction {
+  color: var(--el-color-danger);
+}
+</style>

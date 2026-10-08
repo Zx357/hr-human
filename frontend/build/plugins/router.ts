@@ -82,6 +82,7 @@ export function setupElegantRouter() {
         report_employee: 'mdi:chart-pie',
         report_attendance: 'mdi:chart-line',
         system: 'mdi:cog',
+        system_config: 'mdi:tune',
         system_menu: 'mdi:menu',
         system_dict: 'mdi:book-alphabet'
       };

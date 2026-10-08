@@ -13,8 +13,9 @@
 
 
     <view class="tn-text-center" :style="{paddingTop: vuex_custom_bar_height + 60 + 'px'}">
-      <view v-if="isSuccess" class="tn-page-success" style="font-size: 420rpx;line-height: 420rpx"></view>
-      <view v-else class="tn-page-error" style="font-size: 420rpx;line-height: 420rpx"></view>
+      <view class="result-icon" :class="{ 'result-icon--error': !isSuccess }">
+        <tn-icon :name="isSuccess ? 'success-circle-fill' : 'close-circle-fill'"></tn-icon>
+      </view>
       <view class="tn-margin-top">
         <view v-if="isSuccess" class="tn-text-lg tn-margin-bottom tn-text-bold" style="color: #00C8B0;">提交成功</view>
         <view v-else class="tn-text-lg tn-margin-bottom tn-text-bold" style="color: #FB6A67;">提交失败</view>
@@ -33,11 +34,11 @@
     <view class="tn-flex tn-padding tn-margin-top-lg">
       <view class="tn-flex-1 justify-content-item tn-margin-right-xs tn-text-center tn-bg-white" style="border-radius: 100rpx;">
         <tn-button
-          bg-color="#00C8B0"
+          bg-color="#3668FC"
           :custom-style="{padding:'39rpx 0'}"
           width="48%"
           :fontSize="28"
-          text-color="#00C8B0"
+          text-color="#3668FC"
           shape="round"
           :plain="true"
           @click="tnindex('/pages/index?index=2')"
@@ -47,7 +48,7 @@
       </view>
       <view class="tn-flex-1 justify-content-item tn-margin-right-xs tn-text-center tn-bg-white" style="border-radius: 100rpx;">
         <tn-button
-          bg-color="#00C8B0"
+          bg-color="#3668FC"
           :custom-style="{padding:'39rpx 0'}"
           width="48%"
           :fontSize="28"
@@ -133,6 +134,25 @@ function tnindex(e) {
     padding-bottom: 60rpx;
     padding-bottom: calc(80rpx + env(safe-area-inset-bottom) / 2);
     padding-bottom: calc(80rpx + constant(safe-area-inset-bottom));
+  }
+
+  /* 提交结果图标:浅色圆底 + 160rpx 图标 */
+  .result-icon {
+    width: 240rpx;
+    height: 240rpx;
+    margin: 0 auto;
+    border-radius: 50%;
+    font-size: 160rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #00C8B0;
+    background: rgba(0, 200, 176, 0.1);
+  }
+
+  .result-icon--error {
+    color: #fb6a67;
+    background: rgba(251, 106, 103, 0.1);
   }
 
   /* 底部悬浮按钮 start*/

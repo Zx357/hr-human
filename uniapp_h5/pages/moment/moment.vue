@@ -153,13 +153,30 @@
 
       </view>
       
-      <view class="tn-flex tn-flex-direction-column tn-margin-top-sm tn-margin-bottom" v-if="!currentContent.length">
+      <!-- 首屏加载中:卡片骨架屏 -->
+      <view class="moment-skeleton tn-flex tn-flex-direction-column tn-margin-top-sm tn-margin-bottom" v-if="listLoading && !currentContent.length">
+        <view v-for="n in 3" :key="'sk-' + n" class="sk-card">
+          <view class="sk-card__head">
+            <view class="sk-avatar"></view>
+            <view class="sk-head-main">
+              <view class="sk-bar sk-bar--40"></view>
+              <view class="sk-bar sk-bar--25"></view>
+            </view>
+          </view>
+          <view class="sk-card__body">
+            <view class="sk-bar sk-bar--90"></view>
+            <view class="sk-image"></view>
+          </view>
+        </view>
+      </view>
+
+      <view class="tn-flex tn-flex-direction-column tn-margin-top-sm tn-margin-bottom" v-else-if="!currentContent.length">
         <view class="" style="padding: 15vh 20rpx;">
           <view class="tn-text-center" style="font-size: 200rpx;padding-top: 30rpx;">
             <text class="tn-icon-clip tn-color-gray--light"></text>
           </view>
           <view class="tn-color-gray--disabled tn-text-center tn-text-lg">{{ emptyText }}</view>
-        </view>      
+        </view>
       </view>
     
     </view>
@@ -327,12 +344,15 @@ const pageSize = 10
 const pageNum = ref(1)
 const loadingMore = ref(false)
 const finished = ref(false)
+// 首屏列表加载状态(骨架屏展示期间为 true)
+const listLoading = ref(false)
 
 const loadMoments = async () => {
   // 记录请求发起时的 tab,响应回来时若已切换 tab 则丢弃,避免旧响应覆盖新列表
   const requestTab = current.value
   pageNum.value = 1
   finished.value = false
+  listLoading.value = true
   try {
     const res = await getMomentPosts({
       pageNum: pageNum.value,
@@ -345,6 +365,8 @@ const loadMoments = async () => {
     if (list.length < pageSize) finished.value = true
   } catch (error) {
     uni.showToast({ icon: 'none', title: '加载动态失败' })
+  } finally {
+    listLoading.value = false
   }
 }
 
@@ -792,17 +814,98 @@ defineExpose({
       // background-color: #FFFFFF;
     }
      
-    /* 间隔线 start*/
+  /* 间隔线 start*/
     .tn-strip-bottom-min {
       width: 100%;
       border-bottom: 1rpx solid #F8F7F8;
-    } 
-     
+    }
+
     .tn-strip-bottom {
      width: 100%;
      border-bottom: 20rpx solid #F8F7F8;
     }
      /* 间隔线 end*/
+
+  /* 首屏卡片骨架屏 shimmer(与首页写法保持一致) */
+  @keyframes sk-shimmer {
+    0% {
+      background-position: -400rpx 0;
+    }
+    100% {
+      background-position: 400rpx 0;
+    }
+  }
+
+  .moment-skeleton {
+    padding: 0 24rpx;
+  }
+
+  .sk-card {
+    margin-bottom: 24rpx;
+    padding: 30rpx;
+    background: #ffffff;
+    border-radius: 16rpx;
+    border: 1rpx solid #EEF0F4;
+  }
+
+  .sk-card__head {
+    display: flex;
+    align-items: center;
+  }
+
+  .sk-avatar {
+    flex-shrink: 0;
+    width: 70rpx;
+    height: 70rpx;
+    border-radius: 50%;
+    background: linear-gradient(90deg, #eff1f5 25%, #f7f8fa 37%, #eff1f5 63%);
+    background-size: 400rpx 100%;
+    animation: sk-shimmer 1.4s ease infinite;
+  }
+
+  .sk-head-main {
+    flex: 1;
+    min-width: 0;
+    margin-left: 18rpx;
+  }
+
+  .sk-card__body {
+    margin-top: 20rpx;
+    margin-left: 90rpx;
+  }
+
+  .sk-bar {
+    height: 24rpx;
+    border-radius: 12rpx;
+    background: linear-gradient(90deg, #eff1f5 25%, #f7f8fa 37%, #eff1f5 63%);
+    background-size: 400rpx 100%;
+    animation: sk-shimmer 1.4s ease infinite;
+  }
+
+  .sk-bar + .sk-bar {
+    margin-top: 14rpx;
+  }
+
+  .sk-bar--25 {
+    width: 25%;
+  }
+
+  .sk-bar--40 {
+    width: 40%;
+  }
+
+  .sk-bar--90 {
+    width: 90%;
+  }
+
+  .sk-image {
+    height: 174rpx;
+    margin-top: 20rpx;
+    border-radius: 16rpx;
+    background: linear-gradient(90deg, #eff1f5 25%, #f7f8fa 37%, #eff1f5 63%);
+    background-size: 400rpx 100%;
+    animation: sk-shimmer 1.4s ease infinite;
+  }
   
  
   /* 最新消息-头像 start */

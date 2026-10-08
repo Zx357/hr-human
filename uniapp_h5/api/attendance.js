@@ -31,13 +31,6 @@ export function getClockRecords(params = {}) {
   })
 }
 
-export function getHomeStats() {
-  return request({
-    url: '/mobile/home/stats',
-    method: 'get'
-  })
-}
-
 /**
  * 我的假期额度(按年度),未配置额度的类型不在列表中
  */

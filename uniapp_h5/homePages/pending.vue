@@ -131,6 +131,7 @@ const typeMap = {
   reward: { name: '奖惩申请', color: '#FFAC00', bg: 'rgba(255, 172, 0, 0.14)' },
   punish: { name: '奖惩申请', color: '#FB6A67', bg: 'rgba(251, 106, 103, 0.12)' },
   expense: { name: '费用报销', color: '#00D05E', bg: 'rgba(0, 208, 94, 0.12)' },
+  cost: { name: '费用报销', color: '#00D05E', bg: 'rgba(0, 208, 94, 0.12)' },
   device: { name: '设备申请', color: '#00B9FE', bg: 'rgba(0, 185, 254, 0.12)' }
 }
 
@@ -202,8 +203,7 @@ async function loadList(reset = false) {
       : (list.value.length >= total || records.length < pageSize)
     pageNum.value += 1
   } catch (e) {
-    // 加载失败留痕;request.js 已 toast 过的错误不重复提示
-    console.warn('加载待办列表失败:', e)
+    // request.js 已 toast 过的错误不重复提示
   } finally {
     if (seq === requestSeq) loading.value = false
     refreshing.value = false
@@ -464,7 +464,7 @@ async function confirmReject() {
 
 .solid-btn {
   color: #fff;
-  background: linear-gradient(135deg, #4b98fe, #3d7eff);
+  background: #3668fc;
 }
 
 .empty-state {

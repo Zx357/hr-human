@@ -27,14 +27,8 @@ onLaunch((options) => {
   // 导航栏高度必须最先落地:所有自定义导航页面的顶部 padding 都依赖它,
   // 拿到 0 会导致搜索栏等内容整体滑到固定导航栏底下
   updateCustomBarInfo().then((res) => {
-    store.commit('$tStore', {
-      name: 'vuex_status_bar_height',
-      value: res.statusBarHeight
-    })
-    store.commit('$tStore', {
-      name: 'vuex_custom_bar_height',
-      value: res.customBarHeight
-    })
+    store.commit('SET_STATUS_BAR_HEIGHT', res.statusBarHeight)
+    store.commit('SET_CUSTOM_BAR_HEIGHT', res.customBarHeight)
   }).catch(() => {})
 
   checkLogin(options)

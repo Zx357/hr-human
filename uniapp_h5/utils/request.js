@@ -40,9 +40,10 @@ function handleAuthExpired(reject) {
  * 统一错误契约:request.js 内部 toast 提示后,reject 带 message 的 Error 对象,
  * 并标记 _toastShown = true,页面侧据此免二次 toast(error.message 可复用文案)。
  * 页面请使用 utils/common.js 的 toastRequestError 处理 catch 到的错误。
+ * silent=true 时跳过 toast(供非关键请求使用,如后台参数配置拉取失败静默走本地兜底)。
  */
-function rejectAfterToast(reject, message) {
-  toast(message)
+function rejectAfterToast(reject, message, silent) {
+  if (!silent) toast(message)
   const error = new Error(message)
   error._toastShown = true
   reject(error)
@@ -74,7 +75,7 @@ const request = (options) => {
       success(res) {
         if (res.statusCode === 401) {
           if (skipToken) {
-            rejectAfterToast(reject, res.data?.msg || '登录失败，请检查账号或密码')
+            rejectAfterToast(reject, res.data?.msg || res.data?.message || '登录失败，请检查账号或密码', options.silent)
             return
           }
 
@@ -82,8 +83,16 @@ const request = (options) => {
           return
         }
 
+        // 400:后端业务错误从 HTTP 200 改为 400,body 仍是 {code,message},
+        // 与原业务错误提示行为一致:展示 body 里的 message(兼容旧 msg 字段),不展示通用"请求失败"
+        if (res.statusCode === 400) {
+          const message = res.data?.message || res.data?.msg
+          rejectAfterToast(reject, message || '请求失败', options.silent)
+          return
+        }
+
         if (res.statusCode !== 200) {
-          rejectAfterToast(reject, res.data?.msg || ('请求失败: ' + res.statusCode))
+          rejectAfterToast(reject, res.data?.msg || res.data?.message || ('请求失败: ' + res.statusCode), options.silent)
           return
         }
 
@@ -98,7 +107,7 @@ const request = (options) => {
           return
         }
 
-        rejectAfterToast(reject, normalized.msg)
+        rejectAfterToast(reject, normalized.msg, options.silent)
       },
       fail(error) {
         let message = error.message || error.errMsg || '请求失败'
@@ -109,7 +118,7 @@ const request = (options) => {
         }
         // 网络层失败统一转为可读文案的 Error(原先直接 reject uni 的 error 对象,
         // 页面当 toast 标题会显示 [object Object])
-        rejectAfterToast(reject, message)
+        rejectAfterToast(reject, message, options.silent)
       }
     })
   })

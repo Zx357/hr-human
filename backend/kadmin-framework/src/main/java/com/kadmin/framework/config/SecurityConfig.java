@@ -86,6 +86,8 @@ public class SecurityConfig {
                         // 仅匹配数字ID，避免单段通配遮蔽 /employee/page、/employee/export 等管理接口
                         .requestMatchers(HttpMethod.GET, "/employee/{id:[0-9]+}").authenticated()
                         .requestMatchers("/mobile/**").authenticated()
+                        // 公开参数配置（地图Key等）：登录即可读取，仅返回 is_public=1 且启用的键
+                        .requestMatchers("/config/**").authenticated()
                         .requestMatchers("/hr/application/**").authenticated()
                         // 组织架构移动端只读，写操作归管理员
                         .requestMatchers(HttpMethod.GET, "/org-unit/**").authenticated()

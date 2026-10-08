@@ -8,6 +8,7 @@ import com.kadmin.system.mapper.SysMenuMapper;
 import com.kadmin.system.mapper.SysNoticeMapper;
 import com.kadmin.system.mapper.SysUserMapper;
 import com.kadmin.system.service.FileConfigService;
+import com.kadmin.system.service.SysConfigService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -55,6 +56,8 @@ public class DataInitializer implements CommandLineRunner {
         ensureLeaveQuotaMenu();
         ensureSalaryTables();
         ensureSalaryMenu();
+        ensureSysConfigTable();
+        ensureSysConfigMenu();
         ensureDefaultSystemNotice();
         ensureDefaultMomentPosts();
         ensureDefaultMobileGroup();
@@ -202,17 +205,49 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     /**
-     * 聊天消息表补 msg_type 列（1-文本 2-图片）
+     * 聊天表结构补齐（幂等）：消息 msg_type/status 列、会话已读状态 sticky/hidden 列
      */
     private void ensureChatMessageSchema() {
-        Integer colCount = jdbcTemplate.queryForObject(
+        Integer msgTypeCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() "
                         + "AND TABLE_NAME = 'mobile_chat_message' AND COLUMN_NAME = 'msg_type'",
                 Integer.class);
-        if (colCount == null || colCount == 0) {
+        if (msgTypeCount == null || msgTypeCount == 0) {
             jdbcTemplate.execute("ALTER TABLE mobile_chat_message "
                     + "ADD COLUMN msg_type TINYINT NOT NULL DEFAULT 1 COMMENT '消息类型：1-文本 2-图片' AFTER content");
             log.info("已为 mobile_chat_message 添加 msg_type 列");
+        }
+
+        // 消息撤回状态（0-正常 1-已撤回）
+        addColumnIfMissing("mobile_chat_message", "status",
+                "ALTER TABLE mobile_chat_message "
+                        + "ADD COLUMN status TINYINT NOT NULL DEFAULT 0 COMMENT '消息状态：0-正常 1-已撤回' AFTER msg_type");
+
+        // 会话置顶/隐藏（会话个人状态存于 mobile_chat_read_state）
+        addColumnIfMissing("mobile_chat_read_state", "sticky",
+                "ALTER TABLE mobile_chat_read_state "
+                        + "ADD COLUMN sticky TINYINT NOT NULL DEFAULT 0 COMMENT '是否置顶：0-否 1-是' AFTER last_read_message_id");
+        addColumnIfMissing("mobile_chat_read_state", "hidden",
+                "ALTER TABLE mobile_chat_read_state "
+                        + "ADD COLUMN hidden TINYINT NOT NULL DEFAULT 0 COMMENT '是否隐藏：0-否 1-是' AFTER sticky");
+    }
+
+    /**
+     * 通用幂等加列（列不存在时执行 DDL，存在时跳过）
+     */
+    private void addColumnIfMissing(String tableName, String columnName, String alterSql) {
+        Integer colCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() "
+                        + "AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+                Integer.class, tableName, columnName);
+        if (colCount != null && colCount > 0) {
+            return;
+        }
+        try {
+            jdbcTemplate.execute(alterSql);
+            log.info("已为 {} 添加 {} 列", tableName, columnName);
+        } catch (Exception e) {
+            log.warn("添加 {}:{} 列失败: {}", tableName, columnName, e.getMessage());
         }
     }
 
@@ -422,6 +457,7 @@ public class DataInitializer implements CommandLineRunner {
                   archive_id BIGINT NOT NULL COMMENT '档案ID',
                   item_id BIGINT NOT NULL COMMENT '薪资项ID',
                   amount DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT '金额(可覆盖方案默认)',
+                  custom_flag TINYINT NOT NULL DEFAULT 0 COMMENT '个人覆盖标记：0-方案默认值 1-个人覆盖(换绑方案时保留)',
                   created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                   updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
                   created_by BIGINT DEFAULT NULL COMMENT '创建人',
@@ -430,6 +466,11 @@ public class DataInitializer implements CommandLineRunner {
                   UNIQUE KEY uk_sal_archive_item (archive_id, item_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工薪资档案明细'
                 """);
+        // 存量表补个人覆盖标记列（换绑方案时保留个人覆盖金额）
+        addColumnIfMissing("sal_salary_archive_item", "custom_flag",
+                "ALTER TABLE sal_salary_archive_item "
+                        + "ADD COLUMN custom_flag TINYINT NOT NULL DEFAULT 0 "
+                        + "COMMENT '个人覆盖标记：0-方案默认值 1-个人覆盖(换绑方案时保留)' AFTER amount");
         jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS sal_payroll_batch (
                   id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -575,6 +616,95 @@ public class DataInitializer implements CommandLineRunner {
             menuMapper.updateById(menu);
         }
         return menu;
+    }
+
+    /**
+     * 系统参数配置表 + 预置种子（幂等：已存在的键不重复插入，值保持用户已修改的内容）
+     */
+    private void ensureSysConfigTable() {
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS sys_config (
+                  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+                  config_key VARCHAR(100) NOT NULL COMMENT '配置键',
+                  config_name VARCHAR(100) NOT NULL COMMENT '配置名称',
+                  config_value VARCHAR(500) DEFAULT NULL COMMENT '配置值',
+                  config_group VARCHAR(50) DEFAULT 'basic' COMMENT '配置分组：map_config-地图配置，wechat_config-微信配置，basic-基础',
+                  is_public TINYINT DEFAULT 1 COMMENT '是否公开：1-登录用户可通过公开接口读取，0-仅管理端可见（防敏感配置泄露）',
+                  remark VARCHAR(255) DEFAULT NULL COMMENT '说明',
+                  status TINYINT DEFAULT 1 COMMENT '状态：1-启用，0-停用（停用的配置公开接口不返回）',
+                  sort_order INT DEFAULT 0 COMMENT '排序',
+                  created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  created_by BIGINT DEFAULT NULL COMMENT '创建人',
+                  updated_by BIGINT DEFAULT NULL COMMENT '更新人',
+                  PRIMARY KEY (id),
+                  UNIQUE KEY uk_sys_config_key (config_key)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统参数配置'
+                """);
+        ensureSysConfigSeed(SysConfigService.KEY_AMAP, "高德地图Key", SysConfigService.GROUP_MAP_CONFIG,
+                "PC端考勤地点选点与移动端H5打卡地图使用；在高德开放平台申请「Web端(JS API)」类型", 1);
+        ensureSysConfigSeed(SysConfigService.KEY_AMAP_SECURITY, "高德安全密钥", SysConfigService.GROUP_MAP_CONFIG,
+                "与高德Key配套的安全密钥(jscode)；2021-12-02之后申请的Key必填，之前申请的旧Key可留空", 2);
+        ensureSysConfigSeed(SysConfigService.KEY_WECHAT_APPID, "微信小程序AppID", SysConfigService.GROUP_WECHAT_CONFIG,
+                "仅作统一记录；小程序AppID为编译期配置（manifest.json），修改后需重新编译发布小程序", 1);
+    }
+
+    /**
+     * 单个参数配置种子幂等插入（键存在则跳过，不覆盖已配置的值）
+     */
+    private void ensureSysConfigSeed(String configKey, String configName, String configGroup,
+            String remark, int sortOrder) {
+        jdbcTemplate.update("""
+                INSERT INTO sys_config (config_key, config_name, config_value, config_group, is_public, remark, status, sort_order)
+                SELECT ?, ?, NULL, ?, 1, ?, 1, ?
+                FROM DUAL
+                WHERE NOT EXISTS (SELECT 1 FROM sys_config WHERE config_key = ?)
+                """, configKey, configName, configGroup, remark, sortOrder, configKey);
+    }
+
+    /**
+     * 系统管理目录下的「参数配置」菜单 + 按钮权限（幂等）
+     */
+    private void ensureSysConfigMenu() {
+        SysMenu systemMenu = menuMapper.selectOne(new LambdaQueryWrapper<SysMenu>()
+                .eq(SysMenu::getMenuCode, "system")
+                .last("LIMIT 1"));
+        if (systemMenu == null) {
+            log.warn("System menu not found, skip sys config menu initialization.");
+            return;
+        }
+
+        SysMenu configMenu = menuMapper.selectOne(new LambdaQueryWrapper<SysMenu>()
+                .eq(SysMenu::getMenuCode, "system_config")
+                .last("LIMIT 1"));
+        if (configMenu == null) {
+            configMenu = new SysMenu();
+            configMenu.setParentId(systemMenu.getId());
+            configMenu.setMenuType(2);
+            configMenu.setMenuCode("system_config");
+            configMenu.setMenuName("参数配置");
+            configMenu.setMenuNameEn("System Config");
+            configMenu.setPath("/system/config");
+            configMenu.setComponent("view.system_config");
+            configMenu.setPermission("system:config:list");
+            configMenu.setIcon("mdi:tune");
+            configMenu.setSortOrder(61);
+            configMenu.setVisible(1);
+            configMenu.setStatus(1);
+            menuMapper.insert(configMenu);
+        }
+
+        ensureMenuButton(configMenu.getId(), "system_config_list", "查询", "system:config:list", 1);
+        ensureMenuButton(configMenu.getId(), "system_config_add", "新增", "system:config:add", 2);
+        ensureMenuButton(configMenu.getId(), "system_config_edit", "编辑", "system:config:edit", 3);
+        ensureMenuButton(configMenu.getId(), "system_config_delete", "删除", "system:config:delete", 4);
+
+        assignMenuToAdminRoles(configMenu.getId());
+        // 按钮权限同样授权给管理员角色
+        menuMapper.selectList(new LambdaQueryWrapper<SysMenu>()
+                        .eq(SysMenu::getParentId, configMenu.getId())
+                        .eq(SysMenu::getMenuType, 3))
+                .forEach(button -> assignMenuToAdminRoles(button.getId()));
     }
 
     private void ensureLeaveQuotaTable() {
@@ -1141,6 +1271,8 @@ public class DataInitializer implements CommandLineRunner {
                   chat_type TINYINT NOT NULL,
                   target_id BIGINT NOT NULL,
                   last_read_message_id BIGINT NOT NULL DEFAULT 0,
+                  sticky TINYINT NOT NULL DEFAULT 0 COMMENT '是否置顶：0-否 1-是',
+                  hidden TINYINT NOT NULL DEFAULT 0 COMMENT '是否从会话列表隐藏：0-否 1-是',
                   created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
                   updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                   created_by BIGINT DEFAULT NULL,

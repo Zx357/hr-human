@@ -10,7 +10,7 @@
     </tn-navbar>
 
     <view class="map-section">
-      <!-- 打卡地图:微信小程序端为原生腾讯地图(免 key);H5 端由 manifest.json 的 h5.sdkConfigs.maps.amap 提供高德 key -->
+      <!-- 打卡地图:微信小程序端为原生腾讯地图(免 key);H5 端高德 Key 优先后端「系统管理-参数配置」map.amap.key 下发,本地 config 兜底 -->
       <map
         v-if="!IS_H5 || hasAmapKey"
         class="attendance-map"
@@ -24,7 +24,11 @@
         show-compass
         @click="openCompanyLocation"
       />
-      <!-- H5 端未配置高德 Key 时降级:只显示打卡点半径示意信息(经纬度文字+距离),不展示报错 -->
+      <!-- H5 端高德 Key 拉取中:保持占位不闪现降级卡片,Key 就绪后再渲染地图 -->
+      <view v-else-if="amapKeyLoading" class="map-loading-card">
+        <text>地图加载中...</text>
+      </view>
+      <!-- H5 端后端与本地均未配置高德 Key 时降级:只显示打卡点半径示意信息(经纬度文字+距离),不展示报错 -->
       <view v-else class="map-fallback-card">
         <view class="map-fallback-name">{{ companyName || '未配置打卡点' }}</view>
         <view class="map-fallback-row">
@@ -39,7 +43,7 @@
           <text class="map-fallback-label">允许半径</text>
           <text class="map-fallback-value">{{ rangeDisplay }}</text>
         </view>
-        <view class="map-fallback-tip">未配置高德地图 Key，暂时无法展示地图。可在 manifest.json 的 h5.sdkConfigs.maps.amap 与 config.local.js 中配置后启用。</view>
+        <view class="map-fallback-tip">未配置高德地图 Key，暂时无法展示地图。管理员可在后台「系统管理-参数配置」维护 map.amap.key，或在 config.local.js 中配置兜底后启用。</view>
       </view>
 
       <view class="location-badge" :class="attendanceStatusClass">{{ locationBadgeText }}</view>
@@ -146,6 +150,8 @@
 import { computed, onUnmounted, ref } from 'vue'
 import { onLoad, onPullDownRefresh, onShow, onUnload } from '@dcloudio/uni-app'
 import { clock, getClockInfo } from '@/api/attendance'
+import { ensureAmapRuntimeConfig, isValidAmapKey } from '@/api/config'
+import { toastRequestError } from '@/utils/common'
 import config from '@/config'
 
 const DEFAULT_MAP_POINT = {
@@ -161,11 +167,32 @@ isH5Platform = true
 // #endif
 const IS_H5 = isH5Platform
 
-// 高德地图配置(H5 端 <map> 组件渲染使用;微信小程序端为原生腾讯地图,无需 key)
-const amapConfig = config ? config.amap || {} : {}
-// H5 端是否已配置高德 Key(与 manifest.json 的 h5.sdkConfigs.maps.amap 需同时配置);
-// 脚手架占位符 YOUR_AMAP_KEY 视为未配置,走下方文字降级卡片,避免渲染空白地图
-const hasAmapKey = !!amapConfig.key && !/^your_amap_key$/i.test(String(amapConfig.key).trim())
+// 本地配置的高德 Key 兜底值(config.local.js / config.server.js 的 amap.key;
+// 脚手架占位符 YOUR_AMAP_KEY 视为未配置)
+function resolveLocalAmapKey() {
+  const key = config && config.amap ? String(config.amap.key || '').trim() : ''
+  return isValidAmapKey(key) ? key : ''
+}
+const localAmapKey = resolveLocalAmapKey()
+
+// uni-app H5 端 <map> 组件每次加载高德 SDK 前从 window.__uniConfig 读取
+// aMapKey/aMapSecurityJsCode(manifest.json 未配置时该值为空),这里运行时注入,
+// 本地兜底 Key 在 setup 阶段同步注入,避免地图组件以空 Key 拉起 SDK
+function injectAmapRuntimeConfig(key, securityCode) {
+  if (!IS_H5 || !key) return
+  if (typeof window === 'undefined' || !window.__uniConfig) return
+  window.__uniConfig.aMapKey = key
+  if (securityCode) window.__uniConfig.aMapSecurityJsCode = securityCode
+}
+injectAmapRuntimeConfig(localAmapKey, '')
+
+// 高德 Key(H5 端 <map> 组件渲染开关;微信小程序端为原生腾讯地图,无需 key):
+// 取值优先级 后端「系统管理-参数配置」map.amap.key > 本地 config 的 amapKey > 空(降级文字卡片);
+// 初始先取本地值保证已配置环境首屏直出地图,页面加载后异步拉后端 Key 覆盖
+const amapKey = ref(localAmapKey)
+const hasAmapKey = computed(() => !!amapKey.value)
+// H5 端本地无 Key 时等待后端 Key 拉取中的占位标记(避免闪现"未配置"降级卡片)
+const amapKeyLoading = ref(IS_H5 && !localAmapKey)
 
 const mapLatitude = ref(DEFAULT_MAP_POINT.latitude)
 const mapLongitude = ref(DEFAULT_MAP_POINT.longitude)
@@ -301,6 +328,8 @@ const scheduledOutText = computed(() => scheduledOut.value ? `规定 ${formatClo
 onLoad(() => {
   updateTime()
   timer = setInterval(updateTime, 1000)
+  // 异步拉取后端下发的高德 Key(带缓存),不阻塞页面首屏渲染与考勤信息加载
+  loadAmapKey()
   refreshPage(false)
 })
 
@@ -330,6 +359,21 @@ async function refreshPage(showLocationError = false) {
   updateActiveClockLocation()
   calcDistance()
   refreshMapData()
+}
+
+// H5 端拉取后端下发的高德 Key 与安全密钥(优先生效,注入 __uniConfig 后覆盖本地值);
+// 后端未配置/拉取失败静默走本地配置兜底,后端与本地均无 Key 时维持"无 Key 降级为文字卡片"逻辑不变
+async function loadAmapKey() {
+  if (!IS_H5) return
+  try {
+    const { key, securityCode } = await ensureAmapRuntimeConfig()
+    if (key) {
+      injectAmapRuntimeConfig(key, securityCode)
+      amapKey.value = key
+    }
+  } finally {
+    amapKeyLoading.value = false
+  }
 }
 
 function updateTime() {
@@ -805,8 +849,8 @@ async function doClock(clockType) {
     }
   } catch (error) {
     uni.hideLoading()
-    const message = error && error.message ? error.message : error
-    uni.showToast({ icon: 'none', title: message || '打卡失败' })
+    // request.js 已统一错误提示(带 _toastShown 标志),这里仅兜底无提示场景,避免双 toast
+    toastRequestError(error, '打卡失败')
   } finally {
     clocking.value = false
   }
@@ -970,6 +1014,17 @@ export default {
 .attendance-map {
   width: 100%;
   height: 100%;
+}
+
+/* H5 高德 Key 拉取中的占位卡片 */
+.map-loading-card {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7C8AA0;
+  font-size: 24rpx;
+  background: linear-gradient(135deg, #DDEAF8 0%, #E8F3FC 55%, #E4F5EE 100%);
 }
 
 /* H5 未配置高德 Key 时的打卡点半径示意卡片 */

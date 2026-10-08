@@ -29,16 +29,17 @@ public class MobileSalaryController {
 
     private final PayrollService payrollService;
 
-    /** 我的工资条分页（仅已发放批次） */
+    /** 我的工资条分页（仅已发放批次；month 可选，yyyy-MM，按发放批次月份过滤） */
     @GetMapping("/payslips")
     public Result<Page<SalPayrollPayslip>> myPayslips(
             @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "12") Integer pageSize) {
+            @RequestParam(defaultValue = "12") Integer pageSize,
+            @RequestParam(required = false) String month) {
         Long employeeId = currentEmployeeId();
         if (employeeId == null) {
             return Result.error("未绑定员工档案，无法查看工资条");
         }
-        return Result.success(payrollService.pageMyPayslips(employeeId, pageNum, pageSize));
+        return Result.success(payrollService.pageMyPayslips(employeeId, pageNum, pageSize, month));
     }
 
     /** 工资条详情（本人+已发放），首次查看自动标记已读 */

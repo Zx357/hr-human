@@ -88,6 +88,13 @@
 	        "navigationBarTitleText": "应用消息",
 	        "enablePullDownRefresh": true
 	      }
+	    },
+	    {
+	      "path": "notification",
+	      "style": {
+	        "navigationBarTitleText": "消息中心",
+	        "enablePullDownRefresh": false
+	      }
 	    }]
 	}, {
 	  "root":"momentPages",
@@ -204,7 +211,7 @@
 	      "path": "group",
 	      "style": {
 	        "navigationBarTitleText": "我的群聊",
-	        "enablePullDownRefresh": false
+	        "enablePullDownRefresh": true
 	      }
 	    },
 	    {
@@ -232,6 +239,13 @@
 	      "path": "chat",
 	      "style": {
 	        "navigationBarTitleText": "聊天",
+	        "enablePullDownRefresh": false
+	      }
+	    },
+	    {
+	      "path": "group-info",
+	      "style": {
+	        "navigationBarTitleText": "群信息",
 	        "enablePullDownRefresh": false
 	      }
 	    }]
@@ -269,13 +283,6 @@
 	      "path": "help",
 	      "style": {
 	      "navigationBarTitleText": "帮助中心",
-	      "enablePullDownRefresh": false
-	      }
-	    },
-	    {
-	      "path": "navigation",
-	      "style": {
-	      "navigationBarTitleText": "功能导航",
 	      "enablePullDownRefresh": false
 	      }
 	    },

@@ -23,6 +23,9 @@ public class SalSalaryArchiveItem extends BaseEntity {
     /** 金额 */
     private BigDecimal amount;
 
+    /** 个人覆盖标记：0-方案默认值 1-个人覆盖（换绑方案时保留个人覆盖金额） */
+    private Integer customFlag;
+
     @TableField(exist = false)
     private String itemCode;
 

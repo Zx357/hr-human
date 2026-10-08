@@ -61,6 +61,7 @@ declare module "@elegant-router/types" {
     "salary_payroll": "/salary/payroll";
     "salary_scheme": "/salary/scheme";
     "system": "/system";
+    "system_config": "/system/config";
     "system_dict": "/system/dict";
     "system_feedback": "/system/feedback";
     "system_file-config": "/system/file-config";
@@ -169,6 +170,7 @@ declare module "@elegant-router/types" {
     | "salary_item"
     | "salary_payroll"
     | "salary_scheme"
+    | "system_config"
     | "system_dict"
     | "system_feedback"
     | "system_file-config"

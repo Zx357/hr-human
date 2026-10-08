@@ -49,7 +49,7 @@
       <view v-else class="result-card">
         <view v-for="(item, index) in activeResults" :key="activeTab + '-' + index" class="result-item tn-flex tn-flex-col-center" @click="openResult(item)">
           <view v-if="item.icon" class="result-icon tn-flex tn-flex-row-center tn-flex-col-center">
-            <tn-icon :name="item.icon" class="tn-color-white"></tn-icon>
+            <tn-icon :name="item.icon" class="result-icon__glyph"></tn-icon>
           </view>
           <image v-else class="result-avatar" :src="item.userAvatar" mode="aspectFill" />
           <view class="result-info">
@@ -220,23 +220,20 @@ const tn = (e) => {
 
 /* 胶囊*/
 .tn-custom-nav-bar__back {
-  width: 60%;
-  height: 100%;
-  position: relative;
+  width: 72rpx;
+  height: 52rpx;
+  margin-left: 18rpx;
   display: flex;
-  justify-content: space-evenly;
+  justify-content: center;
   align-items: center;
   box-sizing: border-box;
-  background-color: rgba(0, 0, 0, 0.15);
-  border-radius: 1000rpx;
-  border: 1rpx solid rgba(255, 255, 255, 0.5);
-  color: #ffffff;
-  font-size: 18px;
+  background-color: rgba(29, 37, 65, 0.08);
+  border-radius: 999rpx;
+  color: #1d2541;
+  font-size: 34rpx;
 
   .icon {
     display: block;
-    flex: 1;
-    margin: auto;
     text-align: center;
   }
 }
@@ -278,10 +275,14 @@ const tn = (e) => {
   flex-shrink: 0;
   width: 88rpx;
   height: 88rpx;
-  border-radius: 16rpx;
-  background: linear-gradient(135deg, #4b98fe 0%, #3668fc 100%);
+  border-radius: 20rpx;
+  background: rgba(54, 104, 252, 0.1);
   font-size: 42rpx;
-  color: #fff;
+}
+
+.result-icon__glyph {
+  color: #3668fc;
+  font-size: 42rpx;
 }
 
 .result-desc {
@@ -315,9 +316,9 @@ const tn = (e) => {
 
 .result-card {
   background: #ffffff;
-  border-radius: 20rpx;
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(17, 31, 46, 0.06);
   overflow: hidden;
-  box-shadow: 0 10rpx 30rpx rgba(29, 37, 65, 0.06);
 }
 
 .result-item {

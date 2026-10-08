@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ChatMessagePushService {
 
     private static final String TYPE_CHAT_MESSAGE = "chat_message";
+    private static final String TYPE_CHAT_MESSAGE_RECALL = "chat_message_recall";
     private static final String TYPE_UNREAD_TOTAL = "unread_total";
     private static final int CHAT_TYPE_GROUP = 1;
 
@@ -104,6 +105,45 @@ public class ChatMessagePushService {
         } catch (Exception e) {
             // 推送失败静默：客户端 4 秒轮询仍会兜底拉到该消息
             log.warn("聊天推送失败(降级为轮询): messageId={}, {}", message.getId(), e.getMessage());
+        }
+    }
+
+    /**
+     * 撤回成功后触发（非阻塞）：向会话相关人推送撤回事件
+     * 推送协议：{"type":"chat_message_recall","conversationId":"S123"|"G45","message":{...与 REST 返回一致（含 recalled 标记）}}
+     * 接收人未在线时静默跳过，客户端重新进入会话/拉取历史时同样能拿到撤回状态
+     */
+    public void pushRecallMessage(MobileChatMessage message) {
+        if (message == null || message.getId() == null) {
+            return;
+        }
+        try {
+            pushExecutor.execute(() -> {
+                try {
+                    List<Long> recipients = resolveRecipients(message);
+                    if (recipients.isEmpty()) {
+                        return;
+                    }
+                    Map<String, Object> frame = new LinkedHashMap<>();
+                    frame.put("type", TYPE_CHAT_MESSAGE_RECALL);
+                    frame.put("conversationId", conversationIdOf(message));
+                    frame.put("message", message);
+                    String payload = toJson(frame);
+                    if (payload == null) {
+                        return;
+                    }
+                    for (Long recipientId : recipients) {
+                        if (sessionRegistry.onlineSessionCount(recipientId) <= 0) {
+                            continue;
+                        }
+                        sessionRegistry.sendToEmployee(recipientId, payload);
+                    }
+                } catch (Exception e) {
+                    log.warn("聊天撤回推送失败(降级为轮询): messageId={}, {}", message.getId(), e.getMessage());
+                }
+            });
+        } catch (Exception e) {
+            log.warn("聊天撤回推送任务提交失败(降级为轮询): {}", e.getMessage());
         }
     }
 

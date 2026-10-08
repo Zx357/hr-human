@@ -1,6 +1,7 @@
 package com.kadmin.salary.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.kadmin.salary.domain.SalSalaryArchive;
@@ -15,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -72,6 +75,23 @@ public class SalarySchemeService extends ServiceImpl<SalSalarySchemeMapper, SalS
                 .orderByAsc(SalSchemeItem::getSortOrder));
         fillItemInfo(items);
         return items;
+    }
+
+    /**
+     * 批量按方案分组加载明细（单条 in 查询，替代逐方案 selectList 的 N+1）：
+     * 返回 schemeId -> 明细列表（按 sortOrder 升序），不回填项信息
+     */
+    public Map<Long, List<SalSchemeItem>> listSchemeItemsGroupByScheme(java.util.Collection<Long> schemeIds) {
+        if (schemeIds == null || schemeIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, List<SalSchemeItem>> result = new HashMap<>();
+        for (SalSchemeItem item : schemeItemMapper.selectList(new LambdaQueryWrapper<SalSchemeItem>()
+                .in(SalSchemeItem::getSchemeId, schemeIds)
+                .orderByAsc(SalSchemeItem::getSortOrder))) {
+            result.computeIfAbsent(item.getSchemeId(), k -> new ArrayList<>()).add(item);
+        }
+        return result;
     }
 
     /**
@@ -179,10 +199,22 @@ public class SalarySchemeService extends ServiceImpl<SalSalarySchemeMapper, SalS
         if (schemes == null || schemes.isEmpty()) {
             return;
         }
+        // 单条 GROUP BY 统计各方案明细项数，替代逐方案 selectCount 的 N+1
+        List<Long> schemeIds = schemes.stream().map(SalSalaryScheme::getId).toList();
+        Map<Long, Integer> countByScheme = new HashMap<>();
+        for (Map<String, Object> row : schemeItemMapper.selectMaps(
+                new QueryWrapper<SalSchemeItem>()
+                        .select("scheme_id AS schemeId", "COUNT(*) AS cnt")
+                        .in("scheme_id", schemeIds)
+                        .groupBy("scheme_id"))) {
+            Object schemeId = row.get("schemeId");
+            Object cnt = row.get("cnt");
+            if (schemeId instanceof Number number) {
+                countByScheme.put(number.longValue(), cnt instanceof Number c ? c.intValue() : 0);
+            }
+        }
         for (SalSalaryScheme scheme : schemes) {
-            Long count = schemeItemMapper.selectCount(new LambdaQueryWrapper<SalSchemeItem>()
-                    .eq(SalSchemeItem::getSchemeId, scheme.getId()));
-            scheme.setItemCount(count != null ? count.intValue() : 0);
+            scheme.setItemCount(countByScheme.getOrDefault(scheme.getId(), 0));
         }
     }
 }

@@ -1,11 +1,12 @@
 <script setup lang="tsx">
 import { onMounted, ref, watch } from 'vue';
-import { ElMessage, ElPopconfirm } from 'element-plus';
+import { ElMessage, ElPopconfirm, type TableInstance } from 'element-plus';
 import dayjs from 'dayjs';
 import {
   type SalaryArchiveItem,
   type SalaryArchiveRow,
   type SalaryScheme,
+  batchBindArchive,
   bindArchive,
   fetchArchiveEmployeePage,
   fetchArchiveItems,
@@ -25,6 +26,7 @@ const currentPage = ref(1);
 const pageSize = ref(10);
 const companies = ref<{ id: number; unitName?: string; companyName?: string }[]>([]);
 const departments = ref<{ id: number; unitName: string; children?: unknown[] }[]>([]);
+const tableRef = ref<TableInstance>();
 
 const searchParams = ref({
   companyId: undefined as number | undefined,
@@ -190,6 +192,47 @@ async function handleUnbind(row: SalaryArchiveRow) {
     // 请求层已统一弹错
   }
 }
+
+// ===== 批量绑定方案 =====
+const selectedRows = ref<SalaryArchiveRow[]>([]);
+const batchDialogVisible = ref(false);
+const batchSubmitting = ref(false);
+const batchSchemeId = ref<number | undefined>(undefined);
+
+function handleSelectionChange(rows: SalaryArchiveRow[]) {
+  selectedRows.value = rows;
+}
+
+async function openBatchBindDialog() {
+  if (selectedRows.value.length === 0) return;
+  batchSchemeId.value = undefined;
+  const res = await fetchSchemeEnabled();
+  schemes.value = res.data || [];
+  batchDialogVisible.value = true;
+}
+
+async function submitBatchBind() {
+  if (!batchSchemeId.value) {
+    ElMessage.warning($t('salary.archive.pleaseSelectScheme'));
+    return;
+  }
+  batchSubmitting.value = true;
+  try {
+    await batchBindArchive({
+      employeeIds: selectedRows.value.map(row => row.employeeId),
+      schemeId: batchSchemeId.value
+    });
+    ElMessage.success($t('common.updateSuccess'));
+    batchDialogVisible.value = false;
+    tableRef.value?.clearSelection();
+    selectedRows.value = [];
+    loadData();
+  } catch {
+    // 请求层已统一弹错
+  } finally {
+    batchSubmitting.value = false;
+  }
+}
 </script>
 
 <template>
@@ -253,10 +296,29 @@ async function handleUnbind(row: SalaryArchiveRow) {
 
     <ElCard class="flex-1">
       <template #header>
-        <span>{{ $t('salary.archive.title') }}</span>
+        <div class="flex flex-wrap items-center justify-between gap-12px">
+          <span>{{ $t('salary.archive.title') }}</span>
+          <ElButton
+            v-permission="'sal:archive:manage'"
+            type="primary"
+            :disabled="selectedRows.length === 0"
+            @click="openBatchBindDialog"
+          >
+            <template #icon><icon-ep-connection /></template>
+            {{ selectedRows.length > 0 ? $t('salary.archive.batchBindCount', { count: selectedRows.length }) : $t('salary.archive.batchBind') }}
+          </ElButton>
+        </div>
       </template>
 
-      <ElTable v-loading="loading" :data="data" size="small" border>
+      <ElTable
+        ref="tableRef"
+        v-loading="loading"
+        :data="data"
+        size="small"
+        border
+        @selection-change="handleSelectionChange"
+      >
+        <ElTableColumn type="selection" width="45" align="center" fixed="left" />
         <ElTableColumn prop="employeeNo" :label="$t('common.employeeNo')" width="110" />
         <ElTableColumn prop="employeeName" :label="$t('common.employeeName')" width="100" />
         <ElTableColumn prop="deptName" :label="$t('common.department')" min-width="130" show-overflow-tooltip />
@@ -350,6 +412,37 @@ async function handleUnbind(row: SalaryArchiveRow) {
       <template #footer>
         <ElButton @click="bindDialogVisible = false">{{ $t('common.cancel') }}</ElButton>
         <ElButton type="primary" :loading="bindSubmitting" @click="submitBind">{{ $t('common.ok') }}</ElButton>
+      </template>
+    </ElDialog>
+
+    <!-- 批量绑定方案 -->
+    <ElDialog
+      v-model="batchDialogVisible"
+      :title="$t('salary.archive.batchBindDialogTitle')"
+      width="460px"
+      destroy-on-close
+      :close-on-click-modal="false"
+    >
+      <ElAlert
+        :title="$t('salary.archive.batchBindTip', { count: selectedRows.length })"
+        type="info"
+        :closable="false"
+        class="mb-12px"
+      />
+      <ElForm label-width="100px">
+        <ElFormItem :label="$t('salary.archive.scheme')" required>
+          <ElSelect
+            v-model="batchSchemeId"
+            :placeholder="$t('salary.archive.pleaseSelectScheme')"
+            style="width: 100%"
+          >
+            <ElOption v-for="s in schemes" :key="s.id" :label="s.schemeName" :value="s.id!" />
+          </ElSelect>
+        </ElFormItem>
+      </ElForm>
+      <template #footer>
+        <ElButton @click="batchDialogVisible = false">{{ $t('common.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="batchSubmitting" @click="submitBatchBind">{{ $t('common.ok') }}</ElButton>
       </template>
     </ElDialog>
 

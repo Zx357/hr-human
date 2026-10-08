@@ -27,15 +27,69 @@
       </view>
 
       <view class="info-list">
-        <view v-for="item in profileRows" :key="item.label" class="info-row" @click="readonlyTip">
+        <view v-for="item in profileRows" :key="item.label" class="info-row" @click="item.action || readonlyTip">
           <view class="info-main">
             <view class="row-label">{{ item.label }}</view>
             <view class="row-value">{{ item.value }}</view>
           </view>
+          <view v-if="item.action" class="row-edit" @click.stop="item.action">修改</view>
           <tn-icon name="right" class="row-arrow"></tn-icon>
         </view>
       </view>
     </scroll-view>
+
+    <!-- 修改手机号弹窗:新手机号 + 当前登录密码 -->
+    <view v-if="phoneDialogVisible" class="phone-mask" @click="closePhoneDialog">
+      <view class="phone-panel" @click.stop>
+        <view class="phone-title">修改绑定手机号</view>
+        <view class="phone-field">
+          <text class="phone-label">新手机号</text>
+          <input
+            v-model="phoneForm.phone"
+            class="phone-input"
+            type="text"
+            maxlength="11"
+            placeholder="请输入新手机号"
+            placeholder-class="phone-placeholder"
+          />
+        </view>
+        <view class="phone-field">
+          <text class="phone-label">登录密码</text>
+          <input
+            v-model="phoneForm.password"
+            class="phone-input"
+            :password="true"
+            maxlength="32"
+            placeholder="请输入当前登录密码"
+            placeholder-class="phone-placeholder"
+          />
+        </view>
+        <view class="phone-actions">
+          <tn-button
+            shape="round"
+            bg-color="#F1F3F7"
+            text-color="#657189"
+            :font-size="26"
+            :custom-style="{ padding: '16rpx 0', flex: 1 }"
+            @click="closePhoneDialog"
+          >
+            取消
+          </tn-button>
+          <tn-button
+            shape="round"
+            bg-color="#3668FC"
+            text-color="#FFFFFF"
+            :font-size="26"
+            :loading="phoneSubmitting"
+            :disabled="phoneSubmitting"
+            :custom-style="{ padding: '16rpx 0', flex: 1, marginLeft: '20rpx' }"
+            @click="submitPhoneChange"
+          >
+            确定
+          </tn-button>
+        </view>
+      </view>
+    </view>
 
     <view class="footer-actions">
       <tn-button
@@ -68,11 +122,11 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useStore } from 'vuex'
 import { onShow } from '@dcloudio/uni-app'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
-import { uploadEmployeeAvatar } from '@/api/employee'
+import { uploadEmployeeAvatar, updateMyPhone } from '@/api/employee'
 import { toastRequestError } from '@/utils/common'
 
 const { vuex_custom_bar_height } = useCustomBarHeight()
@@ -84,7 +138,8 @@ const displayName = computed(() => pick(employee.value.name, store.state.user.na
 const avatarUrl = computed(() => pick(store.state.user.avatar, employee.value.avatar, ''))
 
 const profileRows = computed(() => [
-  { label: '绑定手机号', value: pick(employee.value.phone, '未填写') },
+  // 手机号是唯一开放自助修改的字段,带"修改"入口
+  { label: '绑定手机号', value: pick(employee.value.phone, '未填写'), action: openPhoneDialog },
   { label: '姓名', value: pick(employee.value.name, '未填写') },
   { label: '性别', value: formatGender(employee.value.gender) },
   { label: '生日', value: formatDate(employee.value.birthDate) },
@@ -164,6 +219,51 @@ function formatGender(value) {
 
 function readonlyTip() {
   uni.showToast({ title: '员工档案信息请在后台维护', icon: 'none' })
+}
+
+// ===== 自助修改手机号(个人信息中唯一可编辑字段) =====
+
+const phoneDialogVisible = ref(false)
+const phoneSubmitting = ref(false)
+const phoneForm = reactive({
+  phone: '',
+  password: ''
+})
+
+function openPhoneDialog() {
+  phoneForm.phone = ''
+  phoneForm.password = ''
+  phoneDialogVisible.value = true
+}
+
+function closePhoneDialog() {
+  if (phoneSubmitting.value) return
+  phoneDialogVisible.value = false
+}
+
+async function submitPhoneChange() {
+  const phone = phoneForm.phone.trim()
+  if (!/^1[3-9]\d{9}$/.test(phone)) {
+    uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
+    return
+  }
+  if (!phoneForm.password) {
+    uni.showToast({ title: '请输入当前登录密码', icon: 'none' })
+    return
+  }
+  if (phoneSubmitting.value) return
+  phoneSubmitting.value = true
+  try {
+    await updateMyPhone(phone, phoneForm.password)
+    phoneDialogVisible.value = false
+    uni.showToast({ title: '手机号已更新', icon: 'success' })
+    // 成功后刷新员工资料,更新本地显示
+    store.dispatch('GetInfo')
+  } catch (error) {
+    toastRequestError(error, '修改失败')
+  } finally {
+    phoneSubmitting.value = false
+  }
 }
 
 function handleLogout() {
@@ -276,8 +376,8 @@ function handleLogout() {
 }
 
 .avatar-fallback {
-  color: #fff;
-  background: linear-gradient(135deg, #8eb0d8, #b7c7d9);
+  color: #3668fc;
+  background: #eef1f7;
   font-size: 36rpx;
   font-weight: 800;
   display: flex;
@@ -311,6 +411,78 @@ function handleLogout() {
   margin-left: 20rpx;
   color: #8ca0b3;
   font-size: 32rpx;
+}
+
+/* 手机号行"修改"入口 */
+.row-edit {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  padding: 6rpx 22rpx;
+  border-radius: 999rpx;
+  background: rgba(54, 104, 252, 0.1);
+  color: #3668fc;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+/* 修改手机号弹窗 */
+.phone-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.phone-panel {
+  width: calc(100% - 96rpx);
+  max-width: 560px;
+  padding: 36rpx 32rpx 28rpx;
+  border-radius: 24rpx;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.phone-title {
+  color: #1d2541;
+  font-size: 32rpx;
+  font-weight: 800;
+  text-align: center;
+}
+
+.phone-field {
+  display: flex;
+  align-items: center;
+  margin-top: 28rpx;
+  padding: 0 24rpx;
+  height: 92rpx;
+  border-radius: 16rpx;
+  background: #f7f8fa;
+  border: 1rpx solid rgba(17, 31, 46, 0.06);
+}
+
+.phone-label {
+  flex-shrink: 0;
+  width: 140rpx;
+  color: #657189;
+  font-size: 26rpx;
+}
+
+.phone-input {
+  flex: 1;
+  height: 100%;
+  font-size: 28rpx;
+}
+
+.phone-placeholder {
+  color: #c4cbd4;
+}
+
+.phone-actions {
+  display: flex;
+  margin-top: 36rpx;
 }
 
 .footer-actions {

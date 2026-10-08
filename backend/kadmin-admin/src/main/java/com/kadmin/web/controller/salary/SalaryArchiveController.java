@@ -67,6 +67,27 @@ public class SalaryArchiveController {
                 (String) body.get("remark")));
     }
 
+    /**
+     * 批量绑定/换绑方案，body = {employeeIds:[Long], schemeId:Long, effectiveDate?, remark?}
+     * 单事务内整体成功或回滚，返回成功换绑的档案数
+     */
+    @RequiresPermission("sal:archive:manage")
+    @PostMapping("/batch-bind")
+    public Result<Integer> batchBind(@RequestBody Map<String, Object> body) {
+        Long schemeId = longOf(body.get("schemeId"));
+        if (schemeId == null) {
+            return Result.error("参数错误：方案必填");
+        }
+        List<Long> employeeIds = longListOf(body.get("employeeIds"));
+        if (employeeIds.isEmpty()) {
+            return Result.error("参数错误：请选择员工");
+        }
+        LocalDate effectiveDate = body.get("effectiveDate") != null
+                ? LocalDate.parse(String.valueOf(body.get("effectiveDate"))) : null;
+        return Result.success(archiveService.batchBindArchives(employeeIds, schemeId, effectiveDate,
+                (String) body.get("remark")).size());
+    }
+
     /** 更新固定项金额，body = [{itemId, amount}] */
     @RequiresPermission("sal:archive:manage")
     @PostMapping("/{archiveId}/items")
@@ -86,5 +107,15 @@ public class SalaryArchiveController {
 
     private Long longOf(Object value) {
         return value instanceof Number number ? number.longValue() : null;
+    }
+
+    private List<Long> longListOf(Object value) {
+        if (!(value instanceof List<?> list)) {
+            return List.of();
+        }
+        return list.stream()
+                .filter(item -> item instanceof Number)
+                .map(item -> ((Number) item).longValue())
+                .toList();
     }
 }

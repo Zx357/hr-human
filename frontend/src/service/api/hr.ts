@@ -85,6 +85,23 @@ export function deleteEmployee(id: number) {
   });
 }
 
+/** 批量删除员工（事务内执行，失败整体回滚） */
+export function deleteEmployees(ids: number[]) {
+  return request<boolean>({
+    url: '/employee/batch',
+    method: 'delete',
+    data: ids
+  });
+}
+
+/** 获取当前登录用户关联的员工信息（个人中心头像/工号用） */
+export function fetchCurrentEmployee() {
+  return request<Api.Hr.Employee>({
+    url: '/employee/current',
+    method: 'get'
+  });
+}
+
 /** 检查工号是否存在 */
 export function checkEmployeeNo(employeeNo: string, excludeId?: number) {
   return request<boolean>({

@@ -1,5 +1,5 @@
 <script setup lang="tsx">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { ElMessage, ElPopconfirm } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import type { TagType } from '@/constants/common';
@@ -10,6 +10,13 @@ defineOptions({ name: 'SalaryItem' });
 
 const loading = ref(false);
 const data = ref<SalaryItemDef[]>([]);
+/** 启用状态筛选（客户端过滤） */
+const enabledFilter = ref<number | undefined>(undefined);
+
+const filteredData = computed(() => {
+  if (enabledFilter.value === undefined) return data.value;
+  return data.value.filter(item => item.enabled === enabledFilter.value);
+});
 
 const directionOptions = [
   { value: 1, label: () => $t('salary.common.income') },
@@ -19,7 +26,9 @@ const valueTypeOptions = [
   { value: 1, label: () => $t('salary.common.valueTypeFixed') },
   { value: 2, label: () => $t('salary.common.valueTypeRatio') },
   { value: 3, label: () => $t('salary.common.valueTypeAttendance') },
-  { value: 4, label: () => $t('salary.common.valueTypeManual') }
+  { value: 4, label: () => $t('salary.common.valueTypeManual') },
+  // 公式引擎后端为占位实现，暂不开放
+  { value: 5, label: () => $t('salary.common.valueTypeFormulaDisabled'), disabled: true }
 ];
 const attRuleOptions = [
   { value: 'LATE_TIMES', label: () => $t('salary.item.ruleLateTimes') },
@@ -132,6 +141,15 @@ async function handleDelete(id?: number) {
         <div class="flex flex-wrap items-center justify-between gap-12px">
           <span>{{ $t('salary.item.title') }}</span>
           <div class="flex flex-wrap items-center gap-8px">
+            <ElSelect
+              v-model="enabledFilter"
+              :placeholder="$t('salary.item.enabledFilter')"
+              clearable
+              style="width: 120px"
+            >
+              <ElOption :label="$t('salary.common.enabled')" :value="1" />
+              <ElOption :label="$t('salary.common.disabled')" :value="0" />
+            </ElSelect>
             <ElButton @click="loadData">
               <template #icon><icon-ep-refresh /></template>
               {{ $t('common.refresh') }}
@@ -144,7 +162,7 @@ async function handleDelete(id?: number) {
         </div>
       </template>
 
-      <ElTable v-loading="loading" :data="data" size="small" border>
+      <ElTable v-loading="loading" :data="filteredData" size="small" border>
         <ElTableColumn prop="sortOrder" :label="$t('salary.common.sortOrder')" width="70" align="center" />
         <ElTableColumn prop="itemName" :label="$t('salary.item.itemName')" min-width="120" />
         <ElTableColumn prop="itemCode" :label="$t('salary.item.itemCode')" min-width="140" />
@@ -232,6 +250,7 @@ async function handleDelete(id?: number) {
               :key="option.value"
               :label="option.label()"
               :value="option.value"
+              :disabled="!!option.disabled"
             />
           </ElSelect>
         </ElFormItem>

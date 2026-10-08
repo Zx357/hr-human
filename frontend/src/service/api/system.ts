@@ -138,6 +138,15 @@ export function fetchGetUserById(id: number) {
   });
 }
 
+// 当前登录用户自助更新资料（不动角色/状态）
+export function updateUserProfile(data: { name?: string; phone?: string; avatar?: string }) {
+  return request<null>({
+    url: '/system/user/profile',
+    method: 'put',
+    data
+  });
+}
+
 /** 角色管理API */
 
 // 获取所有启用的角色列表
@@ -215,8 +224,8 @@ export function fetchFeedbackPage(params: Record<string, unknown>) {
   });
 }
 
-export function replyFeedback(data: { id: number; replyContent: string; status?: number }) {
-  return request<boolean>({ url: '/system/feedback/reply', method: 'put', data });
+export function replyFeedback(id: number, data: { replyContent: string; status?: number }) {
+  return request<boolean>({ url: `/system/feedback/${id}/reply`, method: 'put', data });
 }
 
 // ==================== 移动端菜单 ====================

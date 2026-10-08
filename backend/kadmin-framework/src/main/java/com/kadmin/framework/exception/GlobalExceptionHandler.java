@@ -121,11 +121,13 @@ public class GlobalExceptionHandler {
 
     /**
      * 处理非法参数异常（业务校验不通过）
+     * HTTP 状态码返回 400，body 保持统一 Result 结构（code="400"，message 为原始校验消息）
      */
     @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Result<Void> handleIllegalArgumentException(IllegalArgumentException e, HttpServletRequest request) {
         log.warn("业务校验失败: {} - {}", request.getRequestURI(), e.getMessage());
-        return Result.error(e.getMessage());
+        return Result.error("400", e.getMessage());
     }
 
     /**

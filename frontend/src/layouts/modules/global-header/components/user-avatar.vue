@@ -49,7 +49,8 @@ function logout() {
       type: 'warning'
     })
     .then(() => {
-      authStore.resetStore();
+      // 先通知后端登出（忽略失败），再清理本地 token 并跳转登录页
+      authStore.logout();
     });
 }
 

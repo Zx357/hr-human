@@ -9,7 +9,9 @@
       </view>
 
       <!-- 快捷入口 -->
-      <view class="section-title">快捷入口</view>
+      <view class="section-title-wrap">
+        <view class="section-title">快捷入口</view>
+      </view>
       <view class="quick-grid">
         <view v-for="item in shortcutList" :key="item.title" class="quick-item" @click="tn(item.url)">
           <view class="quick-chip" :style="{ backgroundColor: hexToBg(item.chipColor) }">
@@ -23,10 +25,25 @@
       </view>
 
       <!-- 消息动态 -->
-      <view class="section-title">消息动态</view>
-      <!-- 首屏加载中 -->
-      <view v-if="homeLoading && !messageList.length" class="msg-card">
-        <view class="msg-empty">加载中...</view>
+      <view class="section-title-wrap">
+        <view class="section-title">消息动态</view>
+        <view class="section-more" @click="tn('/homePages/notification')">
+          <text>查看全部</text>
+          <tn-icon name="right" class="section-more__icon"></tn-icon>
+        </view>
+      </view>
+      <!-- 首屏加载中:骨架屏(统计块 + 消息条占位) -->
+      <view v-if="homeLoading && !messageList.length" class="msg-card sk-card">
+        <view class="sk-stat-row">
+          <view v-for="n in 4" :key="'stat-' + n" class="sk-stat-block"></view>
+        </view>
+        <view v-for="n in 3" :key="'row-' + n" class="sk-msg-row">
+          <view class="sk-chip"></view>
+          <view class="sk-msg-main">
+            <view class="sk-bar sk-bar--40"></view>
+            <view class="sk-bar sk-bar--80"></view>
+          </view>
+        </view>
       </view>
 
       <!-- 全部接口加载失败:提示 + 重试 -->
@@ -65,7 +82,8 @@
 <script setup>
   import { computed, onMounted, onUnmounted, ref } from 'vue'
   import { useStore } from 'vuex'
-  import { getHomeStats, getHomeMessages, getNotificationTop, getNotificationUnreadCount, markAllNotificationsRead } from '@/api/home'
+  import { getHomeStats, getHomeMessages, getNotificationTop } from '@/api/home'
+  import { getNotificationUnreadCount } from '@/api/notification'
   import { getMomentMessages } from '@/api/moment'
   import { getUnreadTotal } from '@/api/chat'
   import { getNoticeList } from '@/api/system/notice'
@@ -101,8 +119,12 @@
   // 时光互动未读角标:后端 unreadCount 即点赞+评论合计,直接使用,避免重复累加导致角标翻倍
   const momentBadgeCount = computed(() => Number(momentSummary.value.unreadCount || 0))
 
-  // 聊天未读总数(会话列表角标),进入会话/标记已读后由后端清零
-  const chatUnreadCount = computed(() => Number(store.state.unreadBadge?.chatUnread || 0))
+  // 站内通知未读角标:优先 /mobile/notifications/unread-count 专用接口,
+  // 未返回时兜底 MobileHomeController stats 的 unreadNotifications 字段
+  const notificationBadgeCount = computed(() => {
+    if (notificationUnread.value > 0) return notificationUnread.value
+    return Number(stats.value.unreadNotifications || 0)
+  })
 
   const hexToBg = (hex, alpha = 0.12) => {
     const v = String(hex || '#4B98FE').replace('#', '')
@@ -116,10 +138,10 @@
   const shortcutList = computed(() => [
     {
       title: '消息',
-      icon: 'chat',
+      icon: 'notice-fill',
       chipColor: shortcutColors[0],
-      badge: formatBadge(chatUnreadCount.value),
-      url: '/homePages/chat'
+      badge: formatBadge(notificationBadgeCount.value),
+      url: '/homePages/notification'
     },
     {
       title: '互动',
@@ -146,10 +168,31 @@
       title: '系统',
       icon: 'notice-fill',
       chipColor: shortcutColors[0],
-      badge: formatBadge(stats.value.noticeCount ?? 0),
+      badge: formatBadge(notificationBadgeCount.value),
       url: '/homePages/notice'
     }
   ])
+
+  // 站内通知类型 -> 图标/颜色(显式映射,未知类型给默认图标,替代旧的 Number(type==='xxx') 写法)
+  const NOTIFICATION_TYPE_MAP = {
+    approval_result: { icon: 'ticket-fill', passColor: '#00C8B0', failColor: '#FB6A67' },
+    approval_todo: { icon: 'flag-fill', color: '#4B98FE' },
+    reminder: { icon: 'clock-fill', color: '#FFAC00' },
+    contract: { icon: 'clock-fill', color: '#FFAC00' },
+    probation: { icon: 'clock-fill', color: '#FFAC00' },
+    certificate: { icon: 'clock-fill', color: '#FFAC00' }
+  }
+  const DEFAULT_NOTIFICATION_META = { icon: 'notice-fill', color: '#4B98FE' }
+
+  const notificationMetaOf = (item) => {
+    const meta = NOTIFICATION_TYPE_MAP[item.type]
+    if (!meta) return DEFAULT_NOTIFICATION_META
+    if (item.type === 'approval_result') {
+      // 审批结果按标题区分通过/驳回颜色
+      return { icon: meta.icon, color: item.title === '审批通过' ? meta.passColor : meta.failColor }
+    }
+    return meta
+  }
 
   const messageList = computed(() => {
     // 站内通知(审批结果/待审批/到期提醒)优先展示
@@ -158,8 +201,8 @@
       title: item.title || '消息提醒',
       desc: item.content || '暂无内容',
       time: formatDate(item.createdTime),
-      color: item.readFlag ? '#9AA4B2' : Number(item.type === 'approval_result') ? (item.title === '审批通过' ? '#00C8B0' : '#FB6A67') : '#4B98FE',
-      icon: ['contract', 'probation', 'certificate'].includes(item.type) ? 'clock-fill' : item.type === 'approval_todo' ? 'flag-fill' : 'ticket-fill',
+      color: item.readFlag ? '#9AA4B2' : notificationMetaOf(item).color,
+      icon: notificationMetaOf(item).icon,
       badge: '',
       url: item.url || '/homePages/pending'
     }))
@@ -331,8 +374,14 @@
   }
 
   /* 分组标题 */
-  .section-title {
+  .section-title-wrap {
     margin: 28rpx 4rpx 16rpx;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .section-title {
     font-size: 28rpx;
     font-weight: 600;
     color: #1d2541;
@@ -347,6 +396,19 @@
     border-radius: 3rpx;
     background: #3668FC;
     margin-right: 12rpx;
+  }
+
+  /* 分组标题右侧"查看全部"入口 */
+  .section-more {
+    display: flex;
+    align-items: center;
+    color: #9aa4b2;
+    font-size: 24rpx;
+  }
+
+  .section-more__icon {
+    margin-left: 4rpx;
+    font-size: 22rpx;
   }
 
   /* 快捷入口 */
@@ -471,6 +533,82 @@
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 1;
     overflow: hidden;
+  }
+
+  /* 骨架屏 shimmer 动画(纯 view+scss,无额外依赖) */
+  @keyframes sk-shimmer {
+    0% {
+      background-position: -400rpx 0;
+    }
+    100% {
+      background-position: 400rpx 0;
+    }
+  }
+
+  .sk-card {
+    padding: 28rpx;
+  }
+
+  .sk-stat-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 28rpx;
+  }
+
+  .sk-stat-block {
+    width: 140rpx;
+    height: 96rpx;
+    border-radius: 14rpx;
+    background: linear-gradient(90deg, #eff1f5 25%, #f7f8fa 37%, #eff1f5 63%);
+    background-size: 400rpx 100%;
+    animation: sk-shimmer 1.4s ease infinite;
+  }
+
+  .sk-msg-row {
+    display: flex;
+    align-items: center;
+    padding: 20rpx 0;
+    border-bottom: 1rpx solid #f3f2f7;
+  }
+
+  .sk-msg-row:last-child {
+    border-bottom: none;
+  }
+
+  .sk-chip {
+    flex-shrink: 0;
+    width: 76rpx;
+    height: 76rpx;
+    border-radius: 20rpx;
+    background: linear-gradient(90deg, #eff1f5 25%, #f7f8fa 37%, #eff1f5 63%);
+    background-size: 400rpx 100%;
+    animation: sk-shimmer 1.4s ease infinite;
+  }
+
+  .sk-msg-main {
+    flex: 1;
+    min-width: 0;
+    margin-left: 20rpx;
+  }
+
+  .sk-bar {
+    height: 24rpx;
+    border-radius: 12rpx;
+    background: linear-gradient(90deg, #eff1f5 25%, #f7f8fa 37%, #eff1f5 63%);
+    background-size: 400rpx 100%;
+    animation: sk-shimmer 1.4s ease infinite;
+  }
+
+  .sk-bar + .sk-bar {
+    margin-top: 14rpx;
+  }
+
+  .sk-bar--40 {
+    width: 40%;
+  }
+
+  .sk-bar--80 {
+    width: 80%;
   }
 
   .tn-tabbar-height {

@@ -1,6 +1,6 @@
 <script setup lang="tsx">
 import { onMounted, ref } from 'vue';
-import { ElMessage, type FormInstance, type FormRules, type UploadProps } from 'element-plus';
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type TableInstance, type UploadProps } from 'element-plus';
 import dayjs from 'dayjs';
 import { Plus } from '@element-plus/icons-vue';
 import { REG_EMAIL, REG_ID_CARD, REG_PHONE } from '@/constants/reg';
@@ -9,6 +9,7 @@ import {
   checkEmployeeNo,
   createEmployee,
   deleteEmployee,
+  deleteEmployees,
   fetchEmployeeById,
   fetchEmployeePage,
   generateEmployeeNo,
@@ -348,6 +349,39 @@ async function handleDelete(id: number) {
   } catch {
     // 请求层已统一弹错
   }
+}
+
+// ===== 批量删除 =====
+const tableRef = ref<TableInstance>();
+const selectedRows = ref<Api.Hr.Employee[]>([]);
+const batchDeleting = ref(false);
+
+function handleSelectionChange(rows: Api.Hr.Employee[]) {
+  selectedRows.value = rows;
+}
+
+function handleBatchDelete() {
+  if (selectedRows.value.length === 0) return;
+  ElMessageBox.confirm($t('hr.employee.confirmBatchDelete', { count: selectedRows.value.length }), $t('common.tip'), {
+    type: 'warning'
+  })
+    .then(async () => {
+      batchDeleting.value = true;
+      try {
+        await deleteEmployees(selectedRows.value.map(row => row.id!));
+        ElMessage.success($t('common.deleteSuccess'));
+        tableRef.value?.clearSelection();
+        selectedRows.value = [];
+        loadData();
+      } catch {
+        // 请求层已统一弹错
+      } finally {
+        batchDeleting.value = false;
+      }
+    })
+    .catch(() => {
+      // 取消删除
+    });
 }
 function handleSearch() {
   currentPage.value = 1;
@@ -724,6 +758,16 @@ const statusMap: Record<number, { label: string; type: TagType }> = {
         <div class="flex items-center justify-between">
           <span>{{ $t('common.employeeList') }}</span>
           <div class="flex items-center gap-8px">
+            <ElButton
+              v-permission="'hr:employee:delete'"
+              type="danger"
+              :disabled="selectedRows.length === 0"
+              :loading="batchDeleting"
+              @click="handleBatchDelete"
+            >
+              <template #icon><icon-ep-delete /></template>
+              {{ selectedRows.length > 0 ? $t('common.batchDeleteCount', { count: selectedRows.length }) : $t('common.batchDelete') }}
+            </ElButton>
             <ElButton v-permission="'hr:employee:export'" :loading="exporting" @click="handleExport">
               <template #icon><icon-ep-download /></template>
               {{ $t('common.export') }}
@@ -748,7 +792,17 @@ const statusMap: Record<number, { label: string; type: TagType }> = {
         </div>
       </template>
       <div class="table-wrapper">
-        <ElTable v-loading="loading" :data="data" border stripe :size="density" height="100%">
+        <ElTable
+          ref="tableRef"
+          v-loading="loading"
+          :data="data"
+          border
+          stripe
+          :size="density"
+          height="100%"
+          @selection-change="handleSelectionChange"
+        >
+          <ElTableColumn type="selection" width="45" align="center" fixed="left" />
           <ElTableColumn type="index" :label="$t('common.index2')" width="60" align="center" fixed="left" />
           <ElTableColumn
             v-if="isColumnVisible('employeeNo')"

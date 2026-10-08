@@ -36,4 +36,16 @@ public class SalPayrollBatch extends BaseEntity {
 
     @TableField(exist = false)
     private String companyName;
+
+    /** 批次统计（分页返回时批量回填）：工资条总数 */
+    @TableField(exist = false)
+    private Integer total;
+
+    /** 已读人数 */
+    @TableField(exist = false)
+    private Integer readCount;
+
+    /** 已确认人数 */
+    @TableField(exist = false)
+    private Integer confirmCount;
 }

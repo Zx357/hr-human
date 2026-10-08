@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -66,6 +67,8 @@ public class SalaryArchiveService extends ServiceImpl<SalSalaryArchiveMapper, Sa
                 : list(new LambdaQueryWrapper<SalSalaryArchive>()
                         .in(SalSalaryArchive::getEmployeeId, employeeIds)).stream()
                         .collect(Collectors.toMap(SalSalaryArchive::getEmployeeId, Function.identity(), (a, b) -> a));
+        // 批量预载部门与上级公司（单次/少量 in 查询，替代逐员工查部门名的 N+1）
+        Map<Long, OrgUnit> orgCache = preloadOrgChain(employeePage.getRecords());
         // 过滤"仅看已建档"
         List<Map<String, Object>> rows = new ArrayList<>();
         Map<Long, String> schemeNames = loadSchemeNames(archiveMap.values());
@@ -78,7 +81,9 @@ public class SalaryArchiveService extends ServiceImpl<SalSalaryArchiveMapper, Sa
             row.put("employeeId", employee.getId());
             row.put("employeeNo", employee.getEmployeeNo());
             row.put("employeeName", employee.getName());
-            row.put("deptName", deptNameOf(employee.getDeptId()));
+            OrgUnit deptUnit = employee.getDeptId() == null ? null : orgCache.get(employee.getDeptId());
+            row.put("deptName", deptUnit != null ? deptUnit.getUnitName() : null);
+            row.put("companyName", resolveCompanyName(deptUnit, orgCache));
             row.put("archiveId", archive != null ? archive.getId() : null);
             row.put("schemeId", archive != null ? archive.getSchemeId() : null);
             row.put("schemeName", archive != null ? schemeNames.get(archive.getSchemeId()) : null);
@@ -126,10 +131,46 @@ public class SalaryArchiveService extends ServiceImpl<SalSalaryArchiveMapper, Sa
     }
 
     /**
-     * 按方案展开固定项明细（覆盖既有明细）
+     * 批量绑定/换绑方案：给多个员工换绑同一方案（复用单员工换绑逻辑，单事务内整体成功或回滚）
+     *
+     * @return 成功换绑的档案列表
+     */
+    @Transactional
+    public List<SalSalaryArchive> batchBindArchives(List<Long> employeeIds, Long schemeId,
+            LocalDate effectiveDate, String remark) {
+        if (employeeIds == null || employeeIds.isEmpty()) {
+            throw new IllegalArgumentException("请选择要绑定的员工");
+        }
+        if (schemeId == null) {
+            throw new IllegalArgumentException("请选择薪资方案");
+        }
+        // 先校验方案有效性，避免逐员工重复查询
+        SalSalaryScheme scheme = schemeService.getById(schemeId);
+        if (scheme == null || scheme.getEnabled() == null || scheme.getEnabled() != 1) {
+            throw new IllegalArgumentException("薪资方案不存在或未启用");
+        }
+        List<SalSalaryArchive> result = new ArrayList<>();
+        for (Long employeeId : employeeIds.stream().filter(Objects::nonNull).distinct().toList()) {
+            result.add(bindArchive(employeeId, schemeId, effectiveDate, remark));
+        }
+        return result;
+    }
+
+    /**
+     * 按方案展开固定项明细（先删后插覆盖既有明细）：
+     * 换绑方案时保留旧档案中带个人覆盖标记（custom_flag=1）且新方案仍包含的薪资项金额，
+     * 其余项取新方案默认值，避免换绑清空个人定薪
      */
     @Transactional
     public void expandArchiveItems(Long archiveId, Long schemeId) {
+        // 旧明细中的个人覆盖值（custom_flag=1），换绑后同薪资项保留
+        Map<Long, SalSalaryArchiveItem> overriddenItems = archiveItemMapper.selectList(
+                        new LambdaQueryWrapper<SalSalaryArchiveItem>()
+                                .eq(SalSalaryArchiveItem::getArchiveId, archiveId))
+                .stream()
+                .filter(item -> item.getCustomFlag() != null && item.getCustomFlag() == 1)
+                .collect(Collectors.toMap(SalSalaryArchiveItem::getItemId, Function.identity(), (a, b) -> a));
+
         archiveItemMapper.delete(new LambdaQueryWrapper<SalSalaryArchiveItem>()
                 .eq(SalSalaryArchiveItem::getArchiveId, archiveId));
         List<SalSchemeItem> schemeItems = schemeItemMapper.selectList(new LambdaQueryWrapper<SalSchemeItem>()
@@ -150,7 +191,16 @@ public class SalaryArchiveService extends ServiceImpl<SalSalaryArchiveMapper, Sa
             SalSalaryArchiveItem archiveItem = new SalSalaryArchiveItem();
             archiveItem.setArchiveId(archiveId);
             archiveItem.setItemId(schemeItem.getItemId());
-            archiveItem.setAmount(schemeItem.getDefaultAmount() != null ? schemeItem.getDefaultAmount() : BigDecimal.ZERO);
+            SalSalaryArchiveItem overridden = overriddenItems.get(schemeItem.getItemId());
+            if (overridden != null) {
+                // 个人覆盖值优先于新方案默认值，覆盖标记一并保留
+                archiveItem.setAmount(overridden.getAmount() != null ? overridden.getAmount() : BigDecimal.ZERO);
+                archiveItem.setCustomFlag(1);
+            } else {
+                archiveItem.setAmount(schemeItem.getDefaultAmount() != null ? schemeItem.getDefaultAmount()
+                        : BigDecimal.ZERO);
+                archiveItem.setCustomFlag(0);
+            }
             archiveItemMapper.insert(archiveItem);
         }
     }
@@ -177,7 +227,7 @@ public class SalaryArchiveService extends ServiceImpl<SalSalaryArchiveMapper, Sa
     }
 
     /**
-     * 更新固定项金额（个人覆盖方案默认值）
+     * 更新固定项金额（个人覆盖方案默认值，更新后打上个人覆盖标记）
      */
     @Transactional
     public void updateArchiveItems(Long archiveId, List<SalSalaryArchiveItem> inputs) {
@@ -198,6 +248,8 @@ public class SalaryArchiveService extends ServiceImpl<SalSalaryArchiveMapper, Sa
                 throw new IllegalArgumentException("明细项不属于该档案，请重新按方案展开");
             }
             current.setAmount(input.getAmount());
+            // 个人覆盖标记：换绑方案时保留该金额
+            current.setCustomFlag(1);
             archiveItemMapper.updateById(current);
         }
     }
@@ -227,11 +279,50 @@ public class SalaryArchiveService extends ServiceImpl<SalSalaryArchiveMapper, Sa
         return childIds != null && !childIds.isEmpty() ? childIds : List.of(orgId);
     }
 
-    private String deptNameOf(Long deptId) {
-        if (deptId == null) {
+    /**
+     * 批量预载员工部门及其上级组织链（公司归属逐级向上）：
+     * 先一次 in 查所有部门，再把缺失的父节点循环补齐，循环内纯内存
+     */
+    private Map<Long, OrgUnit> preloadOrgChain(List<HrEmployee> employees) {
+        Map<Long, OrgUnit> orgCache = new HashMap<>();
+        Set<Long> pendingOrgIds = new LinkedHashSet<>();
+        for (HrEmployee employee : employees) {
+            if (employee.getDeptId() != null) {
+                pendingOrgIds.add(employee.getDeptId());
+            }
+        }
+        while (!pendingOrgIds.isEmpty()) {
+            List<Long> toLoad = pendingOrgIds.stream().filter(id -> !orgCache.containsKey(id)).toList();
+            pendingOrgIds.clear();
+            if (toLoad.isEmpty()) {
+                break;
+            }
+            for (OrgUnit unit : orgUnitMapper.selectBatchIds(toLoad)) {
+                orgCache.put(unit.getId(), unit);
+                if (unit.getParentId() != null && unit.getParentId() != 0) {
+                    pendingOrgIds.add(unit.getParentId());
+                }
+            }
+        }
+        return orgCache;
+    }
+
+    /**
+     * 从预载的组织缓存向上解析公司名称（部门本身是公司节点时直接返回）
+     */
+    private String resolveCompanyName(OrgUnit deptUnit, Map<Long, OrgUnit> orgCache) {
+        if (deptUnit == null) {
             return null;
         }
-        OrgUnit unit = orgUnitMapper.selectById(deptId);
-        return unit != null ? unit.getUnitName() : null;
+        OrgUnit cursor = deptUnit;
+        int guard = 0;
+        while (cursor != null && guard++ < 20) {
+            if (cursor.getUnitType() != null && cursor.getUnitType() == OrgUnit.TYPE_COMPANY) {
+                return cursor.getUnitName();
+            }
+            cursor = cursor.getParentId() == null || cursor.getParentId() == 0 ? null
+                    : orgCache.get(cursor.getParentId());
+        }
+        return null;
     }
 }

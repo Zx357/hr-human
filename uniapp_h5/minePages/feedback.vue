@@ -11,7 +11,12 @@
       </view>
     </tn-navbar>
 
-    <scroll-view scroll-y class="feedback-scroll" :style="{ paddingTop: vuex_custom_bar_height + 16 + 'px' }">
+    <scroll-view
+      scroll-y
+      class="feedback-scroll"
+      :style="{ paddingTop: vuex_custom_bar_height + 16 + 'px' }"
+      @scrolltolower="loadMoreHistory"
+    >
       <view class="hero-card">
         <view class="hero-main">
           <view class="hero-title">把问题说清楚</view>
@@ -76,19 +81,45 @@
         </tn-button>
       </view>
 
-      <view v-if="records.length" class="history-section">
+      <!-- 我的反馈:分页历史(上拉加载更多) -->
+      <view v-if="records.length || historyFailed" class="history-section">
         <view class="section-title">我的反馈</view>
+
+        <!-- 历史加载失败态(与空态区分) -->
+        <view v-if="historyFailed && !records.length" class="history-card history-state">
+          <view class="history-state-text">反馈记录加载失败</view>
+          <view class="history-retry" @click="reloadHistory">点击重试</view>
+        </view>
+
         <view v-for="item in records" :key="item.id" class="history-card">
           <view class="history-head">
             <view class="history-type">{{ typeText(item.feedbackType) }}</view>
             <view class="status-tag" :class="'status-' + item.status">{{ statusText(item.status) }}</view>
           </view>
           <view class="history-content">{{ item.feedbackContent }}</view>
-          <view v-if="item.replyContent" class="reply-box">
-            <view class="reply-title">处理回复</view>
-            <view class="reply-content">{{ item.replyContent }}</view>
+          <!-- 管理员回复:内容 + 回复时间,样式区分 -->
+          <view v-if="replyOf(item)" class="reply-box">
+            <view class="reply-title">
+              <tn-icon name="comment-fill" class="reply-title__icon"></tn-icon>
+              <text>管理员回复</text>
+            </view>
+            <view class="reply-content">{{ replyOf(item) }}</view>
+            <view v-if="item.replyTime" class="reply-time">{{ formatTime(item.replyTime) }}</view>
           </view>
           <view class="history-time">{{ item.createdTime || '' }}</view>
+        </view>
+
+        <!-- 空态 -->
+        <view v-if="!historyFailed && !records.length" class="history-card history-state">
+          <view class="history-state-text">暂无反馈记录</view>
+          <view class="history-state-desc">提交的反馈和处理进度会显示在这里</view>
+        </view>
+
+        <!-- 加载更多状态 -->
+        <view v-if="records.length" class="load-more" @click="loadMoreHistory">
+          <text v-if="loadingMore" class="load-more-text">加载中...</text>
+          <text v-else-if="historyFinished" class="load-more-text load-more-text--end">没有更多了</text>
+          <text v-else class="load-more-text">上拉加载更多</text>
         </view>
       </view>
     </scroll-view>
@@ -100,6 +131,7 @@ import { reactive, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useCustomBarHeight, useGoBack } from '@/libs/composables'
 import { getMyFeedback, submitFeedback } from '@/api/feedback'
+import { toastRequestError } from '@/utils/common'
 
 const { vuex_custom_bar_height } = useCustomBarHeight()
 const { goBack } = useGoBack()
@@ -117,20 +149,71 @@ const form = reactive({
 })
 
 const submitting = ref(false)
+
+// ===== 反馈历史:分页加载(上拉加载更多) =====
 const records = ref([])
+const pageNum = ref(1)
+const pageSize = 10
+const loadingMore = ref(false)
+const historyLoading = ref(false)
+const historyFinished = ref(false)
+const historyFailed = ref(false)
 
-onShow(() => {
-  loadRecords()
-})
-
-async function loadRecords() {
+async function loadHistory(reset = false) {
+  if (reset) {
+    if (historyLoading.value) return
+    historyLoading.value = true
+    historyFailed.value = false
+    historyFinished.value = false
+    pageNum.value = 1
+  } else if (loadingMore.value || historyFinished.value || historyLoading.value) {
+    return
+  } else {
+    loadingMore.value = true
+  }
+  const page = reset ? 1 : pageNum.value + 1
   try {
-    const res = await getMyFeedback({ current: 1, size: 5 })
-    records.value = res.data?.records || []
+    const res = await getMyFeedback({ pageNum: page, pageSize })
+    const list = res.data?.records || []
+    if (reset) {
+      records.value = list
+      pageNum.value = 1
+    } else {
+      const seen = new Set(records.value.map((item) => String(item.id)))
+      records.value = records.value.concat(list.filter((item) => !seen.has(String(item.id))))
+      pageNum.value = page
+    }
+    if (list.length < pageSize) historyFinished.value = true
   } catch (error) {
-    records.value = []
+    // request.js 已统一 toast;失败态仅在无数据时展示
+    if (!records.value.length) historyFailed.value = true
+  } finally {
+    historyLoading.value = false
+    loadingMore.value = false
   }
 }
+
+function reloadHistory() {
+  loadHistory(true)
+}
+
+function loadMoreHistory() {
+  loadHistory(false)
+}
+
+// 管理员回复内容:契约字段 reply,兼容旧字段 replyContent
+function replyOf(item) {
+  return item.reply || item.replyContent || ''
+}
+
+function formatTime(value) {
+  if (!value) return ''
+  return String(value).replace('T', ' ').slice(0, 16)
+}
+
+onShow(() => {
+  loadHistory(true)
+})
 
 async function handleSubmit() {
   const content = form.feedbackContent.trim()
@@ -148,7 +231,8 @@ async function handleSubmit() {
     })
     uni.showToast({ title: '提交成功', icon: 'success' })
     form.feedbackContent = ''
-    await loadRecords()
+    // 提交成功后刷新历史(回到第一页,保留上拉加载更多能力)
+    await loadHistory(true)
   } catch (error) {
     // request.js 会统一提示错误
   } finally {
@@ -380,6 +464,13 @@ function statusText(status) {
   color: #3d7eff;
   font-size: 24rpx;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+}
+
+.reply-title__icon {
+  margin-right: 8rpx;
+  font-size: 24rpx;
 }
 
 .reply-content {
@@ -389,9 +480,57 @@ function statusText(status) {
   line-height: 1.5;
 }
 
+.reply-time {
+  margin-top: 8rpx;
+  color: #a4adbb;
+  font-size: 22rpx;
+}
+
 .history-time {
   margin-top: 14rpx;
   color: #a4adbb;
   font-size: 22rpx;
+}
+
+/* 历史区状态:空态/失败态 */
+.history-state {
+  padding: 40rpx 24rpx;
+  text-align: center;
+}
+
+.history-state-text {
+  color: #657189;
+  font-size: 26rpx;
+}
+
+.history-state-desc {
+  margin-top: 10rpx;
+  color: #a4adbb;
+  font-size: 23rpx;
+}
+
+.history-retry {
+  margin: 20rpx auto 0;
+  width: fit-content;
+  padding: 12rpx 48rpx;
+  border-radius: 999rpx;
+  color: #3668fc;
+  font-size: 25rpx;
+  font-weight: 600;
+  background: rgba(54, 104, 252, 0.1);
+}
+
+.load-more {
+  padding: 24rpx 0;
+  text-align: center;
+}
+
+.load-more-text {
+  color: #9aa4b2;
+  font-size: 24rpx;
+}
+
+.load-more-text--end {
+  color: #c4cbd4;
 }
 </style>

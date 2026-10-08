@@ -52,6 +52,16 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
         List<Long> selectRoleIdsByUserId(@Param("userId") Long userId);
 
         /**
+         * 查询某角色下所有启用账号关联的在职员工ID（审批待办按角色通知用）：
+         * sys_user_role → sys_user(启用) → hr_employee(在职)
+         */
+        @Select("SELECT DISTINCT e.id FROM sys_user_role ur " +
+                        "INNER JOIN sys_user u ON ur.user_id = u.id AND u.status = 1 " +
+                        "INNER JOIN hr_employee e ON u.employee_id = e.id AND e.status = 1 " +
+                        "WHERE ur.role_id = #{roleId}")
+        List<Long> selectEnabledEmployeeIdsByRoleId(@Param("roleId") Long roleId);
+
+        /**
          * 删除用户角色关联
          */
         @Delete("DELETE FROM sys_user_role WHERE user_id = #{userId}")

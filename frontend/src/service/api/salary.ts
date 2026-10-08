@@ -79,6 +79,12 @@ export interface PayrollBatch {
   totalGross?: number;
   totalNet?: number;
   remark?: string;
+  /** 工资条总数（发放后跟踪用） */
+  total?: number;
+  /** 已读工资条数 */
+  readCount?: number;
+  /** 已确认工资条数 */
+  confirmCount?: number;
 }
 
 /** 工资条 */
@@ -224,6 +230,15 @@ export function unbindArchive(archiveId: number) {
   return request<null>({
     url: `/salary/archive/${archiveId}`,
     method: 'delete'
+  });
+}
+
+/** 批量绑定薪资方案 */
+export function batchBindArchive(data: { employeeIds: number[]; schemeId: number }) {
+  return request<null>({
+    url: '/salary/archive/batch-bind',
+    method: 'post',
+    data
   });
 }
 

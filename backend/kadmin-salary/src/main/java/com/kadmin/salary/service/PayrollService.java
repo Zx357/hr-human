@@ -29,6 +29,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -39,9 +41,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -167,6 +171,8 @@ public class PayrollService extends ServiceImpl<SalPayrollBatchMapper, SalPayrol
 
     /**
      * 发放批次（2已确认→3已发放）：员工端可见并发送站内通知
+     * 通知在事务提交后推送（TransactionSynchronizationManager.afterCommit），
+     * 避免发放事务回滚后员工已收到"工资已发放"通知
      */
     @Transactional
     public void publishBatch(Long batchId) {
@@ -183,11 +189,28 @@ public class PayrollService extends ServiceImpl<SalPayrollBatchMapper, SalPayrol
         }
         List<SalPayrollPayslip> payslips = payslipMapper.selectList(new LambdaQueryWrapper<SalPayrollPayslip>()
                 .eq(SalPayrollPayslip::getBatchId, batchId));
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            // 事务提交后再发通知；回滚时不发送
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    sendPayslipNotifications(batch, payslips);
+                }
+            });
+        } else {
+            // 无事务上下文（如单元测试/脚本调用）直接发送
+            sendPayslipNotifications(batch, payslips);
+        }
+    }
+
+    /**
+     * 工资条发放站内通知（落库 + WebSocket 实时推送，NotificationService 内部兜底）
+     */
+    private void sendPayslipNotifications(SalPayrollBatch batch, List<SalPayrollPayslip> payslips) {
         for (SalPayrollPayslip payslip : payslips) {
             try {
                 String content = batch.getYearMonth() + " 月工资条已发放，实发 "
                         + payslip.getNetPay() + " 元，请查看详情";
-                // 落库 + WebSocket 实时推送（NotificationService 内部发布推送事件）
                 notificationService.notify(payslip.getEmployeeId(), "salary", "工资条发放通知",
                         content, payslip.getId(), "/minePages/payslip");
             } catch (Exception e) {
@@ -259,7 +282,7 @@ public class PayrollService extends ServiceImpl<SalPayrollBatchMapper, SalPayrol
     }
 
     /**
-     * 批次分页
+     * 批次分页：公司名与工资条统计（total/readCount/confirmCount）均批量回填，避免逐行查询
      */
     public Page<SalPayrollBatch> pageBatches(int pageNum, int pageSize, String yearMonth, Long companyId) {
         Page<SalPayrollBatch> page = page(new Page<>(pageNum, pageSize),
@@ -268,9 +291,39 @@ public class PayrollService extends ServiceImpl<SalPayrollBatchMapper, SalPayrol
                         .eq(companyId != null, SalPayrollBatch::getCompanyId, companyId)
                         .orderByDesc(SalPayrollBatch::getYearMonth)
                         .orderByDesc(SalPayrollBatch::getId));
+        if (page.getRecords().isEmpty()) {
+            return page;
+        }
+
+        // 公司名：一次 in 查询回填（替代逐行 selectById）
+        List<Long> companyIds = page.getRecords().stream()
+                .map(SalPayrollBatch::getCompanyId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (!companyIds.isEmpty()) {
+            Map<Long, String> companyNames = orgUnitMapper.selectBatchIds(companyIds).stream()
+                    .collect(Collectors.toMap(OrgUnit::getId, OrgUnit::getUnitName, (a, b) -> a));
+            for (SalPayrollBatch batch : page.getRecords()) {
+                batch.setCompanyName(batch.getCompanyId() == null ? null
+                        : companyNames.get(batch.getCompanyId()));
+            }
+        }
+
+        // 工资条统计：单条 GROUP BY 回填 total/readCount/confirmCount（替代逐批次三次 count）
+        List<Long> batchIds = page.getRecords().stream().map(SalPayrollBatch::getId).toList();
+        Map<Long, Map<String, Object>> statsByBatch = new HashMap<>();
+        for (Map<String, Object> row : payslipMapper.countStatsGroupByBatch(batchIds)) {
+            Object batchId = row.get("batchId");
+            if (batchId instanceof Number number) {
+                statsByBatch.put(number.longValue(), row);
+            }
+        }
         for (SalPayrollBatch batch : page.getRecords()) {
-            OrgUnit company = batch.getCompanyId() == null ? null : orgUnitMapper.selectById(batch.getCompanyId());
-            batch.setCompanyName(company != null ? company.getUnitName() : null);
+            Map<String, Object> stats = statsByBatch.get(batch.getId());
+            batch.setTotal(stats == null ? 0 : intOf(stats.get("total")));
+            batch.setReadCount(stats == null ? 0 : intOf(stats.get("readCount")));
+            batch.setConfirmCount(stats == null ? 0 : intOf(stats.get("confirmCount")));
         }
         return page;
     }
@@ -381,9 +434,11 @@ public class PayrollService extends ServiceImpl<SalPayrollBatchMapper, SalPayrol
 
     /**
      * 员工本人工资条分页（仅已发放批次；接口层必须以当前登录员工过滤）
+     *
+     * @param month 可选月份过滤 yyyy-MM（按发放批次的核算月份）
      */
-    public Page<SalPayrollPayslip> pageMyPayslips(Long employeeId, int pageNum, int pageSize) {
-        List<Long> publishedBatchIds = publishedBatchIds();
+    public Page<SalPayrollPayslip> pageMyPayslips(Long employeeId, int pageNum, int pageSize, String month) {
+        List<Long> publishedBatchIds = publishedBatchIds(month);
         if (publishedBatchIds.isEmpty()) {
             return new Page<>(pageNum, pageSize);
         }
@@ -488,13 +543,26 @@ public class PayrollService extends ServiceImpl<SalPayrollBatchMapper, SalPayrol
                 .stream()
                 .collect(Collectors.groupingBy(SalSalaryArchiveItem::getArchiveId));
 
-        // 4. 方案明细 + 项定义（按方案分组、排好序的求值行）
+        // 4. 方案明细 + 项定义（批量预载：一次 in 查全部方案明细、一次 in 查全部项定义，
+        //    替代逐方案 selectList + 逐项 selectById 的 N+1）
         List<Long> schemeIds = archives.stream().map(SalSalaryArchive::getSchemeId).distinct().toList();
+        Map<Long, List<SalSchemeItem>> schemeItemsByScheme = schemeService.listSchemeItemsGroupByScheme(schemeIds);
+        Set<Long> itemDefIds = new LinkedHashSet<>();
+        for (List<SalSchemeItem> items : schemeItemsByScheme.values()) {
+            for (SalSchemeItem item : items) {
+                if (item.getItemId() != null) {
+                    itemDefIds.add(item.getItemId());
+                }
+            }
+        }
+        Map<Long, SalSalaryItemDef> defMap = itemDefIds.isEmpty() ? Map.of()
+                : itemDefMapper.selectBatchIds(itemDefIds).stream()
+                        .collect(Collectors.toMap(SalSalaryItemDef::getId, Function.identity(), (a, b) -> a));
         Map<Long, List<SalaryCalcEngine.SchemeItemLine>> schemeLines = new HashMap<>();
         for (Long schemeId : schemeIds) {
             List<SalaryCalcEngine.SchemeItemLine> lines = new ArrayList<>();
-            for (SalSchemeItem schemeItem : schemeService.listSchemeItems(schemeId)) {
-                SalSalaryItemDef def = itemDefMapper.selectById(schemeItem.getItemId());
+            for (SalSchemeItem schemeItem : schemeItemsByScheme.getOrDefault(schemeId, List.of())) {
+                SalSalaryItemDef def = defMap.get(schemeItem.getItemId());
                 if (def == null || def.getEnabled() == null || def.getEnabled() != 1) {
                     continue;
                 }
@@ -584,7 +652,8 @@ public class PayrollService extends ServiceImpl<SalPayrollBatchMapper, SalPayrol
     }
 
     /**
-     * 已审批事假单（title='2' 事假）在月份窗口内的折算小时数，按员工分组
+     * 已审批事假单（title 为字典 leave_type 的事假编码，见
+     * {@link com.kadmin.hr.constant.LeaveTypeConstants#PERSONAL_LEAVE}）在月份窗口内的折算小时数，按员工分组
      */
     private Map<Long, BigDecimal> loadPersonalLeaveHours(List<Long> employeeIds, String yearMonth) {
         YearMonth ym = YearMonth.parse(yearMonth);
@@ -594,7 +663,7 @@ public class PayrollService extends ServiceImpl<SalPayrollBatchMapper, SalPayrol
                 .in(HrApplication::getEmployeeId, employeeIds)
                 .eq(HrApplication::getStatus, 1)
                 .eq(HrApplication::getAppType, "leave")
-                .eq(HrApplication::getTitle, "2")
+                .eq(HrApplication::getTitle, com.kadmin.hr.constant.LeaveTypeConstants.PERSONAL_LEAVE)
                 .le(HrApplication::getStartTime, windowEnd)
                 .ge(HrApplication::getEndTime, windowStart));
         Map<Long, BigDecimal> result = new HashMap<>();
@@ -653,9 +722,16 @@ public class PayrollService extends ServiceImpl<SalPayrollBatchMapper, SalPayrol
                 .set(SalPayrollPayslip::getNetPay, gross.subtract(deduction).setScale(2, RoundingMode.HALF_UP)));
     }
 
-    private List<Long> publishedBatchIds() {
+    /**
+     * 已发放批次ID列表（可按核算月份过滤，month 为 yyyy-MM）
+     */
+    private List<Long> publishedBatchIds(String month) {
+        if (month != null && !month.isBlank()) {
+            validateYearMonth(month);
+        }
         List<SalPayrollBatch> batches = list(new LambdaQueryWrapper<SalPayrollBatch>()
                 .eq(SalPayrollBatch::getStatus, STATUS_PUBLISHED)
+                .eq(month != null && !month.isBlank(), SalPayrollBatch::getYearMonth, month)
                 .select(SalPayrollBatch::getId));
         return batches.stream().map(SalPayrollBatch::getId).toList();
     }
