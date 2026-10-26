@@ -343,7 +343,8 @@ async function handleEdit(row: Api.Hr.Employee) {
 
 async function handleDelete(id: number) {
   try {
-    await deleteEmployee(id);
+    const { error } = await deleteEmployee(id);
+    if (error) return;
     ElMessage.success($t('common.deleteSuccess'));
     loadData();
   } catch {
@@ -368,7 +369,8 @@ function handleBatchDelete() {
     .then(async () => {
       batchDeleting.value = true;
       try {
-        await deleteEmployees(selectedRows.value.map(row => row.id!));
+        const { error } = await deleteEmployees(selectedRows.value.map(row => row.id!));
+        if (error) return;
         ElMessage.success($t('common.deleteSuccess'));
         tableRef.value?.clearSelection();
         selectedRows.value = [];
@@ -649,10 +651,12 @@ async function handleSubmit() {
   submitLoading.value = true;
   try {
     if (operateType.value === 'add') {
-      await createEmployee(submitData);
+      const { error } = await createEmployee(submitData);
+      if (error) return;
       ElMessage.success($t('common.addSuccess'));
     } else {
-      await updateEmployee(editingData.value.id!, submitData);
+      const { error } = await updateEmployee(editingData.value.id!, submitData);
+      if (error) return;
       ElMessage.success($t('common.updateSuccess'));
     }
     drawerVisible.value = false;

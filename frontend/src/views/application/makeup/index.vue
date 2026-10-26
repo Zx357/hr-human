@@ -115,7 +115,8 @@ async function handleSubmit() {
   if (!valid) return;
   submitLoading.value = true;
   try {
-    await createApplication(formData.value);
+    const { error } = await createApplication(formData.value);
+    if (error) return;
     ElMessage.success($t('application.common.applicationSubmittedSuccessfully'));
     dialogVisible.value = false;
     loadData();
@@ -138,7 +139,8 @@ function handleViewDetail(row: Application) {
 async function handleCancel(row: Application) {
   if (!(await confirmCancelApplication(row, makeupTypeMap[row.title || ''] || row.title))) return;
   try {
-    await cancelApplication(row.id!);
+    const { error } = await cancelApplication(row.id!);
+    if (error) return;
     ElMessage.success($t('common.withdrawn'));
     loadData();
   } catch {

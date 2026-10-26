@@ -135,12 +135,13 @@ async function submitBind() {
   }
   bindSubmitting.value = true;
   try {
-    await bindArchive({
+    const { error } = await bindArchive({
       employeeId: bindForm.value.employeeId!,
       schemeId: bindForm.value.schemeId,
       effectiveDate: bindForm.value.effectiveDate,
       remark: bindForm.value.remark
     });
+    if (error) return;
     ElMessage.success($t('common.updateSuccess'));
     bindDialogVisible.value = false;
     loadData();
@@ -169,10 +170,11 @@ async function submitItems() {
   if (!editingRow.value?.archiveId) return;
   itemsSubmitting.value = true;
   try {
-    await updateArchiveItems(
+    const { error } = await updateArchiveItems(
       editingRow.value.archiveId,
       editingItems.value.map(item => ({ itemId: item.itemId, amount: item.amount }))
     );
+    if (error) return;
     ElMessage.success($t('common.updateSuccess'));
     itemsDialogVisible.value = false;
   } catch {
@@ -185,7 +187,8 @@ async function submitItems() {
 async function handleUnbind(row: SalaryArchiveRow) {
   if (!row.archiveId) return;
   try {
-    await unbindArchive(row.archiveId);
+    const { error } = await unbindArchive(row.archiveId);
+    if (error) return;
     ElMessage.success($t('common.deleteSuccess'));
     loadData();
   } catch {
@@ -218,10 +221,11 @@ async function submitBatchBind() {
   }
   batchSubmitting.value = true;
   try {
-    await batchBindArchive({
+    const { error } = await batchBindArchive({
       employeeIds: selectedRows.value.map(row => row.employeeId),
       schemeId: batchSchemeId.value
     });
+    if (error) return;
     ElMessage.success($t('common.updateSuccess'));
     batchDialogVisible.value = false;
     tableRef.value?.clearSelection();

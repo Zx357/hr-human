@@ -1,4 +1,4 @@
-import type { AxiosResponse } from 'axios';
+import type { AxiosError, AxiosResponse } from 'axios';
 import { BACKEND_ERROR_CODE, createFlatRequest } from '@sa/axios';
 import { useAuthStore } from '@/store/modules/auth';
 import { getServiceBaseURL } from '@/utils/service';
@@ -8,6 +8,11 @@ import type { RequestInstanceState } from './type';
 
 const isHttpProxy = import.meta.env.DEV && import.meta.env.VITE_HTTP_PROXY === 'Y';
 const { baseURL } = getServiceBaseURL(import.meta.env, isHttpProxy);
+
+function isLogoutError(error: AxiosError, backendErrorCode: string) {
+  const logoutCodes = import.meta.env.VITE_SERVICE_LOGOUT_CODES?.split(',') || [];
+  return error.response?.status === 401 || logoutCodes.includes(backendErrorCode);
+}
 
 export const request = createFlatRequest(
   {
@@ -116,15 +121,16 @@ export const request = createFlatRequest(
         message = body?.msg || body?.message || error.message || $t('request.operationFailed');
       }
 
-      // the error message is displayed in the modal
-      const modalLogoutCodes = import.meta.env.VITE_SERVICE_MODAL_LOGOUT_CODES?.split(',') || [];
-      if (modalLogoutCodes.includes(backendErrorCode)) {
+      // HTTP 401 bypasses onBackendFail, but must still clear the expired session.
+      if (isLogoutError(error, backendErrorCode)) {
+        useAuthStore().resetStore();
         return;
       }
 
-      // when the token is expired, refresh token and retry request, so no need to show error message
+      // Modal logout and token refresh already handle their own errors.
+      const modalLogoutCodes = import.meta.env.VITE_SERVICE_MODAL_LOGOUT_CODES?.split(',') || [];
       const expiredTokenCodes = import.meta.env.VITE_SERVICE_EXPIRED_TOKEN_CODES?.split(',') || [];
-      if (expiredTokenCodes.includes(backendErrorCode)) {
+      if ([...modalLogoutCodes, ...expiredTokenCodes].includes(backendErrorCode)) {
         return;
       }
 

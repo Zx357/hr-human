@@ -144,7 +144,8 @@ async function handleSubmit() {
   submitLoading.value = true;
   try {
     // saveCalendarRule 为 upsert：带 id 更新，不带 id 新增
-    await saveCalendarRule(dialogForm.value);
+    const { error } = await saveCalendarRule(dialogForm.value);
+    if (error) return;
     ElMessage.success($t('common.saveSuccess'));
     dialogVisible.value = false;
     loadRules();
@@ -163,7 +164,8 @@ async function handleDelete(row: AttCalendarRule) {
     return;
   }
   try {
-    await deleteCalendarRule(row.id!);
+    const { error } = await deleteCalendarRule(row.id!);
+    if (error) return;
     ElMessage.success($t('common.deleteSuccess'));
     loadRules();
   } catch {

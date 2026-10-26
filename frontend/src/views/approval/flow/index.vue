@@ -127,7 +127,8 @@ function handleEdit(row: ApprovalFlow) {
 
 async function handleDelete(id: number) {
   try {
-    await deleteApprovalFlow(id);
+    const { error } = await deleteApprovalFlow(id);
+    if (error) return;
     ElMessage.success($t('common.deleteSuccess'));
     loadData();
   } catch {
@@ -138,7 +139,8 @@ async function handleDelete(id: number) {
 async function handleToggleStatus(row: ApprovalFlow) {
   const newStatus = row.status === 1 ? 0 : 1;
   try {
-    await updateApprovalFlowStatus(row.id!, newStatus);
+    const { error } = await updateApprovalFlowStatus(row.id!, newStatus);
+    if (error) return;
     ElMessage.success(newStatus === 1 ? $t('approval.flow.enabled') : $t('approval.flow.disabled'));
     loadData();
   } catch {
@@ -171,10 +173,12 @@ async function handleSubmit() {
       submitData.nodes = [];
     }
     if (operateType.value === 'add') {
-      await createApprovalFlow(submitData);
+      const { error } = await createApprovalFlow(submitData);
+      if (error) return;
       ElMessage.success($t('common.addSuccess'));
     } else {
-      await updateApprovalFlow(submitData);
+      const { error } = await updateApprovalFlow(submitData);
+      if (error) return;
       ElMessage.success($t('common.updateSuccess'));
     }
     dialogVisible.value = false;

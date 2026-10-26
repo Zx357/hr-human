@@ -18,6 +18,7 @@ import com.kadmin.hr.domain.dto.EmployeeExtraDTO;
 import com.kadmin.common.security.LoginUser;
 import com.kadmin.common.annotation.OperLog;
 import com.kadmin.hr.service.EmployeeService;
+import com.kadmin.system.service.SysDictService;
 import com.kadmin.common.utils.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -37,6 +39,7 @@ import java.util.Map;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+    private final SysDictService dictService;
 
     /**
      * 获取当前登录员工信息（移动端使用）
@@ -48,6 +51,7 @@ public class EmployeeController {
             return Result.error("未登录或无员工信息");
         }
         HrEmployee employee = employeeService.getEmployeeDetail(loginUser.getEmployeeId());
+        fillPositionName(employee);
         return Result.success(employee);
     }
 
@@ -82,6 +86,7 @@ public class EmployeeController {
             @RequestParam(required = false) Long deptId,
             @RequestParam(required = false) Integer status) {
         List<HrEmployee> list = employeeService.getEmployeeList(deptId, status);
+        fillPositionNames(list);
         for (HrEmployee employee : list) {
             // 密码哈希任何场景都不回显
             employee.setPassword(null);
@@ -104,6 +109,7 @@ public class EmployeeController {
     @GetMapping("/{id}")
     public Result<HrEmployee> getDetail(@PathVariable Long id) {
         HrEmployee employee = employeeService.getEmployeeDetail(id, true);
+        fillPositionName(employee);
         LoginUser loginUser = SecurityUtils.getCurrentUser();
         boolean self = loginUser != null && id != null && id.equals(loginUser.getEmployeeId());
         if (employee != null && !SecurityUtils.isAdmin() && !self) {
@@ -117,6 +123,20 @@ public class EmployeeController {
             employee.setExtraFieldList(null);
         }
         return Result.success(employee);
+    }
+
+    private void fillPositionName(HrEmployee employee) {
+        if (employee != null) {
+            fillPositionNames(List.of(employee));
+        }
+    }
+
+    private void fillPositionNames(List<HrEmployee> employees) {
+        if (employees.isEmpty()) return;
+        Map<String, String> labels = new HashMap<>();
+        dictService.getDictDataByCode("position")
+                .forEach(item -> labels.putIfAbsent(item.getDictValue(), item.getDictLabel()));
+        employees.forEach(employee -> employee.setPositionName(labels.get(employee.getPosition())));
     }
 
     /**

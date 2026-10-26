@@ -100,10 +100,8 @@ public class ReportController {
         LocalDate startDate = ym.atDay(1);
         LocalDate endDate = ym.atEndOfMonth();
 
-        SqlFilter filter = SqlFilter.create()
+        SqlFilter filter = buildOrgFilter(companyId, deptId, "e.dept_id")
                 .append(" AND r.att_date BETWEEN ? AND ?", Date.valueOf(startDate), Date.valueOf(endDate));
-        SqlFilter orgFilter = buildOrgFilter(companyId, deptId, "e.dept_id");
-        filter.append(orgFilter.getSql(), orgFilter.getParams());
 
         Map<String, Object> result = new LinkedHashMap<>();
 

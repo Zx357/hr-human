@@ -253,17 +253,23 @@ export function connect() {
 
   manuallyClosed = false
   setStatus(STATUS_CONNECTING)
-  // 不传 success/fail/complete 回调，保证 H5 与小程序均返回 SocketTask
-  socketTask = uni.connectSocket({ url })
-  if (!socketTask) {
+  try {
+    // uni-app 不传回调会返回 Promise；显式回调才能拿到 SocketTask。
+    socketTask = uni.connectSocket({ url, complete: () => {} })
+    if (!socketTask) {
+      scheduleReconnect()
+      return false
+    }
+    socketTask.onOpen(onOpen)
+    socketTask.onMessage(onMessage)
+    socketTask.onError(onErrorOrClose)
+    socketTask.onClose(onErrorOrClose)
+  } catch (error) {
+    // 聊天连接创建失败交由退避重试，不中断已成功的账号登录。
     cleanupTask()
     scheduleReconnect()
     return false
   }
-  socketTask.onOpen(onOpen)
-  socketTask.onMessage(onMessage)
-  socketTask.onError(onErrorOrClose)
-  socketTask.onClose(onErrorOrClose)
   return true
 }
 

@@ -54,9 +54,9 @@
           :fontSize="28"
           text-color="#FFFFFF"
           shape="round"
-          @click="tn('/homePages/application')"
+          @click="tn('/homePages/approval')"
         >
-          <text class="">查看详情</text>
+          <text class="">查看申请</text>
         </tn-button>
       </view>
     </view>

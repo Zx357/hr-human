@@ -160,7 +160,7 @@ async function handleSubmit() {
   if (!valid) return;
   submitLoading.value = true;
   try {
-    await saveScheme({
+    const { error } = await saveScheme({
       id: formData.value.id,
       schemeName: formData.value.schemeName,
       schemeCode: formData.value.schemeCode || undefined,
@@ -169,6 +169,7 @@ async function handleSubmit() {
       remark: formData.value.remark,
       items: formData.value.items
     });
+    if (error) return;
     ElMessage.success($t('common.updateSuccess'));
     dialogVisible.value = false;
     loadData();
@@ -182,7 +183,8 @@ async function handleSubmit() {
 async function handleDelete(id?: number) {
   if (!id) return;
   try {
-    await deleteScheme(id);
+    const { error } = await deleteScheme(id);
+    if (error) return;
     ElMessage.success($t('common.deleteSuccess'));
     loadData();
   } catch {

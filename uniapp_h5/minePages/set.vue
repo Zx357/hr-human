@@ -143,7 +143,7 @@ const profileRows = computed(() => [
   { label: '姓名', value: pick(employee.value.name, '未填写') },
   { label: '性别', value: formatGender(employee.value.gender) },
   { label: '生日', value: formatDate(employee.value.birthDate) },
-  { label: '职业', value: pick(employee.value.position, employee.value.duty, employee.value.occupation, employee.value.post, employee.value.jobTitle, '未填写') },
+  { label: '职业', value: pick(employee.value.positionName, employee.value.position, employee.value.duty, employee.value.occupation, employee.value.post, employee.value.jobTitle, '未填写') },
   { label: '工号', value: pick(employee.value.employeeNo, '未填写') },
   { label: '部门', value: pick(employee.value.deptName, '未填写') },
   { label: '公司', value: pick(employee.value.companyName, '未填写') },

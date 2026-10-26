@@ -88,7 +88,7 @@
             </view>
             <view class="justify-content-item tn-color-gray tn-text-right">
               <view class="tn-color-gray">
-                {{ user.position || user.post || user.duty || '-' }}
+                {{ user.positionName || user.position || user.post || user.duty || '-' }}
               </view>
             </view>
           </view>

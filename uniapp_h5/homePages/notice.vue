@@ -111,6 +111,7 @@ const pageNum = ref(1)
 const pageSize = 10
 const finished = ref(false)
 const loadingMore = ref(false)
+let requestSeq = 0
 
 const filteredList = computed(() => list.value)
 
@@ -122,40 +123,48 @@ onLoad(() => {
 })
 
 async function loadNotices() {
-  if (loading.value) return
+  const seq = ++requestSeq
   loading.value = true
+  loadingMore.value = false
   refreshing.value = true
   pageNum.value = 1
   finished.value = false
   try {
     const res = await getMobileNotices({ pageNum: 1, pageSize, noticeType: currentType() })
+    if (seq !== requestSeq) return
     const data = res.data || {}
     list.value = data.records || []
     if ((list.value.length) < pageSize) finished.value = true
   } catch (e) {
+    if (seq !== requestSeq) return
     uni.showToast({ icon: 'none', title: '加载通知失败' })
   } finally {
-    loading.value = false
-    refreshing.value = false
+    if (seq === requestSeq) {
+      loading.value = false
+      refreshing.value = false
+    }
   }
 }
 
 // 触底加载下一页
 async function loadMore() {
   if (loadingMore.value || finished.value || loading.value) return
+  const seq = requestSeq
   loadingMore.value = true
   try {
     const nextPage = pageNum.value + 1
     const res = await getMobileNotices({ pageNum: nextPage, pageSize, noticeType: currentType() })
+    if (seq !== requestSeq) return
     const records = res.data?.records || []
     const seen = new Set(list.value.map((item) => String(item.id)))
     list.value = list.value.concat(records.filter((item) => !seen.has(String(item.id))))
     pageNum.value = nextPage
     if (records.length < pageSize) finished.value = true
   } catch (e) {
+    if (seq !== requestSeq) return
     uni.showToast({ icon: 'none', title: '加载失败，请重试' })
   } finally {
-    loadingMore.value = false
+    if (seq === requestSeq) loadingMore.value = false
   }
 }
 

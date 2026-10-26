@@ -257,7 +257,7 @@ async function handleCalculate() {
     // 获取选中的员工ID列表
     const employeeIds = selectedRows.value.length > 0 ? selectedRows.value.map(r => r.employeeId) : undefined;
 
-    await calculateDailyAttendance({
+    const { error } = await calculateDailyAttendance({
       startDate: searchParams.value.dateRange[0],
       endDate: searchParams.value.dateRange[1],
       companyId: searchParams.value.companyId,
@@ -266,6 +266,7 @@ async function handleCalculate() {
       employeeName: searchParams.value.employeeName || undefined,
       employeeIds
     });
+    if (error) return;
     ElMessage.success($t('attendance.daily.attendanceCalculationCompleted'));
     loadData();
   } catch {
@@ -312,7 +313,8 @@ async function handleLock(lock: boolean) {
     return;
   }
   try {
-    await lockDailyRecords({ ids, lock });
+    const { error } = await lockDailyRecords({ ids, lock });
+    if (error) return;
     ElMessage.success(lock ? $t('attendance.daily.lockedSuccessfully') : $t('attendance.daily.unlockedSuccessfully'));
     loadData();
   } catch {

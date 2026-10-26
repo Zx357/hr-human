@@ -105,7 +105,8 @@ async function handleSubmit() {
       startTime: `${formData.value.startTime} 00:00:00`,
       endTime: `${formData.value.endTime} 00:00:00`
     };
-    await createApplication(submitData);
+    const { error } = await createApplication(submitData);
+    if (error) return;
     ElMessage.success($t('application.common.applicationSubmittedSuccessfully'));
     dialogVisible.value = false;
     loadData();
@@ -128,7 +129,8 @@ function handleViewDetail(row: Application) {
 async function handleCancel(row: Application) {
   if (!(await confirmCancelApplication(row))) return;
   try {
-    await cancelApplication(row.id!);
+    const { error } = await cancelApplication(row.id!);
+    if (error) return;
     ElMessage.success($t('common.withdrawn'));
     loadData();
   } catch {

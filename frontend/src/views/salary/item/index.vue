@@ -111,7 +111,8 @@ async function handleSubmit() {
   await formRef.value?.validate();
   submitLoading.value = true;
   try {
-    await saveSalaryItem(formData.value);
+    const { error } = await saveSalaryItem(formData.value);
+    if (error) return;
     ElMessage.success($t('common.updateSuccess'));
     dialogVisible.value = false;
     loadData();
@@ -125,7 +126,8 @@ async function handleSubmit() {
 async function handleDelete(id?: number) {
   if (!id) return;
   try {
-    await deleteSalaryItem(id);
+    const { error } = await deleteSalaryItem(id);
+    if (error) return;
     ElMessage.success($t('common.deleteSuccess'));
     loadData();
   } catch {

@@ -34,7 +34,7 @@
         <view class="tn-padding-left-sm tn-flex-1">
           <view class="tn-text-lg tn-text-bold">{{ item.name || item.employeeName || '未命名员工' }}</view>
           <view class="tn-color-gray tn-padding-top-xs tn-text-sm">
-            {{ item.position || item.post || '暂无职位' }}
+            {{ item.positionName || item.position || item.post || '暂无职位' }}
           </view>
         </view>
         <tn-icon class="tn-color-gray" name="right"></tn-icon>

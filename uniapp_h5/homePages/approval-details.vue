@@ -183,7 +183,7 @@ const infoRows = computed(() => {
     { label: '申请类型', value: typeName(item.appType) },
     { label: '开始时间', value: formatTime(item.startTime) },
     { label: '结束时间', value: formatTime(item.endTime) },
-    { label: '时长', value: item.duration ? `${item.duration}小时` : '' },
+    { label: '时长', value: item.duration ? `${item.duration}${item.appType === 'business' ? '天' : '小时'}` : '' },
     { label: '转正日期', value: item.regularDate },
     { label: '试用期结束', value: item.probationEndDate },
     { label: '调动类型', value: transferTypeLabel(item.transferType) },
@@ -221,7 +221,7 @@ const timeline = computed(() => {
   }
   return [
     { name: '已提交', desc: formatTime(detail.value?.createdTime), icon: 'success-circle-fill', color: '#00C8B0', active: true },
-    { name: '已审批', desc: formatTime(detail.value?.approveTime) || '已处理', icon: status === 2 ? 'close' : 'safe-fill', color: meta.color, active: true },
+    { name: status === 3 ? '撤销申请' : '已审批', desc: formatTime(detail.value?.approveTime) || (status === 3 ? '申请已撤销' : '已处理'), icon: status === 2 || status === 3 ? 'close' : 'safe-fill', color: meta.color, active: true },
     { name: meta.name, desc: detail.value?.approveRemark || '流程已结束', icon: status === 2 ? 'close' : 'success-circle-fill', color: meta.color, active: true }
   ]
 })
@@ -233,7 +233,10 @@ onLoad((options) => {
 })
 
 async function loadDetail() {
-  if (!id.value) return
+  if (!id.value) {
+    loadFailed.value = true
+    return
+  }
   loadFailed.value = false
   try {
     const res = await getApplicationDetail(id.value)

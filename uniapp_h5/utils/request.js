@@ -9,7 +9,7 @@ const baseUrl = config.baseUrl
 
 function normalizeResponse(resData) {
   const code = resData?.code
-  const msg = resData?.msg || errorCode.default
+  const msg = resData?.msg || resData?.message || errorCode.default
   const successCode = code === 200 || code === '200' || code === '0000'
 
   if (successCode) {

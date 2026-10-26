@@ -46,6 +46,7 @@ const assignEmployeePage = ref(1);
 const assignEmployeePageSize = ref(10);
 const assignEmployeeSearch = ref({ name: '', employeeNo: '', orgIds: [] as number[] });
 const tempSelectedEmployees = ref<Api.Hr.Employee[]>([]);
+let restoringAssignSelection = false;
 const employeePageNum = ref(1);
 const employeePageSize = ref(10);
 const form = ref<LocationForm>(createEmptyForm());
@@ -179,11 +180,14 @@ async function loadAssignEmployeeData() {
       orgIds: assignEmployeeSearch.value.orgIds.length > 0 ? assignEmployeeSearch.value.orgIds.join(',') : undefined,
       status: 1
     });
+    if (res.error) return;
+    restoringAssignSelection = true;
     assignEmployeeData.value = getPageRecords(res.data);
     assignEmployeeTotal.value = getPageTotal(res.data);
     await nextTick();
     restoreAssignSelection();
   } finally {
+    restoringAssignSelection = false;
     assignEmployeeLoading.value = false;
   }
 }
@@ -245,7 +249,8 @@ async function handleDelete(row: AttLocation) {
     return;
   }
   try {
-    await deleteAttLocation(row.id as number);
+    const { error } = await deleteAttLocation(row.id as number);
+    if (error) return;
     ElMessage.success($t('common.deleteSuccess'));
     if (selectedLocation.value?.id === row.id) {
       selectedLocation.value = null;
@@ -294,9 +299,11 @@ async function handleSubmit() {
   submitLoading.value = true;
   try {
     if (form.value.id) {
-      await updateAttLocation(form.value.id, form.value);
+      const { error } = await updateAttLocation(form.value.id, form.value);
+      if (error) return;
     } else {
-      await createAttLocation(form.value);
+      const { error } = await createAttLocation(form.value);
+      if (error) return;
     }
     ElMessage.success($t('common.saveSuccess'));
     dialogVisible.value = false;
@@ -326,10 +333,11 @@ async function handleSaveAssignments() {
 
   assignSubmitLoading.value = true;
   try {
-    await updateAttLocation(selectedLocation.value.id, {
+    const { error } = await updateAttLocation(selectedLocation.value.id, {
       ...selectedLocation.value,
       employeeIds: tempSelectedEmployees.value.map(item => item.id!).filter(Boolean)
     });
+    if (error) return;
     ElMessage.success($t('attendance.location.employeeAssignmentsSaved'));
     assignDialogVisible.value = false;
     await refreshSelectedLocation();
@@ -345,15 +353,21 @@ function handleEmployeeSelectionChange(rows: Api.Hr.Employee[]) {
 
 function restoreAssignSelection() {
   const selectedIds = new Set(tempSelectedEmployees.value.map(item => item.id));
-  assignEmployeeTableRef.value?.clearSelection?.();
-  assignEmployeeData.value.forEach(row => {
-    if (selectedIds.has(row.id)) {
-      assignEmployeeTableRef.value?.toggleRowSelection?.(row, true);
-    }
-  });
+  restoringAssignSelection = true;
+  try {
+    assignEmployeeTableRef.value?.clearSelection?.();
+    assignEmployeeData.value.forEach(row => {
+      if (selectedIds.has(row.id)) {
+        assignEmployeeTableRef.value?.toggleRowSelection?.(row, true);
+      }
+    });
+  } finally {
+    restoringAssignSelection = false;
+  }
 }
 
 function handleAssignSelectionChange(rows: Api.Hr.Employee[]) {
+  if (restoringAssignSelection) return;
   const currentPageIds = new Set(assignEmployeeData.value.map(item => item.id));
   const otherPageSelected = tempSelectedEmployees.value.filter(item => !currentPageIds.has(item.id));
   const currentSelected = rows.map(row => ({
@@ -417,10 +431,11 @@ async function removeEmployees(employees: Api.Hr.Employee[]) {
   const removeIds = new Set(employees.map(item => item.id));
   const employeeIds = currentEmployeeIds.value.filter(id => !removeIds.has(id));
   try {
-    await updateAttLocation(selectedLocation.value.id, {
+    const { error } = await updateAttLocation(selectedLocation.value.id, {
       ...selectedLocation.value,
       employeeIds
     });
+    if (error) return;
     ElMessage.success($t('attendance.location.assignmentsRemoved'));
     await refreshSelectedLocation();
     await loadLocations();

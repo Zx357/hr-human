@@ -161,7 +161,8 @@ function handleEdit(row: Contract) {
 
 async function handleDelete(id: number) {
   try {
-    await deleteContract(id);
+    const { error } = await deleteContract(id);
+    if (error) return;
     ElMessage.success($t('common.deleteSuccess'));
     loadData();
   } catch {
@@ -202,13 +203,14 @@ async function submitRenew() {
   }
   renewSubmitting.value = true;
   try {
-    await renewContract({
+    const { error } = await renewContract({
       id: target.id,
       startDate: range[0],
       endDate: range[1],
       signDate: renewForm.value.signDate,
       salary: renewForm.value.salary
     });
+    if (error) return;
     ElMessage.success($t('common.updateSuccess'));
     renewVisible.value = false;
     loadData();
@@ -344,10 +346,12 @@ async function handleSubmit() {
       contractImages: contractImageList.value.join(',')
     };
     if (operateType.value === 'add') {
-      await createContract(submitData);
+      const { error } = await createContract(submitData);
+      if (error) return;
       ElMessage.success($t('common.addSuccess'));
     } else {
-      await updateContract(submitData);
+      const { error } = await updateContract(submitData);
+      if (error) return;
       ElMessage.success($t('common.updateSuccess'));
     }
     drawerVisible.value = false;

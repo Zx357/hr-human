@@ -37,7 +37,7 @@ const searchKeyword = ref('');
 const treeRef = ref<any>(null);
 const contextMenuRef = ref<any>(null);
 const contextMenuNode = ref<Api.Organization.OrgUnit | null>(null);
-const contextMenuVirtualRef = ref<any>(null);
+const contextMenuPosition = ref({ x: 0, y: 0 });
 
 const typeOptions: TypeOption[] = [
   { label: $t('org.structure.group'), value: OrgUnitType.GROUP },
@@ -316,20 +316,7 @@ function handleViewAll() {
 function handleNodeContextMenu(event: MouseEvent, node: Api.Organization.OrgUnit) {
   event.preventDefault();
   contextMenuNode.value = node;
-  contextMenuVirtualRef.value = {
-    getBoundingClientRect: () =>
-      ({
-        width: 0,
-        height: 0,
-        top: event.clientY,
-        right: event.clientX,
-        bottom: event.clientY,
-        left: event.clientX,
-        x: event.clientX,
-        y: event.clientY,
-        toJSON: () => undefined
-      }) as DOMRect
-  };
+  contextMenuPosition.value = { x: event.clientX, y: event.clientY };
   runAsyncTask(nextTick(() => contextMenuRef.value?.handleOpen()));
 }
 
@@ -387,7 +374,8 @@ async function handleDelete(row: Api.Organization.OrgUnit) {
 
   try {
     await ElMessageBox.confirm($t('org.structure.areYouSureYouWantToDelete', { name: row.unitName }), $t('common.deleteConfirmTitle'), { type: 'warning' });
-    await deleteOrgUnit(row.id);
+    const { error } = await deleteOrgUnit(row.id);
+    if (error) return;
     ElMessage.success($t('common.deleteSuccess'));
     await loadTreeData();
     if (selectedNode.value?.id === row.id) {
@@ -413,10 +401,12 @@ async function handleSubmit() {
   submitLoading.value = true;
   try {
     if (operateType.value === 'add') {
-      await createOrgUnit(editingData.value);
+      const { error } = await createOrgUnit(editingData.value);
+      if (error) return;
       ElMessage.success($t('common.addSuccess'));
     } else if (editingId.value !== null) {
-      await updateOrgUnit(editingId.value, editingData.value);
+      const { error } = await updateOrgUnit(editingId.value, editingData.value);
+      if (error) return;
       ElMessage.success($t('common.saveSuccess'));
     }
 
@@ -544,10 +534,21 @@ onMounted(async () => {
 
           <ElDropdown
             ref="contextMenuRef"
-            :virtual-ref="contextMenuVirtualRef"
-            virtual-triggering
+            trigger="contextmenu"
+            placement="bottom-start"
             @command="handleContextMenuCommand"
           >
+            <span
+              aria-hidden="true"
+              :style="{
+                position: 'fixed',
+                left: `${contextMenuPosition.x}px`,
+                top: `${contextMenuPosition.y}px`,
+                width: '1px',
+                height: '1px',
+                pointerEvents: 'none'
+              }"
+            />
             <template #dropdown>
               <ElDropdownMenu>
                 <ElDropdownItem v-if="contextMenuNode" v-permission="'org:unit:add'" :command="{ action: 'add', node: contextMenuNode }">

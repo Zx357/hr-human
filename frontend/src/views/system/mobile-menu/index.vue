@@ -209,7 +209,7 @@ async function handleDelete(id: number) {
   loading.value = true;
   try {
     const res = await deleteMobileMenu(id);
-    if (res.data !== null && res.data !== undefined) {
+    if (!res.error) {
       ElMessage.success($t('common.deleteSuccess'));
       loadData();
     }
@@ -222,7 +222,7 @@ async function handleToggleStatus(row: MobileMenu) {
   loading.value = true;
   try {
     const res = await toggleMobileMenuStatus(row.id!);
-    if (res.data !== null && res.data !== undefined) {
+    if (!res.error) {
       ElMessage.success(row.status === 1 ? $t('sys.common.disabled') : $t('approval.flow.enabled'));
       loadData();
     }
@@ -239,7 +239,7 @@ async function submitForm() {
       loading.value = true;
       try {
         const res = await saveMobileMenu({ ...formData });
-        if (res.data !== null && res.data !== undefined) {
+        if (!res.error) {
           ElMessage.success(operateType.value === 'add' ? $t('common.addSuccess') : $t('common.modifySuccess'));
           dialogVisible.value = false;
           loadData();
@@ -294,13 +294,13 @@ async function swapSort(row1: MobileMenu, row2: MobileMenu) {
     const tempSort = row1.sortOrder;
 
     // 更新第一个
-    await saveMobileMenu({ ...row1, sortOrder: row2.sortOrder });
+    const { error } = await saveMobileMenu({ ...row1, sortOrder: row2.sortOrder });
+    if (error) return;
 
     // 更新第二个
     await saveMobileMenu({ ...row2, sortOrder: tempSort });
-
-    loadData();
   } finally {
+    await loadData();
     loading.value = false;
   }
 }

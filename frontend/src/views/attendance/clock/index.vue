@@ -149,7 +149,8 @@ async function handleSubmit() {
   }
   submitLoading.value = true;
   try {
-    await saveClockRecord(dialogForm.value);
+    const { error } = await saveClockRecord(dialogForm.value);
+    if (error) return;
     ElMessage.success($t('common.saveSuccess'));
     dialogVisible.value = false;
     loadData();
@@ -168,7 +169,8 @@ async function handleDelete(row: AttClockRecord) {
     return;
   }
   try {
-    await deleteClockRecord(row.id!);
+    const { error } = await deleteClockRecord(row.id!);
+    if (error) return;
     ElMessage.success($t('common.deleteSuccess'));
     loadData();
   } catch {

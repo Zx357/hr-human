@@ -109,7 +109,8 @@ function handleEdit(row: Shift) {
 
 async function handleDelete(id: number) {
   try {
-    await deleteShift(id);
+    const { error } = await deleteShift(id);
+    if (error) return;
     ElMessage.success($t('common.deleteSuccess'));
     loadData();
   } catch {
@@ -157,10 +158,12 @@ async function handleSubmit() {
   submitLoading.value = true;
   try {
     if (operateType.value === 'add') {
-      await createShift(formData.value);
+      const { error } = await createShift(formData.value);
+      if (error) return;
       ElMessage.success($t('common.addSuccess'));
     } else {
-      await updateShift(formData.value);
+      const { error } = await updateShift(formData.value);
+      if (error) return;
       ElMessage.success($t('common.updateSuccess'));
     }
     dialogVisible.value = false;

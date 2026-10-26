@@ -102,7 +102,8 @@ async function handleApprove() {
   }
   submitLoading.value = true;
   try {
-    await approveApplication(currentRecord.value.id!, 1, approvalComment.value);
+    const { error } = await approveApplication(currentRecord.value.id!, 1, approvalComment.value);
+    if (error) return;
     ElMessage.success($t('approval.common.approved'));
     detailVisible.value = false;
     loadData();
@@ -130,7 +131,8 @@ async function handleReject() {
   }
   submitLoading.value = true;
   try {
-    await approveApplication(currentRecord.value.id!, 2, approvalComment.value);
+    const { error } = await approveApplication(currentRecord.value.id!, 2, approvalComment.value);
+    if (error) return;
     ElMessage.success($t('common.rejected'));
     detailVisible.value = false;
     loadData();
@@ -154,8 +156,12 @@ async function batchApprove(status: 1 | 2, comment: string, summaryKey: App.I18n
   try {
     for (const row of selectedRows.value) {
       try {
-        await approveApplication(row.id!, status, comment);
-        success += 1;
+        const { error } = await approveApplication(row.id!, status, comment);
+        if (error) {
+          fail += 1;
+        } else {
+          success += 1;
+        }
       } catch {
         fail += 1;
       }

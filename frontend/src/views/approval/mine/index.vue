@@ -46,7 +46,8 @@ async function handleCancel(row: Application) {
     return;
   }
   try {
-    await cancelApplication(row.id);
+    const { error } = await cancelApplication(row.id);
+    if (error) return;
     ElMessage.success($t('common.withdrawn'));
     loadData();
   } catch {

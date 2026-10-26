@@ -168,13 +168,14 @@ async function handleSubmit() {
   }
   submitLoading.value = true;
   try {
-    await saveLeaveQuota({
+    const { error } = await saveLeaveQuota({
       id: editingId.value,
       employeeId: formData.value.employeeId,
       year: formData.value.year,
       leaveType: formData.value.leaveType,
       totalHours: formData.value.totalHours
     });
+    if (error) return;
     ElMessage.success($t('common.updateSuccess'));
     dialogVisible.value = false;
     loadData();
@@ -188,7 +189,8 @@ async function handleSubmit() {
 async function handleDelete(id?: number) {
   if (!id) return;
   try {
-    await deleteLeaveQuota(id);
+    const { error } = await deleteLeaveQuota(id);
+    if (error) return;
     ElMessage.success($t('common.deleteSuccess'));
     loadData();
   } catch {

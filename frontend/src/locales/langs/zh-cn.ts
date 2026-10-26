@@ -1419,7 +1419,7 @@ const local: App.I18n.Schema = {
       eGDayShift: "如：白班",
       regularShiftHours: "正班时长",
       editShift: "编辑班次",
-      period: "时段{}"
+      period: "时段{index}"
     },
     daily: {
       lateEarlyLeave: "迟到+早退",
@@ -1753,7 +1753,7 @@ const local: App.I18n.Schema = {
       searchAddressParkBuildingOrLandmarkOrEnterLatLngLngLat: "搜索地址、园区、楼宇、地标，或输入经纬度（经度,纬度）",
       searchAndPickOnAmapTheAddressIsFilledAutomaticallyAfterClickingTheMapCoordinatesAreStoredAsGcj02: "这里使用高德地图搜索和选点，点击地图后自动回填地址；坐标以 GCJ-02 保存（与移动端打卡地图一致）。",
       mapLoading: "地图加载中...",
-      currentLocation: "当前地点：{}"
+      currentLocation: "当前地点：{name}"
     }
   },
 

@@ -144,9 +144,9 @@ async function handleSubmit() {
   try {
     const startTime = `${dateRange.value[0]}:00`;
     const endTime = `${dateRange.value[1]}:00`;
-    for (const emp of selectedEmployees.value) {
+    for (const [index, emp] of selectedEmployees.value.entries()) {
       // eslint-disable-next-line no-await-in-loop
-      await createApplication({
+      const { error } = await createApplication({
         ...formData.value,
         employeeId: emp.id,
         employeeName: emp.name,
@@ -157,6 +157,12 @@ async function handleSubmit() {
         endTime,
         duration: overtimeHours.value
       } as Application);
+      if (error) {
+        // Keep only employees who still need submission so retrying cannot duplicate earlier successes.
+        selectedEmployees.value = selectedEmployees.value.slice(index);
+        loadData();
+        return;
+      }
     }
     ElMessage.success(
       $t('application.overtime.successfullySubmittedOvertimeApplications', { count: selectedEmployees.value.length })
@@ -182,7 +188,8 @@ function handleViewDetail(row: Application) {
 async function handleCancel(row: Application) {
   if (!(await confirmCancelApplication(row))) return;
   try {
-    await cancelApplication(row.id!);
+    const { error } = await cancelApplication(row.id!);
+    if (error) return;
     ElMessage.success($t('common.withdrawn'));
     loadData();
   } catch {

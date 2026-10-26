@@ -135,6 +135,7 @@ const stats = ref({
   absentDays: 0
 })
 const selectedDate = ref('')
+let requestSeq = 0
 
 const monthKey = computed(() => `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}`)
 const currentMonthLabel = computed(() => `${currentYear.value}年${currentMonth.value}月`)
@@ -190,9 +191,11 @@ const cellClass = (cell) => {
 }
 
 const loadCalendar = async () => {
+  const seq = ++requestSeq
   loading.value = true
   try {
     const res = await getMonthAttendance(monthKey.value)
+    if (seq !== requestSeq) return
     const data = res.data || {}
     const list = Array.isArray(data.records) ? data.records : []
     records.value = list
@@ -210,10 +213,13 @@ const loadCalendar = async () => {
       absentDays: Number(data.stats?.absentDays || 0)
     }
   } catch (error) {
+    if (seq !== requestSeq) return
     uni.showToast({ title: '加载考勤日历失败，请下拉重试', icon: 'none' })
   } finally {
-    loading.value = false
-    uni.stopPullDownRefresh()
+    if (seq === requestSeq) {
+      loading.value = false
+      uni.stopPullDownRefresh()
+    }
   }
 }
 

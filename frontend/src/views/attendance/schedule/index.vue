@@ -161,7 +161,8 @@ async function handleCellClick(row: ScheduleRow, dateKey: string) {
   }
 
   try {
-    await saveSchedule({ employeeId: row.employeeId, shiftId: nextShiftId, scheduleDate: dateKey });
+    const { error } = await saveSchedule({ employeeId: row.employeeId, shiftId: nextShiftId, scheduleDate: dateKey });
+    if (error) return;
     if (nextShiftId) {
       const shift = shifts.value.find(s => s.id === nextShiftId);
       if (shift) {
@@ -177,12 +178,14 @@ async function handleCellClick(row: ScheduleRow, dateKey: string) {
 
 function handlePrevMonth() {
   const date = new Date(currentMonth.value);
+  date.setDate(1);
   date.setMonth(date.getMonth() - 1);
   currentMonth.value = date;
 }
 
 function handleNextMonth() {
   const date = new Date(currentMonth.value);
+  date.setDate(1);
   date.setMonth(date.getMonth() + 1);
   currentMonth.value = date;
 }
@@ -221,12 +224,13 @@ async function handleBatchSubmit() {
   }
   batchSubmitting.value = true;
   try {
-    await batchSchedule({
+    const { error } = await batchSchedule({
       employeeIds: selectedEmployees.value.map(e => e.id),
       shiftId: batchForm.value.shiftId,
       startDate: batchForm.value.dateRange[0],
       endDate: batchForm.value.dateRange[1]
     });
+    if (error) return;
     ElMessage.success($t('attendance.schedule.batchSchedulingSuccessful'));
     batchDialogVisible.value = false;
     loadData();

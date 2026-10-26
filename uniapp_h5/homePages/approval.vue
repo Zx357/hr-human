@@ -156,7 +156,7 @@ function normalizeRecords(data) {
 
 function normalizeTotal(res, records) {
   // rows 风格响应的 total 在扁平化信封上(request.js 已透传)
-  if (res && res.total !== undefined && !Array.isArray(res.data)) return Number(res.total)
+  if (res && res.total !== undefined) return Number(res.total)
   const data = res?.data
   if (Array.isArray(data)) return data.length
   return Number(data?.total ?? records.length)
@@ -192,8 +192,10 @@ async function loadList(reset = false) {
     pageNum.value += 1
   } catch (e) {
   } finally {
-    if (seq === requestSeq) loading.value = false
-    refreshing.value = false
+    if (seq === requestSeq) {
+      loading.value = false
+      refreshing.value = false
+    }
   }
 }
 
@@ -274,7 +276,7 @@ function steps(status) {
   }
   return [
     { name: '已提交', icon: 'success-circle-fill', active: true },
-    { name: '已审批', icon: value === 2 ? 'close' : 'safe-fill', active: true },
+    { name: value === 3 ? '撤销申请' : '已审批', icon: value === 2 || value === 3 ? 'close' : 'safe-fill', active: true },
     { name: statusMeta(status).name, icon: value === 2 ? 'close' : 'success-circle-fill', active: true }
   ]
 }

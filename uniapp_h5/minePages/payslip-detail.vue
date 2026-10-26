@@ -51,7 +51,7 @@
           <view v-for="item in incomeItems" :key="item.id" class="item-row">
             <view class="item-info">
               <text class="item-name">{{ item.itemName }}</text>
-              <text class="item-source">{{ item.source }}</text>
+              <text v-if="amountVisible" class="item-source">{{ item.source }}</text>
             </view>
             <text class="item-amount income-amount">+{{ amountVisible ? formatAmount(item.amount) : '••••' }}</text>
           </view>
@@ -63,7 +63,7 @@
           <view v-for="item in deductionItems" :key="item.id" class="item-row">
             <view class="item-info">
               <text class="item-name">{{ item.itemName }}</text>
-              <text class="item-source">{{ item.source }}</text>
+              <text v-if="amountVisible" class="item-source">{{ item.source }}</text>
             </view>
             <text class="item-amount deduction-amount">-{{ amountVisible ? formatAmount(item.amount) : '••••' }}</text>
           </view>

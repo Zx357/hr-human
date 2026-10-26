@@ -138,7 +138,7 @@ async function loadMyStats() {
     if (r.status !== 'fulfilled') return 0
     // rows 风格响应的 total 在扁平化信封上(request.js 已透传)
     const envelope = r.value
-    if (envelope && envelope.total !== undefined && !Array.isArray(envelope.data)) return Number(envelope.total)
+    if (envelope && envelope.total !== undefined) return Number(envelope.total)
     const d = envelope?.data
     if (Array.isArray(d)) return d.length
     return Number(d?.total || 0)
@@ -160,7 +160,7 @@ const employee = computed(() => store.state.user.employeeInfo || uni.getStorageS
 const displayName = computed(() => pick(employee.value.name, store.state.user.name, employee.value.employeeNo, '未填写'))
 const avatarUrl = computed(() => pick(store.state.user.avatar, employee.value.avatar, ''))
 const displaySubtitle = computed(() => {
-  const job = pick(employee.value.position, employee.value.duty, employee.value.occupation, employee.value.post, employee.value.jobTitle)
+  const job = pick(employee.value.positionName, employee.value.position, employee.value.duty, employee.value.occupation, employee.value.post, employee.value.jobTitle)
   const dept = pick(employee.value.deptName, employee.value.companyName)
   return [job, dept].filter(Boolean).join(' · ') || '员工档案'
 })

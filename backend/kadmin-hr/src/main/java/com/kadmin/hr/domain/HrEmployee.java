@@ -115,6 +115,9 @@ public class HrEmployee extends BaseEntity {
      */
     private String position;
 
+    @TableField(exist = false)
+    private String positionName;
+
     /**
      * 岗位（字典值）
      */

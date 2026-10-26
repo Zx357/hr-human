@@ -91,6 +91,7 @@ const payslips = ref([])
 const finished = ref(false)
 const pageNum = ref(1)
 const pageSize = 12
+let requestSeq = 0
 
 // 金额默认遮挡,右上角眼睛图标切换(页面级状态)
 const amountVisible = ref(false)
@@ -130,6 +131,8 @@ function reload() {
 }
 
 async function loadData(reset = false) {
+  if (!reset && (loading.value || finished.value)) return
+  const seq = ++requestSeq
   const page = reset ? 1 : pageNum.value + 1
   loading.value = true
   loadFailed.value = false
@@ -138,6 +141,7 @@ async function loadData(reset = false) {
     // 选中月份时传 month=yyyy-MM,后端按月过滤
     if (filterMonth.value) params.month = filterMonth.value
     const res = await getMyPayslips(params)
+    if (seq !== requestSeq) return
     const records = res.data?.records || []
     const total = res.data?.total ?? null
     if (reset) {
@@ -149,27 +153,32 @@ async function loadData(reset = false) {
     }
     finished.value = records.length < pageSize || (total !== null && total <= payslips.value.length)
   } catch (error) {
+    if (seq !== requestSeq) return
     toastRequestError(error, '加载工资条失败')
     // 首屏失败展示失败态;加载更多失败保留已有数据
     if (!payslips.value.length) loadFailed.value = true
   } finally {
-    loading.value = false
+    if (seq === requestSeq) loading.value = false
   }
 }
 
 // 从明细页返回:按已加载条数刷新(一次请求拉齐已加载数量),保留当前页码与滚动位置,
 // 避免"确认后返回 onShow 全量 reload 导致从第 2 页跳回第 1 页"
 async function refreshLoaded() {
+  if (loading.value) return
+  const seq = ++requestSeq
   try {
     const params = { pageNum: 1, pageSize: payslips.value.length }
     if (filterMonth.value) params.month = filterMonth.value
     const res = await getMyPayslips(params)
+    if (seq !== requestSeq) return
     const records = res.data?.records || []
-    if (records.length) {
-      payslips.value = records
-      pageNum.value = Math.max(1, Math.ceil(records.length / pageSize))
-    }
+    payslips.value = records
+    pageNum.value = Math.max(1, Math.ceil(records.length / pageSize))
+    finished.value = records.length === 0 || records.length < params.pageSize ||
+      (res.data?.total != null && Number(res.data.total) <= records.length)
   } catch (error) {
+    if (seq !== requestSeq) return
     // 静默刷新失败不打扰用户,保留当前列表
     toastRequestError(error, '刷新工资条失败')
   }

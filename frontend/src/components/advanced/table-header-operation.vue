@@ -51,7 +51,8 @@ function refresh() {
 <template>
   <ElSpace direction="horizontal" wrap justify="end" class="lt-sm:w-200px">
     <slot name="prefix"></slot>
-    <slot name="default">
+    <slot v-if="$slots.default" name="default"></slot>
+    <template v-else>
       <ElButton plain type="primary" @click="add">
         <template #icon>
           <icon-ic-round-plus class="text-icon" />
@@ -68,7 +69,7 @@ function refresh() {
           </ElButton>
         </template>
       </ElPopconfirm>
-    </slot>
+    </template>
     <ElButton @click="refresh">
       <template #icon>
         <icon-mdi-refresh class="text-icon" :class="{ 'animate-spin': loading }" />

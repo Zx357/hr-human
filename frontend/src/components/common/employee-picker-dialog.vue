@@ -159,12 +159,13 @@ watch(visible, val => {
     <ElTable
       v-loading="loading"
       :data="tableData"
+      row-key="id"
       border
       stripe
       max-height="400px"
       @selection-change="handleSelectionChange"
     >
-      <ElTableColumn v-if="props.multiple" type="selection" width="42" />
+      <ElTableColumn v-if="props.multiple" type="selection" width="42" reserve-selection />
       <ElTableColumn prop="employeeNo" label="工号" width="100" />
       <ElTableColumn prop="name" label="姓名" width="80" />
       <ElTableColumn prop="gender" label="性别" width="60" align="center">

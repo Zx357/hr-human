@@ -118,11 +118,12 @@ async function submitCreate() {
   }
   createSubmitting.value = true;
   try {
-    await createPayrollBatch({
+    const { error } = await createPayrollBatch({
       yearMonth: createForm.value.yearMonth,
       companyId: createForm.value.companyId,
       remark: createForm.value.remark
     });
+    if (error) return;
     ElMessage.success($t('salary.payroll.createSuccess'));
     createDialogVisible.value = false;
     loadBatches();
@@ -137,10 +138,11 @@ async function submitCreate() {
 const operating = ref(false);
 const exporting = ref(false);
 
-async function withOperating(action: () => Promise<unknown>, successMsg?: string) {
+async function withOperating(action: () => Promise<{ error: unknown }>, successMsg?: string) {
   operating.value = true;
   try {
-    await action();
+    const { error } = await action();
+    if (error) return;
     if (successMsg) ElMessage.success(successMsg);
     loadBatches();
   } catch {
@@ -275,7 +277,8 @@ function startEditItem(item: PayrollItem) {
 async function saveItemAmount() {
   if (editingItemId.value == null || editingAmount.value == null) return;
   try {
-    await updateManualItem(editingItemId.value, editingAmount.value);
+    const { error } = await updateManualItem(editingItemId.value, editingAmount.value);
+    if (error) return;
     ElMessage.success($t('common.updateSuccess'));
     editingItemId.value = null;
     // 重拉明细与工资条（汇总已变）
